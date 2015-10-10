@@ -15,6 +15,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    neat_getaddrinfo(nc, "abcd");
     neat_start_event_loop(nc);
 
     neat_free_ctx(nc);

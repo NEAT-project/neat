@@ -2,12 +2,13 @@
 cmake_minimum_required(VERSION 2.6)
 project(neat_multi_prefix_example)
 
-set(CMAKE_C_FLAGS "-O1 -Wall -std=gnu99")
+set(CMAKE_C_FLAGS "-O1 -Wall -std=gnu99 -g")
 
 set(SOURCE
     neat_example.c
     neat_core.c
-    neat_addr.c)
+    neat_addr.c
+    neat_resolver.c)
 set(LIBS uv)
 
 if (TARGET_LINUX)

@@ -25,4 +25,7 @@ void neat_start_event_loop(struct neat_ctx *nc);
 //Free memory used by context
 void neat_free_ctx(struct neat_ctx *nc);
 
+//TODO: Add other parameters later
+uint8_t neat_getaddrinfo(struct neat_ctx *nc, const char *service);
+
 #endif

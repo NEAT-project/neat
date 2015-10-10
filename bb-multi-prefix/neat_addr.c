@@ -77,15 +77,15 @@ void neat_addr_update_src_list(struct neat_internal_ctx *nic,
 
     if (nsrc_addr != NULL) {
         if (!newaddr) {
-            fprintf(stdout, "Remove %s\n", addr_str);
+            neat_run_event_cb(nic, NEAT_DELADDR, nsrc_addr);
             LIST_REMOVE(nsrc_addr, next_addr);
             free(nsrc_addr);
             neat_addr_print_src_addrs(nic);
         } else if (newaddr && nsrc_addr->family == AF_INET6) {
-            fprintf(stdout, "Update %s\n", addr_str);
             nsrc_addr->u.v6.ifa_pref = ifa_pref;
             nsrc_addr->u.v6.ifa_valid = ifa_valid;
             neat_addr_print_src_addrs(nic);
+            neat_run_event_cb(nic, NEAT_UPDATEADDR, nsrc_addr);
         }
 
         return;
@@ -112,9 +112,8 @@ void neat_addr_update_src_list(struct neat_internal_ctx *nic,
         nsrc_addr->u.v6.ifa_valid = ifa_valid;
     }
 
-    fprintf(stdout, "Add %s\n", addr_str);
     LIST_INSERT_HEAD(&(nic->src_addrs), nsrc_addr, next_addr);
-
+    neat_run_event_cb(nic, NEAT_NEWADDR, nsrc_addr);
     neat_addr_print_src_addrs(nic);
     //TODO: Have a trigger when available addresses have changed? So that for
     //example resolve can get started if it is called before addresses are

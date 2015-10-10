@@ -16,6 +16,8 @@ struct neat_internal_ctx;
 //Define list type here, so that we can use it when subclassing
 LIST_HEAD(neat_src_addrs, neat_src_addr);
 
+//TODO: Why src? Maybe just neat_addr, I think this struct contains everything
+//we need to represent address
 struct neat_src_addr {
     //It seems windows only supports binding to src address, not interface
 #ifdef LINUX

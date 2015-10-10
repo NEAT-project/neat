@@ -86,7 +86,7 @@ static void neat_linux_handle_addr(struct neat_ctx_linux *ncl,
 
     //TODO: Should this function be a callback instead? Will we have multiple
     //addresses handlers/types of context?
-    neat_addr_update_src_list((struct neat_ctx*) ncl, &src_addr, ifm->ifa_index,
+    neat_addr_update_src_list((struct neat_internal_ctx*) ncl, &src_addr, ifm->ifa_index,
             nl_hdr->nlmsg_type == RTM_NEWADDR, ifa_pref, ifa_valid);
 }
 
@@ -116,17 +116,17 @@ static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
     }
 }
 
-static void neat_linux_cleanup(struct neat_ctx *nc)
+static void neat_linux_cleanup(struct neat_internal_ctx *nic)
 {
-    struct neat_ctx_linux *ncl = (struct neat_ctx_linux*) nc;
+    struct neat_ctx_linux *ncl = (struct neat_ctx_linux*) nic;
 
     if (ncl->mnl_sock)
         mnl_socket_close(ncl->mnl_sock);
 }
 
-static uint8_t neat_linux_init(struct neat_ctx *nc)
+static uint8_t neat_linux_init(struct neat_internal_ctx *nic)
 {
-    struct neat_ctx_linux *ncl = (struct neat_ctx_linux*) nc;
+    struct neat_ctx_linux *ncl = (struct neat_ctx_linux*) nic;
 
     //Configure netlink and start requesting addresses
     if ((ncl->mnl_sock = mnl_socket_open(NETLINK_ROUTE)) == NULL) {

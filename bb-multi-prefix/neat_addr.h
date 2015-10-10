@@ -11,7 +11,7 @@
 
 #include "include/queue.h"
 
-struct neat_ctx;
+struct neat_internal_ctx;
 
 //Define list type here, so that we can use it when subclassing
 LIST_HEAD(neat_src_addrs, neat_src_addr);
@@ -39,7 +39,7 @@ struct neat_src_addr {
 };
 
 //Add/remove addresses from src. address list
-void neat_addr_update_src_list(struct neat_ctx *nc,
+void neat_addr_update_src_list(struct neat_internal_ctx *nic,
         struct sockaddr_storage *src_addr, uint32_t if_idx,
         uint8_t newaddr, uint32_t ifa_pref, uint32_t ifa_valid);
 

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "neat_core.h"
+#include "neat.h"
 
 int main(int argc, char *argv[])
 {
@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
     if (nc == NULL)
         exit(EXIT_FAILURE);
 
-    if (nc->init(nc)) {
+    if (neat_init_ctx(nc)) {
         neat_free_ctx(nc);
         exit(EXIT_FAILURE);
     }

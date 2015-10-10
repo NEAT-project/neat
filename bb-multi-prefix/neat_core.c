@@ -2,6 +2,7 @@
 #include <uv.h>
 
 #include "include/queue.h"
+#include "neat.h"
 #include "neat_core.h"
 
 #ifdef LINUX
@@ -10,10 +11,10 @@
 
 struct neat_ctx *neat_alloc_ctx()
 {
-    struct neat_ctx *nc = NULL;
+    struct neat_internal_ctx *nc = NULL;
 
 #ifdef LINUX
-    nc = (struct neat_ctx*) neat_alloc_ctx_linux();
+    nc = (struct neat_internal_ctx*) neat_alloc_ctx_linux();
 #endif
 
     if (nc == NULL)
@@ -28,7 +29,14 @@ struct neat_ctx *neat_alloc_ctx()
 
     uv_loop_init(nc->loop);
     LIST_INIT(&(nc->src_addrs));
-    return nc;
+    return (struct neat_ctx*) nc;
+}
+
+uint8_t neat_init_ctx(struct neat_ctx *nc)
+{
+    struct neat_internal_ctx *nic = (struct neat_internal_ctx*) nc;
+
+    return nic->init(nic);
 }
 
 void neat_start_event_loop(struct neat_ctx *nc)
@@ -39,9 +47,11 @@ void neat_start_event_loop(struct neat_ctx *nc)
 
 void neat_free_ctx(struct neat_ctx *nc)
 {
-    if (nc->cleanup)
-        nc->cleanup(nc);
+    struct neat_internal_ctx *nic = (struct neat_internal_ctx*) nc;
 
-    free(nc->loop);
-    free(nc);
+    if (nic->cleanup)
+        nic->cleanup(nic);
+
+    free(nic->loop);
+    free(nic);
 }

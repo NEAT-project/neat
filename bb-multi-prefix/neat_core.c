@@ -9,37 +9,24 @@
 #include "neat_core.h"
 
 #ifdef LINUX
-    #include "neat_linux.h"
+    #include "neat_linux_internal.h"
 #endif
-
-struct neat_ctx *neat_alloc_ctx()
-{
-    struct neat_internal_ctx *nc = NULL;
-
-#ifdef LINUX
-    nc = (struct neat_internal_ctx*) neat_alloc_ctx_linux();
-#endif
-
-    if (nc == NULL)
-        return NULL;
-
-    nc->loop = malloc(sizeof(uv_loop_t));
-
-    if (nc->loop == NULL) {
-        free(nc);
-        return NULL;
-    }
-
-    uv_loop_init(nc->loop);
-    LIST_INIT(&(nc->src_addrs));
-    return (struct neat_ctx*) nc;
-}
 
 uint8_t neat_init_ctx(struct neat_ctx *nc)
 {
-    struct neat_internal_ctx *nic = (struct neat_internal_ctx*) nc;
+    nc->loop = malloc(sizeof(uv_loop_t));
 
-    return nic->init(nic);
+    if (nc->loop == NULL)
+        return RETVAL_FAILURE;
+
+    uv_loop_init(nc->loop);
+    LIST_INIT(&(nc->src_addrs));
+
+#ifdef LINUX
+    return neat_linux_init_ctx(nc);
+#else
+    return RETVAL_FAILURE;
+#endif
 }
 
 void neat_start_event_loop(struct neat_ctx *nc)
@@ -50,16 +37,14 @@ void neat_start_event_loop(struct neat_ctx *nc)
 
 void neat_free_ctx(struct neat_ctx *nc)
 {
-    struct neat_internal_ctx *nic = (struct neat_internal_ctx*) nc;
+    if (nc->cleanup)
+        nc->cleanup(nc);
 
-    if (nic->cleanup)
-        nic->cleanup(nic);
-
-    free(nic->loop);
-    free(nic);
+    free(nc->loop);
+    free(nc);
 }
 
-uint8_t neat_add_event_cb(struct neat_internal_ctx *nic, uint8_t event_type,
+uint8_t neat_add_event_cb(struct neat_ctx *nc, uint8_t event_type,
         struct neat_event_cb *cb)
 {
     uint8_t i = 0;
@@ -70,18 +55,18 @@ uint8_t neat_add_event_cb(struct neat_internal_ctx *nic, uint8_t event_type,
         return RETVAL_FAILURE;
 
     //Do not initialize callback array before we have to
-    if (!nic->event_cbs) {
-        nic->event_cbs = calloc(NEAT_MAX_EVENT + 1,
+    if (!nc->event_cbs) {
+        nc->event_cbs = calloc(NEAT_MAX_EVENT + 1,
                 sizeof(struct neat_event_cbs));
 
         //TODO: Decide what to do here
-        assert(nic->event_cbs != NULL);
+        assert(nc->event_cbs != NULL);
 
         for (i = 0; i < NEAT_MAX_EVENT; i++)
-            LIST_INIT(&(nic->event_cbs[i]));
+            LIST_INIT(&(nc->event_cbs[i]));
     }
 
-    cb_list_head = &(nic->event_cbs[event_type]);
+    cb_list_head = &(nc->event_cbs[event_type]);
 
     for (cb_itr = cb_list_head->lh_first; cb_itr != NULL;
             cb_itr = cb_itr->next_cb.le_next) {
@@ -100,33 +85,34 @@ uint8_t neat_add_event_cb(struct neat_internal_ctx *nic, uint8_t event_type,
     return RETVAL_SUCCESS;
 }
 
-void neat_run_event_cb(struct neat_internal_ctx *nic, uint8_t event_type,
+void neat_run_event_cb(struct neat_ctx *nc, uint8_t event_type,
         void *data)
 {
     struct neat_event_cbs *cb_list_head;
     struct neat_event_cb *cb_itr = NULL;
 
-    if (event_type > NEAT_MAX_EVENT)
+    if (event_type > NEAT_MAX_EVENT ||
+        !nc->event_cbs)
         return;
 
-    cb_list_head = &(nic->event_cbs[event_type]);
-
+    cb_list_head = &(nc->event_cbs[event_type]);
+    
     for (cb_itr = cb_list_head->lh_first; cb_itr != NULL;
             cb_itr = cb_itr->next_cb.le_next)
-        cb_itr->event_cb(nic, data);
+        cb_itr->event_cb(nc, cb_itr->data, data);
 }
 
-uint8_t neat_remove_event_cb(struct neat_internal_ctx *nic, uint8_t event_type,
+uint8_t neat_remove_event_cb(struct neat_ctx *nc, uint8_t event_type,
         struct neat_event_cb *cb)
 {
     struct neat_event_cbs *cb_list_head;
     struct neat_event_cb *cb_itr = NULL;
 
     if (event_type > NEAT_MAX_EVENT ||
-        !nic->event_cbs)
+        !nc->event_cbs)
         return RETVAL_FAILURE;
 
-    cb_list_head = &(nic->event_cbs[event_type]);
+    cb_list_head = &(nc->event_cbs[event_type]);
 
     for (cb_itr = cb_list_head->lh_first; cb_itr != NULL;
             cb_itr = cb_itr->next_cb.le_next) {

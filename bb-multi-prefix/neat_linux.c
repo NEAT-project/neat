@@ -7,8 +7,11 @@
 #include <linux/rtnetlink.h>
 #include <linux/if_addr.h>
 
+#include "neat.h"
+#include "neat_core.h"
 #include "neat_addr.h"
 #include "neat_linux.h"
+#include "neat_linux_internal.h"
 
 static ssize_t neat_linux_request_addrs(struct mnl_socket *mnl_sock)
 {
@@ -37,7 +40,7 @@ static int neat_linux_parse_nlattr(const struct nlattr *attr, void *data)
     storage->tb[type] = attr;
     return MNL_CB_OK;
 }
-static void neat_linux_handle_addr(struct neat_ctx_linux *ncl,
+static void neat_linux_handle_addr(struct neat_ctx *nc,
                                    struct nlmsghdr *nl_hdr)
 {
     struct ifaddrmsg *ifm = (struct ifaddrmsg*) mnl_nlmsg_get_payload(nl_hdr);
@@ -54,6 +57,7 @@ static void neat_linux_handle_addr(struct neat_ctx_linux *ncl,
         return;
 
     memset(attr_table, 0, sizeof(attr_table));
+    memset(&src_addr, 0, sizeof(src_addr));
 
     if (mnl_attr_parse(nl_hdr, sizeof(struct ifaddrmsg),
                 neat_linux_parse_nlattr, &tb_storage) != MNL_CB_OK) {
@@ -86,23 +90,23 @@ static void neat_linux_handle_addr(struct neat_ctx_linux *ncl,
 
     //TODO: Should this function be a callback instead? Will we have multiple
     //addresses handlers/types of context?
-    neat_addr_update_src_list((struct neat_internal_ctx*) ncl, &src_addr, ifm->ifa_index,
+    neat_addr_update_src_list(nc, &src_addr, ifm->ifa_index,
             nl_hdr->nlmsg_type == RTM_NEWADDR, ifa_pref, ifa_valid);
 }
 
 static void neat_linux_nl_alloc(uv_handle_t *handle, size_t suggested_size,
         uv_buf_t *buf)
 {
-    struct neat_ctx_linux *ncl = handle->data;
-    memset(ncl->mnl_rcv_buf, 0, sizeof(ncl->mnl_rcv_buf)); 
-    buf->base = ncl->mnl_rcv_buf;
-    buf->len = sizeof(ncl->mnl_rcv_buf);
+    struct neat_ctx *nc = handle->data;
+    memset(nc->mnl_rcv_buf, 0, sizeof(nc->mnl_rcv_buf)); 
+    buf->base = nc->mnl_rcv_buf;
+    buf->len = sizeof(nc->mnl_rcv_buf);
 }
 
 static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
         const uv_buf_t *buf, const struct sockaddr *addr, unsigned int flags)
 {
-    struct neat_ctx_linux *ncl = (struct neat_ctx_linux*) handle->data;
+    struct neat_ctx *nc = (struct neat_ctx*) handle->data;
     struct nlmsghdr *nl_hdr = (struct nlmsghdr*) buf->base;
     //We don't need any check here, we don't read more than 8192 bytes in one go
     int numbytes = (int) nread;
@@ -110,76 +114,60 @@ static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
     while (mnl_nlmsg_ok(nl_hdr, numbytes)) {
         if (nl_hdr->nlmsg_type == RTM_NEWADDR ||
             nl_hdr->nlmsg_type == RTM_DELADDR)
-            neat_linux_handle_addr(ncl, nl_hdr);  
+            neat_linux_handle_addr(nc, nl_hdr);  
        
         nl_hdr = mnl_nlmsg_next(nl_hdr, &numbytes);
     }
 }
 
-static void neat_linux_cleanup(struct neat_internal_ctx *nic)
+static void neat_linux_cleanup(struct neat_ctx *nc)
 {
-    struct neat_ctx_linux *ncl = (struct neat_ctx_linux*) nic;
-
-    if (ncl->mnl_sock)
-        mnl_socket_close(ncl->mnl_sock);
+    if (nc->mnl_sock)
+        mnl_socket_close(nc->mnl_sock);
 }
 
-static uint8_t neat_linux_init(struct neat_internal_ctx *nic)
+uint8_t neat_linux_init_ctx(struct neat_ctx *nc)
 {
-    struct neat_ctx_linux *ncl = (struct neat_ctx_linux*) nic;
-
     //Configure netlink and start requesting addresses
-    if ((ncl->mnl_sock = mnl_socket_open(NETLINK_ROUTE)) == NULL) {
+    if ((nc->mnl_sock = mnl_socket_open(NETLINK_ROUTE)) == NULL) {
         fprintf(stderr, "Failed to allocate netlink socket\n");
         return RETVAL_FAILURE;
     }
 
-    if (mnl_socket_bind(ncl->mnl_sock, (1 << (RTNLGRP_IPV4_IFADDR - 1)) |
+    if (mnl_socket_bind(nc->mnl_sock, (1 << (RTNLGRP_IPV4_IFADDR - 1)) |
                 (1 << (RTNLGRP_IPV6_IFADDR - 1)), 0)) {
         fprintf(stderr, "Failed to bind netlink socket\n");
         return RETVAL_FAILURE;
     }
     
     //Send address request to get things started
-    if (neat_linux_request_addrs(ncl->mnl_sock) <= 0) {
+    if (neat_linux_request_addrs(nc->mnl_sock) <= 0) {
         fprintf(stderr, "Failed to request addresses\n");
         return RETVAL_FAILURE;
     }
 
     //Add socket to event loop
-    if (uv_udp_init(ncl->loop, &(ncl->uv_nl_handle))) {
+    if (uv_udp_init(nc->loop, &(nc->uv_nl_handle))) {
         fprintf(stderr, "Failed to initialize uv UDP handle\n");
         return RETVAL_FAILURE;
     }
 
     //TODO: We could use offsetof, but libuv has a pointer so ...
-    ncl->uv_nl_handle.data = ncl;
+    nc->uv_nl_handle.data = nc;
 
-    if (uv_udp_open(&(ncl->uv_nl_handle), mnl_socket_get_fd(ncl->mnl_sock))) {
+    if (uv_udp_open(&(nc->uv_nl_handle), mnl_socket_get_fd(nc->mnl_sock))) {
         fprintf(stderr, "Could not add netlink socket to uv\n");
         return RETVAL_FAILURE;
     }
 
-    if (uv_udp_recv_start(&(ncl->uv_nl_handle), neat_linux_nl_alloc,
+    if (uv_udp_recv_start(&(nc->uv_nl_handle), neat_linux_nl_alloc,
                 neat_linux_nl_recv)) {
         fprintf(stderr, "Could not start receiving netlink packets\n");
         return RETVAL_FAILURE;
     }
-    
+     
+    nc->cleanup = neat_linux_cleanup;
+
     //Configure netlink socket, add to event loop and start dumping
     return RETVAL_SUCCESS;
-}
-
-struct neat_ctx_linux *neat_alloc_ctx_linux()
-{
-    struct neat_ctx_linux *ncl = calloc(sizeof(struct neat_ctx_linux), 1);
-
-    if (ncl == NULL) {
-        fprintf(stderr, "Could not allocate context structure\n");
-        return NULL;
-    }
-
-    ncl->init = neat_linux_init;
-    ncl->cleanup = neat_linux_cleanup;
-    return ncl;
 }

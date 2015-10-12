@@ -9,7 +9,7 @@ set(SOURCE
     neat_core.c
     neat_addr.c
     neat_resolver.c)
-set(LIBS uv)
+set(LIBS uv ldns)
 
 if (TARGET_LINUX)
     add_definitions("-DLINUX")

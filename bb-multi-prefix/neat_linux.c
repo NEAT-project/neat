@@ -91,11 +91,6 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
         for (i=0; i<4; i++)
             src_addr6->sin6_addr.s6_addr32[i] = *(addr6_ptr + i);
 
-        //Ignore addresses with ULA prefix
-        if (ifm->ifa_scope != RT_SCOPE_UNIVERSE &&
-            (src_addr6->sin6_addr.s6_addr[0] & 0xfe) != 0xfc)
-            return;
-
         ci = (struct ifa_cacheinfo*) mnl_attr_get_payload(attr_table[IFA_CACHEINFO]);
         ifa_pref = ci->ifa_prefered;
         ifa_valid = ci->ifa_valid;

@@ -19,9 +19,12 @@
 #include "neat_addr.h"
 #include "neat_resolver.h"
 
-static uint8_t neat_resolver_create_pair(struct neat_resolver *resolver,
+static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
         struct neat_addr *src_addr);
+static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
+        struct neat_addr *addr_to_delete);
 
+//NEAT internal callbacks, not very interesting
 static void neat_resolver_handle_newaddr(struct neat_ctx *nc,
                                          void *p_ptr,
                                          void *data)
@@ -32,7 +35,7 @@ static void neat_resolver_handle_newaddr(struct neat_ctx *nc,
     if (resolver->family && resolver->family != src_addr->family)
         return;
 
-    neat_resolver_create_pair(resolver, src_addr);
+    neat_resolver_create_pairs(resolver, src_addr);
 }
 
 static void neat_resolver_handle_updateaddr(struct neat_ctx *nc,
@@ -59,6 +62,7 @@ static void neat_resolver_handle_deladdr(struct neat_ctx *nic,
                                          void *p_ptr,
                                          void *data)
 {
+    struct neat_resolver *resolver = p_ptr;
     struct neat_addr *src_addr = data;
     struct sockaddr_in *src_addr4;
     struct sockaddr_in6 *src_addr6;
@@ -73,8 +77,14 @@ static void neat_resolver_handle_deladdr(struct neat_ctx *nic,
     }
 
     printf("Deleted %s\n", addr_str);
+
+    neat_resolver_delete_pairs(resolver, src_addr);
 }
 
+//libuv-specific callbacks
+
+//This callback is called when we close a UDP socket (handle) and allows us to
+//free any allocated resource. In our case, this is only the dns_snd_buf
 static void neat_resolver_close_cb(uv_handle_t *handle)
 {
     struct neat_resolver_src_dst_addr *resolver_pair = handle->data;
@@ -82,9 +92,14 @@ static void neat_resolver_close_cb(uv_handle_t *handle)
     if (resolver_pair->dns_snd_buf)
         ldns_buffer_free(resolver_pair->dns_snd_buf);
 
+    //Mark that it is safe to free/remove this pair
     resolver_pair->closed = 1;
 }
 
+//This callback is called before libuv polls for I/O and is by default run on
+//every iteration. We use it to free memory used by the resolver, and it is only
+//active when this is relevant. I.e., we only start the idle handle when
+//resolver_pairs_del is not empty
 static void neat_resolver_idle_cb(uv_idle_t *handle)
 {
     struct neat_resolver *resolver = handle->data;
@@ -107,26 +122,32 @@ static void neat_resolver_idle_cb(uv_idle_t *handle)
     if (resolver->resolver_pairs_del.lh_first)
         return;
 
-    //Until next time
     uv_idle_stop(&(resolver->idle_handle));
 
-    //Free resolver?
+    //Only call cleanup when library user has marked that it is safe
     if (resolver->free_resolver && resolver->cleanup)
         resolver->cleanup(resolver);
 }
 
+//Called when timeout expires. This function will pass the results of the DNS
+//query to the application using NEAT
 static void neat_resolver_timeout_cb(uv_timer_t *handle)
 {
     struct neat_resolver *resolver = handle->data;
     neat_resolver_cleanup(resolver);
 }
 
-static void neat_resolver_dns_sent(uv_udp_send_t *req, int status)
+//Called when a DNS request has been (i.e., passed to socket). We will send the
+//second query (used for checking poisoning) here. If that is needed
+static void neat_resolver_dns_sent_cb(uv_udp_send_t *req, int status)
 {
     //Callback will be used to send the follow-up request to check for errors
     //printf("UDP send callback\n");
 }
 
+//libuv gives the user control of how memory is allocated. This callback is
+//called when a UDP packet is ready to received, and we have to fill out the
+//provided buf with the storage location (and available size)
 static void neat_resolver_dns_alloc_cb(uv_handle_t *handle,
         size_t suggested_size, uv_buf_t *buf)
 {
@@ -136,6 +157,33 @@ static void neat_resolver_dns_alloc_cb(uv_handle_t *handle,
     buf->len = sizeof(pair->dns_rcv_buf);
 }
 
+//Internal NEAT resolver functions
+//Deletes have to happen async so that libuv can do internal clean-up. I.e., we
+//can't just free memory and that is that. This function marks a resolver pair
+//as ready for deletion
+static void neat_resolver_mark_pair_del(struct neat_resolver_src_dst_addr *pair)
+{
+    struct neat_resolver *resolver = pair->resolver;
+
+    //If handle is not active, this is just a noop
+    uv_close((uv_handle_t*) &(pair->resolve_handle), neat_resolver_close_cb);
+
+    if (pair->next_pair.le_next != NULL || pair->next_pair.le_prev != NULL)
+        LIST_REMOVE(pair, next_pair);
+
+    LIST_INSERT_HEAD(&(resolver->resolver_pairs_del), pair,
+            next_pair);
+
+    //We can't free memory right away, libuv has to be allowed to
+    //perform internal clean-up first. This is done after loop is done
+    //(uv__run_closing_handles), so we use idle (which is called in the
+    //next iteration and before polling)
+    if (!uv_is_active((uv_handle_t*) &(resolver->idle_handle)))
+        uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
+}
+
+//Receive and parse a DNS reply
+//TODO: Refactor and make large parts helper function?
 static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
         const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags)
 {
@@ -148,20 +196,12 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
     ldns_rdf *rdf_result = NULL;
     ldns_rr_type rr_type;
     size_t retval, rr_count, i;
-    struct timeval tv_now;
-    uint32_t tdiff;
 
     if (nread == 0 && addr == NULL) {
-        uv_close((uv_handle_t*) &(pair->resolve_handle),
-                neat_resolver_close_cb);
-        //TODO: Potentially add to remove list already here and start idle cb
+        neat_resolver_mark_pair_del(pair);
         return;
     }
 
-    //This timeout is not the most accurate, since it is affect by how long it
-    //takes to process requests that are earlier in the queue. Consider using
-    //socket control messages instead (pending OS availability)
-    gettimeofday(&tv_now, NULL);
     retval = ldns_wire2pkt(&dns_reply, (const uint8_t*) buf->base, nread);
 
     if (retval != LDNS_STATUS_OK)
@@ -188,11 +228,6 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
         return;
     }
 
-    tdiff = ((tv_now.tv_sec - pair->tstamp.tv_sec)*1e3) +
-        ((tv_now.tv_usec - pair->tstamp.tv_usec) / 1e3);
-
-    printf("Resolving took %u ms\n", tdiff);
-
     for (i=0; i<rr_count; i++) {
         rr_record = ldns_rr_list_rr(rr_list, i);
         rdf_result = ldns_rr_rdf(rr_record, 0);
@@ -213,7 +248,8 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
     ldns_pkt_free(dns_reply);
 }
 
-static uint8_t neat_resolver_start_query(struct neat_resolver_src_dst_addr *pair)
+//Prepare and send (or, start sending) a DNS query for the given service
+static uint8_t neat_resolver_send_query(struct neat_resolver_src_dst_addr *pair)
 {
     ldns_pkt *pkt;
     ldns_rr_type rr_type;
@@ -246,25 +282,23 @@ static uint8_t neat_resolver_start_query(struct neat_resolver_src_dst_addr *pair
     }
 
     ldns_pkt_free(pkt);
+
     pair->dns_uv_snd_buf.base = (char*) ldns_buffer_begin(pair->dns_snd_buf);
     pair->dns_uv_snd_buf.len = ldns_buffer_position(pair->dns_snd_buf);
-
-    fprintf(stdout, "DNS packet length: %zd\n", pair->dns_uv_snd_buf.len);
 
     if (uv_udp_send(&(pair->dns_snd_handle), &(pair->resolve_handle),
             &(pair->dns_uv_snd_buf), 1,
             (const struct sockaddr*) &(pair->dst_addr.u.generic.addr),
-            neat_resolver_dns_sent)) {
+            neat_resolver_dns_sent_cb)) {
         fprintf(stderr, "Failed to start DNS send\n");
         return RETVAL_FAILURE;
     }
 
-    gettimeofday(&(pair->tstamp), NULL);
-
     return RETVAL_SUCCESS;
 }
 
-static uint8_t neat_resolver_create_dst(struct neat_ctx *nc,
+//Create one SRC/DST DNS resolver pair. Pair has already been allocated
+static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
         struct neat_resolver_src_dst_addr *pair,
         const char *dst_addr_str)
 {
@@ -298,7 +332,7 @@ static uint8_t neat_resolver_create_dst(struct neat_ctx *nc,
     if (uv_udp_init(nc->loop, &(pair->resolve_handle))) {
         //Closed is normally set in close_cb, but since we will never get that
         //far, set it here instead
-        pair->closed = 1;
+        //pair->closed = 1;
         fprintf(stderr, "Failure to initialize UDP handle\n");
         return RETVAL_FAILURE;
     }
@@ -309,14 +343,12 @@ static uint8_t neat_resolver_create_dst(struct neat_ctx *nc,
                 (struct sockaddr*) &(pair->src_addr->u.generic.addr),
                 UV_UDP_REUSEADDR)) {
         fprintf(stderr, "Failed to bind UDP socket\n");
-        uv_close((uv_handle_t*) &(pair->resolve_handle), neat_resolver_close_cb);
         return RETVAL_FAILURE;
     }
 
     if (uv_udp_recv_start(&(pair->resolve_handle), neat_resolver_dns_alloc_cb,
                 neat_resolver_dns_recv_cb)) {
         fprintf(stderr, "Failed to start receiving UDP\n");
-        uv_close((uv_handle_t*) &(pair->resolve_handle), neat_resolver_close_cb);
         return RETVAL_FAILURE;
     }
 
@@ -341,7 +373,9 @@ static uint8_t neat_resolver_create_dst(struct neat_ctx *nc,
     return RETVAL_SUCCESS;
 }
 
-static uint8_t neat_resolver_create_pair(struct neat_resolver *resolver,
+//Called when we get a NEAT_NEWADDR message. Go through all matching DNS
+//servers, try to create src/dst pair and send query
+static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
         struct neat_addr *src_addr)
 {
     const char **dns_addrs = (const char **) ((src_addr->family == AF_INET) ?
@@ -365,29 +399,16 @@ static uint8_t neat_resolver_create_pair(struct neat_resolver *resolver,
         resolver_pair->resolver = resolver;
         resolver_pair->src_addr = src_addr;
         
-        if (neat_resolver_create_dst(resolver->nc, resolver_pair,
+        if (neat_resolver_create_pair(resolver->nc, resolver_pair,
                     dns_addrs[i]) == RETVAL_FAILURE) {
             fprintf(stderr, "Failed to create resolver pair\n");
-            LIST_INSERT_HEAD(&(resolver->resolver_pairs_del), resolver_pair,
-                    next_pair);
-            //We can't free memory right away, libuv has to be allowed to
-            //perform internal clean-up first. This is done after loop is done
-            //(uv__run_closing_handles), so we use idle (which is called in the
-            //next iteration and before polling)
-            if (!uv_is_active((uv_handle_t*) &(resolver->idle_handle)))
-                uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
+            neat_resolver_mark_pair_del(resolver_pair);
             continue;
         }
 
-        //Prepare query and mark socket as ready to send
-
-        if (neat_resolver_start_query(resolver_pair)) {
+        if (neat_resolver_send_query(resolver_pair)) {
             fprintf(stderr, "Failed to start lookup\n");
-            //TODO: Refactor into function, shared with condition above
-            LIST_INSERT_HEAD(&(resolver->resolver_pairs_del), resolver_pair,
-                    next_pair);
-            if (!uv_is_active((uv_handle_t*) &(resolver->idle_handle)))
-                uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
+            neat_resolver_mark_pair_del(resolver_pair);
         } else {
             printf("Will lookup %s\n", resolver->domain_name);
             LIST_INSERT_HEAD(&(resolver->resolver_pairs), resolver_pair,
@@ -395,7 +416,7 @@ static uint8_t neat_resolver_create_pair(struct neat_resolver *resolver,
         }
     }
 
-    //Start timeout (if not already done)
+    //Start DNS no reply timeout
     if (!uv_is_active((const uv_handle_t *) &(resolver->timeout_handle)))
         uv_timer_start(&(resolver->timeout_handle), neat_resolver_timeout_cb,
                 DNS_TIMEOUT, 0);
@@ -403,6 +424,48 @@ static uint8_t neat_resolver_create_pair(struct neat_resolver *resolver,
     return RETVAL_SUCCESS;
 }
 
+//Called when we get a NEAT_DELADDR message. Go though all resolve pairs and
+//remove those where src. address match the deleted address
+static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
+        struct neat_addr *addr_to_delete)
+{
+    struct sockaddr_in *addr4 = NULL, *addr4_cmp;
+    struct sockaddr_in6 *addr6 = NULL, *addr6_cmp;
+    struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
+
+    if (addr_to_delete->family == AF_INET)
+        addr4 = (struct sockaddr_in*) &(addr_to_delete->u.generic.addr);
+    else
+        addr6 = (struct sockaddr_in6*) &(addr_to_delete->u.generic.addr);
+
+    resolver_itr = resolver->resolver_pairs.lh_first;
+
+    while (resolver_itr != NULL) {
+        resolver_pair = resolver_itr;
+        resolver_itr = resolver_itr->next_pair.le_next;
+
+        if (resolver_pair->src_addr->family != addr_to_delete->family)
+            continue;
+
+        if (addr_to_delete->family == AF_INET) {
+            addr4_cmp = (struct sockaddr_in*)
+                &(resolver_pair->src_addr->u.v4.addr4);
+
+            if (addr4_cmp->sin_addr.s_addr == addr4->sin_addr.s_addr)
+                neat_resolver_mark_pair_del(resolver_pair);
+        } else {
+            addr6_cmp = (struct sockaddr_in6*)
+                &(resolver_pair->src_addr->u.v6.addr6);
+
+            if (neat_addr_cmp_ip6_addr(addr6_cmp->sin6_addr, addr6->sin6_addr))
+                neat_resolver_mark_pair_del(resolver_pair);
+        }
+    }
+}
+
+//Public NEAT resolver functions
+//getaddrinfo starts a query for the provided service
+//TODO: Expand parameter list
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
     const char *service)
 {
@@ -426,6 +489,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
     //No need to care about \0, we use calloc ...
     memcpy(resolver->domain_name, service, strlen(service));
 
+    //No point starting to query if we don't have any source addresses
     if (!resolver->nc->src_addr_cnt) {
         fprintf(stdout, "No available src addresses\n");
         return RETVAL_SUCCESS;
@@ -438,13 +502,14 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         if (resolver->family && nsrc_addr->family != resolver->family)
             continue;
 
-        neat_resolver_create_pair(resolver, nsrc_addr);
+        neat_resolver_create_pairs(resolver, nsrc_addr);
     }
 
     //Iterate through available addresses and start sending DNS queries
     return RETVAL_SUCCESS;
 }
 
+//Initialize the resolver. Set up callbacks etc.
 uint8_t neat_resolver_init(struct neat_ctx *nc,
                            struct neat_resolver *resolver,
                            void (*cleanup)(struct neat_resolver *resolver))
@@ -477,6 +542,8 @@ uint8_t neat_resolver_init(struct neat_ctx *nc,
     return RETVAL_SUCCESS;
 }
 
+//Clean up the resolver. Move all resolver pairs to delete, mark resolver as
+//ready to be freed, remove callbacks, etc.
 void neat_resolver_cleanup(struct neat_resolver *resolver)
 {
     struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
@@ -486,12 +553,7 @@ void neat_resolver_cleanup(struct neat_resolver *resolver)
     while (resolver_itr != NULL) {
         resolver_pair = resolver_itr;
         resolver_itr = resolver_itr->next_pair.le_next;
-
-        if (uv_is_active((const uv_handle_t*) &(resolver_pair->resolve_handle)))
-            uv_close((uv_handle_t*) &(resolver_pair->resolve_handle), neat_resolver_close_cb);
-
-        LIST_REMOVE(resolver_pair, next_pair);
-        LIST_INSERT_HEAD(&(resolver->resolver_pairs_del), resolver_pair, next_pair);
+        neat_resolver_mark_pair_del(resolver_pair);
     }
 
     resolver->free_resolver = 1;
@@ -499,7 +561,9 @@ void neat_resolver_cleanup(struct neat_resolver *resolver)
     if (uv_is_active((const uv_handle_t*) &(resolver->timeout_handle)))
         uv_timer_stop(&(resolver->timeout_handle));
 
-    //Do cleanup in idle callback
+    //We need to do this here, in addition to in mark_pair_del, since we might
+    //get in the situation where there are zero addresses to delete (for example
+    //if resolver is freed before there are no source addresses)
     if (!uv_is_active((const uv_handle_t*) &(resolver->idle_handle)))
         uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
 

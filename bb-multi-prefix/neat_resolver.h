@@ -3,11 +3,10 @@
 
 #include <uv.h>
 #include <ldns/ldns.h>
-#include <sys/time.h>
 
 #include "include/queue.h"
 
-#define DNS_TIMEOUT     5000
+#define DNS_TIMEOUT     60000
 #define DNS_BUF_SIZE    1472
 
 //We know these servers will not lie and will accept queries from an network
@@ -28,8 +27,6 @@ struct neat_resolver_src_dst_addr {
     struct neat_addr *src_addr;
     //TODO: Dynamically allocate?
     struct neat_addr dst_addr;
-    //Timestamp DNS requests, fastest wins
-    struct timeval tstamp;
 
     char dns_rcv_buf[DNS_BUF_SIZE];
     ldns_buffer *dns_snd_buf;

@@ -22,6 +22,7 @@ struct neat_addr {
         struct {
             struct sockaddr_storage addr;
         } generic;
+        //Change these to _in/_in6?
         struct {
             struct sockaddr_storage addr4;
         } v4;
@@ -43,4 +44,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
         struct sockaddr_storage *src_addr, uint32_t if_idx,
         uint8_t newaddr, uint32_t ifa_pref, uint32_t ifa_valid);
 
+//Utility function for comparing two v6 addresses
+uint8_t neat_addr_cmp_ip6_addr(struct in6_addr aAddr,
+                               struct in6_addr aAddr2);
 #endif

@@ -13,6 +13,8 @@
 #include "neat_linux.h"
 #include "neat_linux_internal.h"
 
+//In order to build a list of available source addresses, we need to start by
+//requesting all available addresses. That is the work of this function
 static ssize_t neat_linux_request_addrs(struct mnl_socket *mnl_sock)
 {
     uint8_t snd_buf[MNL_SOCKET_BUFFER_SIZE];
@@ -26,9 +28,12 @@ static ssize_t neat_linux_request_addrs(struct mnl_socket *mnl_sock)
         mnl_nlmsg_put_extra_header(nl_hdr, sizeof(struct rtgenmsg));
     rt_msg->rtgen_family = AF_UNSPEC;
 
+    //We should probably have used libuv send function, but right here it does
+    //not really matter
     return mnl_socket_sendto(mnl_sock, snd_buf, nl_hdr->nlmsg_len);
 }
 
+//Helper function for parsing netfilter attributes
 static int neat_linux_parse_nlattr(const struct nlattr *attr, void *data)
 {
     struct nlattr_storage *storage = (struct nlattr_storage*) data;
@@ -40,6 +45,10 @@ static int neat_linux_parse_nlattr(const struct nlattr *attr, void *data)
     storage->tb[type] = attr;
     return MNL_CB_OK;
 }
+
+//Function which parses the netlink message (*ADDR) we have received and extract
+//relevant information, which is parsed to OS-independent
+//neat_addr_update_src_list
 static void neat_linux_handle_addr(struct neat_ctx *nc,
                                    struct nlmsghdr *nl_hdr)
 {
@@ -53,6 +62,8 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
     uint32_t *addr6_ptr, ifa_pref = 0, ifa_valid = 0;
     uint8_t i;
 
+    //On Linux, lo has a fixed index. We have no interest in that interface
+    //TODO: Consider other filters - bridges, ifb, ...
     if (ifm->ifa_index == LO_DEV_IDX)
         return;
 
@@ -66,6 +77,8 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
         return;
     }
 
+    //v4 and v6 has to be handeled differently, both due to address size and
+    //available information
     if (ifm->ifa_family == AF_INET) {
         src_addr4 = (struct sockaddr_in*) &src_addr;
         src_addr4->sin_family = AF_INET;
@@ -94,6 +107,7 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
             nl_hdr->nlmsg_type == RTM_NEWADDR, ifa_pref, ifa_valid);
 }
 
+//libuv datagram socket alloc function, un-interesting
 static void neat_linux_nl_alloc(uv_handle_t *handle, size_t suggested_size,
         uv_buf_t *buf)
 {
@@ -103,6 +117,8 @@ static void neat_linux_nl_alloc(uv_handle_t *handle, size_t suggested_size,
     buf->len = sizeof(nc->mnl_rcv_buf);
 }
 
+//libuv dgram socket callback. Only checks if message is of right type and then
+//call function for parsing message
 static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
         const uv_buf_t *buf, const struct sockaddr *addr, unsigned int flags)
 {
@@ -120,12 +136,15 @@ static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
     }
 }
 
+//Out cleanup callback, nothing interesting here
 static void neat_linux_cleanup(struct neat_ctx *nc)
 {
     if (nc->mnl_sock)
         mnl_socket_close(nc->mnl_sock);
 }
 
+//Initialize the Linux-specific part of the context. All is related to
+//libmnl/netfilter
 uint8_t neat_linux_init_ctx(struct neat_ctx *nc)
 {
     //Configure netlink and start requesting addresses
@@ -140,7 +159,8 @@ uint8_t neat_linux_init_ctx(struct neat_ctx *nc)
         return RETVAL_FAILURE;
     }
     
-    //Send address request to get things started
+    //We need to build a list of all available source addresses as soon as
+    //possible. It is started here
     if (neat_linux_request_addrs(nc->mnl_sock) <= 0) {
         fprintf(stderr, "Failed to request addresses\n");
         return RETVAL_FAILURE;

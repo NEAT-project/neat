@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    if (neat_getaddrinfo(resolver, AF_INET6, "www.google.com"))
+    if (neat_getaddrinfo(resolver, AF_UNSPEC, "www.google.com"))
         exit(EXIT_FAILURE);
 
     neat_start_event_loop(nc);

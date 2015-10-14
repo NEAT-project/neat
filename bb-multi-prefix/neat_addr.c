@@ -7,6 +7,7 @@
 #include "neat_core.h"
 #include "neat_addr.h"
 
+//Debug function for printing the current addresses seen by a context
 static void neat_addr_print_src_addrs(struct neat_ctx *nc)
 {
     struct neat_addr *nsrc_addr = NULL;
@@ -35,8 +36,9 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
     fprintf(stdout, "\n");
 }
 
-static uint8_t neat_addr_cmp_ip6_addr(struct in6_addr aAddr,
-                                      struct in6_addr aAddr2)
+//Utility function for comparing two v6 addresses
+uint8_t neat_addr_cmp_ip6_addr(struct in6_addr aAddr,
+                               struct in6_addr aAddr2)
 {
     return aAddr.s6_addr32[0] == aAddr2.s6_addr32[0] &&
            aAddr.s6_addr32[1] == aAddr2.s6_addr32[1] &&
@@ -44,6 +46,7 @@ static uint8_t neat_addr_cmp_ip6_addr(struct in6_addr aAddr,
            aAddr.s6_addr32[3] == aAddr2.s6_addr32[3];
 }
 
+//Add/remove/update a source address based on information received from OS
 void neat_addr_update_src_list(struct neat_ctx *nc,
         struct sockaddr_storage *src_addr, uint32_t if_idx,
         uint8_t newaddr, uint32_t ifa_pref, uint32_t ifa_valid)
@@ -88,6 +91,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
     }
 
     if (nsrc_addr != NULL) {
+        //We found an address to delete, so do that
         if (!newaddr) {
             neat_run_event_cb(nc, NEAT_DELADDR, nsrc_addr);
             LIST_REMOVE(nsrc_addr, next_addr);
@@ -95,6 +99,8 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
             free(nsrc_addr);
             neat_addr_print_src_addrs(nc);
         } else if (newaddr && nsrc_addr->family == AF_INET6) {
+            //Currently, update is only relevant for v6 addresses and we only
+            //use it with new pref/valid times
             nsrc_addr->u.v6.ifa_pref = ifa_pref;
             nsrc_addr->u.v6.ifa_valid = ifa_valid;
             neat_addr_print_src_addrs(nc);
@@ -104,6 +110,8 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
         return;
     }
 
+    //No match found, so create a new address, add it to list and announce it to
+    //any subscribers
     nsrc_addr = (struct neat_addr*) calloc(sizeof(struct neat_addr), 1);
 
     if (nsrc_addr == NULL) {

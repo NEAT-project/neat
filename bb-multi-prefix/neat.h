@@ -96,14 +96,18 @@ struct neat_resolver {
     void (*cleanup)(struct neat_resolver *resolver);
 };
 
-//TODO: Add other parameters later
+//Intilize resolver. Sets up internal callbacks etc.
 uint8_t neat_resolver_init(struct neat_ctx *nc, struct neat_resolver *resolver,
         void (*cleanup)(struct neat_resolver *resolver));
+//Free resources used by resolver, resolver is invalid after this function is
+//called
 void neat_resolver_cleanup(struct neat_resolver *resolver);
+//Start to resolve a domain name
+//TODO: Add other parameters later
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         const char *service);
 
-//NEAT callback API
+//NEAT public callback API
 //The different event types that NEAT generate
 enum neat_events{
     //A new address has been added to an interface

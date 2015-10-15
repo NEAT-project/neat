@@ -4,6 +4,50 @@
 
 #include "neat.h"
 
+void resolver_handle(struct neat_resolver *resolver,
+        struct neat_resolver_results *res, uint8_t neat_code)
+{
+    char src_str[INET6_ADDRSTRLEN], dst_str[INET6_ADDRSTRLEN];
+    struct sockaddr_in *addr4;
+    struct sockaddr_in6 *addr6;
+    struct neat_resolver_res *res_itr;
+
+    if (neat_code != NEAT_RESOLVER_OK) {
+        //For now res is always NULL when code is not OK, but keep this sanity
+        //check here just in case
+        if (res != NULL)
+            neat_resolver_free_results(res);
+
+        neat_resolver_cleanup(resolver);
+        return;    
+    }
+
+    res_itr = res->lh_first;
+
+    while (res_itr != NULL) {
+        if (res_itr->ai_family == AF_INET) {
+            addr4 = (struct sockaddr_in*) &(res_itr->src_addr);
+            inet_ntop(res_itr->ai_family, &(addr4->sin_addr), src_str, INET_ADDRSTRLEN);
+            addr4 = (struct sockaddr_in*) &(res_itr->dst_addr);
+            inet_ntop(res_itr->ai_family, &(addr4->sin_addr), dst_str, INET_ADDRSTRLEN);
+        } else {
+            addr6 = (struct sockaddr_in6*) &(res_itr->src_addr);
+            inet_ntop(res_itr->ai_family, &(addr6->sin6_addr), src_str, INET6_ADDRSTRLEN);
+            addr6 = (struct sockaddr_in6*) &(res_itr->dst_addr);
+            inet_ntop(res_itr->ai_family, &(addr6->sin6_addr), dst_str, INET6_ADDRSTRLEN);
+        }
+           
+        printf("Src. %s Resolved to %s\n", src_str, dst_str);
+        res_itr = res_itr->next_res.le_next;
+    }
+
+    //Free list, it is callers responsibility
+    neat_resolver_free_results(res);
+
+    //I dont need this resolver object any more
+    neat_resolver_cleanup(resolver);
+}
+
 void resolver_cleanup(struct neat_resolver *resolver)
 {
     printf("Cleanup function\n");
@@ -19,7 +63,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
    
     if (neat_init_ctx(nc) ||
-        neat_resolver_init(nc, resolver, resolver_cleanup)) {
+        neat_resolver_init(nc, resolver, resolver_handle, resolver_cleanup)) {
         free(nc);
         free(resolver);
         exit(EXIT_FAILURE);

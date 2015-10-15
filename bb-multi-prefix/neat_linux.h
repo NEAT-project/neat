@@ -7,6 +7,6 @@ struct mnl_socket;
 #define NEAT_INTERNAL_OS \
     struct mnl_socket *mnl_sock; \
     uv_udp_t uv_nl_handle; \
-    char mnl_rcv_buf[8192]
+    char *mnl_rcv_buf
 
 #endif

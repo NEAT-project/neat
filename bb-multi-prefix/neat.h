@@ -64,6 +64,31 @@ struct neat_event_cb {
 };
 
 //NEAT resolver public data structures/functions
+LIST_HEAD(neat_resolver_results, neat_resolver_res);
+typedef void (*neat_resolver_handle_t)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
+typedef void (*neat_resolver_cleanup_t)(struct neat_resolver *resolver);
+
+enum neat_resolver_code {
+    //Everything is good
+    NEAT_RESOLVER_OK = 0,
+    //Resolving timed out without result
+    NEAT_RESOLVER_TIMEOUT,
+    //Signal internal error
+    NEAT_RESOLVER_ERROR,
+};
+
+//Struct passed to resolver callback, mirrors what we get back from getaddrinfo
+struct neat_resolver_res {
+    int32_t ai_family;
+    int32_t ai_socktype;
+    int32_t ai_protocol;
+    struct sockaddr_storage src_addr;
+    socklen_t src_addr_len;
+    struct sockaddr_storage dst_addr;
+    socklen_t dst_addr_len;
+    LIST_ENTRY(neat_resolver_res) next_res;
+};
+
 struct neat_resolver {
     //The resolver will wrap the context, so that we can easily have many
     //resolvers
@@ -74,14 +99,16 @@ struct neat_resolver {
     //Will be set to 1 if we are going to free resolver in idle
     //TODO: Will most likely be changed to a state variable
     uint8_t free_resolver;
-    uint16_t __pad;
+    //Flag used to signal if we have resolved name and timeout has switched from
+    //total DNS timeout
+    uint8_t name_resolved_timeout;
+    uint8_t __pad;
     char domain_name[MAX_DOMAIN_LENGTH];
 
-    //The reason we need three of these is that as of now, a neat_event_cb
+    //The reason we need two of these is that as of now, a neat_event_cb
     //struct can only be part of one list. This is a future optimization, if we
     //decide that it is a problem
     struct neat_event_cb newaddr_cb;
-    struct neat_event_cb updateaddr_cb;
     struct neat_event_cb deladdr_cb;
 
     //List of all active resolver pairs
@@ -91,19 +118,31 @@ struct neat_resolver {
     uv_idle_t idle_handle;
     uv_timer_t timeout_handle;
 
+    //Result is the resolved addresses, code is one of the neat_resolver_codes.
+    //Ownsership of results is transfered to application, so it is the
+    //applications responsibility to free memory
+    //void (*handle_resolve)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
+    neat_resolver_handle_t handle_resolve;
+
     //Users must be notified when it is safe to free or reset resolver memory.
     //It has to be done ansync due to libuv cleanup order
-    void (*cleanup)(struct neat_resolver *resolver);
+    neat_resolver_cleanup_t cleanup;
 };
 
+
 //Intilize resolver. Sets up internal callbacks etc.
+//Resolve is required, cleanup is not
 uint8_t neat_resolver_init(struct neat_ctx *nc, struct neat_resolver *resolver,
-        void (*cleanup)(struct neat_resolver *resolver));
+        neat_resolver_handle_t handle_resolve, neat_resolver_cleanup_t cleanup);
+
 //Free resources used by resolver, resolver is invalid after this function is
 //called
 void neat_resolver_cleanup(struct neat_resolver *resolver);
+
+//Free the list of results
+void neat_resolver_free_results(struct neat_resolver_results *results);
 //Start to resolve a domain name
-//TODO: Add other parameters later
+//TODO: Add missing parameters compared to normal getaddrinfo
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         const char *service);
 

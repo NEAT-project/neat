@@ -54,7 +54,10 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
 {
     struct ifaddrmsg *ifm = (struct ifaddrmsg*) mnl_nlmsg_get_payload(nl_hdr);
     const struct nlattr *attr_table[IFA_MAX+1];
-    struct nlattr_storage tb_storage = {attr_table, IFA_MAX+1};
+    //IFA_MAX is the largest index I can store in my array. Since arrays are
+    //zero-indexed, this is IFA_MAX and not IFA_MAX + 1. However, array has to
+    //be of size IFA_MAX + 1. DOH!
+    struct nlattr_storage tb_storage = {attr_table, IFA_MAX};
     struct sockaddr_storage src_addr;
     struct sockaddr_in *src_addr4;
     struct sockaddr_in6 *src_addr6;
@@ -107,9 +110,10 @@ static void neat_linux_nl_alloc(uv_handle_t *handle, size_t suggested_size,
         uv_buf_t *buf)
 {
     struct neat_ctx *nc = handle->data;
-    memset(nc->mnl_rcv_buf, 0, sizeof(nc->mnl_rcv_buf)); 
+
+    memset(nc->mnl_rcv_buf, 0, MNL_SOCKET_BUFFER_SIZE); 
     buf->base = nc->mnl_rcv_buf;
-    buf->len = sizeof(nc->mnl_rcv_buf);
+    buf->len = MNL_SOCKET_BUFFER_SIZE;
 }
 
 //libuv dgram socket callback. Only checks if message is of right type and then
@@ -136,12 +140,20 @@ static void neat_linux_cleanup(struct neat_ctx *nc)
 {
     if (nc->mnl_sock)
         mnl_socket_close(nc->mnl_sock);
+
+    free(nc->mnl_rcv_buf);
 }
 
 //Initialize the Linux-specific part of the context. All is related to
 //libmnl/netfilter
 uint8_t neat_linux_init_ctx(struct neat_ctx *nc)
 {
+    //TODO: Consider allocator function
+    if ((nc->mnl_rcv_buf = calloc(MNL_SOCKET_BUFFER_SIZE, 1)) == NULL) {
+        fprintf(stderr, "Failed to allocate netlink buffer\n");
+        return RETVAL_FAILURE;
+    }
+
     //Configure netlink and start requesting addresses
     if ((nc->mnl_sock = mnl_socket_open(NETLINK_ROUTE)) == NULL) {
         fprintf(stderr, "Failed to allocate netlink socket\n");

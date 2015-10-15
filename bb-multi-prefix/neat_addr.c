@@ -97,13 +97,13 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
             LIST_REMOVE(nsrc_addr, next_addr);
             --nc->src_addr_cnt;
             free(nsrc_addr);
-            neat_addr_print_src_addrs(nc);
+            //neat_addr_print_src_addrs(nc);
         } else if (newaddr && nsrc_addr->family == AF_INET6) {
             //Currently, update is only relevant for v6 addresses and we only
             //use it with new pref/valid times
             nsrc_addr->u.v6.ifa_pref = ifa_pref;
             nsrc_addr->u.v6.ifa_valid = ifa_valid;
-            neat_addr_print_src_addrs(nc);
+            //neat_addr_print_src_addrs(nc);
             neat_run_event_cb(nc, NEAT_UPDATEADDR, nsrc_addr);
         }
 
@@ -135,5 +135,5 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
     LIST_INSERT_HEAD(&(nc->src_addrs), nsrc_addr, next_addr);
     ++nc->src_addr_cnt;
     neat_run_event_cb(nc, NEAT_NEWADDR, nsrc_addr);
-    neat_addr_print_src_addrs(nc);
+    //neat_addr_print_src_addrs(nc);
 }

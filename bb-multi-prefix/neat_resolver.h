@@ -6,8 +6,12 @@
 
 #include "include/queue.h"
 
-#define DNS_TIMEOUT     60000
-#define DNS_BUF_SIZE    1472
+//Timeout for complete DNS query
+#define DNS_TIMEOUT         30000
+//Timeout after first good reply
+#define DNS_REPLY_TIMEOUT   1000
+#define DNS_BUF_SIZE        1472
+#define MAX_NUM_RESOLVED    3
 
 //We know these servers will not lie and will accept queries from an network
 //address. Until we have defined a syntax for IP/interface information in
@@ -35,6 +39,10 @@ struct neat_resolver_src_dst_addr {
     uv_udp_t resolve_handle;
 
     LIST_ENTRY(neat_resolver_src_dst_addr) next_pair;
+
+    //TODO: Consider designing a better algorithm for selecting servers when
+    //there are multiple answers, than just picking first MAX_NUM_RESOLVED
+    struct sockaddr_storage resolved_addr[MAX_NUM_RESOLVED];
 
     //Keep track of which pairs are closed
     uint8_t closed;

@@ -48,9 +48,6 @@ void neat_start_event_loop(struct neat_ctx *nc);
 //Free memory used by context
 void neat_free_ctx(struct neat_ctx *nc);
 
-struct neat_resolver_src_dst_addr;
-LIST_HEAD(neat_resolver_pairs, neat_resolver_src_dst_addr);
-
 //This data structure must be filled out and added using neat_add_event_cb in
 //order for an application to register for a callback
 //TODO: Fix forward declaration error, so that this can be placed with the rest
@@ -69,10 +66,7 @@ struct neat_event_cb {
 struct neat_resolver;
 struct neat_resolver_res;
 
-//LIST_HEAD(neat_resolver_results, neat_resolver_res);
-struct neat_resolver_results {
-    struct neat_resolver_res *lh_first;
-};
+LIST_HEAD(neat_resolver_results, neat_resolver_res);
 
 typedef void (*neat_resolver_handle_t)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
 typedef void (*neat_resolver_cleanup_t)(struct neat_resolver *resolver);
@@ -101,6 +95,9 @@ struct neat_resolver_res {
     uint8_t internal;
     LIST_ENTRY(neat_resolver_res) next_res;
 };
+
+struct neat_resolver_src_dst_addr;
+LIST_HEAD(neat_resolver_pairs, neat_resolver_src_dst_addr);
 
 struct neat_resolver {
     //The resolver will wrap the context, so that we can easily have many

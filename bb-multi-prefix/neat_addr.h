@@ -2,20 +2,20 @@
 #define NEAT_ADDR_H
 
 #include <stdint.h>
-#ifdef LINUX
+#ifdef __linux__
     #include <netinet/in.h>
-#elif WINDOWS
+#elif _WIN32
     #include <inaddr.h>
     #include <in6addr.h>
 #endif
 
-#include "include/queue.h"
+#include "neat_queue.h"
 
 struct neat_ctx;
 
 struct neat_addr {
     //It seems windows only supports binding to src address, not interface
-#ifdef LINUX
+#ifdef __linux__
     uint32_t if_idx;
 #endif
     union {
@@ -24,10 +24,10 @@ struct neat_addr {
         } generic;
         //Change these to _in/_in6?
         struct {
-            struct sockaddr_storage addr4;
+            struct sockaddr_in addr4;
         } v4;
         struct {
-            struct sockaddr_storage addr6;
+            struct sockaddr_in6 addr6;
             uint32_t ifa_pref;
             uint32_t ifa_valid;
         } v6;

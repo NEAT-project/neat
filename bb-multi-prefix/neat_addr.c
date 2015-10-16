@@ -20,12 +20,12 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
             nsrc_addr = nsrc_addr->next_addr.le_next) {
 
         if (nsrc_addr->family == AF_INET) {
-            src_addr4 = (struct sockaddr_in*) &(nsrc_addr->u.v4.addr4);
+            src_addr4 = &(nsrc_addr->u.v4.addr4);
             inet_ntop(AF_INET, &(src_addr4->sin_addr), addr_str,
                     INET_ADDRSTRLEN);
             fprintf(stdout, "Addr: %s\n", addr_str);
         } else {
-            src_addr6 = (struct sockaddr_in6*) &(nsrc_addr->u.v6.addr6);
+            src_addr6 = &(nsrc_addr->u.v6.addr6);
             inet_ntop(AF_INET6, &(src_addr6->sin6_addr), addr_str,
                     INET6_ADDRSTRLEN);
             fprintf(stdout, "Addr: %s pref %u valid %u\n", addr_str,
@@ -71,7 +71,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
         if (nsrc_addr->family != src_addr->ss_family)
             continue;
 
-#ifdef LINUX
+#ifdef __linux__
         if (nsrc_addr->if_idx != if_idx)
             continue;
 #endif
@@ -121,7 +121,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
     }
 
     nsrc_addr->family = src_addr->ss_family;
-#ifdef LINUX
+#ifdef __linux__
     nsrc_addr->if_idx = if_idx;
 #endif
 

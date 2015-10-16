@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <ldns/ldns.h>
 
-#ifdef LINUX
+#ifdef __linux__
     #include <net/if.h>
 #endif
 
@@ -53,10 +53,10 @@ static void neat_resolver_handle_deladdr(struct neat_ctx *nic,
     char addr_str[INET6_ADDRSTRLEN];
 
     if (src_addr->family == AF_INET) {
-        src_addr4 = (struct sockaddr_in*) &(src_addr->u.generic.addr);
+        src_addr4 = &(src_addr->u.v4.addr4);
         inet_ntop(AF_INET, &(src_addr4->sin_addr), addr_str, INET_ADDRSTRLEN);
     } else {
-        src_addr6 = (struct sockaddr_in6*) &(src_addr->u.generic.addr);
+        src_addr6 = &(src_addr->u.v6.addr6);
         inet_ntop(AF_INET6, &(src_addr6->sin6_addr), addr_str, INET6_ADDRSTRLEN);
     }
 
@@ -113,6 +113,28 @@ static void neat_resolver_idle_cb(uv_idle_t *handle)
         resolver->cleanup(resolver);
 }
 
+static uint8_t neat_resolver_addr_internal(struct sockaddr_storage *addr)
+{
+    struct sockaddr_in *addr4 = NULL;
+    struct sockaddr_in6 *addr6 = NULL;
+    uint32_t haddr4 = 0;
+    
+    if (addr->ss_family == AF_INET6) {
+        addr6 = (struct sockaddr_in6*) addr;
+        return (addr6->sin6_addr.s6_addr[0] & 0xfe) != 0xfc;
+    }
+
+    addr4 = (struct sockaddr_in*) addr;
+    haddr4 = ntohl(addr4->sin_addr.s_addr);
+
+    if ((haddr4 & IANA_A_MASK) == IANA_A_NW ||
+        (haddr4 & IANA_B_MASK) == IANA_B_NW ||
+        (haddr4 & IANA_C_MASK) == IANA_C_NW)
+        return 1;
+    else
+        return 0;
+}
+
 //Called when timeout expires. This function will pass the results of the DNS
 //query to the application using NEAT
 static void neat_resolver_timeout_cb(uv_timer_t *handle)
@@ -122,9 +144,10 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
     struct neat_resolver_results *result_list;
     struct neat_resolver_res *result;
     uint32_t num_resolved_addrs = 0;
+    struct sockaddr_in *addr4 = NULL;
     socklen_t addrlen = 0;
     uint8_t i;
- 
+
     //DNS timeout, call DNS callback with timeout error code
     if (!resolver->name_resolved_timeout) {
         resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_TIMEOUT);
@@ -161,10 +184,22 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
                 sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 
             result->ai_family = pair_itr->src_addr->family;
+            result->ai_socktype = resolver->ai_socktype;
+            result->ai_protocol = resolver->ai_protocol;
+#ifdef __linux__
+            result->if_idx = pair_itr->src_addr->if_idx;
+#endif
             result->src_addr = pair_itr->src_addr->u.generic.addr;
             result->src_addr_len = addrlen;
             result->dst_addr = pair_itr->resolved_addr[i];
             result->dst_addr_len = addrlen;
+            result->internal = neat_resolver_addr_internal(&(result->dst_addr));
+
+            //Head of sockaddr_in and sockaddr_in6 is the same, so this is safe
+            //for setting port
+            addr4 = (struct sockaddr_in*) &(result->dst_addr);
+            addr4->sin_port = resolver->dst_port;
+
             LIST_INSERT_HEAD(result_list, result, next_res);
             num_resolved_addrs++;
         }
@@ -316,7 +351,7 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
     if (num_resolved && !pair->resolver->name_resolved_timeout){
         uv_timer_stop(&(pair->resolver->timeout_handle));
         uv_timer_start(&(pair->resolver->timeout_handle), neat_resolver_timeout_cb,
-                DNS_REPLY_TIMEOUT, 0);
+                pair->resolver->dns_t2, 0);
         pair->resolver->name_resolved_timeout = 1;
     }
 }
@@ -379,18 +414,18 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
     struct sockaddr_in6 *dst_addr6;
     void *dst_addr_pton = NULL;
     uint8_t family = pair->src_addr->family;
-#ifdef LINUX
+#ifdef __linux__
     uv_os_fd_t socket_fd = -1;
     char if_name[IF_NAMESIZE];
 #endif
 
     if (family == AF_INET) {
-        dst_addr4 = (struct sockaddr_in*) &(pair->dst_addr.u.v4.addr4);
+        dst_addr4 = &(pair->dst_addr.u.v4.addr4);
         dst_addr4->sin_family = AF_INET;
         dst_addr4->sin_port = htons(LDNS_PORT);
         dst_addr_pton = &(dst_addr4->sin_addr);
     } else {
-        dst_addr6 = (struct sockaddr_in6*) &(pair->dst_addr.u.v6.addr6);
+        dst_addr6 = &(pair->dst_addr.u.v6.addr6);
         dst_addr6->sin6_family = AF_INET6;
         dst_addr6->sin6_port = htons(LDNS_PORT);
         dst_addr_pton = &(dst_addr6->sin6_addr);
@@ -411,6 +446,7 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
     }
 
     pair->resolve_handle.data = pair;
+
     if (uv_udp_bind(&(pair->resolve_handle),
                 (struct sockaddr*) &(pair->src_addr->u.generic.addr),
                 0)) {
@@ -426,7 +462,7 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
 
 //TODO: Binding to interface name requires sudo, not sure if that is acceptable.
 //Ignore any error here for now
-#ifdef LINUX
+#ifdef __linux__
     uv_fileno((uv_handle_t*) &(pair->resolve_handle), &socket_fd);
 
     if (!if_indextoname(pair->src_addr->if_idx, if_name)) {
@@ -496,8 +532,8 @@ static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
     //Start DNS no reply timeout
     if (!uv_is_active((const uv_handle_t *) &(resolver->timeout_handle)))
         uv_timer_start(&(resolver->timeout_handle), neat_resolver_timeout_cb,
-                DNS_TIMEOUT, 0);
-    
+                resolver->dns_t1, 0);
+
     return RETVAL_SUCCESS;
 }
 
@@ -511,9 +547,9 @@ static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
     struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
 
     if (addr_to_delete->family == AF_INET)
-        addr4 = (struct sockaddr_in*) &(addr_to_delete->u.generic.addr);
+        addr4 = &(addr_to_delete->u.v4.addr4);
     else
-        addr6 = (struct sockaddr_in6*) &(addr_to_delete->u.generic.addr);
+        addr6 = &(addr_to_delete->u.v6.addr6);
 
     resolver_itr = resolver->resolver_pairs.lh_first;
 
@@ -525,14 +561,12 @@ static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
             continue;
 
         if (addr_to_delete->family == AF_INET) {
-            addr4_cmp = (struct sockaddr_in*)
-                &(resolver_pair->src_addr->u.v4.addr4);
+            addr4_cmp = &(resolver_pair->src_addr->u.v4.addr4);
 
             if (addr4_cmp->sin_addr.s_addr == addr4->sin_addr.s_addr)
                 neat_resolver_mark_pair_del(resolver_pair);
         } else {
-            addr6_cmp = (struct sockaddr_in6*)
-                &(resolver_pair->src_addr->u.v6.addr6);
+            addr6_cmp = &(resolver_pair->src_addr->u.v6.addr6);
 
             if (neat_addr_cmp_ip6_addr(addr6_cmp->sin6_addr, addr6->sin6_addr))
                 neat_resolver_mark_pair_del(resolver_pair);
@@ -544,27 +578,38 @@ static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
 //getaddrinfo starts a query for the provided service
 //TODO: Expand parameter list
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-    const char *service)
+    const char *node, const char *service, int ai_socktype, int ai_protocol)
 {
     struct sockaddr_storage remote_addr;
     struct neat_addr *nsrc_addr = NULL;
-    
-    resolver->family = family;
+    int32_t dst_port = 0;
 
-    if ((strlen(service) + 1) > MAX_DOMAIN_LENGTH) {
+    dst_port = atoi(service);
+
+    if (dst_port <= 0 || dst_port > UINT16_MAX) {
+        fprintf(stderr, "Invalid service specified\n");
+        return RETVAL_FAILURE;
+    }
+
+    resolver->family = family;
+    resolver->ai_socktype = ai_socktype;
+    resolver->ai_protocol = ai_protocol;
+    resolver->dst_port = htons(dst_port);
+
+    if ((strlen(node) + 1) > MAX_DOMAIN_LENGTH) {
         fprintf(stderr, "Domain name too long\n");
         return RETVAL_FAILURE;
     }
 
     //TODO: Decide what to do here, when we get an IP address there is no need
     //for lookup. How to deal with addresses, start a timeout right away?
-    if (inet_pton(family, service, &remote_addr) == 1) {
+    if (inet_pton(family, node, &remote_addr) == 1) {
         fprintf(stderr, "Service is an IP address or does not match family\n");
         return RETVAL_FAILURE;
     }
 
     //No need to care about \0, we use calloc ...
-    memcpy(resolver->domain_name, service, strlen(service));
+    memcpy(resolver->domain_name, node, strlen(node));
 
     //No point starting to query if we don't have any source addresses
     if (!resolver->nc->src_addr_cnt) {
@@ -600,6 +645,8 @@ uint8_t neat_resolver_init(struct neat_ctx *nc, struct neat_resolver *resolver,
     resolver->nc = nc;
     resolver->cleanup = cleanup;
     resolver->handle_resolve = handle_resolve;
+    resolver->dns_t1 = DNS_TIMEOUT;
+    resolver->dns_t2 = DNS_RESOLVED_TIMEOUT;
 
     resolver->newaddr_cb.event_cb = neat_resolver_handle_newaddr;
     resolver->newaddr_cb.data = resolver;
@@ -623,9 +670,8 @@ uint8_t neat_resolver_init(struct neat_ctx *nc, struct neat_resolver *resolver,
     return RETVAL_SUCCESS;
 }
 
-//Clean up the resolver. Move all resolver pairs to delete, mark resolver as
-//ready to be freed, remove callbacks, etc.
-void neat_resolver_cleanup(struct neat_resolver *resolver)
+//Helper function used by both cleanup and reset
+static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_mem)
 {
     struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
 
@@ -637,7 +683,8 @@ void neat_resolver_cleanup(struct neat_resolver *resolver)
         neat_resolver_mark_pair_del(resolver_pair);
     }
 
-    resolver->free_resolver = 1;
+    resolver->free_resolver = free_mem;
+    resolver->name_resolved_timeout = 0;
 
     if (uv_is_active((const uv_handle_t*) &(resolver->timeout_handle)))
         uv_timer_stop(&(resolver->timeout_handle));
@@ -648,9 +695,23 @@ void neat_resolver_cleanup(struct neat_resolver *resolver)
     if (!uv_is_active((const uv_handle_t*) &(resolver->idle_handle)))
         uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
 
-    //Unsubscribe from callbacks
-    neat_remove_event_cb(resolver->nc, NEAT_NEWADDR, &(resolver->newaddr_cb));
-    neat_remove_event_cb(resolver->nc, NEAT_DELADDR, &(resolver->deladdr_cb));
+    //Unsubscribe from callbacks if we are going to release memory
+    if (free_mem) {
+        neat_remove_event_cb(resolver->nc, NEAT_NEWADDR, &(resolver->newaddr_cb));
+        neat_remove_event_cb(resolver->nc, NEAT_DELADDR, &(resolver->deladdr_cb));
+    } else {
+        memset(resolver->domain_name, 0, MAX_DOMAIN_LENGTH);
+    }
+}
+
+void neat_resolver_reset(struct neat_resolver *resolver)
+{
+    neat_resolver_cleanup(resolver, 0);
+}
+
+void neat_resolver_free(struct neat_resolver *resolver)
+{
+    neat_resolver_cleanup(resolver, 1);
 }
 
 void neat_resolver_free_results(struct neat_resolver_results *results)
@@ -666,4 +727,11 @@ void neat_resolver_free_results(struct neat_resolver_results *results)
     }
 
     free(results);
+}
+
+void neat_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
+        uint16_t t2)
+{
+    resolver->dns_t1 = t1;
+    resolver->dns_t2 = t2;
 }

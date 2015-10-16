@@ -1,7 +1,7 @@
 #ifndef NEAT_MULTI_PREFIX_H
 #define NEAT_MULTI_PREFIX_H
 
-#include "include/queue.h"
+#include "neat_queue.h"
 
 #define RETVAL_SUCCESS  0
 #define RETVAL_FAILURE  1

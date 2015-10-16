@@ -4,11 +4,11 @@
 #include <uv.h>
 #include <assert.h>
 
-#include "include/queue.h"
 #include "neat.h"
 #include "neat_core.h"
+#include "neat_queue.h"
 
-#ifdef LINUX
+#ifdef __linux__
     #include "neat_linux_internal.h"
 #endif
 
@@ -24,7 +24,7 @@ uint8_t neat_init_ctx(struct neat_ctx *nc)
     uv_loop_init(nc->loop);
     LIST_INIT(&(nc->src_addrs));
 
-#ifdef LINUX
+#ifdef __linux__
     return neat_linux_init_ctx(nc);
 #else
     return RETVAL_FAILURE;

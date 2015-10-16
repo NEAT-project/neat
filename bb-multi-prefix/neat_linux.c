@@ -70,6 +70,9 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
     if (ifm->ifa_index == LO_DEV_IDX)
         return;
 
+    if (ifm->ifa_scope == RT_SCOPE_LINK)
+        return;
+
     memset(attr_table, 0, sizeof(attr_table));
     memset(&src_addr, 0, sizeof(src_addr));
 

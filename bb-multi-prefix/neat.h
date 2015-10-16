@@ -4,11 +4,11 @@
 #include <stdint.h>
 #include <uv.h>
 
-#ifdef LINUX
+#ifdef __linux__
     #include "neat_linux.h"
 #endif
 
-#include "include/queue.h"
+#include "neat_queue.h"
 
 #define MAX_DOMAIN_LENGTH   254
 
@@ -23,12 +23,13 @@
     struct neat_event_cbs* event_cbs; \
     uint8_t src_addr_cnt
 
+struct neat_event_cb;
+struct neat_addr;
+
 //TODO: One drawkback with using LIST from queue.h, is that a callback can only
 //be member of one list. Decide if this is critical and improve if needed
 LIST_HEAD(neat_event_cbs, neat_event_cb);
 LIST_HEAD(neat_src_addrs, neat_addr);
-
-struct neat_resolver;
 
 struct neat_ctx {
     NEAT_CTX;
@@ -47,6 +48,7 @@ void neat_start_event_loop(struct neat_ctx *nc);
 //Free memory used by context
 void neat_free_ctx(struct neat_ctx *nc);
 
+struct neat_resolver_src_dst_addr;
 LIST_HEAD(neat_resolver_pairs, neat_resolver_src_dst_addr);
 
 //This data structure must be filled out and added using neat_add_event_cb in
@@ -64,7 +66,14 @@ struct neat_event_cb {
 };
 
 //NEAT resolver public data structures/functions
-LIST_HEAD(neat_resolver_results, neat_resolver_res);
+struct neat_resolver;
+struct neat_resolver_res;
+
+//LIST_HEAD(neat_resolver_results, neat_resolver_res);
+struct neat_resolver_results {
+    struct neat_resolver_res *lh_first;
+};
+
 typedef void (*neat_resolver_handle_t)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
 typedef void (*neat_resolver_cleanup_t)(struct neat_resolver *resolver);
 
@@ -82,10 +91,14 @@ struct neat_resolver_res {
     int32_t ai_family;
     int32_t ai_socktype;
     int32_t ai_protocol;
+#ifdef __linux__
+    uint32_t if_idx;
+#endif
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len;
     struct sockaddr_storage dst_addr;
     socklen_t dst_addr_len;
+    uint8_t internal;
     LIST_ENTRY(neat_resolver_res) next_res;
 };
 
@@ -93,6 +106,16 @@ struct neat_resolver {
     //The resolver will wrap the context, so that we can easily have many
     //resolvers
     struct neat_ctx *nc;
+
+    //These values are just passed on to neat_resolver_res
+    int ai_socktype;
+    int ai_protocol;
+    //DNS timeout before any domain has been resolved
+    uint16_t dns_t1;
+    //DNS timeout after at least one domain has been resolved
+    uint16_t dns_t2;
+    uint16_t dst_port;
+    uint16_t __pad;
 
     //Domain name and family to look up
     uint8_t family;
@@ -102,7 +125,7 @@ struct neat_resolver {
     //Flag used to signal if we have resolved name and timeout has switched from
     //total DNS timeout
     uint8_t name_resolved_timeout;
-    uint8_t __pad;
+    uint8_t __pad2;
     char domain_name[MAX_DOMAIN_LENGTH];
 
     //The reason we need two of these is that as of now, a neat_event_cb
@@ -135,16 +158,22 @@ struct neat_resolver {
 uint8_t neat_resolver_init(struct neat_ctx *nc, struct neat_resolver *resolver,
         neat_resolver_handle_t handle_resolve, neat_resolver_cleanup_t cleanup);
 
-//Free resources used by resolver, resolver is invalid after this function is
-//called
-void neat_resolver_cleanup(struct neat_resolver *resolver);
+//Reset resolver, it is ready for use right after this is called
+void neat_resolver_reset(struct neat_resolver *resolver);
+//Free resolver, resolver can't be used again
+void neat_resolver_free(struct neat_resolver *resolver);
 
 //Free the list of results
 void neat_resolver_free_results(struct neat_resolver_results *results);
-//Start to resolve a domain name
-//TODO: Add missing parameters compared to normal getaddrinfo
+//Start to resolve a domain name. Only supports domain names as node and ports
+//as service
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-        const char *service);
+        const char *node, const char *service, int ai_socktype, int ai_protocol);
+
+//Update timeouts (in ms) for DNS resolving. T1 is total timeout, T2 is how long
+//to wait after first reply from DNS server. Initial values are 30s and 1s.
+void neat_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
+        uint16_t t2);
 
 //NEAT public callback API
 //The different event types that NEAT generate

@@ -1,0 +1,87 @@
+#ifndef NEAT_INTERNAL_H
+#define NEAT_INTERNAL_H
+
+#include <stdint.h>
+#include <uv.h>
+
+//data is supposed to be used to store any private data pointer
+#define NEAT_CTX \
+    uv_loop_t *loop; \
+    void *data
+
+#define NEAT_INTERNAL_CTX \
+    void (*cleanup)(struct neat_ctx *nc); \
+    struct neat_src_addrs src_addrs; \
+    struct neat_event_cbs* event_cbs; \
+    uint8_t src_addr_cnt
+
+struct neat_event_cb;
+struct neat_addr;
+
+//TODO: One drawkback with using LIST from queue.h, is that a callback can only
+//be member of one list. Decide if this is critical and improve if needed
+LIST_HEAD(neat_event_cbs, neat_event_cb);
+LIST_HEAD(neat_src_addrs, neat_addr);
+
+struct neat_ctx {
+    NEAT_CTX;
+    //Look, but don't touch. I.e., read-only
+    NEAT_INTERNAL_CTX;
+    NEAT_INTERNAL_OS;
+};
+
+struct neat_resolver_src_dst_addr;
+LIST_HEAD(neat_resolver_pairs, neat_resolver_src_dst_addr);
+#define MAX_DOMAIN_LENGTH   254
+
+struct neat_resolver {
+    //The resolver will wrap the context, so that we can easily have many
+    //resolvers
+    struct neat_ctx *nc;
+
+    //These values are just passed on to neat_resolver_res
+    int ai_socktype;
+    int ai_protocol;
+    //DNS timeout before any domain has been resolved
+    uint16_t dns_t1;
+    //DNS timeout after at least one domain has been resolved
+    uint16_t dns_t2;
+    uint16_t dst_port;
+    uint16_t __pad;
+
+    //Domain name and family to look up
+    uint8_t family;
+    //Will be set to 1 if we are going to free resolver in idle
+    //TODO: Will most likely be changed to a state variable
+    uint8_t free_resolver;
+    //Flag used to signal if we have resolved name and timeout has switched from
+    //total DNS timeout
+    uint8_t name_resolved_timeout;
+    uint8_t __pad2;
+    char domain_name[MAX_DOMAIN_LENGTH];
+
+    //The reason we need two of these is that as of now, a neat_event_cb
+    //struct can only be part of one list. This is a future optimization, if we
+    //decide that it is a problem
+    struct neat_event_cb newaddr_cb;
+    struct neat_event_cb deladdr_cb;
+
+    //List of all active resolver pairs
+    struct neat_resolver_pairs resolver_pairs;
+    //Need to defer free until libuv has clean up memory
+    struct neat_resolver_pairs resolver_pairs_del;
+    uv_idle_t idle_handle;
+    uv_timer_t timeout_handle;
+
+    //Result is the resolved addresses, code is one of the neat_resolver_codes.
+    //Ownsership of results is transfered to application, so it is the
+    //applications responsibility to free memory
+    //void (*handle_resolve)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
+    neat_resolver_handle_t handle_resolve;
+
+    //Users must be notified when it is safe to free or reset resolver memory.
+    //It has to be done ansync due to libuv cleanup order
+    neat_resolver_cleanup_t cleanup;
+};
+
+#endif

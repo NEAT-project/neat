@@ -26,5 +26,7 @@ endif()
 add_library(neat SHARED ${SOURCE})
 target_link_libraries(neat ${LIBS})
 
+add_library(neatS STATIC ${SOURCE})
+
 install(TARGETS neat LIBRARY DESTINATION ${LIB_DIR})
 install(FILES ${HEADERS} DESTINATION ${HDR_DIR})

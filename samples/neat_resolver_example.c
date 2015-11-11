@@ -2,7 +2,12 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 
-#include <neat/neat.h>
+#include "../neat.h"
+
+// clang -g neat_resolver_example.c ../build/libneatS.a -luv -lldns -lmnl
+// or if you have installed neat globally
+// clang -g neat_resolver_example.c -lneat
+
 
 void resolver_handle(struct neat_resolver *resolver,
         struct neat_resolver_results *res, uint8_t neat_code)

@@ -2,7 +2,7 @@
 
 ## NEAT internals
 
-NEAT is a callback based library and everything revovles around the neat\_ctx
+NEAT is a callback based library and everything revovles around the neat_ctx
 struct. This struct has to be initialized before anything else can be done. NEAT
 uses libuv as event library, and this loop is available to users so that they
 can hook in and add their own callbacks.
@@ -13,7 +13,7 @@ NEAT supports multi-homing and we must therefore have an up-to-date view of the
 available (and connected) network resources available on a machine. Address
 events are published using an internal event API, which users also can hook
 into. It is useful if only a small subset of NEAT is wanted, for example
-monitoring the preferred lifetime of a v6 address. Look at neat\_resolver.c for
+monitoring the preferred lifetime of a v6 address. Look at neat_resolver.c for
 an example on how to use this API. An address is stored in a
 platform-independent structure.
 
@@ -36,6 +36,10 @@ In order to install:
 
 Don't forget to run ldconfig after installing neat the first time.
 
+(dependencies on ubuntu related systems might be resolved with:
+apt-get install cmake libuv1-dev libldns-dev libmnl-dev
+)
+
 ### TODO
 * Give user control of how loop is run so that it for example can be integrated
   into other event loops.
@@ -57,7 +61,7 @@ well-known internal IPs (ULA or IANA A/B/C). An internal IP is flagged and it is
 (so far) up to the user of NEAT to know if it is safe or not to use this IP.
 
 The best way to look at how to use the resolver is to look at the example file,
-neat\_resolver\_example.c.
+neat_resolver_example.c.
 
 ### TODO
 * Read DNS-servers from resolv.conf. This requires us to decide on a generic way

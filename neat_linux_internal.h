@@ -13,6 +13,6 @@ struct nlattr_storage {
 };
 
 //TODO: Do not export this to user 
-uint8_t neat_linux_init_ctx(struct neat_ctx *nic);
+struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *nic);
 
 #endif

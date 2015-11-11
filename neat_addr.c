@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "neat.h"
+#include "neat_internal.h"
 #include "neat_core.h"
 #include "neat_addr.h"
 

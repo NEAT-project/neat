@@ -15,6 +15,7 @@
 #endif
 
 #include "neat.h"
+#include "neat_internal.h"
 #include "neat_core.h"
 #include "neat_addr.h"
 #include "neat_resolver.h"
@@ -636,11 +637,13 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
 }
 
 //Initialize the resolver. Set up callbacks etc.
-uint8_t neat_resolver_init(struct neat_ctx *nc, struct neat_resolver *resolver,
-        neat_resolver_handle_t handle_resolve, neat_resolver_cleanup_t cleanup)
+struct neat_resolver *
+neat_resolver_init(struct neat_ctx *nc,
+                   neat_resolver_handle_t handle_resolve, neat_resolver_cleanup_t cleanup)
 {
-    if (!handle_resolve)
-        return RETVAL_FAILURE;
+    struct neat_resolver *resolver = calloc(sizeof(struct neat_resolver), 1);
+    if (!handle_resolve || !resolver)
+        return NULL;
 
     resolver->nc = nc;
     resolver->cleanup = cleanup;
@@ -656,7 +659,7 @@ uint8_t neat_resolver_init(struct neat_ctx *nc, struct neat_resolver *resolver,
     if (neat_add_event_cb(nc, NEAT_NEWADDR, &(resolver->newaddr_cb)) ||
         neat_add_event_cb(nc, NEAT_DELADDR, &(resolver->deladdr_cb))) {
         fprintf(stderr, "Could not add one or more resolver callbacks\n");
-        return RETVAL_FAILURE;
+        return NULL;
     }
 
     LIST_INIT(&(resolver->resolver_pairs));
@@ -667,7 +670,7 @@ uint8_t neat_resolver_init(struct neat_ctx *nc, struct neat_resolver *resolver,
     uv_timer_init(nc->loop, &(resolver->timeout_handle));
     resolver->timeout_handle.data = resolver;
 
-    return RETVAL_SUCCESS;
+    return resolver;
 }
 
 //Helper function used by both cleanup and reset
@@ -712,6 +715,7 @@ void neat_resolver_reset(struct neat_resolver *resolver)
 void neat_resolver_free(struct neat_resolver *resolver)
 {
     neat_resolver_cleanup(resolver, 1);
+    free(resolver);
 }
 
 void neat_resolver_free_results(struct neat_resolver_results *results)

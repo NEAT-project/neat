@@ -5,6 +5,7 @@
 #include <assert.h>
 
 #include "neat.h"
+#include "neat_internal.h"
 #include "neat_core.h"
 #include "neat_queue.h"
 
@@ -14,12 +15,17 @@
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
-uint8_t neat_init_ctx(struct neat_ctx *nc)
+struct neat_ctx *neat_init_ctx()
 {
+    struct neat_ctx *nc = calloc(sizeof(struct neat_ctx), 1);
+    if (!nc) {
+        return NULL;
+    }
     nc->loop = malloc(sizeof(uv_loop_t));
 
-    if (nc->loop == NULL)
-        return RETVAL_FAILURE;
+    if (nc->loop == NULL) {
+        return NULL;
+    }
 
     uv_loop_init(nc->loop);
     LIST_INIT(&(nc->src_addrs));
@@ -27,7 +33,7 @@ uint8_t neat_init_ctx(struct neat_ctx *nc)
 #ifdef __linux__
     return neat_linux_init_ctx(nc);
 #else
-    return RETVAL_FAILURE;
+    return NULL;
 #endif
 }
 
@@ -47,6 +53,7 @@ void neat_free_ctx(struct neat_ctx *nc)
         nc->cleanup(nc);
 
     free(nc->loop);
+    free(nc);
 }
 
 //The three functions that deal with the NEAT callback API. Nothing very

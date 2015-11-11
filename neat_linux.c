@@ -8,6 +8,7 @@
 #include <linux/if_addr.h>
 
 #include "neat.h"
+#include "neat_internal.h"
 #include "neat_core.h"
 #include "neat_addr.h"
 #include "neat_linux.h"
@@ -149,37 +150,37 @@ static void neat_linux_cleanup(struct neat_ctx *nc)
 
 //Initialize the Linux-specific part of the context. All is related to
 //libmnl/netfilter
-uint8_t neat_linux_init_ctx(struct neat_ctx *nc)
+struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *nc)
 {
     //TODO: Consider allocator function
     if ((nc->mnl_rcv_buf = calloc(MNL_SOCKET_BUFFER_SIZE, 1)) == NULL) {
         fprintf(stderr, "Failed to allocate netlink buffer\n");
-        return RETVAL_FAILURE;
+        return NULL;
     }
 
     //Configure netlink and start requesting addresses
     if ((nc->mnl_sock = mnl_socket_open(NETLINK_ROUTE)) == NULL) {
         fprintf(stderr, "Failed to allocate netlink socket\n");
-        return RETVAL_FAILURE;
+        return NULL;
     }
 
     if (mnl_socket_bind(nc->mnl_sock, (1 << (RTNLGRP_IPV4_IFADDR - 1)) |
                 (1 << (RTNLGRP_IPV6_IFADDR - 1)), 0)) {
         fprintf(stderr, "Failed to bind netlink socket\n");
-        return RETVAL_FAILURE;
+        return NULL;
     }
     
     //We need to build a list of all available source addresses as soon as
     //possible. It is started here
     if (neat_linux_request_addrs(nc->mnl_sock) <= 0) {
         fprintf(stderr, "Failed to request addresses\n");
-        return RETVAL_FAILURE;
+        return NULL;
     }
 
     //Add socket to event loop
     if (uv_udp_init(nc->loop, &(nc->uv_nl_handle))) {
         fprintf(stderr, "Failed to initialize uv UDP handle\n");
-        return RETVAL_FAILURE;
+        return NULL;
     }
 
     //TODO: We could use offsetof, but libuv has a pointer so ...
@@ -187,17 +188,17 @@ uint8_t neat_linux_init_ctx(struct neat_ctx *nc)
 
     if (uv_udp_open(&(nc->uv_nl_handle), mnl_socket_get_fd(nc->mnl_sock))) {
         fprintf(stderr, "Could not add netlink socket to uv\n");
-        return RETVAL_FAILURE;
+        return NULL;
     }
 
     if (uv_udp_recv_start(&(nc->uv_nl_handle), neat_linux_nl_alloc,
                 neat_linux_nl_recv)) {
         fprintf(stderr, "Could not start receiving netlink packets\n");
-        return RETVAL_FAILURE;
+        return NULL;
     }
      
     nc->cleanup = neat_linux_cleanup;
 
     //Configure netlink socket, add to event loop and start dumping
-    return RETVAL_SUCCESS;
+    return nc;
 }

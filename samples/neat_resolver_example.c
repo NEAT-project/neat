@@ -10,7 +10,7 @@
 
 
 void resolver_handle(struct neat_resolver *resolver,
-        struct neat_resolver_results *res, uint8_t neat_code)
+                     struct neat_resolver_results *res, uint8_t neat_code)
 {
     char src_str[INET6_ADDRSTRLEN], dst_str[INET6_ADDRSTRLEN];
     struct sockaddr_in *addr4;
@@ -22,8 +22,6 @@ void resolver_handle(struct neat_resolver *resolver,
         //check here just in case
         if (res != NULL)
             neat_resolver_free_results(res);
-
-        neat_resolver_free(resolver);
         return;    
     }
 
@@ -49,31 +47,23 @@ void resolver_handle(struct neat_resolver *resolver,
 
     //Free list, it is callers responsibility
     neat_resolver_free_results(res);
-
-    //I dont need this resolver object any more
-    neat_resolver_free(resolver);
 }
 
 void resolver_cleanup(struct neat_resolver *resolver)
 {
     printf("Cleanup function\n");
-    free(resolver);
+    //I dont need this resolver object any more
+    neat_resolver_free(resolver);
 }
 
 int main(int argc, char *argv[])
 {
-    struct neat_ctx *nc = calloc(sizeof(struct neat_ctx), 1);
-    struct neat_resolver *resolver = calloc(sizeof(struct neat_resolver), 1);
+    struct neat_ctx *nc = neat_init_ctx();
+    struct neat_resolver *resolver;
+    resolver = nc ? neat_resolver_init(nc, resolver_handle, resolver_cleanup) : NULL;
 
     if (nc == NULL || resolver == NULL)
         exit(EXIT_FAILURE);
-   
-    if (neat_init_ctx(nc) ||
-        neat_resolver_init(nc, resolver, resolver_handle, resolver_cleanup)) {
-        free(nc);
-        free(resolver);
-        exit(EXIT_FAILURE);
-    }
 
     neat_resolver_update_timeouts(resolver, 10000, 500);
 

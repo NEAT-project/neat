@@ -9,6 +9,7 @@ set(HEADERS neat.h neat_queue.h)
 set(SOURCE
     neat_core.c
     neat_addr.c
+    neat_he.c
     neat_resolver.c)
 set(LIBS uv ldns)
 

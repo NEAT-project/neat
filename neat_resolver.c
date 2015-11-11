@@ -14,6 +14,8 @@
     #include <net/if.h>
 #endif
 
+// todo - dotted decimals, localhost, /etc/hosts may not work here..
+
 #include "neat.h"
 #include "neat_internal.h"
 #include "neat_core.h"

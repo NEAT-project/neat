@@ -9,11 +9,6 @@
     #include "neat_linux.h"
 #endif
 
-//data is supposed to be used to store any private data pointer
-#define NEAT_CTX \
-    uv_loop_t *loop; \
-    void *data
-
 #define NEAT_INTERNAL_CTX \
     void (*cleanup)(struct neat_ctx *nc); \
     struct neat_src_addrs src_addrs; \
@@ -29,11 +24,56 @@ LIST_HEAD(neat_event_cbs, neat_event_cb);
 LIST_HEAD(neat_src_addrs, neat_addr);
 
 struct neat_ctx {
-    NEAT_CTX;
-    //Look, but don't touch. I.e., read-only
+    uv_loop_t *loop;
+    struct neat_resolver *resolver;
+
+    // resolver
     NEAT_INTERNAL_CTX;
     NEAT_INTERNAL_OS;
 };
+
+typedef struct neat_ctx neat_ctx ;
+typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_socket *socket,
+                                          unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
+typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_socket *socket,
+                                           const unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
+typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_socket *sock, int fd);
+typedef int (*neat_connect_impl)(struct neat_ctx *ctx, struct neat_socket *sock);
+typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_socket *sock);
+typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_socket *sock);
+
+struct neat_socket
+{
+    int fd;
+    struct neat_socket_operations *operations; // see ownedByCore flag
+    const char *name;
+    const char *port;
+    uint64_t propertyMask;
+    uint64_t propertyAttempt;
+    uint64_t propertyUsed;
+    uint8_t family;
+    int sockType;
+    int sockProtocol;
+    struct neat_resolver_results *resolver_results;
+    const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
+    struct neat_ctx *ctx; // raw convenience pointer
+    uv_poll_t handle;
+
+    neat_read_impl readfx;
+    neat_write_impl writefx;
+    neat_accept_impl acceptfx;
+    neat_connect_impl connectfx;
+    neat_close_impl closefx;
+    neat_listen_impl listenfx;
+
+    int firstWritePending : 1;
+    int acceptPending : 1;
+    int isPolling : 1;
+    int ownedByCore : 1;
+    int everConnected : 1;
+};
+
+typedef struct neat_socket neat_socket;
 
 //NEAT resolver public data structures/functions
 struct neat_resolver;
@@ -41,10 +81,6 @@ struct neat_resolver_res;
 
 LIST_HEAD(neat_resolver_results, neat_resolver_res);
 
-// todo - probably not a good api to give the callback function a result set it needs to free
-// that tends to create leaks (especially on error paths)
-// better to free it for them after the callback returns and provide a clone (or addref) function
-// if they want to take ownership explicitly
 typedef void (*neat_resolver_handle_t)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
 typedef void (*neat_resolver_cleanup_t)(struct neat_resolver *resolver);
 
@@ -136,6 +172,8 @@ struct neat_resolver {
     //The resolver will wrap the context, so that we can easily have many
     //resolvers
     struct neat_ctx *nc;
+    void *userData1;
+    void *userData2;
 
     //These values are just passed on to neat_resolver_res
     int ai_socktype;
@@ -181,5 +219,14 @@ struct neat_resolver {
     //It has to be done ansync due to libuv cleanup order
     neat_resolver_cleanup_t cleanup;
 };
+
+// for happy eyeballs framework
+typedef void (*neat_he_callback_fx)(neat_ctx *ctx,
+                                    neat_socket *sock,
+                                    neat_error_code code,
+                                    uint8_t family, int sockType, int sockProtocol,
+                                    int fd); // can be -1
+
+neat_error_code neat_he_lookup(neat_ctx *ctx, neat_socket *sock, neat_he_callback_fx callback_fx);
 
 #endif

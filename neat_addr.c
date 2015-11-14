@@ -16,7 +16,7 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
     struct sockaddr_in *src_addr4;
     struct sockaddr_in6 *src_addr6;
 
-    fprintf(stdout, "Available addresses:\n");
+    fprintf(stderr, "Available addresses:\n");
     for (nsrc_addr = nc->src_addrs.lh_first; nsrc_addr != NULL;
             nsrc_addr = nsrc_addr->next_addr.le_next) {
 
@@ -24,17 +24,17 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
             src_addr4 = &(nsrc_addr->u.v4.addr4);
             inet_ntop(AF_INET, &(src_addr4->sin_addr), addr_str,
                     INET_ADDRSTRLEN);
-            fprintf(stdout, "Addr: %s\n", addr_str);
+            fprintf(stderr, "Addr: %s\n", addr_str);
         } else {
             src_addr6 = &(nsrc_addr->u.v6.addr6);
             inet_ntop(AF_INET6, &(src_addr6->sin6_addr), addr_str,
                     INET6_ADDRSTRLEN);
-            fprintf(stdout, "Addr: %s pref %u valid %u\n", addr_str,
+            fprintf(stderr, "Addr: %s pref %u valid %u\n", addr_str,
                     nsrc_addr->u.v6.ifa_pref, nsrc_addr->u.v6.ifa_valid);
         }
     }
 
-    fprintf(stdout, "\n");
+    fprintf(stderr, "\n");
 }
 
 //Utility function for comparing two v6 addresses

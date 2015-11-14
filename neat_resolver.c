@@ -614,7 +614,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
 
     //No point starting to query if we don't have any source addresses
     if (!resolver->nc->src_addr_cnt) {
-        fprintf(stdout, "No available src addresses\n");
+        fprintf(stderr, "No available src addresses\n");
         return RETVAL_SUCCESS;
     }
 

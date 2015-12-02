@@ -23,9 +23,19 @@ struct neat_addr;
 LIST_HEAD(neat_event_cbs, neat_event_cb);
 LIST_HEAD(neat_src_addrs, neat_addr);
 
+struct neat_pib
+{ // todo
+};
+
+struct neat_cib
+{ // todo
+};
+
 struct neat_ctx {
     uv_loop_t *loop;
     struct neat_resolver *resolver;
+    struct neat_pib pib;
+    struct neat_cib cib;
 
     // resolver
     NEAT_INTERNAL_CTX;

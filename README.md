@@ -38,6 +38,7 @@ Don't forget to run ldconfig after installing neat the first time.
 
 (dependencies on ubuntu related systems might be resolved with:
 apt-get install cmake libuv1-dev libldns-dev libmnl-dev
+older ubuntu might have a ppa for libuv1 https://launchpad.net/~cz.nic-labs/+archive/ubuntu/knot-dns
 )
 
 ### TODO

@@ -11,29 +11,29 @@
  a N and close.
 */
 
-static struct neat_socket_operations ops;
+static struct neat_flow_operations ops;
 struct sessionData {
     int toread;
     int iter;
 };
 
 static uint64_t
-on_error(struct neat_socket_operations *opCB)
+on_error(struct neat_flow_operations *opCB)
 {
     fprintf(stderr,"neatserver unexpected error\n");
     exit (1);
     return 0;
 }
 
-static uint64_t on_readable(struct neat_socket_operations *opCB);
+static uint64_t on_readable(struct neat_flow_operations *opCB);
 
 static uint64_t
-on_writable(struct neat_socket_operations *opCB)
+on_writable(struct neat_flow_operations *opCB)
 {
     struct sessionData *sd = (struct sessionData *)opCB->userData;
     uint32_t rv;
     neat_error_code code;
-    code = neat_write(opCB->ctx, opCB->sock, (unsigned char *)"N", 1, &rv);
+    code = neat_write(opCB->ctx, opCB->flow, (unsigned char *)"N", 1, &rv);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
         return 0;
     }
@@ -50,13 +50,13 @@ on_writable(struct neat_socket_operations *opCB)
         opCB->on_writable = NULL;
         free (opCB->userData);
         opCB->userData = NULL;
-        neat_free_socket(opCB->sock);
+        neat_free_flow(opCB->flow);
     }
     return 0;
 }
 
 static uint64_t
-on_readable(struct neat_socket_operations *opCB)
+on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
     unsigned char buffer[32];
@@ -68,7 +68,7 @@ on_readable(struct neat_socket_operations *opCB)
     if (!needed) {
         return 0;
     }
-    code = neat_read(opCB->ctx, opCB->sock, buffer, needed, &amt);
+    code = neat_read(opCB->ctx, opCB->flow, buffer, needed, &amt);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
         return 0;
     }
@@ -91,7 +91,7 @@ on_readable(struct neat_socket_operations *opCB)
 }
 
 static uint64_t
-on_connected(struct neat_socket_operations *opCB)
+on_connected(struct neat_flow_operations *opCB)
 {
     // now we can start writing
     opCB->userData = malloc(sizeof(struct sessionData));
@@ -104,18 +104,18 @@ on_connected(struct neat_socket_operations *opCB)
 int main(int argc, char *argv[])
 {
     struct neat_ctx *ctx = neat_init_ctx();
-    struct neat_socket *sock;
+    struct neat_flow *flow;
 
-    sock = neat_new_socket(ctx);
+    flow = neat_new_flow(ctx);
     ops.on_connected = on_connected;
     ops.on_error = on_error;
-    neat_set_operations(ctx, sock, &ops);
+    neat_set_operations(ctx, flow, &ops);
 
     // wait for on_connected or on_error to be invoked
-    neat_accept(ctx, sock, "localhost.ducksong.com", "8080");
+    neat_accept(ctx, flow, "localhost.ducksong.com", "8080");
     neat_start_event_loop(ctx);
 
-    neat_free_socket(sock);
+    neat_free_flow(flow);
     neat_free_ctx(ctx);
     return 0;
 }

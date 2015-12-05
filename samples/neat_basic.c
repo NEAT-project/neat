@@ -11,10 +11,10 @@
  printing that to stdout.
 */
 
-static struct neat_socket_operations ops;
+static struct neat_flow_operations ops;
 
 static uint64_t
-on_error(struct neat_socket_operations *opCB)
+on_error(struct neat_flow_operations *opCB)
 {
     fprintf(stderr,"unexpected error\n");
     exit (1);
@@ -22,14 +22,14 @@ on_error(struct neat_socket_operations *opCB)
 }
 
 static uint64_t
-on_readable(struct neat_socket_operations *opCB)
+on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
     unsigned char buffer[32];
     uint32_t amt;
     neat_error_code code;
 
-    code = neat_read(opCB->ctx, opCB->sock, buffer, 32, &amt);
+    code = neat_read(opCB->ctx, opCB->flow, buffer, 32, &amt);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
         return 0;
     }
@@ -52,11 +52,11 @@ static const char *request =
     "GET / HTTP/1.0\r\nHost:www.neat-project.org\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 
 static uint64_t
-on_writable(struct neat_socket_operations *opCB)
+on_writable(struct neat_flow_operations *opCB)
 {
     uint32_t rv;
     neat_error_code code;
-    code = neat_write(opCB->ctx, opCB->sock,
+    code = neat_write(opCB->ctx, opCB->flow,
                       (const unsigned char *)request + written ,
                       towrite - written, &rv);
     if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
@@ -73,7 +73,7 @@ on_writable(struct neat_socket_operations *opCB)
 }
 
 static uint64_t
-on_connected(struct neat_socket_operations *opCB)
+on_connected(struct neat_flow_operations *opCB)
 {
     // now we can start writing
     ops.on_writable = on_writable;
@@ -83,24 +83,24 @@ on_connected(struct neat_socket_operations *opCB)
 int main(int argc, char *argv[])
 {
     struct neat_ctx *ctx = neat_init_ctx();
-    struct neat_socket *sock;
+    struct neat_flow *flow;
     uint64_t prop;
 
     towrite = strlen(request);
-    sock = neat_new_socket(ctx);
-    neat_get_property(ctx, sock, &prop);
+    flow = neat_new_flow(ctx);
+    neat_get_property(ctx, flow, &prop);
     prop |= NEAT_PROPERTY_OPTIONAL_SECURITY;
-    neat_set_property(ctx, sock, prop);
+    neat_set_property(ctx, flow, prop);
 
     ops.on_connected = on_connected;
     ops.on_error = on_error;
-    neat_set_operations(ctx, sock, &ops);
+    neat_set_operations(ctx, flow, &ops);
 
     // wait for on_connected or on_error to be invoked
-    neat_open(ctx, sock, "www.neat-project.org", "80");
+    neat_open(ctx, flow, "www.neat-project.org", "80");
     neat_start_event_loop(ctx);
 
-    neat_free_socket(sock);
+    neat_free_flow(flow);
     neat_free_ctx(ctx);
     return 0;
 }

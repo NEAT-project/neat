@@ -43,19 +43,19 @@ struct neat_ctx {
 };
 
 typedef struct neat_ctx neat_ctx ;
-typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_socket *socket,
+typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
-typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_socket *socket,
+typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                            const unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
-typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_socket *sock, int fd);
-typedef int (*neat_connect_impl)(struct neat_ctx *ctx, struct neat_socket *sock);
-typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_socket *sock);
-typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_socket *sock);
+typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
+typedef int (*neat_connect_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
+typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
+typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 
-struct neat_socket
+struct neat_flow
 {
     int fd;
-    struct neat_socket_operations *operations; // see ownedByCore flag
+    struct neat_flow_operations *operations; // see ownedByCore flag
     const char *name;
     const char *port;
     uint64_t propertyMask;
@@ -83,7 +83,7 @@ struct neat_socket
     int everConnected : 1;
 };
 
-typedef struct neat_socket neat_socket;
+typedef struct neat_flow neat_flow;
 
 //NEAT resolver public data structures/functions
 struct neat_resolver;
@@ -232,11 +232,11 @@ struct neat_resolver {
 
 // for happy eyeballs framework
 typedef void (*neat_he_callback_fx)(neat_ctx *ctx,
-                                    neat_socket *sock,
+                                    neat_flow *flow,
                                     neat_error_code code,
                                     uint8_t family, int sockType, int sockProtocol,
                                     int fd); // can be -1
 
-neat_error_code neat_he_lookup(neat_ctx *ctx, neat_socket *sock, neat_he_callback_fx callback_fx);
+neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_fx callback_fx);
 
 #endif

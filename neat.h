@@ -5,14 +5,13 @@
 
 #include <sys/types.h>
 #include <netinet/in.h>
-#include <sys/socket.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct neat_ctx; // global
-struct neat_socket; // one per connection
+struct neat_flow; // one per connection
 
 struct neat_ctx *neat_init_ctx();
 void neat_start_event_loop(struct neat_ctx *nc);
@@ -20,39 +19,39 @@ void neat_stop_event_loop(struct neat_ctx *nc);
 void neat_free_ctx(struct neat_ctx *nc);
 
 typedef uint64_t neat_error_code;
-struct neat_socket_operations;
-typedef uint64_t (*neat_socket_operations_fx)(struct neat_socket_operations *);
+struct neat_flow_operations;
+typedef uint64_t (*neat_flow_operations_fx)(struct neat_flow_operations *);
 
-struct neat_socket_operations
+struct neat_flow_operations
 {
   void *userData;
 
   neat_error_code status;
-  neat_socket_operations_fx on_connected;
-  neat_socket_operations_fx on_error;
-  neat_socket_operations_fx on_readable;
-  neat_socket_operations_fx on_writable;
+  neat_flow_operations_fx on_connected;
+  neat_flow_operations_fx on_error;
+  neat_flow_operations_fx on_readable;
+  neat_flow_operations_fx on_writable;
 
   struct neat_ctx *ctx;
-  struct neat_socket *sock;
+  struct neat_flow *flow;
 };
 
-struct neat_socket *neat_new_socket(struct neat_ctx *ctx);
-void neat_free_socket(struct neat_socket *sock);
+struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
+void neat_free_flow(struct neat_flow *flow);
 
-neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_socket *socket,
-                                    struct neat_socket_operations *ops);
-neat_error_code neat_open(struct neat_ctx *ctx, struct neat_socket *socket,
+neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
+                                    struct neat_flow_operations *ops);
+neat_error_code neat_open(struct neat_ctx *ctx, struct neat_flow *flow,
                           const char *name, const char *port); // should port should be int?
-neat_error_code neat_read(struct neat_ctx *ctx, struct neat_socket *socket,
+neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
-neat_error_code neat_write(struct neat_ctx *ctx, struct neat_socket *socket,
+neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
                            const unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
-neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_socket *socket,
+neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t *outMask);
-neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_socket *socket,
+neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t inMask);
-neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_socket *socket,
+neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                           const char *name, const char *port); // should port should be int?
 // do we also need a set property with a void * or an int (e.g. timeouts) or should
 // we create higher level named functions for such things?

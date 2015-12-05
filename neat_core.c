@@ -158,249 +158,249 @@ void neat_run_event_cb(struct neat_ctx *nc, uint8_t event_type,
 
 static void free_cb(uv_handle_t *handle)
 {
-    neat_socket *sock = handle->data;
-    sock->closefx(sock->ctx, sock);
-    free((char *)sock->name);
-    free((char *)sock->port);
-    if (sock->resolver_results) {
-        neat_resolver_free_results(sock->resolver_results);
+    neat_flow *flow = handle->data;
+    flow->closefx(flow->ctx, flow);
+    free((char *)flow->name);
+    free((char *)flow->port);
+    if (flow->resolver_results) {
+        neat_resolver_free_results(flow->resolver_results);
     }
-    if (sock->ownedByCore) {
-        free(sock->operations);
+    if (flow->ownedByCore) {
+        free(flow->operations);
     }
-    free(sock);
+    free(flow);
 }
 
-void neat_free_socket(neat_socket *sock)
+void neat_free_flow(neat_flow *flow)
 {
-    if (sock->isPolling) {
-        uv_poll_stop(&sock->handle);
+    if (flow->isPolling) {
+        uv_poll_stop(&flow->handle);
     }
-    uv_close((uv_handle_t *)(&sock->handle), free_cb);
+    uv_close((uv_handle_t *)(&flow->handle), free_cb);
     return;
 }
 
-neat_error_code neat_get_property(neat_ctx *mgr, struct neat_socket *socket,
+neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,
                                   uint64_t *outMask)
 {
-    *outMask = socket->propertyUsed;
+    *outMask = flow->propertyUsed;
     return NEAT_OK;
 }
 
-neat_error_code neat_set_property(neat_ctx *mgr, neat_socket *socket,
+neat_error_code neat_set_property(neat_ctx *mgr, neat_flow *flow,
                                   uint64_t inMask)
 {
-    socket->propertyMask = inMask;
+    flow->propertyMask = inMask;
     return NEAT_OK;
 }
 
-neat_error_code neat_set_operations(neat_ctx *mgr, neat_socket *socket,
-                                    struct neat_socket_operations *ops)
+neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
+                                    struct neat_flow_operations *ops)
 {
-    socket->operations = ops;
+    flow->operations = ops;
     return NEAT_OK;
 }
 
 #define READYCALLBACKSTRUCT \
-    sock->operations->status = code;\
-    sock->operations->ctx = ctx;\
-    sock->operations->sock = sock;
+    flow->operations->status = code;\
+    flow->operations->ctx = ctx;\
+    flow->operations->flow = flow;
 
-static void io_error(neat_ctx *ctx, neat_socket *sock,
+static void io_error(neat_ctx *ctx, neat_flow *flow,
                      neat_error_code code)
 {
-    if (!sock->operations || !sock->operations->on_error) {
+    if (!flow->operations || !flow->operations->on_error) {
         return;
     }
     READYCALLBACKSTRUCT;
-    sock->operations->on_error(sock->operations);
+    flow->operations->on_error(flow->operations);
 }
 
-static void io_connected(neat_ctx *ctx, neat_socket *sock,
+static void io_connected(neat_ctx *ctx, neat_flow *flow,
                          neat_error_code code)
 {
-    if (!sock->operations || !sock->operations->on_connected) {
+    if (!flow->operations || !flow->operations->on_connected) {
         return;
     }
     READYCALLBACKSTRUCT;
-    sock->operations->on_connected(sock->operations);
+    flow->operations->on_connected(flow->operations);
 }
 
-static void io_writable(neat_ctx *ctx, neat_socket *sock,
+static void io_writable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
-    if (!sock->operations || !sock->operations->on_writable) {
+    if (!flow->operations || !flow->operations->on_writable) {
         return;
     }
     READYCALLBACKSTRUCT;
-    sock->operations->on_writable(sock->operations);
+    flow->operations->on_writable(flow->operations);
 }
 
-static void io_readable(neat_ctx *ctx, neat_socket *sock,
+static void io_readable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
-    if (!sock->operations || !sock->operations->on_readable) {
+    if (!flow->operations || !flow->operations->on_readable) {
         return;
     }
     READYCALLBACKSTRUCT;
-    sock->operations->on_readable(sock->operations);
+    flow->operations->on_readable(flow->operations);
 }
 
-static void do_accept(neat_ctx *ctx, neat_socket *sock);
+static void do_accept(neat_ctx *ctx, neat_flow *flow);
 static void uvpollable_cb(uv_poll_t *handle, int status, int events);
 
-static void updatePollHandle(neat_ctx *ctx, neat_socket *sock, uv_poll_t *handle)
+static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
-    if (uv_is_closing((uv_handle_t *)&sock->handle)) {
+    if (uv_is_closing((uv_handle_t *)&flow->handle)) {
         return;
     }
 
     int newEvents = 0;
-    if (sock->operations && sock->operations->on_readable) {
+    if (flow->operations && flow->operations->on_readable) {
         newEvents |= UV_READABLE;
     }
-    if (sock->operations && sock->operations->on_writable) {
+    if (flow->operations && flow->operations->on_writable) {
         newEvents |= UV_WRITABLE;
     }
     if (newEvents) {
-        sock->isPolling = 1;
+        flow->isPolling = 1;
         uv_poll_start(handle, newEvents, uvpollable_cb);
     } else {
-        sock->isPolling = 0;
+        flow->isPolling = 0;
         uv_poll_stop(handle);
     }
 }
 
 static void uvpollable_cb(uv_poll_t *handle, int status, int events)
 {
-    neat_socket *sock = handle->data;
-    neat_ctx *ctx = sock->ctx;
+    neat_flow *flow = handle->data;
+    neat_ctx *ctx = flow->ctx;
 
-    if ((events & UV_READABLE) && sock->acceptPending) {
-        do_accept(ctx, sock);
+    if ((events & UV_READABLE) && flow->acceptPending) {
+        do_accept(ctx, flow);
         return;
     }
 
     // todo check error in status
-    if ((events & UV_WRITABLE) && sock->firstWritePending) {
-        sock->firstWritePending = 0;
-        io_connected(ctx, sock, NEAT_OK);
+    if ((events & UV_WRITABLE) && flow->firstWritePending) {
+        flow->firstWritePending = 0;
+        io_connected(ctx, flow, NEAT_OK);
     }
     if (events & UV_WRITABLE) {
-        io_writable(ctx, sock, NEAT_OK);
+        io_writable(ctx, flow, NEAT_OK);
     }
     if (events & UV_READABLE) {
-        io_readable(ctx, sock, NEAT_OK);
+        io_readable(ctx, flow, NEAT_OK);
     }
-    updatePollHandle(ctx, sock, &sock->handle);
+    updatePollHandle(ctx, flow, &flow->handle);
 }
 
-static void do_accept(neat_ctx *ctx, neat_socket *sock)
+static void do_accept(neat_ctx *ctx, neat_flow *flow)
 {
-    neat_socket *newSock = neat_new_socket(ctx);
-    newSock->name = strdup (sock->name);
-    newSock->port = strdup (sock->port);
-    newSock->propertyMask = sock->propertyMask;
-    newSock->propertyAttempt = sock->propertyAttempt;
-    newSock->propertyUsed = sock->propertyUsed;
-    newSock->everConnected = 1;
-    newSock->family = sock->family;
-    newSock->sockType = sock->sockType;
-    newSock->sockProtocol = sock->sockProtocol;
-    newSock->ctx = ctx;
+    neat_flow *newFlow = neat_new_flow(ctx);
+    newFlow->name = strdup (flow->name);
+    newFlow->port = strdup (flow->port);
+    newFlow->propertyMask = flow->propertyMask;
+    newFlow->propertyAttempt = flow->propertyAttempt;
+    newFlow->propertyUsed = flow->propertyUsed;
+    newFlow->everConnected = 1;
+    newFlow->family = flow->family;
+    newFlow->sockType = flow->sockType;
+    newFlow->sockProtocol = flow->sockProtocol;
+    newFlow->ctx = ctx;
 
-    newSock->ownedByCore = 1;
-    newSock->operations = calloc (sizeof(struct neat_socket_operations), 1);
-    newSock->operations->on_connected = sock->operations->on_connected;
-    newSock->operations->on_readable = sock->operations->on_readable;
-    newSock->operations->on_writable = sock->operations->on_writable;
-    newSock->operations->ctx = ctx;
-    newSock->operations->sock = sock;
+    newFlow->ownedByCore = 1;
+    newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
+    newFlow->operations->on_connected = flow->operations->on_connected;
+    newFlow->operations->on_readable = flow->operations->on_readable;
+    newFlow->operations->on_writable = flow->operations->on_writable;
+    newFlow->operations->ctx = ctx;
+    newFlow->operations->flow = flow;
 
-    newSock->fd = newSock->acceptfx(ctx, newSock, sock->fd);
-    if (newSock->fd == -1) {
-        neat_free_socket(newSock);
+    newFlow->fd = newFlow->acceptfx(ctx, newFlow, flow->fd);
+    if (newFlow->fd == -1) {
+        neat_free_flow(newFlow);
     } else {
-        uv_poll_init(ctx->loop, &newSock->handle, newSock->fd); // makes fd nb as side effect
-        newSock->handle.data = newSock;
-        io_connected(ctx, newSock, NEAT_OK);
-        uvpollable_cb(&newSock->handle, NEAT_OK, 0);
+        uv_poll_init(ctx->loop, &newFlow->handle, newFlow->fd); // makes fd nb as side effect
+        newFlow->handle.data = newFlow;
+        io_connected(ctx, newFlow, NEAT_OK);
+        uvpollable_cb(&newFlow->handle, NEAT_OK, 0);
     }
 }
 
 static void
-open_he_callback(neat_ctx *ctx, neat_socket *sock,
+open_he_callback(neat_ctx *ctx, neat_flow *flow,
                  neat_error_code code,
                  uint8_t family, int sockType, int sockProtocol,
                  int fd)
 {
     if (code != NEAT_OK) {
-        io_error(ctx, sock, code);
+        io_error(ctx, flow, code);
         goto cleanup;
     }
 
-    sock->family = family;
-    sock->sockType = sockType;
-    sock->sockProtocol = sockProtocol;
+    flow->family = family;
+    flow->sockType = sockType;
+    flow->sockProtocol = sockProtocol;
 
     if (fd != -1) {
-        uv_poll_init(ctx->loop, &sock->handle, fd); // makes fd nb as side effect
-        sock->everConnected = 1;
-        sock->fd = fd;
+        uv_poll_init(ctx->loop, &flow->handle, fd); // makes fd nb as side effect
+        flow->everConnected = 1;
+        flow->fd = fd;
     } else {
         // todo when we have sctp
-        if (sock->propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) {
-            io_error(ctx, sock, NEAT_ERROR_UNABLE);
+        if (flow->propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) {
+            io_error(ctx, flow, NEAT_ERROR_UNABLE);
             goto cleanup;
         }
 
-        if (sock->connectfx(ctx, sock) == -1) {
-            io_error(ctx, sock, NEAT_ERROR_IO);
+        if (flow->connectfx(ctx, flow) == -1) {
+            io_error(ctx, flow, NEAT_ERROR_IO);
             goto cleanup;
         }
     }
 
     // todo he needs to consider these properties to do the right thing
-    if ((sock->propertyMask & NEAT_PROPERTY_IPV6_BANNED) &&
-        (sock->family == AF_INET6)) {
-        io_error(ctx, sock, NEAT_ERROR_UNABLE);
+    if ((flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED) &&
+        (flow->family == AF_INET6)) {
+        io_error(ctx, flow, NEAT_ERROR_UNABLE);
         goto cleanup;
     }
 
-    if ((sock->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) &&
-        (sock->family != AF_INET6)) {
-        io_error(ctx, sock, NEAT_ERROR_UNABLE);
+    if ((flow->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) &&
+        (flow->family != AF_INET6)) {
+        io_error(ctx, flow, NEAT_ERROR_UNABLE);
         goto cleanup;
     }
 
     // io callbacks take over now
-    sock->ctx = ctx;
-    sock->handle.data = sock;
-    sock->firstWritePending = 1;
-    sock->isPolling = 1;
-    uv_poll_start(&sock->handle, UV_WRITABLE, uvpollable_cb);
+    flow->ctx = ctx;
+    flow->handle.data = flow;
+    flow->firstWritePending = 1;
+    flow->isPolling = 1;
+    uv_poll_start(&flow->handle, UV_WRITABLE, uvpollable_cb);
 
     // security layer todo
 
 cleanup:
-    if (sock->resolver_results) {
-        neat_resolver_free_results(sock->resolver_results);
-        sock->resolver_results = NULL;
+    if (flow->resolver_results) {
+        neat_resolver_free_results(flow->resolver_results);
+        flow->resolver_results = NULL;
     }
     return;
 }
 
 neat_error_code
-neat_open(neat_ctx *mgr, neat_socket *sock, const char *name, const char *port)
+neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, const char *port)
 {
-    if (sock->name) {
+    if (flow->name) {
         return NEAT_ERROR_BAD_ARGUMENT;
     }
 
-    sock->name = strdup(name);
-    sock->port = strdup(port);
-    sock->propertyAttempt = sock->propertyMask;
-    neat_he_lookup(mgr, sock, open_he_callback);
+    flow->name = strdup(name);
+    flow->port = strdup(port);
+    flow->propertyAttempt = flow->propertyMask;
+    neat_he_lookup(mgr, flow, open_he_callback);
 
     return NEAT_OK;
 }
@@ -408,68 +408,68 @@ neat_open(neat_ctx *mgr, neat_socket *sock, const char *name, const char *port)
 static void
 accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {
-    neat_socket *sock = (neat_socket *)resolver->userData1;
-    struct neat_ctx *ctx = sock->ctx;
+    neat_flow *flow = (neat_flow *)resolver->userData1;
+    struct neat_ctx *ctx = flow->ctx;
 
     if (code != NEAT_RESOLVER_OK) {
-        io_error(ctx, sock, code);
+        io_error(ctx, flow, code);
         return;
     }
     assert (results->lh_first);
-    sock->family = results->lh_first->ai_family;
-    sock->sockType = results->lh_first->ai_socktype;
-    sock->sockProtocol = results->lh_first->ai_protocol;
-    sock->resolver_results = results;
-    sock->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
+    flow->family = results->lh_first->ai_family;
+    flow->sockType = results->lh_first->ai_socktype;
+    flow->sockProtocol = results->lh_first->ai_protocol;
+    flow->resolver_results = results;
+    flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
 
-    if (sock->listenfx(ctx, sock) == -1) {
-        io_error(ctx, sock, NEAT_ERROR_IO);
+    if (flow->listenfx(ctx, flow) == -1) {
+        io_error(ctx, flow, NEAT_ERROR_IO);
         return;
     }
 
-    sock->handle.data = sock;
-    uv_poll_init(ctx->loop, &sock->handle, sock->fd);
+    flow->handle.data = flow;
+    uv_poll_init(ctx->loop, &flow->handle, flow->fd);
 
-    if (!(sock->propertyMask & NEAT_PROPERTY_MESSAGE)) {
-        sock->isPolling = 1;
-        sock->acceptPending = 1;
-        uv_poll_start(&sock->handle, UV_READABLE, uvpollable_cb);
+    if (!(flow->propertyMask & NEAT_PROPERTY_MESSAGE)) {
+        flow->isPolling = 1;
+        flow->acceptPending = 1;
+        uv_poll_start(&flow->handle, UV_READABLE, uvpollable_cb);
     } else {
         // do normal i/o events without accept() for non connected protocols
-        updatePollHandle(ctx, sock, &sock->handle);
+        updatePollHandle(ctx, flow, &flow->handle);
     }
 }
 
-neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_socket *sock,
+neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                             const char *name, const char *port)
 {
-    if (sock->name) {
+    if (flow->name) {
         return NEAT_ERROR_BAD_ARGUMENT;
     }
 
     if (!strcmp(name, "*")) {
         name = "0.0.0.0";
     }
-    sock->name = strdup(name);
-    sock->port = strdup(port);
-    sock->propertyAttempt = sock->propertyMask;
-    sock->ctx = ctx;
+    flow->name = strdup(name);
+    flow->port = strdup(port);
+    flow->propertyAttempt = flow->propertyMask;
+    flow->ctx = ctx;
 
     if (!ctx->resolver) {
         ctx->resolver = neat_resolver_init(ctx, accept_resolve_cb, NULL);
     }
-    ctx->resolver->userData1 = (void *)sock;
-    neat_getaddrinfo(ctx->resolver, AF_INET, sock->name, sock->port,
-                     (sock->propertyMask & NEAT_PROPERTY_MESSAGE) ? SOCK_DGRAM : SOCK_STREAM, 0);
+    ctx->resolver->userData1 = (void *)flow;
+    neat_getaddrinfo(ctx->resolver, AF_INET, flow->name, flow->port,
+                     (flow->propertyMask & NEAT_PROPERTY_MESSAGE) ? SOCK_DGRAM : SOCK_STREAM, 0);
     return NEAT_OK;
 }
 
 static neat_error_code
-neat_write_via_kernel(struct neat_ctx *ctx, struct neat_socket *sock,
+neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                       const unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
 {
     *actualAmt = 0;
-    ssize_t rv = send(sock->fd, buffer, amt, 0);
+    ssize_t rv = send(flow->fd, buffer, amt, 0);
     if (rv == -1 && errno == EWOULDBLOCK){
         return NEAT_ERROR_WOULD_BLOCK;
     }
@@ -482,10 +482,10 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_socket *sock,
 }
 
 static neat_error_code
-neat_read_via_kernel(struct neat_ctx *ctx, struct neat_socket *sock,
+neat_read_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                      unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
 {
-    ssize_t rv = recv(sock->fd, buffer, amt, 0);
+    ssize_t rv = recv(flow->fd, buffer, amt, 0);
     if (rv == -1 && errno == EWOULDBLOCK){
         return NEAT_ERROR_WOULD_BLOCK;
     }
@@ -497,70 +497,70 @@ neat_read_via_kernel(struct neat_ctx *ctx, struct neat_socket *sock,
 }
 
 static int
-neat_accept_via_kernel(struct neat_ctx *ctx, struct neat_socket *sock, int fd)
+neat_accept_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, int fd)
 {
     return accept(fd, NULL, NULL);
 }
 
 static int
-neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_socket *sock)
+neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     socklen_t slen =
-        (sock->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
-    sock->fd = socket(sock->family, sock->sockType, sock->sockProtocol);
-    uv_poll_init(ctx->loop, &sock->handle, sock->fd); // makes fd nb as side effect
-    if ((sock->fd == -1) ||
-        (connect(sock->fd, sock->sockAddr, slen) && (errno != EINPROGRESS))) {
+        (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+    flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
+    uv_poll_init(ctx->loop, &flow->handle, flow->fd); // makes fd nb as side effect
+    if ((flow->fd == -1) ||
+        (connect(flow->fd, flow->sockAddr, slen) && (errno != EINPROGRESS))) {
         return -1;
     }
     return 0;
 }
 
 static int
-neat_close_via_kernel(struct neat_ctx *ctx, struct neat_socket *sock)
+neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
-    if (sock->fd != -1) {
+    if (flow->fd != -1) {
         // we might want a fx callback here to split between
         // kernel and userspace.. same for connect read and write
-        close(sock->fd);
+        close(flow->fd);
     }
     return 0;
 }
 
 static int
-neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_socket *sock)
+neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     int enable = 1;
     socklen_t slen =
-        (sock->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
-    sock->fd = socket(sock->family, sock->sockType, sock->sockProtocol);
-    setsockopt(sock->fd, SOL_TCP, TCP_NODELAY, &enable, sizeof(int));
-    setsockopt(sock->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
-    if ((sock->fd == -1) ||
-        (bind(sock->fd, sock->sockAddr, slen) == -1) ||
-        (listen(sock->fd, 100) == -1)) {
+        (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+    flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
+    setsockopt(flow->fd, SOL_TCP, TCP_NODELAY, &enable, sizeof(int));
+    setsockopt(flow->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+    if ((flow->fd == -1) ||
+        (bind(flow->fd, flow->sockAddr, slen) == -1) ||
+        (listen(flow->fd, 100) == -1)) {
         return -1;
     }
     return 0;
 }
 
 neat_error_code
-neat_write(struct neat_ctx *ctx, struct neat_socket *sock,
+neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
            const unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
 {
-    return sock->writefx(ctx, sock, buffer, amt, actualAmt);
+    return flow->writefx(ctx, flow, buffer, amt, actualAmt);
 }
 
 neat_error_code
-neat_read(struct neat_ctx *ctx, struct neat_socket *sock,
+neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
 {
-    return sock->readfx(ctx, sock, buffer, amt, actualAmt);
+    return flow->readfx(ctx, flow, buffer, amt, actualAmt);
 }
 
-neat_socket *neat_new_socket(neat_ctx *mgr)
+neat_flow *neat_new_flow(neat_ctx *mgr)
 {
-    neat_socket *rv = (neat_socket *)calloc (1, sizeof (neat_socket));
+    neat_flow *rv = (neat_flow *)calloc (1, sizeof (neat_flow));
     if (rv) {
         rv->fd = -1;
     }

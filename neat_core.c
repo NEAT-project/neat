@@ -563,13 +563,13 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     neat_flow *rv = (neat_flow *)calloc (1, sizeof (neat_flow));
     if (rv) {
         rv->fd = -1;
+        // defaults
+        rv->writefx = neat_write_via_kernel;
+        rv->readfx = neat_read_via_kernel;
+        rv->acceptfx = neat_accept_via_kernel;
+        rv->connectfx = neat_connect_via_kernel;
+        rv->closefx = neat_close_via_kernel;
+        rv->listenfx = neat_listen_via_kernel;
     }
-    // defaults
-    rv->writefx = neat_write_via_kernel;
-    rv->readfx = neat_read_via_kernel;
-    rv->acceptfx = neat_accept_via_kernel;
-    rv->connectfx = neat_connect_via_kernel;
-    rv->closefx = neat_close_via_kernel;
-    rv->listenfx = neat_listen_via_kernel;
     return rv;
 }

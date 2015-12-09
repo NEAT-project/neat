@@ -22,7 +22,7 @@ wants. A typical first step is to resolve a domain name.
 
 NEAT so far only supports Linux.
 
-### How to compile
+### How to compile and run samples
 
 NEAT depends on the following libraries: libuv and ldns. Also, on Linux, libmnl
 is required. CMake is used to build NEAT. NEAT is compiled with the following

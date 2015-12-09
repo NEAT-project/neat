@@ -28,7 +28,10 @@ NEAT depends on the following libraries: libuv and ldns. Also, on Linux, libmnl
 is required. CMake is used to build NEAT. NEAT is compiled with the following
 commands:
 
-```mkdir build && cd build && cmake -DTARGET_LINUX=1 .. && make```
+```cd build && cmake .. && make```
+This will generate makefiles and compile the library and the samples.
+
+You will find the shared and the static library in the `build` directory and the samples in `build/samples` directory.
 
 In order to install:
 
@@ -36,7 +39,7 @@ In order to install:
 
 Don't forget to run ldconfig after installing neat the first time.
 
-### Dependencies on ubuntu related systems
+#### Dependencies on ubuntu related systems
 ```apt-get install cmake libuv1-dev libldns-dev libmnl-dev```
 
 older ubuntu might have a ppa for libuv1 https://launchpad.net/~cz.nic-labs/+archive/ubuntu/knot-dns

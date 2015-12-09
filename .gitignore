@@ -1,0 +1,4 @@
+
+# ignore build directory - except README.md
+build/*
+!build/README.md

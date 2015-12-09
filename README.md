@@ -28,19 +28,23 @@ NEAT depends on the following libraries: libuv and ldns. Also, on Linux, libmnl
 is required. CMake is used to build NEAT. NEAT is compiled with the following
 commands:
 
-```cd build && cmake .. && make```
+```
+cd build && cmake .. && make
+```
 This will generate makefiles and compile the library and the samples.
-
 You will find the shared and the static library in the `build` directory and the samples in `build/samples` directory.
 
 In order to install:
-
-```sudo make install```
+```
+sudo make install
+```
 
 Don't forget to run ldconfig after installing neat the first time.
 
 #### Dependencies on ubuntu related systems
-```apt-get install cmake libuv1-dev libldns-dev libmnl-dev```
+```
+apt-get install cmake libuv1-dev libldns-dev libmnl-dev
+```
 
 older ubuntu might have a ppa for libuv1 https://launchpad.net/~cz.nic-labs/+archive/ubuntu/knot-dns
 
@@ -66,7 +70,7 @@ well-known internal IPs (ULA or IANA A/B/C). An internal IP is flagged and it is
 (so far) up to the user of NEAT to know if it is safe or not to use this IP.
 
 The best way to look at how to use the resolver is to look at the example file,
-neat_resolver_example.c.
+`neat_resolver_example.c`
 
 ### TODO
 * Read DNS-servers from resolv.conf. This requires us to decide on a generic way

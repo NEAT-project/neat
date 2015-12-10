@@ -29,11 +29,17 @@ NEAT so far only supports Linux.
 * `ldns`
 * `libmnl (linux only)`
 
-For ubuntu based systems install the required libraries with
+#### Ubuntu
+For current systems (>=15.10) use the following command
 ```
 $ apt-get install cmake libuv1-dev libldns-dev libmnl-dev
 ```
-older ubuntu might have a ppa for libuv1 https://launchpad.net/~cz.nic-labs/+archive/ubuntu/knot-dns
+Older ubuntu might have a ppa for libuv1 https://launchpad.net/~cz.nic-labs/+archive/ubuntu/knot-dns
+
+#### FreeBSD
+```
+$ pkg install cmake ldns libuv  
+```
 
 ### Build NEAT and samples
 ```

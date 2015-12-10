@@ -15,6 +15,11 @@
     struct neat_event_cbs* event_cbs; \
     uint8_t src_addr_cnt
 
+#define NEAT_INTERNAL_OS \
+    struct mnl_socket *mnl_sock; \
+    uv_udp_t uv_nl_handle; \
+    char *mnl_rcv_buf
+
 struct neat_event_cb;
 struct neat_addr;
 

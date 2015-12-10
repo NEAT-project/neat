@@ -127,7 +127,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
 #endif
 
     memcpy(&(nsrc_addr->u.generic.addr), src_addr, sizeof(*src_addr));
-    
+
     if (nsrc_addr->family == AF_INET6) {
         nsrc_addr->u.v6.ifa_pref = ifa_pref;
         nsrc_addr->u.v6.ifa_valid = ifa_valid;

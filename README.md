@@ -22,8 +22,7 @@ wants. A typical first step is to resolve a domain name.
 
 NEAT so far only supports Linux.
 
-## Getting started
-
+## Getting started :muscle:
 ### Requirements
 * `cmake`
 * `libuv`
@@ -32,23 +31,23 @@ NEAT so far only supports Linux.
 
 For ubuntu based systems install the required libraries with
 ```
-apt-get install cmake libuv1-dev libldns-dev libmnl-dev
+$ apt-get install cmake libuv1-dev libldns-dev libmnl-dev
 ```
 older ubuntu might have a ppa for libuv1 https://launchpad.net/~cz.nic-labs/+archive/ubuntu/knot-dns
 
 ### Build NEAT and samples
-
 ```
-cd build && cmake .. && make
+$ cd build
+$ cmake ..
+$ make
 ```
 This will generate makefiles and compile the library and the samples.
 You will find the shared and the static library in the `build` directory and the samples in `build/samples` directory.
 
 In order to install:
 ```
-sudo make install
+$ sudo make install
 ```
-
 Don't forget to run ldconfig after installing neat the first time.
 
 
@@ -59,6 +58,11 @@ Don't forget to run ldconfig after installing neat the first time.
 * Implement some form of logging/verbose mode. This is something that we should
   all agree on.
 * Find a platform-independent alternative to ldns.
+
+## Buildbots :fire:
+The [buildbots](http://buildbot.nplab.de:28010/waterfall) are triggered by every commit in every branch. 
+
+If you are only interested in a single branch, just add `?branch=BRANCHNAME` to the URL. http://buildbot.nplab.de:28010/waterfall?branch=master
 
 ## NEAT DNS resolver
 

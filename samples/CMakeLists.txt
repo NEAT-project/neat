@@ -20,9 +20,10 @@ LIST(APPEND neat_PROGRAMS_LIBS
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     LIST(APPEND neat_PROGRAMS_LIBS mnl)
 
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+    link_directories("/usr/local/lib/")
 endif()
 
-link_directories("/usr/local/lib/")
 
 # BUILD EACH SAMPLE
 #################################################

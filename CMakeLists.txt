@@ -59,9 +59,11 @@ if(NOT HAVE_SYS_LDNS_H)
 	message(FATAL_ERROR "ldns/ldns.h not found - libdns installed?")
 endif()
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 check_include_file(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
-if(NOT HAVE_SYS_LIBMNL_H AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+if(NOT HAVE_SYS_LIBMNL_H)
 	message(FATAL_ERROR "libmnl/libmnl.h not found - libmnl installed?")
+endif()
 endif()
 
 

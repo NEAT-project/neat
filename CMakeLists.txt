@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 2.6)
 project(neat)
 include(CheckIncludeFile)
 
+
+
 # SOURCES, HEADERS, LIBS
 #################################################
 LIST(APPEND neat_HEADERS
@@ -32,8 +34,17 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     LIST(APPEND neat_LIBS mnl)
     set(LIB_DIR "/usr/local/lib")
     set(HDR_DIR "/usr/local/include/neat")
+    
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+    message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
+    set(LIB_DIR "/usr/local/lib")
+    set(HDR_DIR "/usr/local/include/neat")
+    set(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
+    include_directories("/usr/local/include")
+
 else()
-    message(FATAL_ERROR ${CMAKE_SYSTEM_NAME} " not supported (yet)")
+    message(FATAL_ERROR ${CMAKE_SYSTEM_NAME} " not supported (yet?)")
+
 endif()
 
 # REQUIREMENTS
@@ -43,14 +54,14 @@ if(NOT HAVE_SYS_UV_H)
 	message(FATAL_ERROR "uv.h not not found - libuv installed?")
 endif()
 
-check_include_file(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
-if(NOT HAVE_SYS_LIBMNL_H)
-	message(FATAL_ERROR "libmnl/libmnl.h not found - libmnl installed?")
-endif()
-
 check_include_file(ldns/ldns.h HAVE_SYS_LDNS_H)
 if(NOT HAVE_SYS_LDNS_H)
 	message(FATAL_ERROR "ldns/ldns.h not found - libdns installed?")
+endif()
+
+check_include_file(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
+if(NOT HAVE_SYS_LIBMNL_H AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+	message(FATAL_ERROR "libmnl/libmnl.h not found - libmnl installed?")
 endif()
 
 

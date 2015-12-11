@@ -42,6 +42,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     set(HDR_DIR "/usr/local/include/neat")
     set(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
     include_directories("/usr/local/include")
+    link_directories("/usr/local/lib")
 
 else()
     message(FATAL_ERROR ${CMAKE_SYSTEM_NAME} " not supported (yet?)")

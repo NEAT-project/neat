@@ -534,7 +534,11 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
     flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
+#ifdef __linux__
     setsockopt(flow->fd, SOL_TCP, TCP_NODELAY, &enable, sizeof(int));
+#else
+    setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+#endif
     setsockopt(flow->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     if ((flow->fd == -1) ||
         (bind(flow->fd, flow->sockAddr, slen) == -1) ||

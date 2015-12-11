@@ -106,6 +106,10 @@ int main(int argc, char *argv[])
     struct neat_ctx *ctx = neat_init_ctx();
     struct neat_flow *flow;
 
+    if (ctx == NULL) {
+        fprintf(stderr, "could not initialize context\n");
+        exit(EXIT_FAILURE);
+    }
     flow = neat_new_flow(ctx);
     ops.on_connected = on_connected;
     ops.on_error = on_error;
@@ -117,5 +121,5 @@ int main(int argc, char *argv[])
 
     neat_free_flow(flow);
     neat_free_ctx(ctx);
-    return 0;
+    exit(EXIT_SUCCESS);
 }

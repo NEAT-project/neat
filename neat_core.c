@@ -13,6 +13,9 @@
 #ifdef __linux__
     #include "neat_linux_internal.h"
 #endif
+#ifdef __FreeBSD__
+    #include "neat_freebsd_internal.h"
+#endif
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
@@ -32,8 +35,10 @@ struct neat_ctx *neat_init_ctx()
     uv_loop_init(nc->loop);
     LIST_INIT(&(nc->src_addrs));
 
-#ifdef __linux__
+#if defined(__linux__)
     return neat_linux_init_ctx(nc);
+#elif defined(__FreeBSD__)
+    return neat_freebsd_init_ctx(nc);
 #else
     uv_loop_close(nc->loop);
     free(nc->loop);

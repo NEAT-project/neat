@@ -8,6 +8,9 @@
 #ifdef __linux__
     #include "neat_linux.h"
 #endif
+#ifdef __FreeBSD__
+    #include "neat_freebsd.h"
+#endif
 
 #define NEAT_INTERNAL_CTX \
     void (*cleanup)(struct neat_ctx *nc); \

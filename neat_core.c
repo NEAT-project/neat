@@ -25,6 +25,7 @@ struct neat_ctx *neat_init_ctx()
     nc->loop = malloc(sizeof(uv_loop_t));
 
     if (nc->loop == NULL) {
+        free(nc);
         return NULL;
     }
 
@@ -34,6 +35,9 @@ struct neat_ctx *neat_init_ctx()
 #ifdef __linux__
     return neat_linux_init_ctx(nc);
 #else
+    uv_loop_close(nc->loop);
+    free(nc->loop);
+    free(nc);
     return NULL;
 #endif
 }

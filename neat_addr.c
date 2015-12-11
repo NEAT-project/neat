@@ -41,10 +41,17 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
 uint8_t neat_addr_cmp_ip6_addr(struct in6_addr aAddr,
                                struct in6_addr aAddr2)
 {
+#ifdef __FreeBSD__
+    return aAddr.__u6_addr.__u6_addr32[0] == aAddr2.__u6_addr.__u6_addr32[0] &&
+           aAddr.__u6_addr.__u6_addr32[1] == aAddr2.__u6_addr.__u6_addr32[1] &&
+           aAddr.__u6_addr.__u6_addr32[2] == aAddr2.__u6_addr.__u6_addr32[2] &&
+           aAddr.__u6_addr.__u6_addr32[3] == aAddr2.__u6_addr.__u6_addr32[3];
+#else
     return aAddr.s6_addr32[0] == aAddr2.s6_addr32[0] &&
            aAddr.s6_addr32[1] == aAddr2.s6_addr32[1] &&
            aAddr.s6_addr32[2] == aAddr2.s6_addr32[2] &&
            aAddr.s6_addr32[3] == aAddr2.s6_addr32[3];
+#endif
 }
 
 //Add/remove/update a source address based on information received from OS

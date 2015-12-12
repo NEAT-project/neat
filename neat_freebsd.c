@@ -1,9 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
+#include <ifaddrs.h>
 #include <net/if.h>
 #include <net/if_dl.h>
-#include <ifaddrs.h>
+#include <net/route.h>
 
 #include "neat.h"
 #include "neat_internal.h"
@@ -70,14 +73,120 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
     freeifaddrs(ifp);
 }
 
+#define NEAT_ROUTE_BUFFER_SIZE 8192
+
+static void neat_freebsd_route_alloc(uv_handle_t *handle,
+                                     size_t suggested_size,
+                                     uv_buf_t *buf)
+{
+    struct neat_ctx *ctx;
+
+    ctx = handle->data;
+    memset(ctx->route_buf, 0, NEAT_ROUTE_BUFFER_SIZE);
+    buf->base = ctx->route_buf;
+    buf->len = NEAT_ROUTE_BUFFER_SIZE;
+}
+
+#define ROUNDUP(a, size) (((a) & ((size)-1)) ? (1 + ((a) | ((size)-1))) : (a))
+#define NEXT_SA(ap) ap = (struct sockaddr *) \
+        ((caddr_t) ap + (ap->sa_len ? ROUNDUP(ap->sa_len, sizeof (uint32_t)) : sizeof(uint32_t)))
+
+static void neat_freebsd_get_rtaddrs(int addrs,
+                                     struct sockaddr *sa,
+                                     struct sockaddr **rti_info)
+{
+    int i;
+
+    for (i = 0; i < RTAX_MAX; i++) {
+        if (addrs & (1 << i)) {
+            rti_info[i] = sa;
+                NEXT_SA(sa);
+        } else {
+            rti_info[i] = NULL;
+        }
+    }
+}
+
+static void neat_freebsd_route_recv(uv_udp_t *handle,
+                                    ssize_t nread,
+                                    const uv_buf_t *buf,
+                                    const struct sockaddr *addr,
+                                    unsigned int flags)
+{
+    struct neat_ctx *ctx;
+    struct ifa_msghdr *ifa;
+    struct sockaddr *sa, *rti_info[RTAX_MAX];
+
+    ctx = (struct neat_ctx *)handle->data;
+    ifa = (struct ifa_msghdr *)buf->base;
+    if ((ifa->ifam_type != RTM_NEWADDR) && (ifa->ifam_type != RTM_DELADDR)) {
+        return;
+    }
+    sa = (struct sockaddr *) (ifa + 1);
+    neat_freebsd_get_rtaddrs(ifa->ifam_addrs, sa, rti_info);
+    neat_addr_update_src_list(ctx,
+                              (struct sockaddr_storage *)rti_info[RTAX_IFA],
+                              ifa->ifam_index,
+                              ifa->ifam_type == RTM_NEWADDR ? 1 : 0,
+                              0,  /* XXX: ifa_pref */
+                              0); /* XXX: ifa_valid */
+}
+
 static void neat_freebsd_cleanup(struct neat_ctx *ctx)
 {
+    if (ctx->route_fd >= 0) {
+        close(ctx->route_fd);
+    }
+    free(ctx->route_buf);
     return;
 }
 
 struct neat_ctx *neat_freebsd_init_ctx(struct neat_ctx *ctx)
 {
-    neat_freebsd_get_addresses(ctx);
+    int ret;
+
+    ctx->route_fd = -1;
+    ctx->route_buf = NULL;
     ctx->cleanup = neat_freebsd_cleanup;
+
+    if ((ctx->route_buf = malloc(NEAT_ROUTE_BUFFER_SIZE)) == NULL) {
+        fprintf(stderr,
+                "neat_freebsd_init_ctx: can't allocate buffer\n");
+        neat_free_ctx(ctx);
+        return NULL;
+    }
+    if ((ctx->route_fd = socket(AF_ROUTE, SOCK_RAW, 0)) < 0) {
+        fprintf(stderr,
+                "neat_freebsd_init_ctx: can't open routing socket (%s)\n",
+                strerror(errno));
+        neat_free_ctx(ctx);
+        return NULL;
+    }
+    /* routing sockets can be handled like UDP sockets by uv */
+    if ((ret = uv_udp_init(ctx->loop, &(ctx->uv_route_handle))) < 0) {
+        fprintf(stderr,
+                "neat_freebsd_init_ctx: can't initialize routing handle (%s)\n",
+                uv_strerror(ret));
+        neat_free_ctx(ctx);
+        return NULL;
+    }
+    ctx->uv_route_handle.data = ctx;
+    if ((ret = uv_udp_open(&(ctx->uv_route_handle), ctx->route_fd)) < 0) {
+        fprintf(stderr,
+                "neat_freebsd_init_ctx: can't add routing handle (%s)\n",
+                uv_strerror(ret));
+        neat_free_ctx(ctx);
+        return NULL;
+    }
+    if ((ret = uv_udp_recv_start(&(ctx->uv_route_handle),
+                                 neat_freebsd_route_alloc,
+                                 neat_freebsd_route_recv)) < 0) {
+        fprintf(stderr,
+                "neat_freebsd_init_ctx: can't start receiving route changes (%s)\n",
+                uv_strerror(ret));
+        neat_free_ctx(ctx);
+        return NULL;
+    }
+    neat_freebsd_get_addresses(ctx);
     return ctx;
 }

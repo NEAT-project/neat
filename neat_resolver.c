@@ -189,9 +189,7 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
             result->ai_family = pair_itr->src_addr->family;
             result->ai_socktype = resolver->ai_socktype;
             result->ai_protocol = resolver->ai_protocol;
-#ifdef __linux__
             result->if_idx = pair_itr->src_addr->if_idx;
-#endif
             result->src_addr = pair_itr->src_addr->u.generic.addr;
             result->src_addr_len = addrlen;
             result->dst_addr = pair_itr->resolved_addr[i];

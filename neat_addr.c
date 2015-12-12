@@ -79,10 +79,8 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
         if (nsrc_addr->family != src_addr->ss_family)
             continue;
 
-#ifdef __linux__
         if (nsrc_addr->if_idx != if_idx)
             continue;
-#endif
 
         if (src_addr->ss_family == AF_INET) {
             org_addr4 = (struct sockaddr_in*) &(nsrc_addr->u.v4.addr4);
@@ -129,9 +127,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
     }
 
     nsrc_addr->family = src_addr->ss_family;
-#ifdef __linux__
     nsrc_addr->if_idx = if_idx;
-#endif
 
     memcpy(&(nsrc_addr->u.generic.addr), src_addr, sizeof(*src_addr));
     

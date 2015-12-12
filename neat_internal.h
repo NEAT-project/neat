@@ -111,9 +111,7 @@ struct neat_resolver_res {
     int32_t ai_family;
     int32_t ai_socktype;
     int32_t ai_protocol;
-#ifdef __linux__
     uint32_t if_idx;
-#endif
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len;
     struct sockaddr_storage dst_addr;

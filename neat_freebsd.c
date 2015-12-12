@@ -144,7 +144,8 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
     }
     sa = (struct sockaddr *) (ifa + 1);
     neat_freebsd_get_rtaddrs(ifa->ifam_addrs, sa, rti_info);
-    if (rti_info[RTAX_IFA]->sa_family == AF_INET) {
+    if ((rti_info[RTAX_IFA]->sa_family == AF_INET) ||
+        (ifa->ifam_type == RTM_DELADDR)) {
         preferred_lifetime = 0;
         valid_lifetime = 0;
     } else {
@@ -158,12 +159,13 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
         memcpy(&ifr6.ifr_addr, rti_info[RTAX_IFA], sizeof(struct sockaddr_in6));
         if (ioctl(ctx->udp6_fd, SIOCGIFALIFETIME_IN6, &ifr6) < 0) {
             fprintf(stderr,
-                    "neat_freebsd_get_addresses: can't determine lifetime of address\n");
+                    "neat_freebsd_get_addresses: can't determine lifetime of address (%s)\n",
+                    strerror(errno));
             return;
         }
         preferred_lifetime = ifr6.ifr_ifru.ifru_lifetime.ia6t_pltime;
         valid_lifetime = ifr6.ifr_ifru.ifru_lifetime.ia6t_vltime;
-        }
+    }
     neat_addr_update_src_list(ctx,
                               (struct sockaddr_storage *)rti_info[RTAX_IFA],
                               ifa->ifam_index,

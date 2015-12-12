@@ -7,6 +7,8 @@
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/route.h>
+#include <netinet/in.h>
+#include <netinet/in_var.h>
 
 #include "neat.h"
 #include "neat_internal.h"
@@ -15,9 +17,11 @@
 static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
 {
     struct ifaddrs *ifp, *ifa;
+    struct in6_ifreq ifr6;
     struct sockaddr_dl *sdl;
     char *cached_ifname;
     unsigned short cached_ifindex;
+    uint32_t preferred_lifetime, valid_lifetime;
 
     if (getifaddrs(&ifp) < 0) {
         fprintf(stderr,
@@ -63,12 +67,25 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
                 continue;
             }
         }
+        if (ifa->ifa_addr->sa_family == AF_INET) {
+            preferred_lifetime = 0;
+            valid_lifetime = 0;
+        } else {
+            strncpy(ifr6.ifr_name, cached_ifname, IF_NAMESIZE);
+            memcpy(&ifr6.ifr_addr, ifa->ifa_addr, sizeof(struct sockaddr_in6));
+            if (ioctl(ctx->udp6_fd, SIOCGIFALIFETIME_IN6, &ifr6) < 0) {
+                fprintf(stderr,
+                        "neat_freebsd_get_addresses: can't determine lifetime of address\n");
+            }
+            preferred_lifetime = ifr6.ifr_ifru.ifru_lifetime.ia6t_pltime;
+            valid_lifetime = ifr6.ifr_ifru.ifru_lifetime.ia6t_vltime;
+        }
         neat_addr_update_src_list(ctx,
                                   (struct sockaddr_storage *)ifa->ifa_addr,
                                   cached_ifindex,
                                   1,
-                                  0,  /* XXX: ifa_pref */
-                                  0); /* XXX: ifa_valid */
+                                  preferred_lifetime,
+                                  valid_lifetime);
     }
     freeifaddrs(ifp);
 }
@@ -115,7 +132,10 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
 {
     struct neat_ctx *ctx;
     struct ifa_msghdr *ifa;
+    struct in6_ifreq ifr6;
     struct sockaddr *sa, *rti_info[RTAX_MAX];
+    char if_name[IF_NAMESIZE];
+    uint32_t preferred_lifetime, valid_lifetime;
 
     ctx = (struct neat_ctx *)handle->data;
     ifa = (struct ifa_msghdr *)buf->base;
@@ -124,18 +144,41 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
     }
     sa = (struct sockaddr *) (ifa + 1);
     neat_freebsd_get_rtaddrs(ifa->ifam_addrs, sa, rti_info);
+    if (rti_info[RTAX_IFA]->sa_family == AF_INET) {
+        preferred_lifetime = 0;
+        valid_lifetime = 0;
+    } else {
+        if (if_indextoname(ifa->ifam_index, if_name) == NULL) {
+            fprintf(stderr,
+                    "neat_freebsd_get_addresses: can't determine name of interface with index %u\n",
+                    ifa->ifam_index);
+            return;
+        }
+        strncpy(ifr6.ifr_name, if_name, IF_NAMESIZE);
+        memcpy(&ifr6.ifr_addr, rti_info[RTAX_IFA], sizeof(struct sockaddr_in6));
+        if (ioctl(ctx->udp6_fd, SIOCGIFALIFETIME_IN6, &ifr6) < 0) {
+            fprintf(stderr,
+                    "neat_freebsd_get_addresses: can't determine lifetime of address\n");
+            return;
+        }
+        preferred_lifetime = ifr6.ifr_ifru.ifru_lifetime.ia6t_pltime;
+        valid_lifetime = ifr6.ifr_ifru.ifru_lifetime.ia6t_vltime;
+        }
     neat_addr_update_src_list(ctx,
                               (struct sockaddr_storage *)rti_info[RTAX_IFA],
                               ifa->ifam_index,
                               ifa->ifam_type == RTM_NEWADDR ? 1 : 0,
-                              0,  /* XXX: ifa_pref */
-                              0); /* XXX: ifa_valid */
+                              preferred_lifetime,
+                              valid_lifetime);
 }
 
 static void neat_freebsd_cleanup(struct neat_ctx *ctx)
 {
     if (ctx->route_fd >= 0) {
         close(ctx->route_fd);
+    }
+    if (ctx->udp6_fd >= 0) {
+        close(ctx->udp6_fd);
     }
     free(ctx->route_buf);
     return;
@@ -149,6 +192,11 @@ struct neat_ctx *neat_freebsd_init_ctx(struct neat_ctx *ctx)
     ctx->route_buf = NULL;
     ctx->cleanup = neat_freebsd_cleanup;
 
+    if ((ctx->udp6_fd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
+        fprintf(stderr,
+                "neat_freebsd_init_ctx: can't open UDP/IPv6 socket (%s)\n",
+                strerror(errno));
+    }
     if ((ctx->route_buf = malloc(NEAT_ROUTE_BUFFER_SIZE)) == NULL) {
         fprintf(stderr,
                 "neat_freebsd_init_ctx: can't allocate buffer\n");

@@ -41,10 +41,17 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
 uint8_t neat_addr_cmp_ip6_addr(struct in6_addr aAddr,
                                struct in6_addr aAddr2)
 {
+#ifdef __FreeBSD__
+    return aAddr.__u6_addr.__u6_addr32[0] == aAddr2.__u6_addr.__u6_addr32[0] &&
+           aAddr.__u6_addr.__u6_addr32[1] == aAddr2.__u6_addr.__u6_addr32[1] &&
+           aAddr.__u6_addr.__u6_addr32[2] == aAddr2.__u6_addr.__u6_addr32[2] &&
+           aAddr.__u6_addr.__u6_addr32[3] == aAddr2.__u6_addr.__u6_addr32[3];
+#else
     return aAddr.s6_addr32[0] == aAddr2.s6_addr32[0] &&
            aAddr.s6_addr32[1] == aAddr2.s6_addr32[1] &&
            aAddr.s6_addr32[2] == aAddr2.s6_addr32[2] &&
            aAddr.s6_addr32[3] == aAddr2.s6_addr32[3];
+#endif
 }
 
 //Add/remove/update a source address based on information received from OS
@@ -72,10 +79,8 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
         if (nsrc_addr->family != src_addr->ss_family)
             continue;
 
-#ifdef __linux__
         if (nsrc_addr->if_idx != if_idx)
             continue;
-#endif
 
         if (src_addr->ss_family == AF_INET) {
             org_addr4 = (struct sockaddr_in*) &(nsrc_addr->u.v4.addr4);
@@ -122,9 +127,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
     }
 
     nsrc_addr->family = src_addr->ss_family;
-#ifdef __linux__
     nsrc_addr->if_idx = if_idx;
-#endif
 
     memcpy(&(nsrc_addr->u.generic.addr), src_addr, sizeof(*src_addr));
     

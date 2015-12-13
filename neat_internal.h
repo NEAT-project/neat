@@ -8,6 +8,9 @@
 #ifdef __linux__
     #include "neat_linux.h"
 #endif
+#ifdef __FreeBSD__
+    #include "neat_freebsd.h"
+#endif
 
 #define NEAT_INTERNAL_CTX \
     void (*cleanup)(struct neat_ctx *nc); \
@@ -108,9 +111,7 @@ struct neat_resolver_res {
     int32_t ai_family;
     int32_t ai_socktype;
     int32_t ai_protocol;
-#ifdef __linux__
     uint32_t if_idx;
-#endif
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len;
     struct sockaddr_storage dst_addr;

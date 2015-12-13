@@ -37,10 +37,13 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
+    LIST(APPEND neat_HEADERS neat_freebsd.h)
+    LIST(APPEND neat_SOURCES neat_freebsd.c)
     set(LIB_DIR "/usr/local/lib")
     set(HDR_DIR "/usr/local/include/neat")
     set(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
     include_directories("/usr/local/include")
+    link_directories("/usr/local/lib")
 
 else()
     message(FATAL_ERROR ${CMAKE_SYSTEM_NAME} " not supported (yet?)")

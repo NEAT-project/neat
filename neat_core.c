@@ -13,6 +13,9 @@
 #ifdef __linux__
     #include "neat_linux_internal.h"
 #endif
+#ifdef __FreeBSD__
+    #include "neat_freebsd_internal.h"
+#endif
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
@@ -25,15 +28,21 @@ struct neat_ctx *neat_init_ctx()
     nc->loop = malloc(sizeof(uv_loop_t));
 
     if (nc->loop == NULL) {
+        free(nc);
         return NULL;
     }
 
     uv_loop_init(nc->loop);
     LIST_INIT(&(nc->src_addrs));
 
-#ifdef __linux__
+#if defined(__linux__)
     return neat_linux_init_ctx(nc);
+#elif defined(__FreeBSD__)
+    return neat_freebsd_init_ctx(nc);
 #else
+    uv_loop_close(nc->loop);
+    free(nc->loop);
+    free(nc);
     return NULL;
 #endif
 }
@@ -534,7 +543,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
     flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
-    setsockopt(flow->fd, SOL_TCP, TCP_NODELAY, &enable, sizeof(int));
+    setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
     setsockopt(flow->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     if ((flow->fd == -1) ||
         (bind(flow->fd, flow->sockAddr, slen) == -1) ||

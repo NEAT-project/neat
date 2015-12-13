@@ -86,6 +86,10 @@ int main(int argc, char *argv[])
     struct neat_flow *flow;
     uint64_t prop;
 
+    if (ctx == NULL) {
+        fprintf(stderr, "could not initialize context\n");
+        exit(EXIT_FAILURE);
+    }
     towrite = strlen(request);
     flow = neat_new_flow(ctx);
     neat_get_property(ctx, flow, &prop);
@@ -102,5 +106,5 @@ int main(int argc, char *argv[])
 
     neat_free_flow(flow);
     neat_free_ctx(ctx);
-    return 0;
+    exit(EXIT_SUCCESS);
 }

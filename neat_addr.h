@@ -14,10 +14,7 @@
 struct neat_ctx;
 
 struct neat_addr {
-    //It seems windows only supports binding to src address, not interface
-#ifdef __linux__
     uint32_t if_idx;
-#endif
     union {
         struct {
             struct sockaddr_storage addr;

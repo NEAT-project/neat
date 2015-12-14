@@ -141,3 +141,46 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
     neat_run_event_cb(nc, NEAT_NEWADDR, nsrc_addr);
     //neat_addr_print_src_addrs(nc);
 }
+
+void neat_addr_lifetime_timeout_cb(uv_timer_t *handle)
+{
+    struct neat_ctx *nc;
+    struct neat_addr *addr;
+    int notify;
+
+    nc = (struct neat_ctx *)handle->data;
+    LIST_FOREACH(addr, &(nc->src_addrs), next_addr) {
+        notify = 0;
+        if (addr->family != AF_INET6) {
+            continue;
+        }
+        if (addr->u.v6.ifa_pref != NEAT_UNLIMITED_LIFETIME) {
+            if (addr->u.v6.ifa_pref > 0) {
+                if (addr->u.v6.ifa_pref >= nc->addr_lifetime_timeout / 1000) {
+                    addr->u.v6.ifa_pref -= nc->addr_lifetime_timeout / 1000;
+                } else {
+                    addr->u.v6.ifa_pref = 0;
+                }
+                if (addr->u.v6.ifa_pref == 0) {
+                    notify = 1;
+                }
+            }
+        }
+        if (addr->u.v6.ifa_valid != NEAT_UNLIMITED_LIFETIME) {
+            if (addr->u.v6.ifa_valid > 0) {
+                if (addr->u.v6.ifa_valid >= nc->addr_lifetime_timeout / 1000) {
+                    addr->u.v6.ifa_valid -= nc->addr_lifetime_timeout / 1000;
+                } else {
+                    addr->u.v6.ifa_valid = 0;
+                }
+                if (addr->u.v6.ifa_valid == 0) {
+                    notify = 1;
+                }
+            }
+        }
+        if (notify) {
+            neat_run_event_cb(nc, NEAT_UPDATEADDR, addr);
+        }
+    }
+    //neat_addr_print_src_addrs(nc);
+}

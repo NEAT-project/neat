@@ -9,6 +9,8 @@
 #include "neat_internal.h"
 #include "neat_core.h"
 #include "neat_queue.h"
+#include "neat_addr.h"
+#include "neat_queue.h"
 
 #ifdef __linux__
     #include "neat_linux_internal.h"
@@ -34,6 +36,14 @@ struct neat_ctx *neat_init_ctx()
 
     uv_loop_init(nc->loop);
     LIST_INIT(&(nc->src_addrs));
+
+    nc->addr_lifetime_timeout = 1000; /* every second */
+    uv_timer_init(nc->loop, &(nc->addr_lifetime_handle));
+    nc->addr_lifetime_handle.data = nc;
+    uv_timer_start(&(nc->addr_lifetime_handle),
+                   neat_addr_lifetime_timeout_cb,
+                   nc->addr_lifetime_timeout,
+                   nc->addr_lifetime_timeout);
 
 #if defined(__linux__)
     return neat_linux_init_ctx(nc);

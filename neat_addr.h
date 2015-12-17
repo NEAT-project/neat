@@ -12,6 +12,7 @@
 #include "neat_queue.h"
 
 #define NEAT_UNLIMITED_LIFETIME 0xffffffff
+#define NEAT_ADDRESS_LIFETIME_TIMEOUT 1
 
 struct neat_ctx;
 

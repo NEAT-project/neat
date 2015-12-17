@@ -40,7 +40,6 @@ struct neat_ctx {
     struct neat_pib pib;
     struct neat_cib cib;
     uv_timer_t addr_lifetime_handle;
-    uint64_t addr_lifetime_timeout;
 
     // resolver
     NEAT_INTERNAL_CTX;

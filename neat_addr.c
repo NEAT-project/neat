@@ -146,19 +146,17 @@ void neat_addr_lifetime_timeout_cb(uv_timer_t *handle)
 {
     struct neat_ctx *nc;
     struct neat_addr *addr;
-    uint64_t timeout;
     int notify;
 
     nc = (struct neat_ctx *)handle->data;
-    timeout = nc->addr_lifetime_timeout / 1000;
     LIST_FOREACH(addr, &(nc->src_addrs), next_addr) {
         notify = 0;
         if (addr->family != AF_INET6)
             continue;
         if (addr->u.v6.ifa_pref != NEAT_UNLIMITED_LIFETIME)
             if (addr->u.v6.ifa_pref > 0) {
-                if (addr->u.v6.ifa_pref >= timeout)
-                    addr->u.v6.ifa_pref -= timeout;
+                if (addr->u.v6.ifa_pref >= NEAT_ADDRESS_LIFETIME_TIMEOUT)
+                    addr->u.v6.ifa_pref -= NEAT_ADDRESS_LIFETIME_TIMEOUT;
                 else
                     addr->u.v6.ifa_pref = 0;
                 if (addr->u.v6.ifa_pref == 0)
@@ -166,8 +164,8 @@ void neat_addr_lifetime_timeout_cb(uv_timer_t *handle)
             }
         if (addr->u.v6.ifa_valid != NEAT_UNLIMITED_LIFETIME)
             if (addr->u.v6.ifa_valid > 0) {
-                if (addr->u.v6.ifa_valid >= timeout)
-                    addr->u.v6.ifa_valid -= timeout;
+                if (addr->u.v6.ifa_valid >= NEAT_ADDRESS_LIFETIME_TIMEOUT)
+                    addr->u.v6.ifa_valid -= NEAT_ADDRESS_LIFETIME_TIMEOUT;
                 else
                     addr->u.v6.ifa_valid = 0;
                 if (addr->u.v6.ifa_valid == 0)

@@ -22,6 +22,8 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
     struct sockaddr_dl *sdl;
     char *cached_ifname;
     unsigned short cached_ifindex;
+    struct timespec now;
+    struct in6_addrlifetime *lifetime;
     uint32_t preferred_lifetime, valid_lifetime;
 
     if (getifaddrs(&ifp) < 0) {
@@ -30,6 +32,7 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
                 strerror(errno));
         return;
     }
+    clock_gettime(CLOCK_MONOTONIC_FAST, &now);
     for (ifa = ifp; ifa != NULL; ifa = ifa->ifa_next) {
         /*
          * FreeBSD reports the interface index as part of the AF_LINK address.
@@ -72,14 +75,27 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
             preferred_lifetime = 0;
             valid_lifetime = 0;
         } else {
+            lifetime = &ifr6.ifr_ifru.ifru_lifetime;
             strncpy(ifr6.ifr_name, cached_ifname, IF_NAMESIZE);
             memcpy(&ifr6.ifr_addr, ifa->ifa_addr, sizeof(struct sockaddr_in6));
             if (ioctl(ctx->udp6_fd, SIOCGIFALIFETIME_IN6, &ifr6) < 0) {
                 fprintf(stderr,
                         "neat_freebsd_get_addresses: can't determine lifetime of address\n");
             }
-            preferred_lifetime = ifr6.ifr_ifru.ifru_lifetime.ia6t_pltime;
-            valid_lifetime = ifr6.ifr_ifru.ifru_lifetime.ia6t_vltime;
+            if (lifetime->ia6t_preferred == 0) {
+                preferred_lifetime = NEAT_UNLIMITED_LIFETIME;
+            } else if (lifetime->ia6t_preferred > now.tv_sec) {
+                preferred_lifetime = lifetime->ia6t_preferred - now.tv_sec;
+            } else {
+                preferred_lifetime = 0;
+            }
+            if (lifetime->ia6t_expire == 0) {
+                valid_lifetime = NEAT_UNLIMITED_LIFETIME;
+            } else if (lifetime->ia6t_expire > now.tv_sec) {
+                valid_lifetime = lifetime->ia6t_expire - now.tv_sec;
+            } else {
+                valid_lifetime = 0;
+            }
         }
         neat_addr_update_src_list(ctx,
                                   (struct sockaddr_storage *)ifa->ifa_addr,
@@ -136,6 +152,10 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
     struct in6_ifreq ifr6;
     struct sockaddr *sa, *rti_info[RTAX_MAX];
     char if_name[IF_NAMESIZE];
+    char addr_str_buf[INET6_ADDRSTRLEN];
+    const char *addr_str;
+    struct timespec now;
+    struct in6_addrlifetime *lifetime;
     uint32_t preferred_lifetime, valid_lifetime;
 
     ctx = (struct neat_ctx *)handle->data;
@@ -156,16 +176,32 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
                     ifa->ifam_index);
             return;
         }
+        lifetime = &ifr6.ifr_ifru.ifru_lifetime;
         strncpy(ifr6.ifr_name, if_name, IF_NAMESIZE);
         memcpy(&ifr6.ifr_addr, rti_info[RTAX_IFA], sizeof(struct sockaddr_in6));
+        memset(lifetime, 0, sizeof(struct in6_addrlifetime));
         if (ioctl(ctx->udp6_fd, SIOCGIFALIFETIME_IN6, &ifr6) < 0) {
+            addr_str = inet_ntop(AF_INET6, rti_info[RTAX_IFA], addr_str_buf, INET6_ADDRSTRLEN);
             fprintf(stderr,
-                    "neat_freebsd_get_addresses: can't determine lifetime of address (%s)\n",
-                    strerror(errno));
+                    "neat_freebsd_get_addresses: can't determine lifetime of address %s (%s)\n",
+                    addr_str ? addr_str : "Invalid IPv6 address", strerror(errno));
             return;
         }
-        preferred_lifetime = ifr6.ifr_ifru.ifru_lifetime.ia6t_pltime;
-        valid_lifetime = ifr6.ifr_ifru.ifru_lifetime.ia6t_vltime;
+        clock_gettime(CLOCK_MONOTONIC_FAST, &now);
+        if (lifetime->ia6t_preferred == 0) {
+            preferred_lifetime = NEAT_UNLIMITED_LIFETIME;
+        } else if (lifetime->ia6t_preferred > now.tv_sec) {
+            preferred_lifetime = lifetime->ia6t_preferred - now.tv_sec;
+        } else {
+            preferred_lifetime = 0;
+        }
+        if (lifetime->ia6t_expire == 0) {
+            valid_lifetime = NEAT_UNLIMITED_LIFETIME;
+        } else if (lifetime->ia6t_expire > now.tv_sec) {
+             valid_lifetime = lifetime->ia6t_expire - now.tv_sec;
+        } else {
+            valid_lifetime = 0;
+        }
     }
     neat_addr_update_src_list(ctx,
                               (struct sockaddr_storage *)rti_info[RTAX_IFA],

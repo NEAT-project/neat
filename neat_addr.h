@@ -12,6 +12,7 @@
 #include "neat_queue.h"
 
 #define NEAT_UNLIMITED_LIFETIME 0xffffffff
+#define NEAT_ADDRESS_LIFETIME_TIMEOUT 1
 
 struct neat_ctx;
 
@@ -46,4 +47,6 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
 //Utility function for comparing two v6 addresses
 uint8_t neat_addr_cmp_ip6_addr(struct in6_addr aAddr,
                                struct in6_addr aAddr2);
+
+void neat_addr_lifetime_timeout_cb(uv_timer_t *handle);
 #endif

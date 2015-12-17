@@ -11,6 +11,8 @@
 
 #include "neat_queue.h"
 
+#define NEAT_UNLIMITED_LIFETIME 0xffffffff
+
 struct neat_ctx;
 
 struct neat_addr {

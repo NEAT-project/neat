@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 
     // wait for on_connected or on_error to be invoked
     neat_open(ctx, flow, "bsd10.fh-muenster.de", "80");
-    neat_start_event_loop(ctx);
+    neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
     neat_free_flow(flow);
     neat_free_ctx(ctx);

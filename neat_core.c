@@ -396,6 +396,18 @@ open_he_callback(neat_ctx *ctx, neat_flow *flow,
         goto cleanup;
     }
 
+    if ((flow->propertyMask & NEAT_PROPERTY_SCTP_BANNED) &&
+        (flow->sockProtocol == IPPROTO_SCTP)) {
+        io_error(ctx, flow, NEAT_ERROR_UNABLE);
+        goto cleanup;
+    }
+
+    if ((flow->propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) &&
+        (flow->sockProtocol != IPPROTO_SCTP)) {
+        io_error(ctx, flow, NEAT_ERROR_UNABLE);
+        goto cleanup;
+    }
+
     // io callbacks take over now
     flow->ctx = ctx;
     flow->handle.data = flow;

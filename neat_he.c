@@ -30,7 +30,7 @@ static void he_print_results(struct neat_resolver_results *results)
         }
         switch (result->ai_family) {
         case AF_INET:
-            fprintf(stderr, "IPv4/");
+            fprintf(stderr, "IPv4");
             break;
         case AF_INET6:
             fprintf(stderr, "IPv6");

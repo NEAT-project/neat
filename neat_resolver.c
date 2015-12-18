@@ -138,6 +138,94 @@ static uint8_t neat_resolver_addr_internal(struct sockaddr_storage *addr)
         return 0;
 }
 
+//This timeout is used when we "resolve" a literal. It works slightly different
+//than the normal resolver timeout function. We just iterate through source
+//addresses can create a result structure for those that match
+static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
+{
+    struct neat_resolver *resolver = handle->data;
+    struct neat_resolver_results *result_list;
+    struct neat_resolver_res *result;
+    uint32_t num_resolved_addrs = 0;
+    struct neat_addr *nsrc_addr = NULL;
+    socklen_t addrlen;
+    void *dst_addr_pton = NULL;
+    struct sockaddr_storage dst_addr;
+    union {
+        struct sockaddr_in *dst_addr4;
+        struct sockaddr_in6 *dst_addr6;
+    } u;
+
+    //There were no addresses available, so return error
+    //TODO: Consider adding a different error
+    if (!resolver->nc->src_addr_cnt) {
+        resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
+        return;
+    }
+
+    //Signal internal error
+    if ((result_list = 
+                calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
+        resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
+        return;
+    }
+
+    if (resolver->family == AF_INET) {
+        u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
+        u.dst_addr4->sin_family = AF_INET;
+        u.dst_addr4->sin_port = resolver->dst_port;
+        dst_addr_pton = &(u.dst_addr4->sin_addr);
+    } else {
+        u.dst_addr6 = (struct sockaddr_in6*) &dst_addr;
+        u.dst_addr6->sin6_family = AF_INET6;
+        u.dst_addr6->sin6_port = resolver->dst_port;
+        dst_addr_pton = &(u.dst_addr6->sin6_addr);
+    }
+
+    //We already know that this will be successful, it was checked in the
+    //literal-check performed earlier
+    inet_pton(resolver->family, resolver->domain_name, dst_addr_pton);
+
+    LIST_INIT(result_list);
+
+    for (nsrc_addr = resolver->nc->src_addrs.lh_first; nsrc_addr != NULL;
+            nsrc_addr = nsrc_addr->next_addr.le_next) {
+        //Family is always set for literals
+        if (nsrc_addr->family != resolver->family)
+            continue;
+
+        //Do not use deprecated addresses
+        if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
+            continue;
+
+        //We dont care if one fails, only if all
+        if ((result = calloc(sizeof(struct neat_resolver_res), 1)) == NULL)
+            continue;
+
+        addrlen = nsrc_addr->family == AF_INET ?
+            sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+
+        //TODO: Refactor to separate function
+        result->ai_family = resolver->family;
+        result->ai_socktype = resolver->ai_socktype;
+        result->ai_protocol = resolver->ai_protocol;
+        result->if_idx = nsrc_addr->if_idx;
+        result->src_addr = nsrc_addr->u.generic.addr;
+        result->src_addr_len = addrlen;
+        result->dst_addr = dst_addr;
+        result->dst_addr_len = addrlen;
+        result->internal = neat_resolver_addr_internal(&(result->dst_addr));
+
+        LIST_INSERT_HEAD(result_list, result, next_res);
+        num_resolved_addrs++;
+    }
+
+    if (!num_resolved_addrs)
+        resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
+    else
+        resolver->handle_resolve(resolver, result_list, NEAT_RESOLVER_OK);
+}
+
 //Called when timeout expires. This function will pass the results of the DNS
 //query to the application using NEAT
 static void neat_resolver_timeout_cb(uv_timer_t *handle)
@@ -175,7 +263,8 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
         }
 
         for (i = 0; i < MAX_NUM_RESOLVED; i++) {
-            //Resolved addresses are added linearly
+            //Resolved addresses are added linearly, so if this is empty then
+            //that is the end of result list
             if (!pair_itr->resolved_addr[i].ss_family)
                 break;
 
@@ -582,12 +671,17 @@ int8_t neat_resolver_check_for_literal(uint8_t family, const char *node)
     struct in6_addr dummy_addr;
     int32_t v4_literal = 0, v6_literal = 0;
 
+    if (family != AF_UNSPEC && family != AF_INET && family != AF_INET6) {
+        fprintf(stderr, "Unsupported address family\n");
+        return -1;
+    }
+
     //The only time inet_pton fails is if the system lacks v4/v6 support. This
     //should rather be handled with an ifdef + check at compile time
     v4_literal = inet_pton(AF_INET, node, &dummy_addr);
     v6_literal = inet_pton(AF_INET6, node, &dummy_addr);
 
-    //These are the three error cases
+    //These are the three possible error cases
     //- if family if unspec, node has to be a domain name as we can't know which
     //literal was intended to be used.
     //- if family is v4 and address is v6 (or opposite), then user has made a
@@ -610,7 +704,6 @@ int8_t neat_resolver_check_for_literal(uint8_t family, const char *node)
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
     const char *node, const char *service, int ai_socktype, int ai_protocol)
 {
-    struct sockaddr_storage remote_addr;
     struct neat_addr *nsrc_addr = NULL;
     int32_t dst_port = 0;
     int8_t retval;
@@ -634,22 +727,21 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
 
     retval = neat_resolver_check_for_literal(family, node);
 
-    fprintf(stdout, "Retval from literal check: %d\n", retval);
-
-    return RETVAL_FAILURE;
-
-#if 0
-    //TODO: Decide what to do here, when we get an IP address there is no need
-    //for lookup. How to deal with addresses, start a timeout right away?
-    if (inet_pton(family, node, &remote_addr) == 1) {
-        fprintf(stderr, "Service is an IP address or does not match family\n");
+    if (retval < 0)
         return RETVAL_FAILURE;
-    }
-#endif
 
     //No need to care about \0, we use calloc ...
     memcpy(resolver->domain_name, node, strlen(node));
 
+    //node is a literal, so we will just wait a short while for address list to
+    //be populated
+    if (retval) {
+        uv_timer_start(&(resolver->timeout_handle),
+                neat_resolver_literal_timeout_cb,
+                DNS_LITERAL_TIMEOUT, 0);
+        return RETVAL_SUCCESS;
+    }
+    
     //No point starting to query if we don't have any source addresses
     if (!resolver->nc->src_addr_cnt) {
         fprintf(stderr, "No available src addresses\n");
@@ -659,7 +751,6 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
     //Iterate through src addresses, create udp sockets and start requesting
     for (nsrc_addr = resolver->nc->src_addrs.lh_first; nsrc_addr != NULL;
             nsrc_addr = nsrc_addr->next_addr.le_next) {
-
         if (resolver->family && nsrc_addr->family != resolver->family)
             continue;
 

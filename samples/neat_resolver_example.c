@@ -21,6 +21,7 @@ void resolver_handle(struct neat_resolver *resolver,
     struct neat_resolver_res *res_itr;
 
     if (neat_code != NEAT_RESOLVER_OK) {
+        fprintf(stderr, "Resolver failed\n");
         //For now res is always NULL when code is not OK, but keep this sanity
         //check here just in case
         if (res != NULL)

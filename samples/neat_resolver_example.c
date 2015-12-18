@@ -70,8 +70,19 @@ int main(int argc, char *argv[])
 
     neat_resolver_update_timeouts(resolver, 10000, 500);
 
-    if (neat_getaddrinfo(resolver, AF_UNSPEC, "www.google.com", "80", SOCK_DGRAM, IPPROTO_UDP))
+    //TODO: FIND A BETTER WAY OF TESTIN!
+    /*if (neat_getaddrinfo(resolver, AF_UNSPEC, "www.google.com", "80", SOCK_DGRAM, IPPROTO_UDP))
+        exit(EXIT_FAILURE);*/
+    /*if (neat_getaddrinfo(resolver, AF_UNSPEC, "8.8.8.8", "80", SOCK_DGRAM, IPPROTO_UDP))
+        exit(EXIT_FAILURE);*/
+    /*if (neat_getaddrinfo(resolver, AF_INET6, "8.8.8.8", "80", SOCK_DGRAM, IPPROTO_UDP))
+        exit(EXIT_FAILURE);*/
+    /*if (neat_getaddrinfo(resolver, AF_INET, "2001:4860:4860::8888", "80", SOCK_DGRAM, IPPROTO_UDP))
+        exit(EXIT_FAILURE);*/
+    if (neat_getaddrinfo(resolver, AF_INET, "8.8.8.8", "80", SOCK_DGRAM, IPPROTO_UDP))
         exit(EXIT_FAILURE);
+    /*if (neat_getaddrinfo(resolver, AF_INET6, "2001:4860:4860::8888", "80", SOCK_DGRAM, IPPROTO_UDP))
+        exit(EXIT_FAILURE);*/
 
     neat_start_event_loop(nc);
 

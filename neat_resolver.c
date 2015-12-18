@@ -575,6 +575,35 @@ static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
     }
 }
 
+//Check if node is an IP literal or not. Returns -1 on failure, 0 if not
+//literal, 1 if literal
+int8_t neat_resolver_check_for_literal(uint8_t family, const char *node)
+{
+    struct in6_addr dummy_addr;
+    int32_t v4_literal = 0, v6_literal = 0;
+
+    //The only time inet_pton fails is if the system lacks v4/v6 support. This
+    //should rather be handled with an ifdef + check at compile time
+    v4_literal = inet_pton(AF_INET, node, &dummy_addr);
+    v6_literal = inet_pton(AF_INET6, node, &dummy_addr);
+
+    //These are the three error cases
+    //- if family if unspec, node has to be a domain name as we can't know which
+    //literal was intended to be used.
+    //- if family is v4 and address is v6 (or opposite), then user has made a
+    //mistake and must be notifed
+    if ((family == AF_UNSPEC && (v4_literal || v6_literal))) {
+        fprintf(stderr, "AF_UNSPEC and literals are not supported\n");
+        return -1;
+    } else if ((family == AF_INET && v6_literal) ||
+               (family == AF_INET6 && v4_literal)) {
+        fprintf(stderr, "Mismatch between family and literal\n");
+        return -1;
+    }
+
+    return v4_literal | v6_literal;
+}
+
 //Public NEAT resolver functions
 //getaddrinfo starts a query for the provided service
 //TODO: Expand parameter list
@@ -584,6 +613,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
     struct sockaddr_storage remote_addr;
     struct neat_addr *nsrc_addr = NULL;
     int32_t dst_port = 0;
+    int8_t retval;
 
     dst_port = atoi(service);
 
@@ -602,12 +632,20 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         return RETVAL_FAILURE;
     }
 
+    retval = neat_resolver_check_for_literal(family, node);
+
+    fprintf(stdout, "Retval from literal check: %d\n", retval);
+
+    return RETVAL_FAILURE;
+
+#if 0
     //TODO: Decide what to do here, when we get an IP address there is no need
     //for lookup. How to deal with addresses, start a timeout right away?
     if (inet_pton(family, node, &remote_addr) == 1) {
         fprintf(stderr, "Service is an IP address or does not match family\n");
         return RETVAL_FAILURE;
     }
+#endif
 
     //No need to care about \0, we use calloc ...
     memcpy(resolver->domain_name, node, strlen(node));

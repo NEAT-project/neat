@@ -567,9 +567,11 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     case IPPROTO_TCP:
         setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
         break;
+#ifdef SCTP_NODELAY
     case IPPROTO_SCTP:
         setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
         break;
+#endif
     default:
         break;
     }

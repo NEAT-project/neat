@@ -12,13 +12,11 @@
 // clang -g neat_resolver_example.c -lneat
 
 
-void resolver_handle(struct neat_resolver *resolver,
-                     struct neat_resolver_results *res, uint8_t neat_code)
+static void resolver_handle(struct neat_resolver *resolver,
+                     struct neat_resolver_results *results, uint8_t neat_code)
 {
     char src_str[INET6_ADDRSTRLEN], dst_str[INET6_ADDRSTRLEN];
-    struct sockaddr_in *addr4;
-    struct sockaddr_in6 *addr6;
-    struct neat_resolver_res *res_itr;
+    struct neat_resolver_res *result;
 
     if (neat_code != NEAT_RESOLVER_OK) {
         fprintf(stderr, "Resolver failed\n");
@@ -26,42 +24,71 @@ void resolver_handle(struct neat_resolver *resolver,
         return;    
     }
 
-    res_itr = res->lh_first;
-
-    while (res_itr != NULL) {
-        if (res_itr->ai_family == AF_INET) {
-            addr4 = (struct sockaddr_in*) &(res_itr->src_addr);
-            inet_ntop(res_itr->ai_family, &(addr4->sin_addr), src_str, INET_ADDRSTRLEN);
-            addr4 = (struct sockaddr_in*) &(res_itr->dst_addr);
-            inet_ntop(res_itr->ai_family, &(addr4->sin_addr), dst_str, INET_ADDRSTRLEN);
-        } else {
-            addr6 = (struct sockaddr_in6*) &(res_itr->src_addr);
-            inet_ntop(res_itr->ai_family, &(addr6->sin6_addr), src_str, INET6_ADDRSTRLEN);
-            addr6 = (struct sockaddr_in6*) &(res_itr->dst_addr);
-            inet_ntop(res_itr->ai_family, &(addr6->sin6_addr), dst_str, INET6_ADDRSTRLEN);
+    LIST_FOREACH(result, results, next_res) {
+        getnameinfo((struct sockaddr *)&result->src_addr, result->src_addr_len,
+                    src_str, sizeof(src_str), NULL, 0,
+                    NI_NUMERICHOST);
+        getnameinfo((struct sockaddr *)&result->dst_addr, result->dst_addr_len,
+                    dst_str, sizeof(dst_str), NULL, 0,
+                    NI_NUMERICHOST);
+        switch (result->ai_protocol) {
+        case IPPROTO_UDP:
+            fprintf(stderr, "UDP/");
+            break;
+        case IPPROTO_TCP:
+            fprintf(stderr, "TCP/");
+            break;
+        case IPPROTO_SCTP:
+            fprintf(stderr, "SCTP/");
+            break;
+        default:
+            fprintf(stderr, "proto%d/", result->ai_protocol);
+            break;
         }
-           
-        printf("Family %u Socktype %u Protocol %u Src. %s Resolved to %s\n",
-                res_itr->ai_family, res_itr->ai_socktype, res_itr->ai_protocol, src_str, dst_str);
-        res_itr = res_itr->next_res.le_next;
+        switch (result->ai_family) {
+        case AF_INET:
+            fprintf(stderr, "IPv4");
+            break;
+        case AF_INET6:
+            fprintf(stderr, "IPv6");
+            break;
+        default:
+            fprintf(stderr, "family%d", result->ai_family);
+            break;
+        }
+        switch (result->ai_socktype) {
+        case SOCK_DGRAM:
+            fprintf(stderr, "[SOCK_DGRAM]");
+            break;
+        case SOCK_STREAM:
+            fprintf(stderr, "[SOCK_STREAM]");
+            break;
+        case SOCK_SEQPACKET:
+            fprintf(stderr, "[SOCK_SEQPACKET]");
+            break;
+        default:
+            fprintf(stderr, "[%d]", result->ai_socktype);
+            break;
+        }
+        printf(": %s -> %s\n", src_str, dst_str);
     }
 
     //Free list, it is callers responsibility
-    neat_resolver_free_results(res);
+    neat_resolver_free_results(results);
     neat_stop_event_loop(resolver->nc);
 }
 
-void resolver_cleanup(struct neat_resolver *resolver)
+static void resolver_cleanup(struct neat_resolver *resolver)
 {
     printf("Cleanup function\n");
     //I dont need this resolver object any more
     neat_resolver_release(resolver);
 }
 
-uint8_t test_resolver(struct neat_ctx *nc, struct neat_resolver *resolver,
-        uint8_t family, char *node, char *service)
+static uint8_t test_resolver(struct neat_ctx *nc, struct neat_resolver *resolver,
+        uint8_t family, uint8_t type, uint8_t protocol, char *node, char *service)
 {
-    if (neat_getaddrinfo(resolver, family, node, service, SOCK_DGRAM, IPPROTO_UDP))
+    if (neat_getaddrinfo(resolver, family, node, service, type, protocol))
         return 1;
 
     neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
@@ -81,10 +108,38 @@ int main(int argc, char *argv[])
     //this is set in he_lookup in the other example code
     nc->resolver = resolver;
 
-    test_resolver(nc, resolver, AF_INET, "www.google.com", "80");
+    test_resolver(nc, resolver, AF_INET, SOCK_DGRAM, IPPROTO_UDP, "www.google.com", "80");
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_INET, "www.facebook.com", "80");
-    
+    test_resolver(nc, resolver, AF_INET6, SOCK_DGRAM, IPPROTO_UDP, "www.google.com", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET, SOCK_DGRAM, IPPROTO_UDP, "www.facebook.com", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET6, SOCK_DGRAM, IPPROTO_UDP, "www.facebook.com", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET, SOCK_STREAM, IPPROTO_TCP, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET6, SOCK_STREAM, IPPROTO_TCP, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET, SOCK_STREAM, IPPROTO_SCTP, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET6, SOCK_STREAM, IPPROTO_SCTP, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET, SOCK_DGRAM, 0, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET6, SOCK_DGRAM, 0, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET, SOCK_STREAM, 0, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET6, SOCK_STREAM, 0, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET, SOCK_SEQPACKET, 0, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET6, SOCK_SEQPACKET, 0, "bsd10.fh-muenster.de", "80");
+
     neat_free_ctx(nc);
     exit(EXIT_SUCCESS);
 }

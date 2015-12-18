@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 
     // wait for on_connected or on_error to be invoked
     neat_accept(ctx, flow, "localhost.ducksong.com", "8080");
-    neat_start_event_loop(ctx);
+    neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
     neat_free_flow(flow);
     neat_free_ctx(ctx);

@@ -176,3 +176,17 @@ void neat_addr_lifetime_timeout_cb(uv_timer_t *handle)
     }
     //neat_addr_print_src_addrs(nc);
 }
+
+void neat_addr_free_src_list(struct neat_ctx *nc)
+{
+    struct neat_addr *nsrc_addr = NULL;
+    struct neat_addr *nsrc_addr_itr = nc->src_addrs.lh_first;
+
+    while (nsrc_addr_itr != NULL) {
+        nsrc_addr = nsrc_addr_itr;
+        nsrc_addr_itr = nsrc_addr_itr->next_addr.le_next;
+
+        free(nsrc_addr);
+    }
+
+}

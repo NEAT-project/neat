@@ -49,4 +49,7 @@ uint8_t neat_addr_cmp_ip6_addr(struct in6_addr aAddr,
                                struct in6_addr aAddr2);
 
 void neat_addr_lifetime_timeout_cb(uv_timer_t *handle);
+
+//Free the list of source addresses
+void neat_addr_free_src_list(struct neat_ctx *nc);
 #endif

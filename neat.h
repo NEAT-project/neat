@@ -10,12 +10,20 @@
 extern "C" {
 #endif
 
+//Maps directly to libuv contants
+typedef enum {
+    NEAT_RUN_DEFAULT = 0,
+    NEAT_RUN_ONCE,
+    NEAT_RUN_NOWAIT
+} neat_run_mode;
+
 struct neat_ctx; // global
 struct neat_flow; // one per connection
 
 struct neat_ctx *neat_init_ctx();
-void neat_start_event_loop(struct neat_ctx *nc);
+void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
 void neat_stop_event_loop(struct neat_ctx *nc);
+int neat_get_backend_fd(struct neat_ctx *nc);
 void neat_free_ctx(struct neat_ctx *nc);
 
 typedef uint64_t neat_error_code;

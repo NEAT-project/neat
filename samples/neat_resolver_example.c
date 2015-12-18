@@ -21,10 +21,8 @@ void resolver_handle(struct neat_resolver *resolver,
     struct neat_resolver_res *res_itr;
 
     if (neat_code != NEAT_RESOLVER_OK) {
-        //For now res is always NULL when code is not OK, but keep this sanity
-        //check here just in case
-        if (res != NULL)
-            neat_resolver_free_results(res);
+        fprintf(stderr, "Resolver failed\n");
+        neat_stop_event_loop(resolver->nc);
         return;    
     }
 
@@ -50,31 +48,43 @@ void resolver_handle(struct neat_resolver *resolver,
 
     //Free list, it is callers responsibility
     neat_resolver_free_results(res);
+    neat_stop_event_loop(resolver->nc);
 }
 
 void resolver_cleanup(struct neat_resolver *resolver)
 {
     printf("Cleanup function\n");
     //I dont need this resolver object any more
-    neat_resolver_free(resolver);
+    neat_resolver_release(resolver);
+}
+
+uint8_t test_resolver(struct neat_ctx *nc, struct neat_resolver *resolver,
+        uint8_t family, char *node, char *service)
+{
+    if (neat_getaddrinfo(resolver, family, node, service, SOCK_DGRAM, IPPROTO_UDP))
+        return 1;
+
+    neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
+    return 0;
 }
 
 int main(int argc, char *argv[])
 {
     struct neat_ctx *nc = neat_init_ctx();
     struct neat_resolver *resolver;
+
     resolver = nc ? neat_resolver_init(nc, resolver_handle, resolver_cleanup) : NULL;
 
     if (nc == NULL || resolver == NULL)
         exit(EXIT_FAILURE);
 
-    neat_resolver_update_timeouts(resolver, 10000, 500);
+    //this is set in he_lookup in the other example code
+    nc->resolver = resolver;
 
-    if (neat_getaddrinfo(resolver, AF_UNSPEC, "www.google.com", "80", SOCK_DGRAM, IPPROTO_UDP))
-        exit(EXIT_FAILURE);
-
-    neat_start_event_loop(nc);
-
+    test_resolver(nc, resolver, AF_INET, "www.google.com", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET, "www.facebook.com", "80");
+    
     neat_free_ctx(nc);
     exit(EXIT_SUCCESS);
 }

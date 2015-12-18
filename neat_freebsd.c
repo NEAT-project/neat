@@ -75,13 +75,14 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
             preferred_lifetime = 0;
             valid_lifetime = 0;
         } else {
-            lifetime = &ifr6.ifr_ifru.ifru_lifetime;
+            memset(&ifr6, 0, sizeof(struct in6_ifreq));
             strncpy(ifr6.ifr_name, cached_ifname, IF_NAMESIZE);
             memcpy(&ifr6.ifr_addr, ifa->ifa_addr, sizeof(struct sockaddr_in6));
             if (ioctl(ctx->udp6_fd, SIOCGIFALIFETIME_IN6, &ifr6) < 0) {
                 fprintf(stderr,
                         "neat_freebsd_get_addresses: can't determine lifetime of address\n");
             }
+            lifetime = &ifr6.ifr_ifru.ifru_lifetime;
             if (lifetime->ia6t_preferred == 0) {
                 preferred_lifetime = NEAT_UNLIMITED_LIFETIME;
             } else if (lifetime->ia6t_preferred > now.tv_sec) {

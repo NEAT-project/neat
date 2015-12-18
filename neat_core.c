@@ -1,5 +1,6 @@
-#ifdef HAVE_NETINET_SCTP_H
 #include <sys/types.h>
+#include <netinet/in.h>
+#ifdef HAVE_NETINET_SCTP_H
 #include <netinet/sctp.h>
 #endif
 

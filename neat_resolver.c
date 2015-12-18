@@ -276,6 +276,10 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
             if (!pair_itr->resolved_addr[i].ss_family)
                 break;
 
+            if (pair_itr->src_addr->family == AF_INET6 &&
+                !pair_itr->src_addr->u.v6.ifa_pref)
+                return;
+
             //We dont care if one fails, only if all
             if ((result = calloc(sizeof(struct neat_resolver_res), 1)) == NULL)
                 continue;

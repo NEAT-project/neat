@@ -121,20 +121,18 @@ static void neat_freebsd_route_alloc(uv_handle_t *handle,
     buf->len = NEAT_ROUTE_BUFFER_SIZE;
 }
 
-#define ROUNDUP(a, size) (((a) & ((size)-1)) ? (1 + ((a) | ((size)-1))) : (a))
-#define NEXT_SA(ap) ap = (struct sockaddr *) \
-        ((caddr_t) ap + (ap->sa_len ? ROUNDUP(ap->sa_len, sizeof (uint32_t)) : sizeof(uint32_t)))
-
 static void neat_freebsd_get_rtaddrs(int addrs,
-                                     struct sockaddr *sa,
-                                     struct sockaddr **rti_info)
+                                     caddr_t buf,
+                                     struct sockaddr *rti_info[])
 {
+    struct sockaddr *sa;
     int i;
 
     for (i = 0; i < RTAX_MAX; i++) {
         if (addrs & (1 << i)) {
+            sa = (struct sockaddr *)buf;
             rti_info[i] = sa;
-                NEXT_SA(sa);
+            buf += SA_SIZE(sa);
         } else {
             rti_info[i] = NULL;
         }
@@ -150,7 +148,7 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
     struct neat_ctx *ctx;
     struct ifa_msghdr *ifa;
     struct in6_ifreq ifr6;
-    struct sockaddr *sa, *rti_info[RTAX_MAX];
+    struct sockaddr *rti_info[RTAX_MAX];
     char if_name[IF_NAMESIZE];
     char addr_str_buf[INET6_ADDRSTRLEN];
     const char *addr_str;
@@ -163,8 +161,7 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
     if ((ifa->ifam_type != RTM_NEWADDR) && (ifa->ifam_type != RTM_DELADDR)) {
         return;
     }
-    sa = (struct sockaddr *) (ifa + 1);
-    neat_freebsd_get_rtaddrs(ifa->ifam_addrs, sa, rti_info);
+    neat_freebsd_get_rtaddrs(ifa->ifam_addrs, (caddr_t)(ifa + 1), rti_info);
     if ((rti_info[RTAX_IFA]->sa_family == AF_INET) ||
         (ifa->ifam_type == RTM_DELADDR)) {
         preferred_lifetime = 0;

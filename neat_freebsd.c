@@ -176,7 +176,6 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
         lifetime = &ifr6.ifr_ifru.ifru_lifetime;
         strncpy(ifr6.ifr_name, if_name, IF_NAMESIZE);
         memcpy(&ifr6.ifr_addr, rti_info[RTAX_IFA], sizeof(struct sockaddr_in6));
-        memset(lifetime, 0, sizeof(struct in6_addrlifetime));
         if (ioctl(ctx->udp6_fd, SIOCGIFALIFETIME_IN6, &ifr6) < 0) {
             addr_str = inet_ntop(AF_INET6, rti_info[RTAX_IFA], addr_str_buf, INET6_ADDRSTRLEN);
             fprintf(stderr,

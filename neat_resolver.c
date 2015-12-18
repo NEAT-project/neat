@@ -433,7 +433,7 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
     }
 
     if (!inet_pton(family, dst_addr_str, dst_addr_pton)) {
-        fprintf(stderr, "Failed to convert destionation address\n");
+        fprintf(stderr, "Failed to convert destination address\n");
         return RETVAL_FAILURE;
     }
 

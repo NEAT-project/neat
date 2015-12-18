@@ -64,7 +64,7 @@ uint8_t test_resolver(struct neat_ctx *nc, struct neat_resolver *resolver,
     if (neat_getaddrinfo(resolver, family, node, service, SOCK_DGRAM, IPPROTO_UDP))
         return 1;
 
-    neat_start_event_loop(nc);
+    neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
     return 0;
 }
 

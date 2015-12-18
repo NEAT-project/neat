@@ -58,15 +58,20 @@ struct neat_ctx *neat_init_ctx()
 
 //Start the internal NEAT event loop
 //TODO: Add support for embedding libuv loops in other event loops
-void neat_start_event_loop(struct neat_ctx *nc)
+void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
 {
-    uv_run(nc->loop, UV_RUN_DEFAULT);
+    uv_run(nc->loop, (uv_run_mode) run_mode);
     uv_loop_close(nc->loop);
 }
 
 void neat_stop_event_loop(struct neat_ctx *nc)
 {
     uv_stop(nc->loop);
+}
+
+int neat_get_backend_fd(struct neat_ctx *nc)
+{
+    return uv_backend_fd(nc->loop);
 }
 
 static void neat_walk_cb(uv_handle_t *handle, void *arg)

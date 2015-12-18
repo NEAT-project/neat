@@ -54,25 +54,32 @@ endif()
 #################################################
 check_include_file(uv.h HAVE_SYS_UV_H)
 if(NOT HAVE_SYS_UV_H)
-	message(FATAL_ERROR "uv.h not not found - libuv installed?")
+    message(FATAL_ERROR "uv.h not not found - libuv installed?")
 endif()
 
 check_include_file(ldns/ldns.h HAVE_SYS_LDNS_H)
 if(NOT HAVE_SYS_LDNS_H)
-	message(FATAL_ERROR "ldns/ldns.h not found - libdns installed?")
+    message(FATAL_ERROR "ldns/ldns.h not found - libdns installed?")
 endif()
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 check_include_file(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
 if(NOT HAVE_SYS_LIBMNL_H)
-	message(FATAL_ERROR "libmnl/libmnl.h not found - libmnl installed?")
+    message(FATAL_ERROR "libmnl/libmnl.h not found - libmnl installed?")
 endif()
+endif()
+
+check_include_file(netinet/sctp.h HAVE_NETINET_SCTP_H)
+if(HAVE_NETINET_SCTP_H)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
+else()
+    message(STATUS "netinet/sctp.h not found")
 endif()
 
 
 # COMPILER FLAGS
 #################################################
-set(CMAKE_C_FLAGS "-O1 -Wall -std=gnu99 -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -Wall -std=gnu99 -g")
 
 
 # LIBRARIES

@@ -100,8 +100,10 @@ void neat_free_ctx(struct neat_ctx *nc)
 {
     neat_core_cleanup(nc);
 
-    if (nc->resolver)
-        neat_resolver_free(nc->resolver);
+    if (nc->resolver) {
+        neat_resolver_release(nc->resolver);
+        free(nc->resolver);
+    }
 
     if(nc->event_cbs)
         free(nc->event_cbs);

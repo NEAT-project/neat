@@ -130,8 +130,8 @@ struct neat_resolver *neat_resolver_init(struct neat_ctx *nc,
 
 //Reset resolver, it is ready for use right after this is called
 void neat_resolver_reset(struct neat_resolver *resolver);
-//Free resolver, resolver can't be used again
-void neat_resolver_free(struct neat_resolver *resolver);
+//Release all memory occupied by a resolver. Resolver can't be used again
+void neat_resolver_release(struct neat_resolver *resolver);
 
 //Free the list of results
 void neat_resolver_free_results(struct neat_resolver_results *results);

@@ -55,13 +55,24 @@ void resolver_cleanup(struct neat_resolver *resolver)
 {
     printf("Cleanup function\n");
     //I dont need this resolver object any more
-    neat_resolver_free(resolver);
+    neat_resolver_release(resolver);
+}
+
+uint8_t test_resolver(struct neat_ctx *nc, struct neat_resolver *resolver,
+        uint8_t family, char *node, char *service)
+{
+    if (neat_getaddrinfo(resolver, family, node, service, SOCK_DGRAM, IPPROTO_UDP))
+        return 1;
+
+    neat_start_event_loop(nc);
+    return 0;
 }
 
 int main(int argc, char *argv[])
 {
     struct neat_ctx *nc = neat_init_ctx();
     struct neat_resolver *resolver;
+
     resolver = nc ? neat_resolver_init(nc, resolver_handle, resolver_cleanup) : NULL;
 
     if (nc == NULL || resolver == NULL)
@@ -70,24 +81,10 @@ int main(int argc, char *argv[])
     //this is set in he_lookup in the other example code
     nc->resolver = resolver;
 
-    neat_resolver_update_timeouts(resolver, 10000, 500);
-
-    //TODO: FIND A BETTER WAY OF TESTIN!
-    if (neat_getaddrinfo(resolver, AF_INET, "www.google.com", "80", SOCK_DGRAM, IPPROTO_UDP))
-        exit(EXIT_FAILURE);
-    /*if (neat_getaddrinfo(resolver, AF_UNSPEC, "8.8.8.8", "80", SOCK_DGRAM, IPPROTO_UDP))
-        exit(EXIT_FAILURE);*/
-    /*if (neat_getaddrinfo(resolver, AF_INET6, "8.8.8.8", "80", SOCK_DGRAM, IPPROTO_UDP))
-        exit(EXIT_FAILURE);*/
-    /*if (neat_getaddrinfo(resolver, AF_INET, "2001:4860:4860::8888", "80", SOCK_DGRAM, IPPROTO_UDP))
-        exit(EXIT_FAILURE);*/
-    /*if (neat_getaddrinfo(resolver, AF_INET, "8.8.8.8", "80", SOCK_DGRAM, IPPROTO_UDP))
-        exit(EXIT_FAILURE);*/
-    /*if (neat_getaddrinfo(resolver, AF_INET6, "2001:4860:4860::8888", "80", SOCK_DGRAM, IPPROTO_UDP))
-        exit(EXIT_FAILURE);*/
-
-    neat_start_event_loop(nc);
-
+    test_resolver(nc, resolver, AF_INET, "www.google.com", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_INET, "www.facebook.com", "80");
+    
     neat_free_ctx(nc);
     exit(EXIT_SUCCESS);
 }

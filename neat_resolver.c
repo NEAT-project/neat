@@ -824,8 +824,9 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
         resolver_itr = resolver_itr->next_pair.le_next;
         neat_resolver_mark_pair_del(resolver_pair);
 
-        //Loop is already stopped if free_mem is set, so clean-up manually
-        if (free_mem)
+        //If loop is stopped, we need to clean up (i.e., free dns buffer)
+        //manually since close_cb will never be called
+        if (uv_backend_fd(resolver->nc->loop) == -1)
             neat_resolver_cleanup_pair(resolver_pair);
     }
 
@@ -859,13 +860,16 @@ void neat_resolver_reset(struct neat_resolver *resolver)
     neat_resolver_cleanup(resolver, 0);
 }
 
-void neat_resolver_free(struct neat_resolver *resolver)
+void neat_resolver_release(struct neat_resolver *resolver)
 {
     neat_resolver_cleanup(resolver, 1);
-    //_resolver_free is only called after loop is stopped, we must therefore
-    //manually free memory occupied by pairs
+    
+    //If loop is not stopped, return. Otherwise, the idle callback will never be
+    //called, so we have to manually free the pairs
+    if (uv_backend_fd(resolver->nc->loop) != -1)
+        return;
+
     neat_resolver_flush_pairs_del(resolver);
-    free(resolver);
 }
 
 void neat_resolver_free_results(struct neat_resolver_results *results)

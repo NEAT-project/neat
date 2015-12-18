@@ -1,3 +1,9 @@
+#include <sys/types.h>
+#include <netinet/in.h>
+#ifdef HAVE_NETINET_SCTP_H
+#include <netinet/sctp.h>
+#endif
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -396,18 +402,11 @@ open_he_callback(neat_ctx *ctx, neat_flow *flow,
         uv_poll_init(ctx->loop, &flow->handle, fd); // makes fd nb as side effect
         flow->everConnected = 1;
         flow->fd = fd;
-    } else {
-        // todo when we have sctp
-        if (flow->propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) {
-            io_error(ctx, flow, NEAT_ERROR_UNABLE);
-            goto cleanup;
-        }
-
+    } else
         if (flow->connectfx(ctx, flow) == -1) {
             io_error(ctx, flow, NEAT_ERROR_IO);
             goto cleanup;
         }
-    }
 
     // todo he needs to consider these properties to do the right thing
     if ((flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED) &&
@@ -418,6 +417,18 @@ open_he_callback(neat_ctx *ctx, neat_flow *flow,
 
     if ((flow->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) &&
         (flow->family != AF_INET6)) {
+        io_error(ctx, flow, NEAT_ERROR_UNABLE);
+        goto cleanup;
+    }
+
+    if ((flow->propertyMask & NEAT_PROPERTY_SCTP_BANNED) &&
+        (flow->sockProtocol == IPPROTO_SCTP)) {
+        io_error(ctx, flow, NEAT_ERROR_UNABLE);
+        goto cleanup;
+    }
+
+    if ((flow->propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) &&
+        (flow->sockProtocol != IPPROTO_SCTP)) {
         io_error(ctx, flow, NEAT_ERROR_UNABLE);
         goto cleanup;
     }
@@ -583,7 +594,18 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
     flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
-    setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+    switch (flow->sockProtocol) {
+    case IPPROTO_TCP:
+        setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+        break;
+#ifdef SCTP_NODELAY
+    case IPPROTO_SCTP:
+        setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
+        break;
+#endif
+    default:
+        break;
+    }
     setsockopt(flow->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     if ((flow->fd == -1) ||
         (bind(flow->fd, flow->sockAddr, slen) == -1) ||

@@ -5,6 +5,7 @@ include_directories(..)
 #################################################
 LIST(APPEND neat_PROGRAMS
     neat_basic.c
+    neat_basic_sctp.c
     neat_resolver_example.c
     neat_server.c
     )

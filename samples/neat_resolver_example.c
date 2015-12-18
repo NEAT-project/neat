@@ -22,10 +22,7 @@ void resolver_handle(struct neat_resolver *resolver,
 
     if (neat_code != NEAT_RESOLVER_OK) {
         fprintf(stderr, "Resolver failed\n");
-        //For now res is always NULL when code is not OK, but keep this sanity
-        //check here just in case
-        if (res != NULL)
-            neat_resolver_free_results(res);
+        neat_stop_event_loop(resolver->nc);
         return;    
     }
 
@@ -51,6 +48,7 @@ void resolver_handle(struct neat_resolver *resolver,
 
     //Free list, it is callers responsibility
     neat_resolver_free_results(res);
+    neat_stop_event_loop(resolver->nc);
 }
 
 void resolver_cleanup(struct neat_resolver *resolver)
@@ -69,19 +67,22 @@ int main(int argc, char *argv[])
     if (nc == NULL || resolver == NULL)
         exit(EXIT_FAILURE);
 
+    //this is set in he_lookup in the other example code
+    nc->resolver = resolver;
+
     neat_resolver_update_timeouts(resolver, 10000, 500);
 
     //TODO: FIND A BETTER WAY OF TESTIN!
-    /*if (neat_getaddrinfo(resolver, AF_UNSPEC, "www.google.com", "80", SOCK_DGRAM, IPPROTO_UDP))
-        exit(EXIT_FAILURE);*/
+    if (neat_getaddrinfo(resolver, AF_INET, "www.google.com", "80", SOCK_DGRAM, IPPROTO_UDP))
+        exit(EXIT_FAILURE);
     /*if (neat_getaddrinfo(resolver, AF_UNSPEC, "8.8.8.8", "80", SOCK_DGRAM, IPPROTO_UDP))
         exit(EXIT_FAILURE);*/
     /*if (neat_getaddrinfo(resolver, AF_INET6, "8.8.8.8", "80", SOCK_DGRAM, IPPROTO_UDP))
         exit(EXIT_FAILURE);*/
     /*if (neat_getaddrinfo(resolver, AF_INET, "2001:4860:4860::8888", "80", SOCK_DGRAM, IPPROTO_UDP))
         exit(EXIT_FAILURE);*/
-    if (neat_getaddrinfo(resolver, AF_INET, "8.8.8.8", "80", SOCK_DGRAM, IPPROTO_UDP))
-        exit(EXIT_FAILURE);
+    /*if (neat_getaddrinfo(resolver, AF_INET, "8.8.8.8", "80", SOCK_DGRAM, IPPROTO_UDP))
+        exit(EXIT_FAILURE);*/
     /*if (neat_getaddrinfo(resolver, AF_INET6, "2001:4860:4860::8888", "80", SOCK_DGRAM, IPPROTO_UDP))
         exit(EXIT_FAILURE);*/
 

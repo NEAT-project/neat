@@ -69,19 +69,43 @@ void neat_stop_event_loop(struct neat_ctx *nc)
     uv_stop(nc->loop);
 }
 
-//Free any resource used by the context
+static void neat_walk_cb(uv_handle_t *handle, void *arg)
+{
+    if (!uv_is_closing(handle))
+        uv_close(handle, NULL);
+}
+
+static void neat_close_loop(struct neat_ctx *nc)
+{
+    uv_walk(nc->loop, neat_walk_cb, nc);
+    //Let all close handles run
+    uv_run(nc->loop, UV_RUN_DEFAULT);
+    uv_loop_close(nc->loop);
+}
+
+static void neat_core_cleanup(struct neat_ctx *nc)
+{
+    //We need to gracefully clean-up loop resources
+    neat_close_loop(nc);
+    neat_addr_free_src_list(nc);
+
+    if (nc->cleanup)
+        nc->cleanup(nc);
+}
+
+//Free any resource used by the context. Loop must be stopped before this is
+//called
 //TODO: Consider adding callback, like for resolver
 void neat_free_ctx(struct neat_ctx *nc)
 {
-    if (nc->cleanup)
-        nc->cleanup(nc);
+    neat_core_cleanup(nc);
 
-    if (nc->resolver) {
+    if (nc->resolver)
         neat_resolver_free(nc->resolver);
-    }
-    if(nc->event_cbs) {
-        free (nc->event_cbs);
-    }
+
+    if(nc->event_cbs)
+        free(nc->event_cbs);
+
     free(nc->loop);
     free(nc);
 }

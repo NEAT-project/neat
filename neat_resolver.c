@@ -69,27 +69,24 @@ static void neat_resolver_handle_deladdr(struct neat_ctx *nic,
 }
 
 //libuv-specific callbacks
+static void neat_resolver_cleanup_pair(struct neat_resolver_src_dst_addr *pair)
+{
+    if (pair->dns_snd_buf)
+        ldns_buffer_free(pair->dns_snd_buf);
+
+    pair->closed = 1;
+}
 
 //This callback is called when we close a UDP socket (handle) and allows us to
 //free any allocated resource. In our case, this is only the dns_snd_buf
 static void neat_resolver_close_cb(uv_handle_t *handle)
 {
     struct neat_resolver_src_dst_addr *resolver_pair = handle->data;
-
-    if (resolver_pair->dns_snd_buf)
-        ldns_buffer_free(resolver_pair->dns_snd_buf);
-
-    //Mark that it is safe to free/remove this pair
-    resolver_pair->closed = 1;
+    neat_resolver_cleanup_pair(resolver_pair);
 }
 
-//This callback is called before libuv polls for I/O and is by default run on
-//every iteration. We use it to free memory used by the resolver, and it is only
-//active when this is relevant. I.e., we only start the idle handle when
-//resolver_pairs_del is not empty
-static void neat_resolver_idle_cb(uv_idle_t *handle)
+static void neat_resolver_flush_pairs_del(struct neat_resolver *resolver)
 {
-    struct neat_resolver *resolver = handle->data;
     struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
 
     resolver_itr = resolver->resolver_pairs_del.lh_first;
@@ -104,6 +101,17 @@ static void neat_resolver_idle_cb(uv_idle_t *handle)
         LIST_REMOVE(resolver_pair, next_pair);
         free(resolver_pair);
     }
+}
+
+//This callback is called before libuv polls for I/O and is by default run on
+//every iteration. We use it to free memory used by the resolver, and it is only
+//active when this is relevant. I.e., we only start the idle handle when
+//resolver_pairs_del is not empty
+static void neat_resolver_idle_cb(uv_idle_t *handle)
+{
+    struct neat_resolver *resolver = handle->data;
+
+    neat_resolver_flush_pairs_del(resolver);
 
     //We cant stop idle until all pairs marked for deletion have been removed
     if (resolver->resolver_pairs_del.lh_first)
@@ -331,9 +339,10 @@ static void neat_resolver_mark_pair_del(struct neat_resolver_src_dst_addr *pair)
 {
     struct neat_resolver *resolver = pair->resolver;
 
-    //If handle is not active/receiving, this is just a noop
-    uv_udp_recv_stop(&(pair->resolve_handle));
-    uv_close((uv_handle_t*) &(pair->resolve_handle), neat_resolver_close_cb);
+    if (uv_is_active((uv_handle_t*) &(pair->resolve_handle))) {
+        uv_udp_recv_stop(&(pair->resolve_handle));
+        uv_close((uv_handle_t*) &(pair->resolve_handle), neat_resolver_close_cb);
+    }
 
     if (pair->next_pair.le_next != NULL || pair->next_pair.le_prev != NULL)
         LIST_REMOVE(pair, next_pair);
@@ -345,7 +354,8 @@ static void neat_resolver_mark_pair_del(struct neat_resolver_src_dst_addr *pair)
     //perform internal clean-up first. This is done after loop is done
     //(uv__run_closing_handles), so we use idle (which is called in the
     //next iteration and before polling)
-    if (!uv_is_active((uv_handle_t*) &(resolver->idle_handle)))
+    if (uv_backend_fd(resolver->nc->loop) != -1 &&
+        !uv_is_active((uv_handle_t*) &(resolver->idle_handle)))
         uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
 }
 
@@ -813,6 +823,10 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
         resolver_pair = resolver_itr;
         resolver_itr = resolver_itr->next_pair.le_next;
         neat_resolver_mark_pair_del(resolver_pair);
+
+        //Loop is already stopped if free_mem is set, so clean-up manually
+        if (free_mem)
+            neat_resolver_cleanup_pair(resolver_pair);
     }
 
     resolver->free_resolver = free_mem;
@@ -824,7 +838,11 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
     //We need to do this here, in addition to in mark_pair_del, since we might
     //get in the situation where there are zero addresses to delete (for example
     //if resolver is freed before there are no source addresses)
-    if (!uv_is_active((const uv_handle_t*) &(resolver->idle_handle)))
+    //TODO: Not sure if backend_fd is the best way to check if loop is closed,
+    //but it is what I found now. Improve later. alive() seems to always return
+    //true, for some reason. Will debug more later
+    if (uv_backend_fd(resolver->nc->loop) != -1 &&
+        !uv_is_active((const uv_handle_t*) &(resolver->idle_handle)))
         uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
 
     //Unsubscribe from callbacks if we are going to release memory
@@ -844,6 +862,9 @@ void neat_resolver_reset(struct neat_resolver *resolver)
 void neat_resolver_free(struct neat_resolver *resolver)
 {
     neat_resolver_cleanup(resolver, 1);
+    //_resolver_free is only called after loop is stopped, we must therefore
+    //manually free memory occupied by pairs
+    neat_resolver_flush_pairs_del(resolver);
     free(resolver);
 }
 

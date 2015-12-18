@@ -1,3 +1,8 @@
+#ifdef HAVE_NETINET_SCTP_H
+#include <sys/types.h>
+#include <netinet/sctp.h>
+#endif
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -552,7 +557,16 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
     flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
-    setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+    switch (flow->sockProtocol) {
+    case IPPROTO_TCP:
+        setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+        break;
+    case IPPROTO_SCTP:
+        setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
+        break;
+    default:
+        break;
+    }
     setsockopt(flow->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     if ((flow->fd == -1) ||
         (bind(flow->fd, flow->sockAddr, slen) == -1) ||

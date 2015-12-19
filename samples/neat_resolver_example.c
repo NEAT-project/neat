@@ -141,7 +141,6 @@ int main(int argc, char *argv[])
     test_resolver(nc, resolver, AF_INET, SOCK_SEQPACKET, 0, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET6, SOCK_SEQPACKET, 0, "bsd10.fh-muenster.de", "80");
-
     neat_free_ctx(nc);
     exit(EXIT_SUCCESS);
 }

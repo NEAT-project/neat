@@ -398,6 +398,84 @@ static void neat_resolver_mark_pair_del(struct neat_resolver_src_dst_addr *pair)
         uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
 }
 
+static uint8_t neat_resolver_check_duplicate(
+        struct neat_resolver_src_dst_addr *pair, const char *resolved_addr_str)
+{
+    //Accepts a src_dst_pair and an address, convert this address to struct
+    //in{6}_addr, then check all pairs if this IP has seen before for same
+    //(index, source)
+    struct neat_addr *src_addr = pair->src_addr;
+    struct sockaddr_in *src_addr_4 = NULL, *cmp_addr_4 = NULL;
+    struct sockaddr_in6 *src_addr_6 = NULL, *cmp_addr_6 = NULL;
+    union {
+        struct in_addr resolved_addr_4;
+        struct in6_addr resolved_addr_6;
+    } u;
+    struct neat_resolver_src_dst_addr *itr;
+    uint8_t addr_equal = 0;
+    int32_t i;
+
+    if (src_addr->family == AF_INET) {
+        src_addr_4 = &(src_addr->u.v4.addr4);
+        i = inet_pton(AF_INET, resolved_addr_str,
+                (void *) &u.resolved_addr_4);
+    } else {
+        src_addr_6 = &(src_addr->u.v6.addr6);
+        i = inet_pton(AF_INET6, resolved_addr_str,
+                (void *) &u.resolved_addr_6);
+    }
+
+    //the calleee also does pton, so that failure will currently be handled
+    //elsewhere
+    //TODO: SO UGLY!!!!!!!!!!!!!
+    if (i <= 0)
+        return 0;
+
+    for (itr = pair->resolver->resolver_pairs.lh_first; itr != NULL;
+            itr = itr->next_pair.le_next) {
+        addr_equal = 0;
+
+        //Must match index
+        if (src_addr->if_idx != itr->src_addr->if_idx ||
+            src_addr->family != itr->src_addr->family)
+            continue;
+
+        if (src_addr->family == AF_INET) {
+            cmp_addr_4 = &(itr->src_addr->u.v4.addr4);
+            addr_equal = (cmp_addr_4->sin_addr.s_addr ==
+                          src_addr_4->sin_addr.s_addr);
+        } else {
+            cmp_addr_6 = &(itr->src_addr->u.v6.addr6);
+            addr_equal = neat_addr_cmp_ip6_addr(cmp_addr_6->sin6_addr,
+                                                src_addr_6->sin6_addr);
+        }
+
+        if (!addr_equal)
+            continue;
+
+        //Check all resolved addresses
+        for (i = 0; i < MAX_NUM_RESOLVED; i++) {
+            if (!itr->resolved_addr[i].ss_family)
+                break;
+
+            if (src_addr->family == AF_INET) {
+                cmp_addr_4 = (struct sockaddr_in*) &(itr->resolved_addr[i]);
+                addr_equal = (u.resolved_addr_4.s_addr ==
+                              cmp_addr_4->sin_addr.s_addr);
+            } else {
+                cmp_addr_6 = (struct sockaddr_in6*) &(itr->resolved_addr[i]);
+                addr_equal = neat_addr_cmp_ip6_addr(cmp_addr_6->sin6_addr,
+                                                    u.resolved_addr_6);
+            }
+           
+            if (addr_equal)
+                return 1;
+        }
+    }
+
+    return 0;
+}
+
 //Receive and parse a DNS reply
 //TODO: Refactor and make large parts helper function?
 static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
@@ -455,6 +533,13 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
 
         if (pair->src_addr->family == AF_INET) {
             ldns_rdf2buffer_str_a(host_addr, rdf_result);
+
+            if (neat_resolver_check_duplicate(pair,
+                    (const char *) ldns_buffer_begin(host_addr))) {
+                ldns_buffer_free(host_addr);
+                continue;
+            }
+
             addr4 = (struct sockaddr_in*) &(pair->resolved_addr[num_resolved]);
 
             if (!inet_pton(AF_INET, (const char*) ldns_buffer_begin(host_addr),
@@ -464,6 +549,12 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
                 addr4->sin_family = AF_INET;
         } else {
             ldns_rdf2buffer_str_aaaa(host_addr, rdf_result);
+            if (neat_resolver_check_duplicate(pair,
+                    (const char *) ldns_buffer_begin(host_addr))) {
+                ldns_buffer_free(host_addr);
+                continue;
+            }
+
             addr6 = (struct sockaddr_in6*) &(pair->resolved_addr[num_resolved]);
 
             if (!inet_pton(AF_INET6, (const char*) ldns_buffer_begin(host_addr),

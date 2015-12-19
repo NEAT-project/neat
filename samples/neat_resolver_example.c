@@ -134,13 +134,20 @@ int main(int argc, char *argv[])
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET6, SOCK_DGRAM, 0, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_UNSPEC, SOCK_DGRAM, 0, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET, SOCK_STREAM, 0, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET6, SOCK_STREAM, 0, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_UNSPEC, SOCK_STREAM, 0, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET, SOCK_SEQPACKET, 0, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET6, SOCK_SEQPACKET, 0, "bsd10.fh-muenster.de", "80");
+    neat_resolver_reset(resolver);
+    test_resolver(nc, resolver, AF_UNSPEC, SOCK_SEQPACKET, 0, "bsd10.fh-muenster.de", "80");
+
     neat_free_ctx(nc);
     exit(EXIT_SUCCESS);
 }

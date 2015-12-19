@@ -668,11 +668,6 @@ static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
         }
     }
 
-    //Start DNS no reply timeout
-    if (!uv_is_active((const uv_handle_t *) &(resolver->timeout_handle)))
-        uv_timer_start(&(resolver->timeout_handle), neat_resolver_timeout_cb,
-                resolver->dns_t1, 0);
-
     return RETVAL_SUCCESS;
 }
 
@@ -828,7 +823,11 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
                 DNS_LITERAL_TIMEOUT, 0);
         return RETVAL_SUCCESS;
     }
-    
+
+    //Start the resolver timeout, this includes fetching addresses
+    uv_timer_start(&(resolver->timeout_handle), neat_resolver_timeout_cb,
+            resolver->dns_t1, 0);
+
     //No point starting to query if we don't have any source addresses
     if (!resolver->nc->src_addr_cnt) {
         fprintf(stderr, "No available src addresses\n");

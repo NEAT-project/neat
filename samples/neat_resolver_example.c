@@ -108,37 +108,39 @@ int main(int argc, char *argv[])
     //this is set in he_lookup in the other example code
     nc->resolver = resolver;
 
+    neat_resolver_update_timeouts(resolver, 5000, 500);
+
     test_resolver(nc, resolver, AF_INET, SOCK_DGRAM, IPPROTO_UDP, "www.google.com", "80");
     neat_resolver_reset(resolver);
-    //test_resolver(nc, resolver, AF_INET6, SOCK_DGRAM, IPPROTO_UDP, "www.google.com", "80");
+    test_resolver(nc, resolver, AF_INET6, SOCK_DGRAM, IPPROTO_UDP, "www.google.com", "80");
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET, SOCK_DGRAM, IPPROTO_UDP, "www.facebook.com", "80");
     neat_resolver_reset(resolver);
-    //test_resolver(nc, resolver, AF_INET6, SOCK_DGRAM, IPPROTO_UDP, "www.facebook.com", "80");
+    test_resolver(nc, resolver, AF_INET6, SOCK_DGRAM, IPPROTO_UDP, "www.facebook.com", "80");
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET, SOCK_STREAM, IPPROTO_TCP, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
-    //test_resolver(nc, resolver, AF_INET6, SOCK_STREAM, IPPROTO_TCP, "bsd10.fh-muenster.de", "80");
+    test_resolver(nc, resolver, AF_INET6, SOCK_STREAM, IPPROTO_TCP, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET, SOCK_STREAM, IPPROTO_SCTP, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
-    //test_resolver(nc, resolver, AF_INET6, SOCK_STREAM, IPPROTO_SCTP, "bsd10.fh-muenster.de", "80");
+    test_resolver(nc, resolver, AF_INET6, SOCK_STREAM, IPPROTO_SCTP, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
-    //test_resolver(nc, resolver, AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP, "bsd10.fh-muenster.de", "80");
+    test_resolver(nc, resolver, AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET, SOCK_DGRAM, 0, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
-    //test_resolver(nc, resolver, AF_INET6, SOCK_DGRAM, 0, "bsd10.fh-muenster.de", "80");
+    test_resolver(nc, resolver, AF_INET6, SOCK_DGRAM, 0, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET, SOCK_STREAM, 0, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
-    //test_resolver(nc, resolver, AF_INET6, SOCK_STREAM, 0, "bsd10.fh-muenster.de", "80");
+    test_resolver(nc, resolver, AF_INET6, SOCK_STREAM, 0, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET, SOCK_SEQPACKET, 0, "bsd10.fh-muenster.de", "80");
     neat_resolver_reset(resolver);
-    //test_resolver(nc, resolver, AF_INET6, SOCK_SEQPACKET, 0, "bsd10.fh-muenster.de", "80");
+    test_resolver(nc, resolver, AF_INET6, SOCK_SEQPACKET, 0, "bsd10.fh-muenster.de", "80");
 
     neat_free_ctx(nc);
     exit(EXIT_SUCCESS);

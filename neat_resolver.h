@@ -13,6 +13,7 @@
 #define DNS_LITERAL_TIMEOUT     100
 #define DNS_BUF_SIZE            1472
 #define MAX_NUM_RESOLVED        3
+#define NO_PROTOCOL             0xFFFFFFFF
 
 //These are the private networks defined by IANA. We use them to check if we end
 //up in the private network after following redirects

@@ -18,6 +18,8 @@
     struct neat_event_cbs* event_cbs; \
     uint8_t src_addr_cnt
 
+#define NEAT_MAX_NUM_PROTO 2
+
 struct neat_event_cb;
 struct neat_addr;
 
@@ -189,7 +191,7 @@ struct neat_resolver {
 
     //These values are just passed on to neat_resolver_res
     int ai_socktype;
-    int ai_protocol;
+    int ai_protocol[NEAT_MAX_NUM_PROTO];
     //DNS timeout before any domain has been resolved
     uint16_t dns_t1;
     //DNS timeout after at least one domain has been resolved

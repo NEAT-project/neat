@@ -108,6 +108,8 @@ int main(int argc, char *argv[])
     //this is set in he_lookup in the other example code
     nc->resolver = resolver;
 
+    neat_resolver_update_timeouts(resolver, 5000, 500);
+
     test_resolver(nc, resolver, AF_INET, SOCK_DGRAM, IPPROTO_UDP, "www.google.com", "80");
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET6, SOCK_DGRAM, IPPROTO_UDP, "www.google.com", "80");

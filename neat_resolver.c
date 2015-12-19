@@ -146,6 +146,24 @@ static uint8_t neat_resolver_addr_internal(struct sockaddr_storage *addr)
         return 0;
 }
 
+//Clone the given result, insert new protocol and insert into list
+//Return 1 if successful, 0 if not
+static uint8_t neat_resolver_clone_result(struct neat_resolver_results *list,
+        struct neat_resolver_res *result, int protocol)
+{
+    struct neat_resolver_res *result_clone = NULL;
+
+    result_clone = calloc(sizeof(struct neat_resolver_res), 1);
+
+    if (result_clone == NULL)
+        return 0;
+
+    memcpy(result_clone, result, sizeof(struct neat_resolver_res));
+    result_clone->ai_protocol = protocol;
+    LIST_INSERT_HEAD(list, result_clone, next_res);
+    return 1;
+}
+
 //This timeout is used when we "resolve" a literal. It works slightly different
 //than the normal resolver timeout function. We just iterate through source
 //addresses can create a result structure for those that match
@@ -216,7 +234,7 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
         //TODO: Refactor to separate function
         result->ai_family = resolver->family;
         result->ai_socktype = resolver->ai_socktype;
-        result->ai_protocol = resolver->ai_protocol;
+        result->ai_protocol = resolver->ai_protocol[0];
         result->if_idx = nsrc_addr->if_idx;
         result->src_addr = nsrc_addr->u.generic.addr;
         result->src_addr_len = addrlen;
@@ -226,6 +244,14 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
 
         LIST_INSERT_HEAD(result_list, result, next_res);
         num_resolved_addrs++;
+
+        //As long as MAX_NUM_PROTOCOL is two, then this is better than
+        //adding a loop
+        if (resolver->ai_protocol[1] != NO_PROTOCOL &&
+            neat_resolver_clone_result(result_list, result,
+                                       resolver->ai_protocol[1]))
+            num_resolved_addrs++;
+
     }
 
     if (!num_resolved_addrs)
@@ -280,6 +306,8 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
                 !pair_itr->src_addr->u.v6.ifa_pref)
                 return;
 
+            //TODO: Move result creating to a function, since it is more or less
+            //the same code in two places (here and in literal timeout)
             //We dont care if one fails, only if all
             if ((result = calloc(sizeof(struct neat_resolver_res), 1)) == NULL)
                 continue;
@@ -289,7 +317,7 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 
             result->ai_family = pair_itr->src_addr->family;
             result->ai_socktype = resolver->ai_socktype;
-            result->ai_protocol = resolver->ai_protocol;
+            result->ai_protocol = resolver->ai_protocol[0];
             result->if_idx = pair_itr->src_addr->if_idx;
             result->src_addr = pair_itr->src_addr->u.generic.addr;
             result->src_addr_len = addrlen;
@@ -304,6 +332,13 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 
             LIST_INSERT_HEAD(result_list, result, next_res);
             num_resolved_addrs++;
+
+            //As long as MAX_NUM_PROTOCOL is two, then this is better than
+            //adding a loop
+            if (resolver->ai_protocol[1] != NO_PROTOCOL &&
+                neat_resolver_clone_result(result_list, result,
+                                           resolver->ai_protocol[1]))
+                num_resolved_addrs++;
         }
 
         pair_itr = pair_itr->next_pair.le_next;
@@ -363,6 +398,84 @@ static void neat_resolver_mark_pair_del(struct neat_resolver_src_dst_addr *pair)
         uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
 }
 
+static uint8_t neat_resolver_check_duplicate(
+        struct neat_resolver_src_dst_addr *pair, const char *resolved_addr_str)
+{
+    //Accepts a src_dst_pair and an address, convert this address to struct
+    //in{6}_addr, then check all pairs if this IP has seen before for same
+    //(index, source)
+    struct neat_addr *src_addr = pair->src_addr;
+    struct sockaddr_in *src_addr_4 = NULL, *cmp_addr_4 = NULL;
+    struct sockaddr_in6 *src_addr_6 = NULL, *cmp_addr_6 = NULL;
+    union {
+        struct in_addr resolved_addr_4;
+        struct in6_addr resolved_addr_6;
+    } u;
+    struct neat_resolver_src_dst_addr *itr;
+    uint8_t addr_equal = 0;
+    int32_t i;
+
+    if (src_addr->family == AF_INET) {
+        src_addr_4 = &(src_addr->u.v4.addr4);
+        i = inet_pton(AF_INET, resolved_addr_str,
+                (void *) &u.resolved_addr_4);
+    } else {
+        src_addr_6 = &(src_addr->u.v6.addr6);
+        i = inet_pton(AF_INET6, resolved_addr_str,
+                (void *) &u.resolved_addr_6);
+    }
+
+    //the calleee also does pton, so that failure will currently be handled
+    //elsewhere
+    //TODO: SO UGLY!!!!!!!!!!!!!
+    if (i <= 0)
+        return 0;
+
+    for (itr = pair->resolver->resolver_pairs.lh_first; itr != NULL;
+            itr = itr->next_pair.le_next) {
+        addr_equal = 0;
+
+        //Must match index
+        if (src_addr->if_idx != itr->src_addr->if_idx ||
+            src_addr->family != itr->src_addr->family)
+            continue;
+
+        if (src_addr->family == AF_INET) {
+            cmp_addr_4 = &(itr->src_addr->u.v4.addr4);
+            addr_equal = (cmp_addr_4->sin_addr.s_addr ==
+                          src_addr_4->sin_addr.s_addr);
+        } else {
+            cmp_addr_6 = &(itr->src_addr->u.v6.addr6);
+            addr_equal = neat_addr_cmp_ip6_addr(cmp_addr_6->sin6_addr,
+                                                src_addr_6->sin6_addr);
+        }
+
+        if (!addr_equal)
+            continue;
+
+        //Check all resolved addresses
+        for (i = 0; i < MAX_NUM_RESOLVED; i++) {
+            if (!itr->resolved_addr[i].ss_family)
+                break;
+
+            if (src_addr->family == AF_INET) {
+                cmp_addr_4 = (struct sockaddr_in*) &(itr->resolved_addr[i]);
+                addr_equal = (u.resolved_addr_4.s_addr ==
+                              cmp_addr_4->sin_addr.s_addr);
+            } else {
+                cmp_addr_6 = (struct sockaddr_in6*) &(itr->resolved_addr[i]);
+                addr_equal = neat_addr_cmp_ip6_addr(cmp_addr_6->sin6_addr,
+                                                    u.resolved_addr_6);
+            }
+           
+            if (addr_equal)
+                return 1;
+        }
+    }
+
+    return 0;
+}
+
 //Receive and parse a DNS reply
 //TODO: Refactor and make large parts helper function?
 static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
@@ -420,6 +533,13 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
 
         if (pair->src_addr->family == AF_INET) {
             ldns_rdf2buffer_str_a(host_addr, rdf_result);
+
+            if (neat_resolver_check_duplicate(pair,
+                    (const char *) ldns_buffer_begin(host_addr))) {
+                ldns_buffer_free(host_addr);
+                continue;
+            }
+
             addr4 = (struct sockaddr_in*) &(pair->resolved_addr[num_resolved]);
 
             if (!inet_pton(AF_INET, (const char*) ldns_buffer_begin(host_addr),
@@ -429,6 +549,12 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
                 addr4->sin_family = AF_INET;
         } else {
             ldns_rdf2buffer_str_aaaa(host_addr, rdf_result);
+            if (neat_resolver_check_duplicate(pair,
+                    (const char *) ldns_buffer_begin(host_addr))) {
+                ldns_buffer_free(host_addr);
+                continue;
+            }
+
             addr6 = (struct sockaddr_in6*) &(pair->resolved_addr[num_resolved]);
 
             if (!inet_pton(AF_INET6, (const char*) ldns_buffer_begin(host_addr),
@@ -633,11 +759,6 @@ static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
         }
     }
 
-    //Start DNS no reply timeout
-    if (!uv_is_active((const uv_handle_t *) &(resolver->timeout_handle)))
-        uv_timer_start(&(resolver->timeout_handle), neat_resolver_timeout_cb,
-                resolver->dns_t1, 0);
-
     return RETVAL_SUCCESS;
 }
 
@@ -712,6 +833,20 @@ int8_t neat_resolver_check_for_literal(uint8_t family, const char *node)
     return v4_literal | v6_literal;
 }
 
+static void neat_resolver_convert_protocol_wildcard(
+        struct neat_resolver *resolver, int socktype) {
+    resolver->ai_protocol[1] = NO_PROTOCOL;
+
+    if (socktype == SOCK_DGRAM) {
+        resolver->ai_protocol[0] = IPPROTO_UDP;
+    } else if (socktype == SOCK_SEQPACKET) {
+        resolver->ai_protocol[0] = IPPROTO_SCTP;
+    } else if (socktype == SOCK_STREAM) {
+        resolver->ai_protocol[0] = IPPROTO_TCP;
+        resolver->ai_protocol[1] = IPPROTO_SCTP;
+    }
+}
+
 //Public NEAT resolver functions
 //getaddrinfo starts a query for the provided service
 //TODO: Expand parameter list
@@ -729,9 +864,33 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         return RETVAL_FAILURE;
     }
 
+    if (family  && family != AF_INET && family != AF_INET6) {
+        fprintf(stderr, "Invalid family specified\n");
+        return RETVAL_FAILURE;
+    }
+
+    if (ai_socktype && ai_socktype != SOCK_DGRAM && ai_socktype != SOCK_STREAM
+            && ai_socktype != SOCK_SEQPACKET) {
+        fprintf(stderr, "Invalid socktype specified\n");
+        return RETVAL_FAILURE;
+    }
+
+    if (ai_protocol && ai_protocol != IPPROTO_UDP && ai_protocol != IPPROTO_TCP
+            && ai_protocol != IPPROTO_SCTP) {
+        fprintf(stderr, "Incvalid protocol specified\n");
+        return RETVAL_FAILURE;
+    }
+
     resolver->family = family;
     resolver->ai_socktype = ai_socktype;
-    resolver->ai_protocol = ai_protocol;
+
+    if (ai_socktype && !ai_protocol) {
+        neat_resolver_convert_protocol_wildcard(resolver, ai_socktype);
+    } else {
+        resolver->ai_protocol[0] = ai_protocol;
+        resolver->ai_protocol[1] = NO_PROTOCOL;
+    }
+
     resolver->dst_port = htons(dst_port);
 
     if ((strlen(node) + 1) > MAX_DOMAIN_LENGTH) {
@@ -755,7 +914,11 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
                 DNS_LITERAL_TIMEOUT, 0);
         return RETVAL_SUCCESS;
     }
-    
+
+    //Start the resolver timeout, this includes fetching addresses
+    uv_timer_start(&(resolver->timeout_handle), neat_resolver_timeout_cb,
+            resolver->dns_t1, 0);
+
     //No point starting to query if we don't have any source addresses
     if (!resolver->nc->src_addr_cnt) {
         fprintf(stderr, "No available src addresses\n");

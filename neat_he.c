@@ -77,6 +77,8 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     flow->resolver_results = results;
     flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
 
+    printf("Protocol %u\n", flow->sockProtocol);
+
     callback_fx(resolver->nc, (neat_flow *)resolver->userData1, NEAT_OK,
                 flow->family, flow->sockType, flow->sockProtocol, -1);
 }
@@ -94,8 +96,12 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_
     // should these items be arguments, or is having them as flow state sensible?
     if (flow->propertyMask & NEAT_PROPERTY_SCTP_REQUIRED)
         protocol = IPPROTO_SCTP;
+    //Temporary work-around until happy eyeballs is in place
+    else if (!(flow->propertyMask & NEAT_PROPERTY_MESSAGE))
+        protocol = IPPROTO_TCP;
     else
         protocol = 0;
+
     neat_getaddrinfo(ctx->resolver, AF_INET, flow->name, flow->port,
                      (flow->propertyMask & NEAT_PROPERTY_MESSAGE) ? SOCK_DGRAM : SOCK_STREAM, protocol);
 

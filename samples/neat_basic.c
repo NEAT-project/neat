@@ -94,6 +94,7 @@ int main(int argc, char *argv[])
     flow = neat_new_flow(ctx);
     neat_get_property(ctx, flow, &prop);
     prop |= NEAT_PROPERTY_OPTIONAL_SECURITY;
+    prop |= NEAT_PROPERTY_TCP_REQUIRED; /* FIXME: Remove this once HE works */
     neat_set_property(ctx, flow, prop);
 
     ops.on_connected = on_connected;

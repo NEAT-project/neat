@@ -96,8 +96,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_
     // should these items be arguments, or is having them as flow state sensible?
     if (flow->propertyMask & NEAT_PROPERTY_SCTP_REQUIRED)
         protocol = IPPROTO_SCTP;
-    //Temporary work-around until happy eyeballs is in place
-    else if (!(flow->propertyMask & NEAT_PROPERTY_MESSAGE))
+    else if (flow->propertyMask & NEAT_PROPERTY_TCP_REQUIRED)
         protocol = IPPROTO_TCP;
     else
         protocol = 0;

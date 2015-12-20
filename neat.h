@@ -72,6 +72,8 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 #define NEAT_PROPERTY_IPV6_BANNED       (1 << 4)
 #define NEAT_PROPERTY_SCTP_REQUIRED     (1 << 5)
 #define NEAT_PROPERTY_SCTP_BANNED       (1 << 6)
+#define NEAT_PROPERTY_TCP_REQUIRED      (1 << 7)
+#define NEAT_PROPERTY_TCP_BANNED        (1 << 8)
 
 #define NEAT_ERROR_OK (0)
 #define NEAT_OK NEAT_ERROR_OK

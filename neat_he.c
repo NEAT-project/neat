@@ -84,7 +84,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
 }
 
 static uint8_t neat_he_transport_protocols(uint64_t propertyMask,
-                                           uint8_t protocols[])
+                                           int protocols[])
 {
     uint8_t nr_of_protocols;
 
@@ -188,7 +188,31 @@ static uint8_t neat_he_transport_protocols(uint64_t propertyMask,
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_fx callback_fx)
 {
-    int protocol;
+    int protocols[4]; /* We only support SCTP, TCP, UDP, and UDPLite */
+    uint8_t nr_of_protocols;
+    uint8_t family;
+
+    if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) &&
+        (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED))
+        return NEAT_ERROR_UNABLE;
+    if ((flow->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) &&
+        (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED))
+        return NEAT_ERROR_UNABLE;
+    if ((flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED) &&
+        (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED))
+        return NEAT_ERROR_UNABLE;
+    if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) &&
+        (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED))
+        family = AF_INET;
+    else if ((flow->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) &&
+             (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED))
+        family = AF_INET;
+    else
+        family = AF_UNSPEC; /* AF_INET and AF_INET6 */
+
+    nr_of_protocols = neat_he_transport_protocols(flow->propertyMask, protocols);
+    if (nr_of_protocols == 0)
+        return NEAT_ERROR_UNABLE;
 
     if (!ctx->resolver) {
         ctx->resolver = neat_resolver_init(ctx, he_resolve_cb, NULL);
@@ -196,17 +220,11 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_
     ctx->resolver->userData1 = (void *)flow; // todo this doesn't allow multiple sockets
     ctx->resolver->userData2 = callback_fx;
 
-    // should these items be arguments, or is having them as flow state sensible?
-    if (flow->propertyMask & NEAT_PROPERTY_SCTP_REQUIRED)
-        protocol = IPPROTO_SCTP;
-    else if (flow->propertyMask & NEAT_PROPERTY_TCP_REQUIRED)
-        protocol = IPPROTO_TCP;
-    else
-        protocol = 0;
-
-    neat_getaddrinfo(ctx->resolver, AF_INET, flow->name, flow->port,
-                     (flow->propertyMask & NEAT_PROPERTY_MESSAGE) ? SOCK_DGRAM : SOCK_STREAM, protocol);
+    /* FIXME: derivation of the socket type is wrong.
+     * FIXME: Make use of the array of protocols
+     */
+    neat_getaddrinfo(ctx->resolver, family, flow->name, flow->port,
+                     (flow->propertyMask & NEAT_PROPERTY_MESSAGE) ? SOCK_DGRAM : SOCK_STREAM, protocols[0]);
 
     return NEAT_OK;
 }
-

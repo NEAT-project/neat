@@ -65,15 +65,23 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 // we create higher level named functions for such things?
 
 // for property mask
-#define NEAT_PROPERTY_OPTIONAL_SECURITY (1 << 0)
-#define NEAT_PROPERTY_REQUIRED_SECURITY (1 << 1)
-#define NEAT_PROPERTY_MESSAGE           (1 << 2) // stream is default
-#define NEAT_PROPERTY_IPV6_REQUIRED     (1 << 3)
-#define NEAT_PROPERTY_IPV6_BANNED       (1 << 4)
-#define NEAT_PROPERTY_SCTP_REQUIRED     (1 << 5)
-#define NEAT_PROPERTY_SCTP_BANNED       (1 << 6)
-#define NEAT_PROPERTY_TCP_REQUIRED      (1 << 7)
-#define NEAT_PROPERTY_TCP_BANNED        (1 << 8)
+#define NEAT_PROPERTY_OPTIONAL_SECURITY           (1 << 0)
+#define NEAT_PROPERTY_REQUIRED_SECURITY           (1 << 1)
+#define NEAT_PROPERTY_MESSAGE                     (1 << 2) // stream is default
+#define NEAT_PROPERTY_IPV6_REQUIRED               (1 << 3)
+#define NEAT_PROPERTY_IPV6_BANNED                 (1 << 4)
+#define NEAT_PROPERTY_SCTP_REQUIRED               (1 << 5)
+#define NEAT_PROPERTY_SCTP_BANNED                 (1 << 6)
+#define NEAT_PROPERTY_TCP_REQUIRED                (1 << 7)
+#define NEAT_PROPERTY_TCP_BANNED                  (1 << 8)
+#define NEAT_PROPERTY_UDP_REQUIRED                (1 << 9)
+#define NEAT_PROPERTY_UDP_BANNED                  (1 << 10)
+#define NEAT_PROPERTY_UDPLITE_REQUIRED            (1 << 11)
+#define NEAT_PROPERTY_UDPLITE_BANNED              (1 << 12)
+#define NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED (1 << 13)
+#define NEAT_PROPERTY_CONGESTION_CONTROL_BANNED   (1 << 14)
+#define NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED    (1 << 15)
+#define NEAT_PROPERTY_RETRANSMISSIONS_BANNED      (1 << 16)
 
 #define NEAT_ERROR_OK (0)
 #define NEAT_OK NEAT_ERROR_OK

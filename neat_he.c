@@ -206,7 +206,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_
         family = AF_INET;
     else if ((flow->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) &&
              (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED))
-        family = AF_INET;
+        family = AF_INET6;
     else
         family = AF_UNSPEC; /* AF_INET and AF_INET6 */
 

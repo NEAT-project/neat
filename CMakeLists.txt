@@ -17,6 +17,7 @@ LIST(APPEND neat_SOURCES
     neat_addr.c
     neat_he.c
     neat_resolver.c
+    neat_property_helpers.c
     )
 
 LIST(APPEND neat_LIBS

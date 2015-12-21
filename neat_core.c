@@ -17,6 +17,7 @@
 #include "neat_queue.h"
 #include "neat_addr.h"
 #include "neat_queue.h"
+#include "neat_property_helpers.h"
 
 #ifdef __linux__
     #include "neat_linux_internal.h"
@@ -503,24 +504,31 @@ accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                             const char *name, const char *port)
 {
-    if (flow->name) {
-        return NEAT_ERROR_BAD_ARGUMENT;
-    }
+    int protocols[NEAT_MAX_NUM_PROTO]; /* We only support SCTP, TCP, UDP, and UDPLite */
+    uint8_t nr_of_protocols = neat_property_translate_protocols(
+            flow->propertyMask, protocols);
 
-    if (!strcmp(name, "*")) {
+    if (nr_of_protocols == 0)
+        return NEAT_ERROR_UNABLE;
+
+    if (flow->name)
+        return NEAT_ERROR_BAD_ARGUMENT;
+
+    if (!strcmp(name, "*"))
         name = "0.0.0.0";
-    }
+
     flow->name = strdup(name);
     flow->port = strdup(port);
     flow->propertyAttempt = flow->propertyMask;
     flow->ctx = ctx;
 
-    if (!ctx->resolver) {
+    if (!ctx->resolver)
         ctx->resolver = neat_resolver_init(ctx, accept_resolve_cb, NULL);
-    }
+
     ctx->resolver->userData1 = (void *)flow;
+
     neat_getaddrinfo(ctx->resolver, AF_INET, flow->name, flow->port,
-                     (flow->propertyMask & NEAT_PROPERTY_MESSAGE) ? SOCK_DGRAM : SOCK_STREAM, 0);
+                     protocols, nr_of_protocols);
     return NEAT_OK;
 }
 

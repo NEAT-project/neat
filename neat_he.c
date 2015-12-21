@@ -3,8 +3,10 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <assert.h>
+
 #include "neat.h"
 #include "neat_internal.h"
+#include "neat_property_helpers.h"
 
 static void he_print_results(struct neat_resolver_results *results)
 {
@@ -83,112 +85,9 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
                 flow->family, flow->sockType, flow->sockProtocol, -1);
 }
 
-static uint8_t neat_he_transport_protocols(uint64_t propertyMask,
-                                           int protocols[])
-{
-    uint8_t nr_of_protocols;
-
-    nr_of_protocols = 0;
-
-    /* Check for stupid settings */
-    if ((propertyMask & NEAT_PROPERTY_SCTP_BANNED) &&
-        (propertyMask & NEAT_PROPERTY_TCP_BANNED) &&
-        (propertyMask & NEAT_PROPERTY_UDP_BANNED) &&
-        (propertyMask & NEAT_PROPERTY_UDPLITE_BANNED))
-        return nr_of_protocols;
-    if ((propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED) &&
-        (propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_BANNED))
-        return nr_of_protocols;
-    if ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED) &&
-        (propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_BANNED))
-        return nr_of_protocols;
-    if ((propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) &&
-        (propertyMask & NEAT_PROPERTY_SCTP_BANNED))
-        return nr_of_protocols;
-    if ((propertyMask & NEAT_PROPERTY_TCP_REQUIRED) &&
-        (propertyMask & NEAT_PROPERTY_TCP_BANNED))
-        return nr_of_protocols;
-    if ((propertyMask & NEAT_PROPERTY_UDP_REQUIRED) &&
-        (propertyMask & NEAT_PROPERTY_UDP_BANNED))
-        return nr_of_protocols;
-    if ((propertyMask & NEAT_PROPERTY_UDPLITE_REQUIRED) &&
-        (propertyMask & NEAT_PROPERTY_UDPLITE_BANNED))
-        return nr_of_protocols;
-
-    /* Check explicit protocol requests first */
-    if (propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) {
-        if (((propertyMask & NEAT_PROPERTY_TCP_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_UDP_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_UDPLITE_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_BANNED) == 0))
-            protocols[nr_of_protocols++] = IPPROTO_SCTP;
-        return nr_of_protocols;
-    }
-    if (propertyMask & NEAT_PROPERTY_TCP_REQUIRED) {
-        if (((propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_UDP_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_UDPLITE_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_MESSAGE) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_BANNED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_BANNED) == 0))
-            protocols[nr_of_protocols++] = IPPROTO_TCP;
-        return nr_of_protocols;
-    }
-    if (propertyMask & NEAT_PROPERTY_UDP_REQUIRED) {
-        if (((propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_TCP_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_UDPLITE_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED) == 0))
-            protocols[nr_of_protocols++] = IPPROTO_UDP;
-        return nr_of_protocols;
-    }
-    if (propertyMask & NEAT_PROPERTY_UDPLITE_REQUIRED) {
-        if (((propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_TCP_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_UDP_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED) == 0))
-            protocols[nr_of_protocols++] = IPPROTO_UDPLITE;
-        return nr_of_protocols;
-    }
-
-    /* Finally the more complex part */
-    if (propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED) {
-        if ((propertyMask & NEAT_PROPERTY_SCTP_BANNED) == 0)
-            protocols[nr_of_protocols++] = IPPROTO_SCTP;
-        if (((propertyMask & NEAT_PROPERTY_MESSAGE) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_BANNED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_TCP_BANNED) == 0))
-            protocols[nr_of_protocols++] = IPPROTO_TCP;
-    } else if (propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_BANNED) {
-        if ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED) == 0) {
-            if ((propertyMask & NEAT_PROPERTY_UDP_BANNED) == 0)
-                protocols[nr_of_protocols++] = IPPROTO_UDP;
-            if ((propertyMask & NEAT_PROPERTY_UDPLITE_BANNED) == 0)
-                protocols[nr_of_protocols++] = IPPROTO_UDPLITE;
-        }
-    } else {
-        if ((propertyMask & NEAT_PROPERTY_SCTP_BANNED) == 0)
-            protocols[nr_of_protocols++] = IPPROTO_SCTP;
-        if (((propertyMask & NEAT_PROPERTY_MESSAGE) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_BANNED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_TCP_BANNED) == 0))
-            protocols[nr_of_protocols++] = IPPROTO_TCP;
-        if ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED) == 0) {
-            if ((propertyMask & NEAT_PROPERTY_UDP_BANNED) == 0)
-                protocols[nr_of_protocols++] = IPPROTO_UDP;
-            if ((propertyMask & NEAT_PROPERTY_UDPLITE_BANNED) == 0)
-                protocols[nr_of_protocols++] = IPPROTO_UDPLITE;
-        }
-    }
-
-    return nr_of_protocols;
-}
-
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_fx callback_fx)
 {
-    int protocols[4]; /* We only support SCTP, TCP, UDP, and UDPLite */
+    int protocols[NEAT_MAX_NUM_PROTO]; /* We only support SCTP, TCP, UDP, and UDPLite */
     uint8_t nr_of_protocols;
     uint8_t family;
 
@@ -210,7 +109,8 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_
     else
         family = AF_UNSPEC; /* AF_INET and AF_INET6 */
 
-    nr_of_protocols = neat_he_transport_protocols(flow->propertyMask, protocols);
+    nr_of_protocols = neat_property_translate_protocols(flow->propertyMask,
+            protocols);
     if (nr_of_protocols == 0)
         return NEAT_ERROR_UNABLE;
 
@@ -224,7 +124,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_
      * FIXME: Make use of the array of protocols
      */
     neat_getaddrinfo(ctx->resolver, family, flow->name, flow->port,
-                     (flow->propertyMask & NEAT_PROPERTY_MESSAGE) ? SOCK_DGRAM : SOCK_STREAM, protocols[0]);
+            protocols, nr_of_protocols);
 
     return NEAT_OK;
 }

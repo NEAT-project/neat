@@ -193,7 +193,6 @@ struct neat_resolver {
 
     //These values are just passed on to neat_resolver_res
     //TODO: Remove this, will be set on result
-    int ai_socktype;
     int ai_protocol[NEAT_MAX_NUM_PROTO];
     //DNS timeout before any domain has been resolved
     uint16_t dns_t1;

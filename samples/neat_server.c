@@ -105,6 +105,7 @@ int main(int argc, char *argv[])
 {
     struct neat_ctx *ctx = neat_init_ctx();
     struct neat_flow *flow;
+    uint64_t prop;
 
     if (ctx == NULL) {
         fprintf(stderr, "could not initialize context\n");
@@ -114,9 +115,13 @@ int main(int argc, char *argv[])
     ops.on_connected = on_connected;
     ops.on_error = on_error;
     neat_set_operations(ctx, flow, &ops);
+    neat_get_property(ctx, flow, &prop);
+    prop |= NEAT_PROPERTY_TCP_REQUIRED;
+    prop |= NEAT_PROPERTY_IPV4_REQUIRED;
+    neat_set_property(ctx, flow, prop);
 
     // wait for on_connected or on_error to be invoked
-    neat_accept(ctx, flow, "localhost", "8080");
+    neat_accept(ctx, flow, "*", "8080");
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
     neat_free_flow(flow);

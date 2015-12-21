@@ -18,7 +18,7 @@
     struct neat_event_cbs* event_cbs; \
     uint8_t src_addr_cnt
 
-#define NEAT_MAX_NUM_PROTO 2
+#define NEAT_MAX_NUM_PROTO 4
 
 struct neat_event_cb;
 struct neat_addr;
@@ -137,10 +137,12 @@ void neat_resolver_release(struct neat_resolver *resolver);
 
 //Free the list of results
 void neat_resolver_free_results(struct neat_resolver_results *results);
-//Start to resolve a domain name. Only supports domain names as node and ports
-//as service
+
+//Start to resolve a domain name (or literal). Accepts a list of protocols, will
+//set socktype based on protocol
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-        const char *node, const char *service, int ai_socktype, int ai_protocol);
+        const char *node, const char *service, int ai_protocol[],
+        uint8_t proto_count);
 
 //Update timeouts (in ms) for DNS resolving. T1 is total timeout, T2 is how long
 //to wait after first reply from DNS server. Initial values are 30s and 1s.
@@ -190,7 +192,7 @@ struct neat_resolver {
     void *userData2;
 
     //These values are just passed on to neat_resolver_res
-    int ai_socktype;
+    //TODO: Remove this, will be set on result
     int ai_protocol[NEAT_MAX_NUM_PROTO];
     //DNS timeout before any domain has been resolved
     uint16_t dns_t1;

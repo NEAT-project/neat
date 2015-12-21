@@ -146,22 +146,57 @@ static uint8_t neat_resolver_addr_internal(struct sockaddr_storage *addr)
         return 0;
 }
 
-//Clone the given result, insert new protocol and insert into list
-//Return 1 if successful, 0 if not
-static uint8_t neat_resolver_clone_result(struct neat_resolver_results *list,
-        struct neat_resolver_res *result, int protocol)
+//Create all results for one match
+static uint8_t neat_resolver_fill_results(
+        struct neat_resolver *resolver,
+        struct neat_resolver_results *result_list,
+        struct neat_addr *src_addr,
+        struct sockaddr_storage dst_addr)
 {
-    struct neat_resolver_res *result_clone = NULL;
+    socklen_t addrlen;
+    struct sockaddr_in *addr4;
+    struct neat_resolver_res *result;
+    uint8_t i;
+    uint8_t num_addr_added = 0;
 
-    result_clone = calloc(sizeof(struct neat_resolver_res), 1);
+    for (i = 0; i < NEAT_MAX_NUM_PROTO; i++) {
+        if (!resolver->ai_protocol[i])
+            break;
 
-    if (result_clone == NULL)
-        return 0;
+        result = calloc(sizeof(struct neat_resolver_res), 1);
 
-    memcpy(result_clone, result, sizeof(struct neat_resolver_res));
-    result_clone->ai_protocol = protocol;
-    LIST_INSERT_HEAD(list, result_clone, next_res);
-    return 1;
+        if (result == NULL)
+            continue;
+
+        addrlen = src_addr->family == AF_INET ?
+            sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+
+        result->ai_family = src_addr->family;
+        result->ai_protocol = resolver->ai_protocol[i];
+        result->if_idx = src_addr->if_idx;
+        result->src_addr = src_addr->u.generic.addr;
+        result->src_addr_len = addrlen;
+        result->dst_addr = dst_addr;
+        result->dst_addr_len = addrlen;
+        result->internal = neat_resolver_addr_internal(&dst_addr);
+
+        //Code can't get here without having passed through sanitizing function
+        if (result->ai_protocol == IPPROTO_UDP ||
+            result->ai_protocol == IPPROTO_UDPLITE)
+            result->ai_socktype = SOCK_DGRAM;
+        else
+            result->ai_socktype = SOCK_STREAM;
+
+        //Head of sockaddr_in and sockaddr_in6 is the same, so this is safe
+        //for setting port
+        addr4 = (struct sockaddr_in*) &(result->dst_addr);
+        addr4->sin_port = resolver->dst_port;
+
+        LIST_INSERT_HEAD(result_list, result, next_res);
+        num_addr_added++;
+    }
+
+    return num_addr_added;
 }
 
 //This timeout is used when we "resolve" a literal. It works slightly different
@@ -171,10 +206,8 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
 {
     struct neat_resolver *resolver = handle->data;
     struct neat_resolver_results *result_list;
-    struct neat_resolver_res *result;
     uint32_t num_resolved_addrs = 0;
     struct neat_addr *nsrc_addr = NULL;
-    socklen_t addrlen;
     void *dst_addr_pton = NULL;
     struct sockaddr_storage dst_addr;
     union {
@@ -224,34 +257,8 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
         if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
             continue;
 
-        //We dont care if one fails, only if all
-        if ((result = calloc(sizeof(struct neat_resolver_res), 1)) == NULL)
-            continue;
-
-        addrlen = nsrc_addr->family == AF_INET ?
-            sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
-
-        //TODO: Refactor to separate function
-        result->ai_family = resolver->family;
-        result->ai_socktype = resolver->ai_socktype;
-        result->ai_protocol = resolver->ai_protocol[0];
-        result->if_idx = nsrc_addr->if_idx;
-        result->src_addr = nsrc_addr->u.generic.addr;
-        result->src_addr_len = addrlen;
-        result->dst_addr = dst_addr;
-        result->dst_addr_len = addrlen;
-        result->internal = neat_resolver_addr_internal(&(result->dst_addr));
-
-        LIST_INSERT_HEAD(result_list, result, next_res);
-        num_resolved_addrs++;
-
-        //As long as MAX_NUM_PROTOCOL is two, then this is better than
-        //adding a loop
-        if (resolver->ai_protocol[1] != NO_PROTOCOL &&
-            neat_resolver_clone_result(result_list, result,
-                                       resolver->ai_protocol[1]))
-            num_resolved_addrs++;
-
+        num_resolved_addrs += neat_resolver_fill_results(resolver, result_list,
+                nsrc_addr, dst_addr);
     }
 
     if (!num_resolved_addrs)
@@ -267,10 +274,7 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
     struct neat_resolver *resolver = handle->data;
     struct neat_resolver_src_dst_addr *pair_itr = NULL;
     struct neat_resolver_results *result_list;
-    struct neat_resolver_res *result;
     uint32_t num_resolved_addrs = 0;
-    struct sockaddr_in *addr4 = NULL;
-    socklen_t addrlen = 0;
     uint8_t i;
 
     //DNS timeout, call DNS callback with timeout error code
@@ -291,6 +295,7 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 
     //Iterate through all receiver pairs and create neat_resolver_res
     while (pair_itr != NULL) {
+        //Resolve has not been completed
         if (!pair_itr->resolved_addr[0].ss_family) {
             pair_itr = pair_itr->next_pair.le_next;
             continue;
@@ -306,39 +311,9 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
                 !pair_itr->src_addr->u.v6.ifa_pref)
                 return;
 
-            //TODO: Move result creating to a function, since it is more or less
-            //the same code in two places (here and in literal timeout)
-            //We dont care if one fails, only if all
-            if ((result = calloc(sizeof(struct neat_resolver_res), 1)) == NULL)
-                continue;
-
-            addrlen = pair_itr->src_addr->family == AF_INET ?
-                sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
-
-            result->ai_family = pair_itr->src_addr->family;
-            result->ai_socktype = resolver->ai_socktype;
-            result->ai_protocol = resolver->ai_protocol[0];
-            result->if_idx = pair_itr->src_addr->if_idx;
-            result->src_addr = pair_itr->src_addr->u.generic.addr;
-            result->src_addr_len = addrlen;
-            result->dst_addr = pair_itr->resolved_addr[i];
-            result->dst_addr_len = addrlen;
-            result->internal = neat_resolver_addr_internal(&(result->dst_addr));
-
-            //Head of sockaddr_in and sockaddr_in6 is the same, so this is safe
-            //for setting port
-            addr4 = (struct sockaddr_in*) &(result->dst_addr);
-            addr4->sin_port = resolver->dst_port;
-
-            LIST_INSERT_HEAD(result_list, result, next_res);
-            num_resolved_addrs++;
-
-            //As long as MAX_NUM_PROTOCOL is two, then this is better than
-            //adding a loop
-            if (resolver->ai_protocol[1] != NO_PROTOCOL &&
-                neat_resolver_clone_result(result_list, result,
-                                           resolver->ai_protocol[1]))
-                num_resolved_addrs++;
+            num_resolved_addrs += neat_resolver_fill_results(resolver,
+                    result_list, pair_itr->src_addr,
+                    pair_itr->resolved_addr[i]);
         }
 
         pair_itr = pair_itr->next_pair.le_next;
@@ -833,29 +808,38 @@ int8_t neat_resolver_check_for_literal(uint8_t family, const char *node)
     return v4_literal | v6_literal;
 }
 
-static void neat_resolver_convert_protocol_wildcard(
-        struct neat_resolver *resolver, int socktype) {
-    resolver->ai_protocol[1] = NO_PROTOCOL;
+static uint8_t neat_validate_protocols(int protocols[], uint8_t proto_count)
+{
+    uint8_t i;
 
-    if (socktype == SOCK_DGRAM) {
-        resolver->ai_protocol[0] = IPPROTO_UDP;
-    } else if (socktype == SOCK_SEQPACKET) {
-        resolver->ai_protocol[0] = IPPROTO_SCTP;
-    } else if (socktype == SOCK_STREAM) {
-        resolver->ai_protocol[0] = IPPROTO_TCP;
-        resolver->ai_protocol[1] = IPPROTO_SCTP;
+    if (proto_count > NEAT_MAX_NUM_PROTO)
+        return RETVAL_FAILURE;
+
+    for (i = 0; i < proto_count; i++) {
+        switch (protocols[i]) {
+        case IPPROTO_UDP:
+        case IPPROTO_UDPLITE:
+        case IPPROTO_TCP:
+        case IPPROTO_SCTP:
+            continue;
+        default:
+            return RETVAL_FAILURE;
+        }
     }
+
+    return RETVAL_SUCCESS;
 }
 
 //Public NEAT resolver functions
 //getaddrinfo starts a query for the provided service
-//TODO: Expand parameter list
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-    const char *node, const char *service, int ai_socktype, int ai_protocol)
+        const char *node, const char *service, int ai_protocol[],
+        uint8_t proto_count)
 {
     struct neat_addr *nsrc_addr = NULL;
     int32_t dst_port = 0;
     int8_t retval;
+    uint8_t i;
 
     dst_port = atoi(service);
 
@@ -864,33 +848,20 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         return RETVAL_FAILURE;
     }
 
-    if (family  && family != AF_INET && family != AF_INET6) {
+    if (family && family != AF_INET && family != AF_INET6) {
         fprintf(stderr, "Invalid family specified\n");
         return RETVAL_FAILURE;
     }
 
-    if (ai_socktype && ai_socktype != SOCK_DGRAM && ai_socktype != SOCK_STREAM
-            && ai_socktype != SOCK_SEQPACKET) {
-        fprintf(stderr, "Invalid socktype specified\n");
+    if (neat_validate_protocols(ai_protocol, proto_count)) {
+        fprintf(stderr, "Error in desired protocol list\n");
         return RETVAL_FAILURE;
     }
 
-    if (ai_protocol && ai_protocol != IPPROTO_UDP && ai_protocol != IPPROTO_TCP
-            && ai_protocol != IPPROTO_SCTP) {
-        fprintf(stderr, "Incvalid protocol specified\n");
-        return RETVAL_FAILURE;
-    }
+    for (i = 0; i<proto_count; i++)
+        resolver->ai_protocol[i] = ai_protocol[i];
 
     resolver->family = family;
-    resolver->ai_socktype = ai_socktype;
-
-    if (ai_socktype && !ai_protocol) {
-        neat_resolver_convert_protocol_wildcard(resolver, ai_socktype);
-    } else {
-        resolver->ai_protocol[0] = ai_protocol;
-        resolver->ai_protocol[1] = NO_PROTOCOL;
-    }
-
     resolver->dst_port = htons(dst_port);
 
     if ((strlen(node) + 1) > MAX_DOMAIN_LENGTH) {
@@ -1020,6 +991,8 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
     } else {
         memset(resolver->domain_name, 0, MAX_DOMAIN_LENGTH);
     }
+
+    memset(resolver->ai_protocol, 0, sizeof(resolver->ai_protocol));
 }
 
 void neat_resolver_reset(struct neat_resolver *resolver)

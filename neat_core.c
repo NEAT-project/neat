@@ -233,6 +233,8 @@ void neat_free_flow(neat_flow *flow)
         uv_poll_stop(&flow->handle);
     }
     uv_close((uv_handle_t *)(&flow->handle), free_cb);
+    free(flow->buffered);
+    flow->buffered = NULL;
     return;
 }
 
@@ -302,8 +304,20 @@ static void io_readable(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_readable(flow->operations);
 }
 
+static void io_all_written(neat_ctx *ctx, neat_flow *flow)
+{
+    if (!flow->operations || !flow->operations->on_all_written) {
+        return;
+    }
+    neat_error_code code = NEAT_OK;
+    READYCALLBACKSTRUCT;
+    flow->operations->on_all_written(flow->operations);
+}
+
 static void do_accept(neat_ctx *ctx, neat_flow *flow);
 static void uvpollable_cb(uv_poll_t *handle, int status, int events);
+static neat_error_code
+neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
@@ -316,6 +330,9 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
         newEvents |= UV_READABLE;
     }
     if (flow->operations && flow->operations->on_writable) {
+        newEvents |= UV_WRITABLE;
+    }
+    if (flow->isDraining) {
         newEvents |= UV_WRITABLE;
     }
     if (newEvents) {
@@ -341,6 +358,16 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
     if ((events & UV_WRITABLE) && flow->firstWritePending) {
         flow->firstWritePending = 0;
         io_connected(ctx, flow, NEAT_OK);
+    }
+    if (events & UV_WRITABLE && flow->isDraining) {
+        neat_error_code code = neat_write_via_kernel_flush(ctx, flow);
+        if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
+            io_error(ctx, flow, code);
+            return;
+        }
+        if (!flow->isDraining) {
+            io_all_written(ctx, flow);
+        }
     }
     if (events & UV_WRITABLE) {
         io_writable(ctx, flow, NEAT_OK);
@@ -533,20 +560,101 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 }
 
 static neat_error_code
-neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
-                      const unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
+neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 {
-    *actualAmt = 0;
-    ssize_t rv = send(flow->fd, buffer, amt, 0);
+    if (!flow->buffered) {
+        return NEAT_OK;
+    }
+    ssize_t rv = send(flow->fd, flow->buffered + flow->bufferedOffset,
+                      flow->bufferedSize, 0);
     if (rv == -1 && errno == EWOULDBLOCK){
         return NEAT_ERROR_WOULD_BLOCK;
     }
+    if (rv < 0) {
+        return NEAT_ERROR_IO;
+    }
+    flow->bufferedOffset += rv;
+    flow->bufferedSize -= rv;
+    if (!flow->bufferedSize) {
+        free(flow->buffered);
+        flow->buffered = NULL;
+        flow->bufferedOffset = 0;
+        flow->bufferedAllocation = 0;
+        flow->isDraining = 0;
+    }
+    return NEAT_OK;
+}
 
-    if (rv >= 0) {
-        *actualAmt = rv;
+static neat_error_code
+neat_write_via_kernel_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
+                                 const unsigned char *buffer, uint32_t amt)
+{
+    // todo, a better implementation here is a linked list of buffers
+    // but this gets us started
+    if (!amt) {
         return NEAT_OK;
     }
-    return NEAT_ERROR_IO;
+
+    // check if there is room to buffer without extending allocation
+    if ((flow->bufferedOffset + flow->bufferedSize + amt) <= flow->bufferedAllocation) {
+        memcpy (flow->buffered + flow->bufferedOffset + flow->bufferedSize,
+                buffer, amt);
+        flow->bufferedSize += amt;
+        return NEAT_OK;
+    }
+
+    // round up to ~8K
+    size_t needed = ((amt + flow->bufferedSize) + 8191) & ~8191;
+    if (!flow->bufferedOffset) {
+        flow->buffered = realloc(flow->buffered, needed);
+        if (!flow->buffered) {
+            return NEAT_ERROR_INTERNAL;
+        }
+        flow->bufferedAllocation = needed;
+    } else {
+        void *newptr = malloc(needed);
+        if (!newptr) {
+            return NEAT_ERROR_INTERNAL;
+        }
+        memcpy(newptr, flow->buffered + flow->bufferedOffset, flow->bufferedSize);
+        free(flow->buffered);
+        flow->buffered = newptr;
+        flow->bufferedAllocation = needed;
+        flow->bufferedOffset = 0;
+    }
+    memcpy (flow->buffered + flow->bufferedSize, buffer, amt);
+    flow->bufferedSize += amt;
+    return NEAT_OK;
+}
+
+static neat_error_code
+neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
+                      const unsigned char *buffer, uint32_t amt)
+{
+    neat_error_code code = neat_write_via_kernel_flush(ctx, flow);
+    if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
+        return code;
+    }
+    if (!flow->buffered && code != NEAT_ERROR_WOULD_BLOCK && amt) {
+        ssize_t rv = send(flow->fd, buffer, amt, 0);
+        if (rv == -1 && errno != EWOULDBLOCK){
+            return NEAT_ERROR_IO;
+        }
+        amt -= rv;
+        buffer += rv;
+    }
+    code = neat_write_via_kernel_fillbuffer(ctx, flow, buffer, amt);
+    if (code != NEAT_OK) {
+        return code;
+    }
+    if (!flow->buffered) {
+        flow->isDraining = 0;
+        io_all_written(ctx, flow);
+    } else {
+        flow->isDraining = 1;
+    }
+    updatePollHandle(ctx, flow, &flow->handle);
+    return NEAT_OK;
 }
 
 static neat_error_code
@@ -623,11 +731,12 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     return 0;
 }
 
+// this function needs to accept all the data (buffering if necessary)
 neat_error_code
 neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
-           const unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
+           const unsigned char *buffer, uint32_t amt)
 {
-    return flow->writefx(ctx, flow, buffer, amt, actualAmt);
+    return flow->writefx(ctx, flow, buffer, amt);
 }
 
 neat_error_code

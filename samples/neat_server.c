@@ -31,12 +31,8 @@ static uint64_t
 on_writable(struct neat_flow_operations *opCB)
 {
     struct sessionData *sd = (struct sessionData *)opCB->userData;
-    uint32_t rv;
     neat_error_code code;
-    code = neat_write(opCB->ctx, opCB->flow, (unsigned char *)"N", 1, &rv);
-    if (code == NEAT_ERROR_WOULD_BLOCK) {
-        return 0;
-    }
+    code = neat_write(opCB->ctx, opCB->flow, (unsigned char *)"N", 1);
     if (code != NEAT_OK) {
         return on_error(opCB);
     }

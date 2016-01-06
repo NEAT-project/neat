@@ -46,29 +46,27 @@ on_readable(struct neat_flow_operations *opCB)
     return 0;
 }
 
-int written = 0;
-int towrite;
 static const char *request =
     "GET / HTTP/1.0\r\nHost:bsd10.fh-muenster.de\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 
 static uint64_t
+on_all_written(struct neat_flow_operations *opCB)
+{
+    ops.on_readable = on_readable;
+    return 0;
+}
+
+static uint64_t
 on_writable(struct neat_flow_operations *opCB)
 {
-    uint32_t rv;
     neat_error_code code;
     code = neat_write(opCB->ctx, opCB->flow,
-                      (const unsigned char *)request + written ,
-                      towrite - written, &rv);
-    if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
+                      (const unsigned char *)request,
+                      strlen(request));
+    if (code != NEAT_OK) {
         return on_error(opCB);
     }
-
-    written += rv;
-    if ((towrite - written) <= 0) {
-        // everything is written out - stop writing and start reading
-        ops.on_writable = NULL;
-        ops.on_readable = on_readable;
-    }
+    ops.on_writable = NULL;
     return 0;
 }
 
@@ -90,7 +88,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "could not initialize context\n");
         exit(EXIT_FAILURE);
     }
-    towrite = strlen(request);
     flow = neat_new_flow(ctx);
     neat_get_property(ctx, flow, &prop);
     prop |= NEAT_PROPERTY_SCTP_REQUIRED;
@@ -98,6 +95,7 @@ int main(int argc, char *argv[])
 
     ops.on_connected = on_connected;
     ops.on_error = on_error;
+    ops.on_all_written = on_all_written;
     neat_set_operations(ctx, flow, &ops);
 
     // wait for on_connected or on_error to be invoked

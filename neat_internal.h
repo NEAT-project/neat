@@ -52,7 +52,7 @@ typedef struct neat_ctx neat_ctx ;
 typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
-                                           const unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
+                                           const unsigned char *buffer, uint32_t amt);
 typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
 typedef int (*neat_connect_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
@@ -75,6 +75,12 @@ struct neat_flow
     struct neat_ctx *ctx; // raw convenience pointer
     uv_poll_t handle;
 
+    // The memory buffer for writing.. todo a chained list of buffers
+    unsigned char *buffered; // memory for write buffers
+    ssize_t bufferedOffset;  // offset of data still to be written
+    ssize_t bufferedSize;    // amount of unwritten data
+    ssize_t bufferedAllocation; // size of buffered allocation
+
     neat_read_impl readfx;
     neat_write_impl writefx;
     neat_accept_impl acceptfx;
@@ -87,6 +93,7 @@ struct neat_flow
     int isPolling : 1;
     int ownedByCore : 1;
     int everConnected : 1;
+    int isDraining : 1;
 };
 
 typedef struct neat_flow neat_flow;

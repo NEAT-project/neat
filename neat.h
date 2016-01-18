@@ -88,6 +88,8 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 #define NEAT_PROPERTY_CONGESTION_CONTROL_BANNED   (1 << 16)
 #define NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED    (1 << 17)
 #define NEAT_PROPERTY_RETRANSMISSIONS_BANNED      (1 << 18)
+#define NEAT_PROPERTY_TURN_REQUIRED               (1 << 19)
+#define NEAT_PROPERTY_TURN_OPTIONAL               (1 << 20)
 
 #define NEAT_ERROR_OK (0)
 #define NEAT_OK NEAT_ERROR_OK

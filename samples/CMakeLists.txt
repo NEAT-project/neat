@@ -9,7 +9,7 @@ LIST(APPEND neat_PROGRAMS
     neat_resolver_example.c
     neat_server.c
     client.c
-    server_daytime.c
+    server_chargen.c
     )
 
 LIST(APPEND neat_PROGRAMS_LIBS

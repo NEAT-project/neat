@@ -8,6 +8,8 @@ LIST(APPEND neat_PROGRAMS
     neat_basic_sctp.c
     neat_resolver_example.c
     neat_server.c
+    client.c
+    server_daytime.c
     )
 
 LIST(APPEND neat_PROGRAMS_LIBS

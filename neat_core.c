@@ -153,17 +153,17 @@ uint8_t neat_add_event_cb(struct neat_ctx *nc, uint8_t event_type,
 
     for (cb_itr = cb_list_head->lh_first; cb_itr != NULL;
             cb_itr = cb_itr->next_cb.le_next) {
-  
+
         if (cb_itr == cb) {
             //TODO: Debug level
             fprintf(stderr, "Callback for %u has already been added\n",
-                    event_type); 
+                    event_type);
             return RETVAL_FAILURE;
         }
     }
 
     //TODO: Debug level
-    fprintf(stderr, "Added new callback for event type %u\n", event_type); 
+    fprintf(stderr, "Added new callback for event type %u\n", event_type);
     LIST_INSERT_HEAD(cb_list_head, cb, next_cb);
     return RETVAL_SUCCESS;
 }
@@ -206,7 +206,7 @@ void neat_run_event_cb(struct neat_ctx *nc, uint8_t event_type,
         return;
 
     cb_list_head = &(nc->event_cbs[event_type]);
-    
+
     for (cb_itr = cb_list_head->lh_first; cb_itr != NULL;
             cb_itr = cb_itr->next_cb.le_next)
         cb_itr->event_cb(nc, cb_itr->data, data);

@@ -1,0 +1,119 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include "../neat.h"
+
+/*
+    This is simple echo server (RFC 862) for neat
+*/
+
+static struct neat_flow_operations ops;
+
+struct sessionData {
+    int toread;
+    int iter;
+};
+
+static uint64_t on_error (struct neat_flow_operations *opCB)
+{
+    fprintf(stderr,"neatserver unexpected error\n");
+    exit (1);
+    return 0;
+}
+
+static uint64_t on_readable (struct neat_flow_operations *opCB);
+
+static uint64_t on_writable(struct neat_flow_operations *opCB)
+{
+    struct sessionData *sd = (struct sessionData *)opCB->userData;
+    neat_error_code code;
+    code = neat_write(opCB->ctx, opCB->flow, (unsigned char *)"N", 1);
+    if (code != NEAT_OK) {
+        return on_error(opCB);
+    }
+
+    if (sd->iter < 2) {
+        // read now
+        opCB->on_writable = NULL;
+        opCB->on_readable = on_readable;
+    } else {
+        // we are done
+        opCB->on_writable = NULL;
+        free (opCB->userData);
+        opCB->userData = NULL;
+        neat_free_flow(opCB->flow);
+    }
+    return 0;
+}
+
+static uint64_t on_readable (struct neat_flow_operations *opCB)
+{
+    // data is available to read
+    unsigned char buffer[32];
+    uint32_t amt, needed;
+    neat_error_code code;
+    struct sessionData *sd = (struct sessionData *)opCB->userData;
+
+    needed = (sd->toread > 32) ? 32 : sd->toread;
+    if (!needed) {
+        return 0;
+    }
+    code = neat_read(opCB->ctx, opCB->flow, buffer, needed, &amt);
+    if (code == NEAT_ERROR_WOULD_BLOCK) {
+        return 0;
+    }
+    if (code != NEAT_OK) {
+        return on_error(opCB);
+    }
+    if (!amt) { // eof is unexpected
+        return on_error(opCB);
+    } else if (amt > 0) {
+        fwrite(buffer, 1, amt, stdout);
+        sd->toread -= amt;
+        if (sd->toread == 0) {
+            sd->toread = 100;
+            sd->iter++;
+            opCB->on_readable = NULL;
+            opCB->on_writable = on_writable;
+        }
+    }
+    return 0;
+}
+
+static uint64_t on_connected (struct neat_flow_operations *opCB)
+{
+    // now we can start writing
+    opCB->userData = malloc(sizeof(struct sessionData));
+    ((struct sessionData *)(opCB->userData))->toread = 100;
+    ((struct sessionData *)(opCB->userData))->iter = 0;
+    opCB->on_writable = on_writable;
+    return 0;
+}
+
+int main (int argc, char *argv[])
+{
+    struct neat_ctx *ctx = neat_init_ctx();
+    struct neat_flow *flow;
+    uint64_t prop;
+
+    if (ctx == NULL) {
+        fprintf(stderr, "could not initialize context\n");
+        exit(EXIT_FAILURE);
+    }
+    flow = neat_new_flow(ctx);
+    ops.on_connected = on_connected;
+    ops.on_error = on_error;
+    neat_set_operations(ctx, flow, &ops);
+    neat_get_property(ctx, flow, &prop);
+    prop |= NEAT_PROPERTY_TCP_REQUIRED;
+    prop |= NEAT_PROPERTY_IPV4_REQUIRED;
+    neat_set_property(ctx, flow, prop);
+
+    // wait for on_connected or on_error to be invoked
+    neat_accept(ctx, flow, "*", "8080");
+    neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
+
+    neat_free_flow(flow);
+    neat_free_ctx(ctx);
+    exit(EXIT_SUCCESS);
+}

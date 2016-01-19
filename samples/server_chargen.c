@@ -9,7 +9,6 @@
 */
 
 #define NO_DEBUG_INFO
-#define BUFFERSIZE 32
 #define CHARLEN 72
 
 #ifdef NO_DEBUG_INFO
@@ -20,18 +19,16 @@
 
 #define debug_error(M, ...) fprintf(stderr, "[ERROR][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
-
 static struct neat_flow_operations ops;
 static uint32_t chargen_offset = 0;
 
-
 static uint64_t on_error(struct neat_flow_operations *opCB) {
-    debug_error("unexpected error!");
     exit(EXIT_FAILURE);
 }
 
-static uint64_t on_readable(struct neat_flow_operations *opCB);
-
+/*
+    send CHARLEN chars to client
+*/
 static uint64_t on_writable(struct neat_flow_operations *opCB) {
     neat_error_code code;
     unsigned char buffer[CHARLEN];
@@ -50,49 +47,13 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
         debug_error("neat_write - code: %d", (int)code);
         return on_error(opCB);
     } else {
-        debug_info("neat_write");
+        debug_info("neat_write - %d byte", CHARLEN);
     }
 
-    // close flow after sending
-    //opCB->on_writable = NULL;
-    //free(opCB->userData);
-    //opCB->userData = NULL;
-    //neat_free_flow(opCB->flow);
     return 0;
 }
 
-static uint64_t on_readable(struct neat_flow_operations *opCB) {
-    // data is available to read
-    unsigned char buffer[BUFFERSIZE];
-    uint32_t amt;
-    neat_error_code code;
-    debug_info();
-
-    if ((code = neat_read(opCB->ctx, opCB->flow, buffer, 1, &amt)) != 0) {
-        if (code == NEAT_ERROR_WOULD_BLOCK) {
-            debug_error("NEAT_ERROR_WOULD_BLOCK");
-            return 0;
-        } else if (code != NEAT_OK) {
-            debug_error("code != NEAT_OK");
-            return on_error(opCB);
-        } else {
-            debug_error("unhandled error");
-        }
-    }
-
-    if (!amt) { // eof is unexpected
-        debug_error("eof unexpected");
-        return on_error(opCB);
-    } else if (amt > 0) {
-        debug_info("amt > 0 - whatever...");
-        //opCB->on_readable = NULL;
-        //opCB->on_writable = on_writable;
-    }
-    return 0;
-}
-
-static uint64_t
-on_connected(struct neat_flow_operations *opCB)
+static uint64_t on_connected(struct neat_flow_operations *opCB)
 {
     // now we can start writing
     debug_info();
@@ -106,8 +67,9 @@ int main(int argc, char *argv[])
     struct neat_flow *flow;
     uint64_t prop;
 
+    // check for successful context
     if (ctx == NULL) {
-        fprintf(stderr, "could not initialize context\n");
+        debug_error("could not initialize context");
         exit(EXIT_FAILURE);
     }
 
@@ -125,14 +87,16 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    // set properties (TCP only etc..)
+    // get properties
     if (neat_get_property(ctx, flow, &prop)) {
         debug_error("neat_get_property");
         exit(EXIT_FAILURE);
     }
+
     prop |= NEAT_PROPERTY_TCP_REQUIRED;
     prop |= NEAT_PROPERTY_IPV4_REQUIRED;
 
+    // set properties
     if (neat_set_property(ctx, flow, prop)) {
         debug_error("neat_set_property");
         exit(EXIT_FAILURE);
@@ -146,6 +110,7 @@ int main(int argc, char *argv[])
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
+    // cleanup
     neat_free_flow(flow);
     neat_free_ctx(ctx);
     exit(EXIT_SUCCESS);

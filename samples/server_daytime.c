@@ -45,7 +45,11 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
         if (code != NEAT_OK) {
             debug_error("code != NEAT_OK");
             return on_error(opCB);
+        } else {
+            debug_error("unhandled error code");
         }
+    } else {
+        debug_info("time sent - closing connection");
     }
 
     // close flow after sending
@@ -61,10 +65,7 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
     unsigned char buffer[BUFFERSIZE];
     uint32_t amt;
     neat_error_code code;
-
-
     debug_info();
-
 
     if ((code = neat_read(opCB->ctx, opCB->flow, buffer, 1, &amt)) != 0) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
@@ -79,8 +80,10 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
     }
 
     if (!amt) { // eof is unexpected
+        debug_error("eof unexpected");
         return on_error(opCB);
     } else if (amt > 0) {
+        debug_info("amt > 0 - whatever...");
         //opCB->on_readable = NULL;
         //opCB->on_writable = on_writable;
     }
@@ -92,17 +95,6 @@ on_connected(struct neat_flow_operations *opCB)
 {
     // now we can start writing
     debug_info();
-    //opCB->userData = malloc(sizeof(struct sessionData));
-    opCB->on_writable = on_writable;
-    return 0;
-}
-
-static uint64_t
-on_all_written(struct neat_flow_operations *opCB)
-{
-    // now we can start writing
-    debug_info();
-    //opCB->userData = malloc(sizeof(struct sessionData));
     opCB->on_writable = on_writable;
     return 0;
 }
@@ -126,7 +118,7 @@ int main(int argc, char *argv[])
 
     ops.on_connected = on_connected;
     ops.on_error = on_error;
-    ops.on_all_written = on_all_written;
+    //ops.on_all_written = on_all_written;
     if (neat_set_operations(ctx, flow, &ops)) {
         debug_error("neat_set_operations");
         exit(EXIT_FAILURE);
@@ -137,8 +129,8 @@ int main(int argc, char *argv[])
         debug_error("neat_get_property");
         exit(EXIT_FAILURE);
     }
-    //prop |= NEAT_PROPERTY_TCP_REQUIRED;
-    //prop |= NEAT_PROPERTY_IPV4_REQUIRED;
+    prop |= NEAT_PROPERTY_TCP_REQUIRED;
+    prop |= NEAT_PROPERTY_IPV4_REQUIRED;
 
     if (neat_set_property(ctx, flow, prop)) {
         debug_error("neat_set_property");
@@ -151,12 +143,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-
-    printf("hallo!\n");
-    
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
-
-
 
     neat_free_flow(flow);
     neat_free_ctx(ctx);

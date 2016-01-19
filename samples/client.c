@@ -24,40 +24,40 @@ static const char *request = "GET / HTTP/1.0\r\nHost:www.neat-project.org\r\nUse
 static struct neat_flow_operations ops;
 
 static uint64_t on_error(struct neat_flow_operations *opCB) {
-    debug_error("unexpected error!");
+    debug_error("error!");
     exit(EXIT_FAILURE);
 }
 
+/*
+    Read data until buffered_amount == 0 - then stop event loop!
+*/
 static uint64_t on_readable(struct neat_flow_operations *opCB) {
     // data is available to read
     unsigned char buffer[BUFFERSIZE];
     uint32_t buffered_amount;
     neat_error_code code;
-    debug_info();
 
-    if ((code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffered_amount)) > 0) {
+    code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffered_amount);
+
+    if (code) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             debug_info("NEAT_ERROR_WOULD_BLOCK");
             return 0;
-        } else if (code != NEAT_OK) {
-            debug_error("return != NEAT_OK");
-            return on_error(opCB);
         } else {
-            debug_error("unhandled error!");
-            exit(EXIT_FAILURE);
+            debug_error("code: %d", (int)code);
+            return on_error(opCB);
         }
     }
 
     if (buffered_amount > 0) {
-        // we got some data
-        fwrite(buffer, 1, buffered_amount, stdout);
-    } else {
-        // EOF
+        debug_info("got some data: %d byte", buffered_amount);
+        fwrite(buffer, sizeof(char), buffered_amount, stdout);
         fflush(stdout);
+    } else {
+        debug_info("buffered_amount is 0 - closing");
         ops.on_readable = NULL;
         neat_stop_event_loop(opCB->ctx);
     }
-
     return 0;
 }
 
@@ -68,15 +68,17 @@ static uint64_t on_all_written(struct neat_flow_operations *opCB) {
     return 0;
 }
 
+/*
+    Send a request string - only once!
+*/
 static uint64_t on_writable(struct neat_flow_operations *opCB) {
     neat_error_code code;
-    debug_info();
 
     code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *)request, strlen(request));
-    if (code != NEAT_OK) {
-        debug_error("return != NEAT_OK");
-        return on_error(opCB);
+    if (code) {
+        debug_error("code: %d", (int)code);
     }
+    debug_info("request sent");
     ops.on_writable = NULL;
     return 0;
 }
@@ -85,7 +87,8 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 static uint64_t on_connected(struct neat_flow_operations *opCB) {
     debug_info();
 
-    ops.on_writable = on_writable;
+    //ops.on_writable = on_writable;
+    ops.on_readable = on_readable;
     return 0;
 }
 
@@ -119,6 +122,7 @@ int main(int argc, char *argv[]) {
     }
     //prop |= NEAT_PROPERTY_OPTIONAL_SECURITY;
     prop |= NEAT_PROPERTY_TCP_REQUIRED; /* FIXME: Remove this once HE works */
+    //prop |= NEAT_PROPERTY_UDP_REQUIRED;
     if (neat_set_property(ctx, flow, prop)) {
         debug_error("neat_set_property");
         exit(EXIT_FAILURE);

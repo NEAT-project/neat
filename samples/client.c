@@ -7,7 +7,7 @@
     Simple neat client for echo, discard and daytime server
 */
 
-//#define NO_DEBUG_INFO
+#define NO_DEBUG_INFO
 #define BUFFERSIZE 32
 
 #ifdef NO_DEBUG_INFO
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
     // set callbacks
     ops.on_connected = on_connected;
     ops.on_error = on_error;
-    ops.on_all_written = on_all_written;
+    //ops.on_all_written = on_all_written;
     if (neat_set_operations(ctx, flow, &ops)) {
         debug_error("neat_set_operations");
         exit(EXIT_FAILURE);

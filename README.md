@@ -20,7 +20,7 @@ platform-independent structure.
 After NEAT has been initialized, it is up to the user to do what he or she
 wants. A typical first step is to resolve a domain name.
 
-NEAT so far only supports Linux.
+NEAT supports Linux and FreeBSD.
 
 ## Getting started :muscle:
 ### Requirements

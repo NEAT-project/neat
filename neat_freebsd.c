@@ -10,6 +10,9 @@
 #include <net/route.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
+#ifdef __APPLE__
+#include <sys/ioctl.h>
+#endif
 
 #include "neat.h"
 #include "neat_internal.h"
@@ -22,7 +25,11 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
     struct sockaddr_dl *sdl;
     char *cached_ifname;
     unsigned short cached_ifindex;
+#ifdef __APPLE__
+    struct timeval now;
+#else
     struct timespec now;
+#endif
     struct in6_addrlifetime *lifetime;
     uint32_t preferred_lifetime, valid_lifetime;
 
@@ -32,7 +39,11 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
                 strerror(errno));
         return;
     }
+#ifdef __APPLE__
+    gettimeofday(&now, NULL);
+#else
     clock_gettime(CLOCK_MONOTONIC_FAST, &now);
+#endif
     for (ifa = ifp; ifa != NULL; ifa = ifa->ifa_next) {
         /*
          * FreeBSD reports the interface index as part of the AF_LINK address.
@@ -122,6 +133,12 @@ static void neat_freebsd_route_alloc(uv_handle_t *handle,
     buf->len = NEAT_ROUTE_BUFFER_SIZE;
 }
 
+#ifdef __APPLE__
+#define ROUNDUP32(a) \
+    ((a) > 0 ? (1 + (((a) - 1) | (sizeof (uint32_t) - 1))) : sizeof (uint32_t))
+#define SA_SIZE(sa) ROUNDUP32((sa)->sa_len)
+#endif
+
 static void neat_freebsd_get_rtaddrs(int addrs,
                                      caddr_t buf,
                                      struct sockaddr *rti_info[])
@@ -153,7 +170,11 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
     char if_name[IF_NAMESIZE];
     char addr_str_buf[INET6_ADDRSTRLEN];
     const char *addr_str;
+#ifdef __APPLE__
+    struct timeval now;
+#else
     struct timespec now;
+#endif
     struct in6_addrlifetime *lifetime;
     uint32_t preferred_lifetime, valid_lifetime;
 
@@ -184,7 +205,11 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
                     addr_str ? addr_str : "Invalid IPv6 address", strerror(errno));
             return;
         }
+#ifdef __APPLE__
+        gettimeofday(&now, NULL);
+#else
         clock_gettime(CLOCK_MONOTONIC_FAST, &now);
+#endif
         if (lifetime->ia6t_preferred == 0) {
             preferred_lifetime = NEAT_UNLIMITED_LIFETIME;
         } else if (lifetime->ia6t_preferred > now.tv_sec) {

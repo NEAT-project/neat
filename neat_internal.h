@@ -8,7 +8,7 @@
 #ifdef __linux__
     #include "neat_linux.h"
 #endif
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__APPLE__)
     #include "neat_freebsd.h"
 #endif
 

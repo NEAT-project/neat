@@ -21,38 +21,32 @@
 
 
 static struct neat_flow_operations ops;
-
+static uint64_t on_readable(struct neat_flow_operations *opCB);
 
 static uint64_t on_error(struct neat_flow_operations *opCB) {
-    debug_error("unexpected error!");
     exit(EXIT_FAILURE);
 }
 
-static uint64_t on_readable(struct neat_flow_operations *opCB);
-
+/*
+    Write time and date as string - then close flow
+*/
 static uint64_t on_writable(struct neat_flow_operations *opCB) {
     neat_error_code code;
     time_t time_now;
     char* time_string;
 
-    debug_info();
-
     // get current time
 	time_now = time(NULL);
 	time_string = ctime(&time_now);
 
-    if ((code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) time_string, strlen(time_string))) != 0) {
-        if (code != NEAT_OK) {
-            debug_error("code != NEAT_OK");
-            return on_error(opCB);
-        } else {
-            debug_error("unhandled error code");
-        }
-    } else {
-        debug_info("time sent - closing connection");
+    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) time_string, strlen(time_string));
+    if (code) {
+        debug_error("neat_write - code: %d", (int)code);
+        return on_error(opCB);
     }
 
     // close flow after sending
+    debug_info("time sent - closing flow");
     opCB->on_writable = NULL;
     free(opCB->userData);
     opCB->userData = NULL;
@@ -63,39 +57,38 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 static uint64_t on_readable(struct neat_flow_operations *opCB) {
     // data is available to read
     unsigned char buffer[BUFFERSIZE];
-    uint32_t amt;
+    uint32_t buffer_filled;
     neat_error_code code;
-    debug_info();
 
-    if ((code = neat_read(opCB->ctx, opCB->flow, buffer, 1, &amt)) != 0) {
+    code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled);
+    if (code) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             debug_error("NEAT_ERROR_WOULD_BLOCK");
             return 0;
-        } else if (code != NEAT_OK) {
-            debug_error("code != NEAT_OK");
-            return on_error(opCB);
         } else {
-            debug_error("unhandled error");
+            debug_error("neat_read - code: %d", (int)code);
+            return on_error(opCB);
         }
     }
 
-    if (!amt) { // eof is unexpected
+    if (!buffer_filled) {
+        // remote side should not shutdown...
         debug_error("eof unexpected");
         return on_error(opCB);
-    } else if (amt > 0) {
-        debug_info("amt > 0 - whatever...");
-        //opCB->on_readable = NULL;
-        //opCB->on_writable = on_writable;
     }
+
+    debug_info("got some data - discarding...");
+    //opCB->on_readable = NULL;
+    //opCB->on_writable = on_writable;
     return 0;
 }
 
 static uint64_t
 on_connected(struct neat_flow_operations *opCB)
 {
-    // now we can start writing
     debug_info();
     opCB->on_writable = on_writable;
+    opCB->on_readable = on_readable;
     return 0;
 }
 
@@ -118,7 +111,6 @@ int main(int argc, char *argv[])
 
     ops.on_connected = on_connected;
     ops.on_error = on_error;
-    //ops.on_all_written = on_all_written;
     if (neat_set_operations(ctx, flow, &ops)) {
         debug_error("neat_set_operations");
         exit(EXIT_FAILURE);
@@ -129,6 +121,7 @@ int main(int argc, char *argv[])
         debug_error("neat_get_property");
         exit(EXIT_FAILURE);
     }
+
     prop |= NEAT_PROPERTY_TCP_REQUIRED;
     prop |= NEAT_PROPERTY_IPV4_REQUIRED;
 
@@ -145,6 +138,7 @@ int main(int argc, char *argv[])
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
+    debug_info("freeing (flow + ctx) and bye bye!");
     neat_free_flow(flow);
     neat_free_ctx(ctx);
     exit(EXIT_SUCCESS);

@@ -10,6 +10,8 @@ LIST(APPEND neat_PROGRAMS
     neat_server.c
     client.c
     server_chargen.c
+    server_daytime.c
+    server_discard.c
     )
 
 LIST(APPEND neat_PROGRAMS_LIBS

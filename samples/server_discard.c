@@ -5,13 +5,11 @@
 #include "../neat.h"
 
 /*
-    This is simple chargen server (RFC 862) for neat
+    This is simple discard server (RFC 863) for neat
 */
 
-#define NO_DEBUG_INFO
-#define CHARLEN 72
+//#define NO_DEBUG_INFO
 #define BUFFERSIZE 32
-
 
 #ifdef NO_DEBUG_INFO
 #define debug_info(M, ...)
@@ -21,48 +19,24 @@
 
 #define debug_error(M, ...) fprintf(stderr, "[ERROR][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
+
 static struct neat_flow_operations ops;
-static uint32_t chargen_offset = 0;
+static uint64_t on_readable(struct neat_flow_operations *opCB);
 
 static uint64_t on_error(struct neat_flow_operations *opCB) {
     exit(EXIT_FAILURE);
 }
 
-/*
-    send CHARLEN chars to client
-*/
-static uint64_t on_writable(struct neat_flow_operations *opCB) {
-    neat_error_code code;
-    unsigned char buffer[CHARLEN];
-
-    for (int i = 0; i < CHARLEN; i++) {
-        buffer[i] = 33+((chargen_offset+i)%72);
-    }
-
-    chargen_offset++;
-    if (chargen_offset >= 72) {
-        chargen_offset = 0;
-    }
-
-    code = neat_write(opCB->ctx, opCB->flow, buffer, CHARLEN);
-    if (code) {
-        debug_error("neat_write - code: %d", (int)code);
-        return on_error(opCB);
-    } else {
-        debug_info("neat_write - %d byte", CHARLEN);
-    }
-
-    return 0;
-}
 
 static uint64_t on_readable(struct neat_flow_operations *opCB) {
     // data is available to read
     unsigned char buffer[BUFFERSIZE];
     uint32_t buffer_filled;
     neat_error_code code;
-    debug_info();
 
-    if ((code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled)) != 0) {
+    debug_info("waiting..");
+    code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled);
+    if (code) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             debug_error("NEAT_ERROR_WOULD_BLOCK");
             return 0;
@@ -72,25 +46,25 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
         }
     }
 
-    if (!buffer_filled) {
-        // eof is unexpected in this case
-        debug_info("client disconnected");
-        return on_error(opCB);
-    } else if (buffer_filled > 0) {
-        // throw away received data
-        debug_info("got some data - discarding...");
-        //opCB->on_readable = NULL;
-        //opCB->on_writable = on_writable;
+    if (buffer_filled > 0 ) {
+        debug_info("got some data - %d byte", buffer_filled);
+        fwrite(buffer, sizeof(char), buffer_filled, stdout);
+        printf("\n");
+        fflush(stdout);
+    } else {
+        debug_info("buffered_amount is <= 0 - stopping on_readable");
+        opCB->on_readable = NULL;
+        //neat_stop_event_loop(opCB->ctx);
     }
+
     return 0;
 }
 
-static uint64_t on_connected(struct neat_flow_operations *opCB)
+static uint64_t
+on_connected(struct neat_flow_operations *opCB)
 {
-    // now we can start writing
     debug_info();
     opCB->on_readable = on_readable;
-    opCB->on_writable = on_writable;
     return 0;
 }
 
@@ -100,9 +74,8 @@ int main(int argc, char *argv[])
     struct neat_flow *flow;
     uint64_t prop;
 
-    // check for successful context
     if (ctx == NULL) {
-        debug_error("could not initialize context");
+        fprintf(stderr, "could not initialize context\n");
         exit(EXIT_FAILURE);
     }
 
@@ -114,13 +87,12 @@ int main(int argc, char *argv[])
 
     ops.on_connected = on_connected;
     ops.on_error = on_error;
-    //ops.on_all_written = on_all_written;
     if (neat_set_operations(ctx, flow, &ops)) {
         debug_error("neat_set_operations");
         exit(EXIT_FAILURE);
     }
 
-    // get properties
+    // set properties (TCP only etc..)
     if (neat_get_property(ctx, flow, &prop)) {
         debug_error("neat_get_property");
         exit(EXIT_FAILURE);
@@ -129,7 +101,6 @@ int main(int argc, char *argv[])
     prop |= NEAT_PROPERTY_TCP_REQUIRED;
     prop |= NEAT_PROPERTY_IPV4_REQUIRED;
 
-    // set properties
     if (neat_set_property(ctx, flow, prop)) {
         debug_error("neat_set_property");
         exit(EXIT_FAILURE);
@@ -143,7 +114,7 @@ int main(int argc, char *argv[])
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
-    // cleanup
+    debug_info("freeing (flow + ctx) and bye bye!");
     neat_free_flow(flow);
     neat_free_ctx(ctx);
     exit(EXIT_SUCCESS);

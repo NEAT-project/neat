@@ -101,6 +101,12 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 #define NEAT_ERROR_SECURITY (6)
 #define NEAT_ERROR_UNABLE (7)
 
+// these are currently defined using numbers from "private use" as they are not
+// real IP protocols, can we use numbers above 255 instead or are we restricted
+// to 8 bits?
+#define IPPROTO_TURN_UDP (253)
+#define IPPROTO_TURN_TCP (254)
+
 // cleanup extern "C"
 #ifdef __cplusplus
 }

@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <uv.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,6 +26,7 @@ void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
 void neat_stop_event_loop(struct neat_ctx *nc);
 int neat_get_backend_fd(struct neat_ctx *nc);
 void neat_free_ctx(struct neat_ctx *nc);
+uv_loop_t *neat_get_uv_loop(struct neat_ctx *nc);
 
 typedef uint64_t neat_error_code;
 struct neat_flow_operations;
@@ -63,8 +65,8 @@ neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                           const char *name, const char *port); // should port should be int?
                                                 // from MW: yes I think port should be int
-    
-    
+
+
 // do we also need a set property with a void * or an int (e.g. timeouts) or should
 // we create higher level named functions for such things?
 

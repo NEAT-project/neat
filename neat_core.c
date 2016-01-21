@@ -238,6 +238,10 @@ void neat_free_flow(neat_flow *flow)
     return;
 }
 
+uv_loop_t *neat_get_uv_loop(struct neat_ctx *nc) {
+    return nc->loop;
+}
+
 neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,
                                   uint64_t *outMask)
 {

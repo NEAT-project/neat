@@ -22,6 +22,18 @@
 
 static struct neat_flow_operations ops;
 
+void tty_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
+    printf("read %d bytes\n", (int) nread);
+    assert(uv_read_stop(stream) == 0);
+    if (nread > 0)
+        uv_timer_start(&timer, mytimer, 1, 0);
+}
+
+void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {
+    buf->len = 1;
+    buf->base = malloc(1);
+}
+
 static uint64_t on_error(struct neat_flow_operations *opCB) {
     exit(EXIT_FAILURE);
 }
@@ -69,27 +81,30 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
     struct pollfd fds;
     int ret, bytes_read;
 
-    debug_info("wohoo!");
-
-    fds.fd = 0; /* this is STDIN */
+    fds.fd = STDIN_FILENO;
     fds.events = POLLIN;
-    ret = poll(&fds, 1, 1000);
+    ret = poll(&fds, 1, 0);
 
-    if (ret > 0) {
-        while ((bytes_read = read(0, buffer, BUFFERSIZE)) > 0) {
-            debug_info("trying to send..");
-            code = neat_write(opCB->ctx, opCB->flow, buffer, bytes_read);
-            if (code) {
-                debug_error("code: %d", (int)code);
-                return on_error(opCB);
-            }
-            debug_info("data sent - %d bytes", bytes_read);
-        }
-    } else if (ret == 0) {
-        debug_info("poll timeout!");
-    } else {
-        debug_info("poll error!");
+    if (ret == 0) {
+        // timeout
+        return 0;
+    } else if (ret < 0) {
+        // error!
+        debug_error("poll error!");
+        return on_error(opCB);
     }
+
+    debug_info("ret: %d - event: %d", ret, fds.revents);
+
+    bytes_read = read(fds.fd, buffer, BUFFERSIZE);
+    debug_info("data sent - %d bytes", bytes_read);
+    code = neat_write(opCB->ctx, opCB->flow, buffer, bytes_read);
+    if (code) {
+        debug_error("code: %d", (int)code);
+        return on_error(opCB);
+    }
+
+
 
     return 0;
 }
@@ -98,7 +113,7 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 static uint64_t on_connected(struct neat_flow_operations *opCB) {
     debug_info();
 
-    opCB->on_writable = on_writable;
+    opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
     return 0;
 }
@@ -106,7 +121,9 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
 int main(int argc, char *argv[]) {
     struct neat_ctx *ctx = neat_init_ctx();
     struct neat_flow *flow;
+    uv_loop_t *uv_loop = neat_get_uv_loop(ctx);
     uint64_t prop;
+    uv_tty_t tty;
 
     // check for argumets
     if (argc != 3) {
@@ -119,6 +136,11 @@ int main(int argc, char *argv[]) {
         debug_error("could not initialize context");
         exit(EXIT_FAILURE);
     }
+
+
+    uv_tty_init(uv_loop, &tty, 0, 1);
+    uv_read_start((uv_stream_t*) &tty, alloc, tty_read);
+
 
     // new neat flow
     if((flow = neat_new_flow(ctx)) == NULL) {
@@ -153,6 +175,11 @@ int main(int argc, char *argv[]) {
         debug_error("neat_open");
         exit(EXIT_FAILURE);
     }
+
+
+
+
+
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
     // cleanup

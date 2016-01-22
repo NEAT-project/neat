@@ -10,9 +10,7 @@
 #include <net/route.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
-#ifdef __APPLE__
 #include <sys/ioctl.h>
-#endif
 
 #include "neat.h"
 #include "neat_internal.h"

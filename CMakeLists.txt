@@ -28,7 +28,7 @@ LIST(APPEND neat_LIBS
 
 # OS DEPENDENT
 #################################################
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_HEADERS neat_linux.h)
     LIST(APPEND neat_SOURCES neat_linux.c)
@@ -38,8 +38,18 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
-    LIST(APPEND neat_HEADERS neat_freebsd.h)
-    LIST(APPEND neat_SOURCES neat_freebsd.c)
+    LIST(APPEND neat_HEADERS neat_bsd.h)
+    LIST(APPEND neat_SOURCES neat_bsd.c)
+    set(LIB_DIR "/usr/local/lib")
+    set(HDR_DIR "/usr/local/include/neat")
+    set(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
+    include_directories("/usr/local/include")
+    link_directories("/usr/local/lib")
+
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
+    LIST(APPEND neat_HEADERS neat_bsd.h)
+    LIST(APPEND neat_SOURCES neat_bsd.c)
     set(LIB_DIR "/usr/local/lib")
     set(HDR_DIR "/usr/local/include/neat")
     set(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
@@ -73,8 +83,6 @@ endif()
 check_include_file(netinet/sctp.h HAVE_NETINET_SCTP_H)
 if(HAVE_NETINET_SCTP_H)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
-else()
-    message(STATUS "netinet/sctp.h not found")
 endif()
 
 

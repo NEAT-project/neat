@@ -22,8 +22,8 @@
 #ifdef __linux__
     #include "neat_linux_internal.h"
 #endif
-#ifdef __FreeBSD__
-    #include "neat_freebsd_internal.h"
+#if defined(__FreeBSD__) || defined(__APPLE__)
+    #include "neat_bsd_internal.h"
 #endif
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
@@ -53,7 +53,7 @@ struct neat_ctx *neat_init_ctx()
 
 #if defined(__linux__)
     return neat_linux_init_ctx(nc);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__APPLE__)
     return neat_freebsd_init_ctx(nc);
 #else
     uv_loop_close(nc->loop);

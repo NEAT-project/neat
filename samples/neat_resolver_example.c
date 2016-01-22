@@ -42,9 +42,11 @@ static void resolver_handle(struct neat_resolver *resolver,
         case IPPROTO_SCTP:
             fprintf(stderr, "SCTP/");
             break;
+#ifdef IPPROTO_UDPLITE
         case IPPROTO_UDPLITE:
             fprintf(stderr, "UDP-LITE/");
             break;
+#endif
         default:
             fprintf(stderr, "proto%d/", result->ai_protocol);
             break;
@@ -119,14 +121,32 @@ int main(int argc, char *argv[])
     test_proto[0] = IPPROTO_UDP;
     test_proto[1] = IPPROTO_TCP;
     test_proto[2] = IPPROTO_SCTP;
+#ifdef IPPROTO_UDPLITE
     test_proto[3] = IPPROTO_UDPLITE;
+#endif
+#ifdef IPPROTO_UDPLITE
     test_resolver(nc, resolver, AF_INET, test_proto, 4, "www.google.com", "80");
+#else
+    test_resolver(nc, resolver, AF_INET, test_proto, 3, "www.google.com", "80");
+#endif
     neat_resolver_reset(resolver);
+#ifdef IPPROTO_UDPLITE
     test_resolver(nc, resolver, AF_INET6, test_proto, 4, "www.google.com", "80");
+#else
+    test_resolver(nc, resolver, AF_INET6, test_proto, 3, "www.google.com", "80");
+#endif
     neat_resolver_reset(resolver);
+#ifdef IPPROTO_UDPLITE
     test_resolver(nc, resolver, AF_INET, test_proto, 4, "www.facebook.com", "80");
+#else
+    test_resolver(nc, resolver, AF_INET, test_proto, 3, "www.facebook.com", "80");
+#endif
     neat_resolver_reset(resolver);
+#ifdef IPPROTO_UDPLITE
     test_resolver(nc, resolver, AF_INET6, test_proto, 4, "www.facebook.com", "80");
+#else
+    test_resolver(nc, resolver, AF_INET6, test_proto, 3, "www.facebook.com", "80");
+#endif
     neat_resolver_reset(resolver);
     test_proto[0] = IPPROTO_TCP;
     test_resolver(nc, resolver, AF_INET, test_proto, 1, "bsd10.fh-muenster.de", "80");

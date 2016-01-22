@@ -8,8 +8,8 @@
 #ifdef __linux__
     #include "neat_linux.h"
 #endif
-#ifdef __FreeBSD__
-    #include "neat_freebsd.h"
+#if defined(__FreeBSD__) || defined(__APPLE__)
+    #include "neat_bsd.h"
 #endif
 
 #define NEAT_INTERNAL_CTX \

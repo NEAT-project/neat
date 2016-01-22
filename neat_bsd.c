@@ -10,10 +10,26 @@
 #include <net/route.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
+#include <sys/ioctl.h>
 
 #include "neat.h"
 #include "neat_internal.h"
 #include "neat_addr.h"
+
+/* On FreeBSD the number of seconds since booting is used.
+   On other platforms, the number of seconds since 1.1.1970 is used. */
+static time_t
+neat_time(void)
+{
+#ifdef __FreeBSD__
+     struct timespec now;
+
+    clock_gettime(CLOCK_MONOTONIC_FAST, &now);
+    return (now.tv_sec);
+#else
+   return (time(NULL));
+#endif
+}
 
 static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
 {
@@ -22,7 +38,7 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
     struct sockaddr_dl *sdl;
     char *cached_ifname;
     unsigned short cached_ifindex;
-    struct timespec now;
+    time_t now;
     struct in6_addrlifetime *lifetime;
     uint32_t preferred_lifetime, valid_lifetime;
 
@@ -32,7 +48,7 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
                 strerror(errno));
         return;
     }
-    clock_gettime(CLOCK_MONOTONIC_FAST, &now);
+    now = neat_time();
     for (ifa = ifp; ifa != NULL; ifa = ifa->ifa_next) {
         /*
          * FreeBSD reports the interface index as part of the AF_LINK address.
@@ -85,15 +101,15 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
             lifetime = &ifr6.ifr_ifru.ifru_lifetime;
             if (lifetime->ia6t_preferred == 0) {
                 preferred_lifetime = NEAT_UNLIMITED_LIFETIME;
-            } else if (lifetime->ia6t_preferred > now.tv_sec) {
-                preferred_lifetime = lifetime->ia6t_preferred - now.tv_sec;
+            } else if (lifetime->ia6t_preferred > now) {
+                preferred_lifetime = lifetime->ia6t_preferred - now;
             } else {
                 preferred_lifetime = 0;
             }
             if (lifetime->ia6t_expire == 0) {
                 valid_lifetime = NEAT_UNLIMITED_LIFETIME;
-            } else if (lifetime->ia6t_expire > now.tv_sec) {
-                valid_lifetime = lifetime->ia6t_expire - now.tv_sec;
+            } else if (lifetime->ia6t_expire > now) {
+                valid_lifetime = lifetime->ia6t_expire - now;
             } else {
                 valid_lifetime = 0;
             }
@@ -121,6 +137,12 @@ static void neat_freebsd_route_alloc(uv_handle_t *handle,
     buf->base = ctx->route_buf;
     buf->len = NEAT_ROUTE_BUFFER_SIZE;
 }
+
+#ifdef __APPLE__
+#define ROUNDUP32(a) \
+    ((a) > 0 ? (1 + (((a) - 1) | (sizeof (uint32_t) - 1))) : sizeof (uint32_t))
+#define SA_SIZE(sa) ROUNDUP32((sa)->sa_len)
+#endif
 
 static void neat_freebsd_get_rtaddrs(int addrs,
                                      caddr_t buf,
@@ -153,7 +175,7 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
     char if_name[IF_NAMESIZE];
     char addr_str_buf[INET6_ADDRSTRLEN];
     const char *addr_str;
-    struct timespec now;
+    time_t now;
     struct in6_addrlifetime *lifetime;
     uint32_t preferred_lifetime, valid_lifetime;
 
@@ -184,18 +206,18 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
                     addr_str ? addr_str : "Invalid IPv6 address", strerror(errno));
             return;
         }
-        clock_gettime(CLOCK_MONOTONIC_FAST, &now);
+        now = neat_time();
         if (lifetime->ia6t_preferred == 0) {
             preferred_lifetime = NEAT_UNLIMITED_LIFETIME;
-        } else if (lifetime->ia6t_preferred > now.tv_sec) {
-            preferred_lifetime = lifetime->ia6t_preferred - now.tv_sec;
+        } else if (lifetime->ia6t_preferred > now) {
+            preferred_lifetime = lifetime->ia6t_preferred - now;
         } else {
             preferred_lifetime = 0;
         }
         if (lifetime->ia6t_expire == 0) {
             valid_lifetime = NEAT_UNLIMITED_LIFETIME;
-        } else if (lifetime->ia6t_expire > now.tv_sec) {
-             valid_lifetime = lifetime->ia6t_expire - now.tv_sec;
+        } else if (lifetime->ia6t_expire > now) {
+             valid_lifetime = lifetime->ia6t_expire - now;
         } else {
             valid_lifetime = 0;
         }

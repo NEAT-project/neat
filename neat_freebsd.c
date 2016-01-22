@@ -18,19 +18,19 @@
 #include "neat_internal.h"
 #include "neat_addr.h"
 
+/* On Mac OS X the number of seconds since 01.01.1970 is used.
+   On other platforms, the number of seconds since booting. */
 static time_t
-neat_uptime(void)
+neat_time(void)
 {
 #ifdef __APPLE__
-    struct timeval now;
-
-    gettimeofday(&now, NULL); /* MT: This is wrong */
+    return (time(NULL));
 #else
     struct timespec now;
 
     clock_gettime(CLOCK_MONOTONIC_FAST, &now);
-#endif
     return (now.tv_sec);
+#endif
 }
 
 static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
@@ -40,7 +40,7 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
     struct sockaddr_dl *sdl;
     char *cached_ifname;
     unsigned short cached_ifindex;
-    time_t uptime;
+    time_t now;
     struct in6_addrlifetime *lifetime;
     uint32_t preferred_lifetime, valid_lifetime;
 
@@ -50,7 +50,7 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
                 strerror(errno));
         return;
     }
-    uptime = neat_uptime();
+    now = neat_time();
     for (ifa = ifp; ifa != NULL; ifa = ifa->ifa_next) {
         /*
          * FreeBSD reports the interface index as part of the AF_LINK address.
@@ -103,15 +103,15 @@ static void neat_freebsd_get_addresses(struct neat_ctx *ctx)
             lifetime = &ifr6.ifr_ifru.ifru_lifetime;
             if (lifetime->ia6t_preferred == 0) {
                 preferred_lifetime = NEAT_UNLIMITED_LIFETIME;
-            } else if (lifetime->ia6t_preferred > uptime) {
-                preferred_lifetime = lifetime->ia6t_preferred - uptime;
+            } else if (lifetime->ia6t_preferred > now) {
+                preferred_lifetime = lifetime->ia6t_preferred - now;
             } else {
                 preferred_lifetime = 0;
             }
             if (lifetime->ia6t_expire == 0) {
                 valid_lifetime = NEAT_UNLIMITED_LIFETIME;
-            } else if (lifetime->ia6t_expire > uptime) {
-                valid_lifetime = lifetime->ia6t_expire - uptime;
+            } else if (lifetime->ia6t_expire > now) {
+                valid_lifetime = lifetime->ia6t_expire - now;
             } else {
                 valid_lifetime = 0;
             }
@@ -177,7 +177,7 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
     char if_name[IF_NAMESIZE];
     char addr_str_buf[INET6_ADDRSTRLEN];
     const char *addr_str;
-    time_t uptime;
+    time_t now;
     struct in6_addrlifetime *lifetime;
     uint32_t preferred_lifetime, valid_lifetime;
 
@@ -208,18 +208,18 @@ static void neat_freebsd_route_recv(uv_udp_t *handle,
                     addr_str ? addr_str : "Invalid IPv6 address", strerror(errno));
             return;
         }
-        uptime = neat_uptime();
+        now = neat_time();
         if (lifetime->ia6t_preferred == 0) {
             preferred_lifetime = NEAT_UNLIMITED_LIFETIME;
-        } else if (lifetime->ia6t_preferred > uptime) {
-            preferred_lifetime = lifetime->ia6t_preferred - uptime;
+        } else if (lifetime->ia6t_preferred > now) {
+            preferred_lifetime = lifetime->ia6t_preferred - now;
         } else {
             preferred_lifetime = 0;
         }
         if (lifetime->ia6t_expire == 0) {
             valid_lifetime = NEAT_UNLIMITED_LIFETIME;
-        } else if (lifetime->ia6t_expire > uptime) {
-             valid_lifetime = lifetime->ia6t_expire - uptime;
+        } else if (lifetime->ia6t_expire > now) {
+             valid_lifetime = lifetime->ia6t_expire - now;
         } else {
             valid_lifetime = 0;
         }

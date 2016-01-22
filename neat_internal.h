@@ -9,7 +9,7 @@
     #include "neat_linux.h"
 #endif
 #if defined(__FreeBSD__) || defined(__APPLE__)
-    #include "neat_freebsd.h"
+    #include "neat_bsd.h"
 #endif
 
 #define NEAT_INTERNAL_CTX \

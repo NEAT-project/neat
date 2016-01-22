@@ -23,7 +23,7 @@
     #include "neat_linux_internal.h"
 #endif
 #if defined(__FreeBSD__) || defined(__APPLE__)
-    #include "neat_freebsd_internal.h"
+    #include "neat_bsd_internal.h"
 #endif
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent

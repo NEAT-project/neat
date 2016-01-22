@@ -23,9 +23,16 @@ static void he_print_results(struct neat_resolver_results *results)
         case IPPROTO_TCP:
             fprintf(stderr, "TCP/");
             break;
+#ifdef IPPROTO_SCTP
         case IPPROTO_SCTP:
             fprintf(stderr, "SCTP/");
             break;
+#endif
+#ifdef IPPROTO_UDPLITE
+        case IPPROTO_UDPLITE:
+            fprintf(stderr, "UDPLITE/");
+            break;
+#endif
         default:
             fprintf(stderr, "proto%d/", result->ai_protocol);
             break;

@@ -828,7 +828,9 @@ static uint8_t neat_validate_protocols(int protocols[], uint8_t proto_count)
         case IPPROTO_UDPLITE:
 #endif
         case IPPROTO_TCP:
+#ifdef IPPROTO_SCTP
         case IPPROTO_SCTP:
+#endif
             continue;
         default:
             return RETVAL_FAILURE;

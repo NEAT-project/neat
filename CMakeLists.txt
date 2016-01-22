@@ -56,6 +56,16 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     include_directories("/usr/local/include")
     link_directories("/usr/local/lib")
 
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
+    message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
+    LIST(APPEND neat_HEADERS neat_bsd.h)
+    LIST(APPEND neat_SOURCES neat_bsd.c)
+    set(LIB_DIR "/usr/local/lib")
+    set(HDR_DIR "/usr/local/include/neat")
+    set(CMAKE_REQUIRED_INCLUDES "/usr/pkg/include" "/usr/include")
+    include_directories("/usr/pkg/include")
+    link_directories("/usr/pkg/lib")
+
 else()
     message(FATAL_ERROR ${CMAKE_SYSTEM_NAME} " not supported (yet?)")
 

@@ -35,11 +35,13 @@ uint8_t neat_property_translate_protocols(uint64_t propertyMask,
 
     /* Check explicit protocol requests first */
     if (propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) {
+#ifdef IPPROTO_SCTP
         if (((propertyMask & NEAT_PROPERTY_TCP_REQUIRED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_UDP_REQUIRED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_UDPLITE_REQUIRED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_BANNED) == 0))
             protocols[nr_of_protocols++] = IPPROTO_SCTP;
+#endif
         return nr_of_protocols;
     }
     if (propertyMask & NEAT_PROPERTY_TCP_REQUIRED) {
@@ -75,8 +77,10 @@ uint8_t neat_property_translate_protocols(uint64_t propertyMask,
 
     /* Finally the more complex part */
     if (propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED) {
+#ifdef IPPROTO_SCTP
         if ((propertyMask & NEAT_PROPERTY_SCTP_BANNED) == 0)
             protocols[nr_of_protocols++] = IPPROTO_SCTP;
+#endif
         if (((propertyMask & NEAT_PROPERTY_MESSAGE) == 0) &&
             ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_BANNED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_TCP_BANNED) == 0))
@@ -91,8 +95,10 @@ uint8_t neat_property_translate_protocols(uint64_t propertyMask,
 #endif
         }
     } else {
+#ifdef IPPROTO_SCTP
         if ((propertyMask & NEAT_PROPERTY_SCTP_BANNED) == 0)
             protocols[nr_of_protocols++] = IPPROTO_SCTP;
+#endif
         if (((propertyMask & NEAT_PROPERTY_MESSAGE) == 0) &&
             ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_BANNED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_TCP_BANNED) == 0))

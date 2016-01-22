@@ -28,7 +28,7 @@ LIST(APPEND neat_LIBS
 
 # OS DEPENDENT
 #################################################
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_HEADERS neat_linux.h)
     LIST(APPEND neat_SOURCES neat_linux.c)
@@ -36,17 +36,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(LIB_DIR "/usr/local/lib")
     set(HDR_DIR "/usr/local/include/neat")
     
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-    message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
-    LIST(APPEND neat_HEADERS neat_freebsd.h)
-    LIST(APPEND neat_SOURCES neat_freebsd.c)
-    set(LIB_DIR "/usr/local/lib")
-    set(HDR_DIR "/usr/local/include/neat")
-    set(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
-    include_directories("/usr/local/include")
-    link_directories("/usr/local/lib")
-
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+elseif((${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD") OR
+       (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
     message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_HEADERS neat_freebsd.h)
     LIST(APPEND neat_SOURCES neat_freebsd.c)

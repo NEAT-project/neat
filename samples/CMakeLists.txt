@@ -12,6 +12,7 @@ LIST(APPEND neat_PROGRAMS
     server_chargen.c
     server_daytime.c
     server_discard.c
+    tneat.c
     )
 
 LIST(APPEND neat_PROGRAMS_LIBS

@@ -74,8 +74,6 @@ endif()
 check_include_file(netinet/sctp.h HAVE_NETINET_SCTP_H)
 if(HAVE_NETINET_SCTP_H)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
-else()
-    message(STATUS "netinet/sctp.h not found")
 endif()
 
 

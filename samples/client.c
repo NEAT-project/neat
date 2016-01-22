@@ -20,18 +20,39 @@
 
 #define debug_error(M, ...) fprintf(stderr, "[ERROR][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
-static struct neat_flow_operations ops;
+struct std_buffer {
+    unsigned char buffer[BUFFERSIZE];
+    uint32_t buffer_filled;
+};
 
-void tty_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
-    printf("read %d bytes\n", (int) nread);
-    assert(uv_read_stop(stream) == 0);
-    if (nread > 0)
-        uv_timer_start(&timer, mytimer, 1, 0);
+static struct neat_flow_operations ops;
+static struct std_buffer stdin_buffer;
+struct neat_ctx *ctx;
+struct neat_flow *flow;
+uv_loop_t *uv_loop;
+uv_tty_t tty;
+
+static uint64_t on_writable(struct neat_flow_operations *opCB);
+void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
+
+void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer) {
+
+
+    if (bytes_read > 0) {
+        debug_info("read %d bytes from stdin\n", (int) bytes_read);
+        stdin_buffer.buffer_filled = bytes_read;
+        memcpy(stdin_buffer.buffer, buffer, bytes_read);
+        uv_read_stop(stream);
+
+        ops.on_writable = on_writable;
+        neat_set_operations(ctx, flow, &ops);
+    }
+
 }
 
 void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {
-    buf->len = 1;
-    buf->base = malloc(1);
+    buf->len = BUFFERSIZE;
+    buf->base = malloc(BUFFERSIZE);
 }
 
 static uint64_t on_error(struct neat_flow_operations *opCB) {
@@ -77,35 +98,17 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
 */
 static uint64_t on_writable(struct neat_flow_operations *opCB) {
     neat_error_code code;
-    unsigned char buffer[BUFFERSIZE];
-    struct pollfd fds;
-    int ret, bytes_read;
 
-    fds.fd = STDIN_FILENO;
-    fds.events = POLLIN;
-    ret = poll(&fds, 1, 0);
-
-    if (ret == 0) {
-        // timeout
-        return 0;
-    } else if (ret < 0) {
-        // error!
-        debug_error("poll error!");
-        return on_error(opCB);
-    }
-
-    debug_info("ret: %d - event: %d", ret, fds.revents);
-
-    bytes_read = read(fds.fd, buffer, BUFFERSIZE);
-    debug_info("data sent - %d bytes", bytes_read);
-    code = neat_write(opCB->ctx, opCB->flow, buffer, bytes_read);
+    code = neat_write(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled);
     if (code) {
         debug_error("code: %d", (int)code);
         return on_error(opCB);
     }
 
+    debug_info("sent %d bytes", stdin_buffer.buffer_filled);
 
-
+    ops.on_writable = NULL;
+    neat_set_operations(ctx, flow, &ops);
     return 0;
 }
 
@@ -113,17 +116,15 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 static uint64_t on_connected(struct neat_flow_operations *opCB) {
     debug_info();
 
-    opCB->on_readable = on_readable;
-    opCB->on_writable = on_writable;
+    //opCB->on_readable = on_readable;
+    //opCB->on_writable = on_writable;
     return 0;
 }
 
 int main(int argc, char *argv[]) {
-    struct neat_ctx *ctx = neat_init_ctx();
-    struct neat_flow *flow;
-    uv_loop_t *uv_loop = neat_get_uv_loop(ctx);
+    ctx = neat_init_ctx();
+    uv_loop = neat_get_uv_loop(ctx);
     uint64_t prop;
-    uv_tty_t tty;
 
     // check for argumets
     if (argc != 3) {
@@ -139,7 +140,7 @@ int main(int argc, char *argv[]) {
 
 
     uv_tty_init(uv_loop, &tty, 0, 1);
-    uv_read_start((uv_stream_t*) &tty, alloc, tty_read);
+    uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
 
 
     // new neat flow

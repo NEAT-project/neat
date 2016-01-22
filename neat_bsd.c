@@ -5,7 +5,9 @@
 #include <sys/types.h>
 #include <ifaddrs.h>
 #include <net/if.h>
+#if !defined(__NetBSD__)
 #include <net/if_var.h>
+#endif
 #include <net/if_dl.h>
 #include <net/route.h>
 #include <netinet/in.h>
@@ -138,7 +140,7 @@ static void neat_freebsd_route_alloc(uv_handle_t *handle,
     buf->len = NEAT_ROUTE_BUFFER_SIZE;
 }
 
-#ifdef __APPLE__
+#if !defined(__FreeBSD__)
 #define ROUNDUP32(a) \
     ((a) > 0 ? (1 + (((a) - 1) | (sizeof (uint32_t) - 1))) : sizeof (uint32_t))
 #define SA_SIZE(sa) ROUNDUP32((sa)->sa_len)

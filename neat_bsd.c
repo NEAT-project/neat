@@ -51,6 +51,8 @@ static void neat_bsd_get_addresses(struct neat_ctx *ctx)
         return;
     }
     now = neat_time();
+    cached_ifname = "";
+    cached_ifindex = 0;
     for (ifa = ifp; ifa != NULL; ifa = ifa->ifa_next) {
         /*
          * FreeBSD reports the interface index as part of the AF_LINK address.

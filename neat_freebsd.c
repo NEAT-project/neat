@@ -18,18 +18,18 @@
 #include "neat_internal.h"
 #include "neat_addr.h"
 
-/* On Mac OS X the number of seconds since 01.01.1970 is used.
-   On other platforms, the number of seconds since booting. */
+/* On FreeBSD the number of seconds since booting is used.
+   On other platforms, the number of seconds since 1.1.1970 is used. */
 static time_t
 neat_time(void)
 {
-#ifdef __APPLE__
-    return (time(NULL));
-#else
-    struct timespec now;
+#ifdef __FreeBSD__
+     struct timespec now;
 
     clock_gettime(CLOCK_MONOTONIC_FAST, &now);
     return (now.tv_sec);
+#else
+   return (time(NULL));
 #endif
 }
 

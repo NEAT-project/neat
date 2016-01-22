@@ -140,10 +140,13 @@ static void neat_bsd_route_alloc(uv_handle_t *handle,
     buf->len = NEAT_ROUTE_BUFFER_SIZE;
 }
 
-#if !defined(__FreeBSD__)
+#if defined(__APPLE__)
 #define ROUNDUP32(a) \
     ((a) > 0 ? (1 + (((a) - 1) | (sizeof (uint32_t) - 1))) : sizeof (uint32_t))
 #define SA_SIZE(sa) ROUNDUP32((sa)->sa_len)
+#endif
+#if defined(__NetBSD__)
+#define SA_SIZE(sa) RT_ROUNDUP((sa)->sa_len)
 #endif
 
 static void neat_bsd_get_rtaddrs(int addrs,

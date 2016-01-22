@@ -54,7 +54,7 @@ struct neat_ctx *neat_init_ctx()
 #if defined(__linux__)
     return neat_linux_init_ctx(nc);
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-    return neat_freebsd_init_ctx(nc);
+    return neat_bsd_init_ctx(nc);
 #else
     uv_loop_close(nc->loop);
     free(nc->loop);

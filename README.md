@@ -1,6 +1,10 @@
 # NEAT
+**A New, Evolutive API and Transport-Layer Architecture for the Internet**
 
-## NEAT internals
+NEAT supports **FreeBSD**, **Linux**, **OS X** and **NetBSD**
+
+
+## NEAT internals :nut_and_bolt:
 
 NEAT is a callback based library and everything revovles around the neat_ctx
 struct. This struct has to be initialized before anything else can be done. NEAT
@@ -20,8 +24,6 @@ platform-independent structure.
 After NEAT has been initialized, it is up to the user to do what he or she
 wants. A typical first step is to resolve a domain name.
 
-NEAT so far only supports Linux.
-
 ## Getting started :muscle:
 ### Requirements
 * `cmake`
@@ -40,6 +42,13 @@ Older ubuntu might have a ppa for libuv1 https://launchpad.net/~cz.nic-labs/+arc
 ```
 $ sudo pkg install cmake ldns libuv  
 ```
+#### OS X
+```
+$ brew install libuv ldns
+$ brew link openssl --force
+```
+Tested on OS X 10.11 and brew.
+It is necessary to link openssl - otherwise the openssl headers are not found and ldns compilation fails.
 
 ### Build NEAT and samples
 ```
@@ -56,14 +65,13 @@ $ sudo make install
 ```
 Don't forget to run ldconfig after installing neat the first time.
 
-
 ### TODO
-* Give user control of how loop is run so that it for example can be integrated
+- [ ] Give user control of how loop is run so that it for example can be integrated
   into other event loops.
-* Monitor more stuff, like routes?
-* Implement some form of logging/verbose mode. This is something that we should
+- [ ] Monitor more stuff, like routes?
+- [ ] Implement some form of logging/verbose mode. This is something that we should
   all agree on.
-* Find a platform-independent alternative to ldns.
+- [ ] Find a platform-independent alternative to ldns.
 
 ## Buildbots :fire:
 The [buildbots](http://buildbot.nplab.de:28010/waterfall) are triggered by every commit in every branch. 
@@ -86,10 +94,10 @@ The best way to look at how to use the resolver is to look at the example file,
 `neat_resolver_example.c`
 
 ### TODO
-* Read DNS-servers from resolv.conf. This requires us to decide on a generic way
+- [ ] Read DNS-servers from resolv.conf. This requires us to decide on a generic way
   for specifying with interface/IP a server belongs to.
-* Make resolver work on other OS' than Linux.
-* Make it optional (as much as possible) if resolver should use stack or heap.
-* Design a better algorithm for choosing servers, prioritizing servers sent to
+- [ ] Make resolver work on other OS' than Linux.
+- [ ] Make it optional (as much as possible) if resolver should use stack or heap.
+- [ ] Design a better algorithm for choosing servers, prioritizing servers sent to
   user.
-* Lots of other stuff that I can't think of now.
+- [ ] Lots of other stuff that I can't think of now.

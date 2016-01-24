@@ -22,8 +22,8 @@
 #ifdef __linux__
     #include "neat_linux_internal.h"
 #endif
-#ifdef __FreeBSD__
-    #include "neat_freebsd_internal.h"
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+    #include "neat_bsd_internal.h"
 #endif
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
@@ -53,8 +53,8 @@ struct neat_ctx *neat_init_ctx()
 
 #if defined(__linux__)
     return neat_linux_init_ctx(nc);
-#elif defined(__FreeBSD__)
-    return neat_freebsd_init_ctx(nc);
+#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+    return neat_bsd_init_ctx(nc);
 #else
     uv_loop_close(nc->loop);
     free(nc->loop);
@@ -453,6 +453,7 @@ open_he_callback(neat_ctx *ctx, neat_flow *flow,
         goto cleanup;
     }
 
+#if defined IPPROTO_SCTP
     if ((flow->propertyMask & NEAT_PROPERTY_SCTP_BANNED) &&
         (flow->sockProtocol == IPPROTO_SCTP)) {
         io_error(ctx, flow, NEAT_ERROR_UNABLE);
@@ -464,6 +465,7 @@ open_he_callback(neat_ctx *ctx, neat_flow *flow,
         io_error(ctx, flow, NEAT_ERROR_UNABLE);
         goto cleanup;
     }
+#endif
 
     // io callbacks take over now
     flow->ctx = ctx;

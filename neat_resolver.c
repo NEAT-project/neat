@@ -181,11 +181,17 @@ static uint8_t neat_resolver_fill_results(
         result->internal = neat_resolver_addr_internal(&dst_addr);
 
         //Code can't get here without having passed through sanitizing function
-        if (result->ai_protocol == IPPROTO_UDP ||
-            result->ai_protocol == IPPROTO_UDPLITE)
+        switch (result->ai_protocol) {
+        case IPPROTO_UDP:
+#ifdef IPPROTO_UDPLITE
+        case IPPROTO_UDPLITE:
+#endif
             result->ai_socktype = SOCK_DGRAM;
-        else
+            break;
+        default:
             result->ai_socktype = SOCK_STREAM;
+            break;
+        }
 
         //Head of sockaddr_in and sockaddr_in6 is the same, so this is safe
         //for setting port
@@ -818,9 +824,13 @@ static uint8_t neat_validate_protocols(int protocols[], uint8_t proto_count)
     for (i = 0; i < proto_count; i++) {
         switch (protocols[i]) {
         case IPPROTO_UDP:
+#ifdef IPPROTO_UDPLITE
         case IPPROTO_UDPLITE:
+#endif
         case IPPROTO_TCP:
+#ifdef IPPROTO_SCTP
         case IPPROTO_SCTP:
+#endif
             continue;
         default:
             return RETVAL_FAILURE;

@@ -103,7 +103,7 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
     gettimeofday(&stats_snd.tv_last, NULL);
 
     if (config_log_level >= 2) {
-        printf("neat_write - # %llu - %d byte - content %c\n", stats_snd.msgs, config_message_size, buffer_snd[0]);
+        printf("neat_write - # %" PRIu64 " - %d byte - content %c\n", stats_snd.msgs, config_message_size, buffer_snd[0]);
     }
 
     time_elapsed = stats_snd.tv_last.tv_sec - stats_snd.tv_first.tv_sec; // sec
@@ -111,7 +111,7 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 
     // stop writing if config_runtime reached or config_message_count msgs sent
     if ((config_runtime > 0 && time_elapsed >= config_runtime) || (config_message_count > 0 && stats_snd.msgs >= config_message_count)) {
-        printf("neat_write finished - %llu calls - %llu bytes in %.2f s\n", stats_snd.msgs, stats_snd.bytes, time_elapsed);
+        printf("neat_write finished - %" PRIu64 " calls - %" PRIu64 " bytes in %.2f s\n", stats_snd.msgs, stats_snd.bytes, time_elapsed);
         opCB->on_writable = NULL;
         neat_stop_event_loop(opCB->ctx);
     }
@@ -147,7 +147,7 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
         gettimeofday(&stats_rcv.tv_last, NULL);
 
         if (config_log_level >= 2) {
-            printf("neat_read - # %llu - %d byte - content %c\n", stats_rcv.msgs, buffer_filled, buffer_rcv[0]);
+            printf("neat_read - # %" PRIu64 " - %d byte - content %c\n", stats_rcv.msgs, buffer_filled, buffer_rcv[0]);
         }
 
     } else {

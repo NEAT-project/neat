@@ -2,7 +2,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(neat)
 INCLUDE(CheckIncludeFile)
-
+set(CMAKE_MACOSX_RPATH 1)
 
 # SOURCES + HEADERS
 #################################################
@@ -82,12 +82,11 @@ ENDIF()
 
 
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-FIND_LIBRARY(MNL_LIB mnl)
-CHECK_INCLUDE_FILE(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
-IF(NOT HAVE_SYS_LIBMNL_H OR NOT MNL_LIB)
-    MESSAGE(FATAL_ERROR "libmnl/libmnl.h not found - libmnl installed?")
-ENDIF()
-
+    FIND_LIBRARY(MNL_LIB mnl)
+    CHECK_INCLUDE_FILE(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
+    IF(NOT HAVE_SYS_LIBMNL_H OR NOT MNL_LIB)
+        MESSAGE(FATAL_ERROR "libmnl/libmnl.h not found - libmnl installed?")
+    ENDIF()
 ENDIF()
 
 CHECK_INCLUDE_FILE(netinet/sctp.h HAVE_NETINET_SCTP_H)
@@ -111,7 +110,6 @@ LIST(APPEND neat_LIBS
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     LIST(APPEND neat_LIBS ${MNL_LIB})
 ENDIF()
-
 
 ADD_LIBRARY(neat SHARED ${neat_SOURCES})
 ADD_LIBRARY(neat-static STATIC ${neat_SOURCES})

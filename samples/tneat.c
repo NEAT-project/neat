@@ -17,12 +17,12 @@
 */
 static uint32_t config_rcv_buffer_size = 512;
 static uint32_t config_message_size = 1024;
-static uint32_t config_message_count = 16;
+static uint32_t config_message_count = 32;
 static uint32_t config_runtime = 0;
 static uint16_t config_active = 0;
 static uint16_t config_chargen_offset = 0;
 static uint16_t config_port = 8080;
-static uint16_t config_log_level = 2;
+static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
 /*
@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
 
-    while ((arg = getopt(argc, argv, "l:n:T:R:p:vP:")) != -1) {
+    while ((arg = getopt(argc, argv, "l:n:T:R:p:v:P:")) != -1) {
 		switch(arg) {
 			case 'l':
 				config_message_size = atoi(optarg);
@@ -234,7 +234,7 @@ int main(int argc, char *argv[]) {
             case 'R':
                 config_rcv_buffer_size = atoi(optarg);
                 if (config_log_level >= 1) {
-                    printf("option - receive buffer size: %d\n", config_log_level);
+                    printf("option - receive buffer size: %d\n", config_rcv_buffer_size);
                 }
                 break;
             case 'p':
@@ -244,7 +244,10 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case 'v':
-                config_log_level = 1;
+                config_log_level = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - config_log_level: %d\n", config_log_level);
+                }
                 break;
             case 'P':
                 arg_property = optarg;

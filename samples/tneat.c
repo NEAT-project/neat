@@ -2,27 +2,32 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include "../neat.h"
-#include <sys/time.h>
 #include <inttypes.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include "../neat.h"
 
 /*
-    tneat - neat test tool
+    tneat
+    testing tool for neat
 */
-static uint32_t config_rcv_buffer_size = 1024;
+
+/*
+    default values
+*/
+static uint32_t config_rcv_buffer_size = 512;
 static uint32_t config_message_size = 1024;
-static uint32_t config_message_count = 10;
+static uint32_t config_message_count = 16;
 static uint32_t config_runtime = 0;
 static uint16_t config_active = 0;
 static uint16_t config_chargen_offset = 0;
 static uint16_t config_port = 8080;
 static uint16_t config_log_level = 2;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+
 /*
     macros for debug output
 */
-
 #define debug_error(M, ...) fprintf(stderr, "[ERROR][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 struct stats {
@@ -37,7 +42,6 @@ static struct stats stats_rcv;
 static struct stats stats_snd;
 static unsigned char *buffer_rcv;
 static unsigned char *buffer_snd;
-
 
 /*
     print usage and exit
@@ -56,7 +60,7 @@ static void print_usage() {
 }
 
 /*
-    print human readable file sizes - keep attention of buffer size
+    print human readable file sizes - keep attention to provide enough buffer space
 */
 char* filesize_human(double bytes, char *buffer) {
     uint8_t i = 0;
@@ -77,7 +81,7 @@ static uint64_t on_error(struct neat_flow_operations *opCB) {
 }
 
 /*
-    send config_message_size chars to peer
+    send *config_message_size* chars to peer
 */
 static uint64_t on_writable(struct neat_flow_operations *opCB) {
     neat_error_code code;
@@ -103,7 +107,13 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
     gettimeofday(&stats_snd.tv_last, NULL);
 
     if (config_log_level >= 2) {
-        printf("neat_write - # %" PRIu64 " - %d byte - content %c\n", stats_snd.msgs, config_message_size, buffer_snd[0]);
+        printf("neat_write - # %" PRIu64 " - %d byte\n", stats_snd.msgs, config_message_size);
+    }
+    
+    if (config_log_level >= 2) {
+        printf("neat_write - content\n");
+        fwrite(buffer_snd, sizeof(char), config_message_size, stdout);
+        printf("\n");
     }
 
     time_elapsed = stats_snd.tv_last.tv_sec - stats_snd.tv_first.tv_sec; // sec
@@ -146,8 +156,14 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
         stats_rcv.bytes += buffer_filled;
         gettimeofday(&stats_rcv.tv_last, NULL);
 
+        if (config_log_level >= 1) {
+            printf("neat_read - # %" PRIu64 " - %d byte\n", stats_rcv.msgs, buffer_filled);
+        }
+        
         if (config_log_level >= 2) {
-            printf("neat_read - # %" PRIu64 " - %d byte - content %c\n", stats_rcv.msgs, buffer_filled, buffer_rcv[0]);
+            printf("neat_read - content\n");
+            fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
+            printf("\n");
         }
 
     } else {
@@ -180,7 +196,7 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
     // set callbacks
     opCB->on_readable = on_readable;
     if (config_active) {
-        ops.on_writable = on_writable;
+        opCB->on_writable = on_writable;
     }
 
     return 0;
@@ -297,43 +313,43 @@ int main(int argc, char *argv[]) {
             printf("setting property: %s\n", arg_property_ptr);
         }
 
-        if (strcmp(arg_property_ptr,"NEAT_PROPERTY_OPTIONAL_SECURITY")) {
+        if (strcmp(arg_property_ptr,"NEAT_PROPERTY_OPTIONAL_SECURITY") == 0) {
             prop |= NEAT_PROPERTY_TCP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_REQUIRED_SECURITY")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_REQUIRED_SECURITY") == 0) {
             prop |= NEAT_PROPERTY_REQUIRED_SECURITY;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_MESSAGE")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_MESSAGE") == 0) {
             prop |= NEAT_PROPERTY_MESSAGE;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_REQUIRED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_REQUIRED") == 0) {
             prop |= NEAT_PROPERTY_IPV4_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_BANNED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_BANNED") == 0) {
             prop |= NEAT_PROPERTY_IPV4_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_REQUIRED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_REQUIRED") == 0) {
             prop |= NEAT_PROPERTY_IPV6_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_BANNED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_BANNED") == 0) {
             prop |= NEAT_PROPERTY_IPV6_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_REQUIRED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_REQUIRED") == 0) {
             prop |= NEAT_PROPERTY_SCTP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_BANNED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_BANNED") == 0) {
             prop |= NEAT_PROPERTY_SCTP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_REQUIRED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_REQUIRED") == 0) {
             prop |= NEAT_PROPERTY_TCP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_BANNED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_BANNED") == 0) {
             prop |= NEAT_PROPERTY_TCP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_REQUIRED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_REQUIRED") == 0) {
             prop |= NEAT_PROPERTY_UDP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_BANNED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_BANNED") == 0) {
             prop |= NEAT_PROPERTY_UDP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_REQUIRED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_REQUIRED") == 0) {
             prop |= NEAT_PROPERTY_UDPLITE_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_BANNED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_BANNED") == 0) {
             prop |= NEAT_PROPERTY_UDPLITE_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED") == 0) {
             prop |= NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_BANNED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_BANNED") == 0) {
             prop |= NEAT_PROPERTY_CONGESTION_CONTROL_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED") == 0) {
             prop |= NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_BANNED")) {
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_BANNED") == 0) {
             prop |= NEAT_PROPERTY_RETRANSMISSIONS_BANNED;
         } else {
             printf("error - unknown property: %s\n", arg_property_ptr);

@@ -26,6 +26,8 @@
     #include "neat_bsd_internal.h"
 #endif
 
+static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
+
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
 struct neat_ctx *neat_init_ctx()
@@ -260,6 +262,7 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
                                     struct neat_flow_operations *ops)
 {
     flow->operations = ops;
+    updatePollHandle(mgr, flow, &flow->handle);
     return NEAT_OK;
 }
 
@@ -325,7 +328,7 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
-    if (uv_is_closing((uv_handle_t *)&flow->handle)) {
+    if (handle->loop == NULL || uv_is_closing((uv_handle_t *)&flow->handle)) {
         return;
     }
 

@@ -4,10 +4,9 @@ project(neat)
 include(CheckIncludeFile)
 
 
-
 # SOURCES, HEADERS, LIBS
 #################################################
-LIST(APPEND neat_HEADERS
+list(APPEND neat_HEADERS
     neat.h
     neat_queue.h
     )
@@ -35,26 +34,25 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     LIST(APPEND neat_LIBS mnl)
     set(LIB_DIR "/usr/local/lib")
     set(HDR_DIR "/usr/local/include/neat")
-    
+
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_HEADERS neat_bsd.h)
     LIST(APPEND neat_SOURCES neat_bsd.c)
-    set(LIB_DIR "/usr/local/lib")
-    set(HDR_DIR "/usr/local/include/neat")
-    set(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
-    include_directories("/usr/local/include")
-    link_directories("/usr/local/lib")
+    SET(LIB_DIR "/usr/local/lib")
+    SET(HDR_DIR "/usr/local/include/neat")
+    SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
+    INCLUDE_DIRECTORIES("/usr/local/include")
 
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
+    MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_HEADERS neat_bsd.h)
     LIST(APPEND neat_SOURCES neat_bsd.c)
-    set(LIB_DIR "/usr/local/lib")
-    set(HDR_DIR "/usr/local/include/neat")
-    set(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
+    SET(LIB_DIR "/usr/local/lib")
+    SET(HDR_DIR "/usr/local/include/neat")
+    SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
+    SET(CMAKE_LIBRARY_PATH /usr/local/lib)
     include_directories("/usr/local/include")
-    link_directories("/usr/local/lib")
 
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
     message(STATUS ${CMAKE_SYSTEM_NAME} " supported")
@@ -62,9 +60,9 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
     LIST(APPEND neat_SOURCES neat_bsd.c)
     set(LIB_DIR "/usr/local/lib")
     set(HDR_DIR "/usr/local/include/neat")
+    SET(CMAKE_LIBRARY_PATH /usr/local/lib)
     set(CMAKE_REQUIRED_INCLUDES "/usr/pkg/include" "/usr/include")
     include_directories("/usr/pkg/include")
-    link_directories("/usr/pkg/lib")
 
 else()
     message(FATAL_ERROR ${CMAKE_SYSTEM_NAME} " not supported (yet?)")
@@ -74,16 +72,19 @@ endif()
 # REQUIREMENTS
 #################################################
 check_include_file(uv.h HAVE_SYS_UV_H)
-if(NOT HAVE_SYS_UV_H)
+FIND_LIBRARY(UV_LIBRARY uv)
+if(NOT HAVE_SYS_UV_H OR NOT UV_LIBRARY)
     message(FATAL_ERROR "uv.h not not found - libuv installed?")
 endif()
 
 check_include_file(ldns/ldns.h HAVE_SYS_LDNS_H)
-if(NOT HAVE_SYS_LDNS_H)
+FIND_LIBRARY(LDNS_LIBRARY ldns)
+if(NOT HAVE_SYS_LDNS_H OR NOT LDNS_LIBRARY)
     message(FATAL_ERROR "ldns/ldns.h not found - libdns installed?")
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+FIND_LIBRARY(LDNS_LIBRARY ldns)
 check_include_file(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
 if(NOT HAVE_SYS_LIBMNL_H)
     message(FATAL_ERROR "libmnl/libmnl.h not found - libmnl installed?")

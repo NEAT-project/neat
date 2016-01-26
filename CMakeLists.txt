@@ -43,6 +43,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     SET(HDR_DIR "/usr/local/include/neat")
     SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
     INCLUDE_DIRECTORIES("/usr/local/include")
+    SET(CMAKE_LIBRARY_PATH /usr/local/lib)
 
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
@@ -72,23 +73,26 @@ endif()
 # REQUIREMENTS
 #################################################
 check_include_file(uv.h HAVE_SYS_UV_H)
-FIND_LIBRARY(UV_LIBRARY uv)
-if(NOT HAVE_SYS_UV_H OR NOT UV_LIBRARY)
+FIND_LIBRARY(UV_LIB uv)
+if(NOT HAVE_SYS_UV_H OR NOT UV_LIB)
     message(FATAL_ERROR "uv.h not not found - libuv installed?")
 endif()
 
+
 check_include_file(ldns/ldns.h HAVE_SYS_LDNS_H)
-FIND_LIBRARY(LDNS_LIBRARY ldns)
-if(NOT HAVE_SYS_LDNS_H OR NOT LDNS_LIBRARY)
+FIND_LIBRARY(LDNS_LIB ldns)
+if(NOT HAVE_SYS_LDNS_H OR NOT LDNS_LIB)
     message(FATAL_ERROR "ldns/ldns.h not found - libdns installed?")
 endif()
 
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-FIND_LIBRARY(LDNS_LIBRARY ldns)
+FIND_LIBRARY(MNL_LIB mnl)
 check_include_file(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
-if(NOT HAVE_SYS_LIBMNL_H)
+if(NOT HAVE_SYS_LIBMNL_H OR NOT MNL_LIB)
     message(FATAL_ERROR "libmnl/libmnl.h not found - libmnl installed?")
 endif()
+
 endif()
 
 check_include_file(netinet/sctp.h HAVE_NETINET_SCTP_H)
@@ -104,8 +108,15 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -Wall -std=gnu99 -g")
 
 # LIBRARIES
 #################################################
+
+
 add_library(neat SHARED ${neat_SOURCES})
-target_link_libraries(neat ${neat_LIBS})
+
+target_link_libraries(neat ${MNL_LIB})
+target_link_libraries(neat ${LDNS_LIB})
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    target_link_libraries(neat ${UV_LIB})
+endif()
 
 add_library(neat-static STATIC ${neat_SOURCES})
 

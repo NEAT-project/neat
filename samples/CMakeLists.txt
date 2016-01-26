@@ -16,19 +16,16 @@ LIST(APPEND neat_PROGRAMS
     )
 
 LIST(APPEND neat_PROGRAMS_LIBS
-    neat-static
-    uv
-    ldns
+    neat
+    ${UV_LIB}
+    ${LDNS_LIB}
     )
 
 # OS DEPENDENT
 #################################################
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    LIST(APPEND neat_PROGRAMS_LIBS mnl)
-
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-    link_directories("/usr/local/lib/")
-endif()
+IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    LIST(APPEND neat_PROGRAMS_LIBS ${LDNS_LIB})
+ENDIF()
 
 
 # BUILD EACH SAMPLE
@@ -41,5 +38,5 @@ FOREACH (source_file ${neat_PROGRAMS})
 	)
 
 	TARGET_LINK_LIBRARIES (${source_file_we} ${neat_PROGRAMS_LIBS})
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -Wall -std=gnu99 -g")
+	#SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -Wall -std=gnu99 -g")
 ENDFOREACH ()

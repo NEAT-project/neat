@@ -63,6 +63,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
     set(HDR_DIR "/usr/local/include/neat")
     SET(CMAKE_LIBRARY_PATH /usr/local/lib)
     set(CMAKE_REQUIRED_INCLUDES "/usr/pkg/include" "/usr/include")
+    SET(CMAKE_LIBRARY_PATH /usr/pkg/include)
     include_directories("/usr/pkg/include")
 
 else()

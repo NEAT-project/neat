@@ -16,7 +16,7 @@
     default values
 */
 static uint32_t config_rcv_buffer_size = 512;
-static uint32_t config_message_size = 1024;
+static uint32_t config_snd_buffer_size = 1024;
 static uint32_t config_message_count = 32;
 static uint32_t config_runtime = 0;
 static uint16_t config_active = 0;
@@ -47,15 +47,15 @@ static unsigned char *buffer_snd;
     print usage and exit
 */
 static void print_usage() {
-    printf("tneat [OPTIONS] [DESTINATION]\n");
-    printf("\t- l \tsize for each message in byte (%d)\n", config_message_size);
+    printf("tneat [OPTIONS] [HOST]\n");
+    printf("\t- l \tsize for each message in byte (%d)\n", config_snd_buffer_size);
     printf("\t- n \tmax number of messages to send (%d)\n", config_message_count);
-    printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime);
-    printf("\t- R \tsize of apps receive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- p \tport [receive on|send to] (%d)\n", config_port);
-    printf("\t- v \tprint verbose (%d)\n", config_log_level);
     printf("\t- P \tneat properties (%s)\n", config_property);
-
+    printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
+    printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime);
+    printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
+    
     exit(EXIT_FAILURE);
 }
 
@@ -88,10 +88,10 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
     double time_elapsed;
 
     // every buffer is filled with chars - increased by every run
-    memset(buffer_snd, 33+config_chargen_offset++, config_message_size);
+    memset(buffer_snd, 33 + config_chargen_offset++, config_snd_buffer_size);
     config_chargen_offset = config_chargen_offset % 72;
 
-    code = neat_write(opCB->ctx, opCB->flow, buffer_snd, config_message_size);
+    code = neat_write(opCB->ctx, opCB->flow, buffer_snd, config_snd_buffer_size);
     if (code) {
         debug_error("neat_write - code: %d", (int)code);
         return on_error(opCB);
@@ -103,16 +103,16 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
     }
 
     stats_snd.msgs++;
-    stats_snd.bytes += config_message_size;
+    stats_snd.bytes += config_snd_buffer_size;
     gettimeofday(&stats_snd.tv_last, NULL);
 
     if (config_log_level >= 2) {
-        printf("neat_write - # %" PRIu64 " - %d byte\n", stats_snd.msgs, config_message_size);
+        printf("neat_write - # %" PRIu64 " - %d byte\n", stats_snd.msgs, config_snd_buffer_size);
     }
-    
+
     if (config_log_level >= 2) {
         printf("neat_write - content\n");
-        fwrite(buffer_snd, sizeof(char), config_message_size, stdout);
+        fwrite(buffer_snd, sizeof(char), config_snd_buffer_size, stdout);
         printf("\n");
     }
 
@@ -159,7 +159,7 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
         if (config_log_level >= 1) {
             printf("neat_read - # %" PRIu64 " - %d byte\n", stats_rcv.msgs, buffer_filled);
         }
-        
+
         if (config_log_level >= 2) {
             printf("neat_read - content\n");
             fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
@@ -214,9 +214,9 @@ int main(int argc, char *argv[]) {
     while ((arg = getopt(argc, argv, "l:n:T:R:p:v:P:")) != -1) {
 		switch(arg) {
 			case 'l':
-				config_message_size = atoi(optarg);
+				config_snd_buffer_size = atoi(optarg);
                 if (config_log_level >= 1) {
-                    printf("option - message size: %d\n", config_message_size);
+                    printf("option - send buffer size: %d\n", config_snd_buffer_size);
                 }
 				break;
             case 'n':
@@ -246,7 +246,7 @@ int main(int argc, char *argv[]) {
             case 'v':
                 config_log_level = atoi(optarg);
                 if (config_log_level >= 1) {
-                    printf("option - config_log_level: %d\n", config_log_level);
+                    printf("option - log level: %d\n", config_log_level);
                 }
                 break;
             case 'P':
@@ -278,7 +278,7 @@ int main(int argc, char *argv[]) {
 
 
     buffer_rcv = malloc(config_rcv_buffer_size);
-    buffer_snd = malloc(config_message_size);
+    buffer_snd = malloc(config_snd_buffer_size);
 
     // check for successful context
     if (ctx == NULL) {

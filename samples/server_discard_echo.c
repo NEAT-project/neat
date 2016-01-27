@@ -78,10 +78,10 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
 
     } else {
         if (config_log_level >= 1) {
-            printf("buffer_filled <= 0 - neat_stop_event_loop()\n");
+            printf("client disconncted\n");
         }
         opCB->on_readable = NULL;
-        neat_stop_event_loop(opCB->ctx);
+        opCB->on_writable = NULL;
     }
     return 0;
 }

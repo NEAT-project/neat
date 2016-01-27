@@ -4,13 +4,14 @@
 #include <poll.h>
 #include <unistd.h>
 #include "../neat.h"
+#include "../neat_internal.h"
 
 /*
     Simple neat client
 */
 
 static uint32_t config_rcv_buffer_size = 256;
-static uint32_t config_snd_buffer_size = 8;
+static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
@@ -76,7 +77,7 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
 
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
-            printf("data received - %d byte\n", buffer_filled);
+            printf("received %d byte\n", buffer_filled);
         }
 
         fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
@@ -85,7 +86,7 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
 
     } else {
         if (config_log_level >= 1) {
-            printf("buffer_filled <= 0 - neat_stop_event_loop()\n");
+            printf("disconnected\n");
         }
         ops.on_readable = NULL;
         neat_stop_event_loop(opCB->ctx);
@@ -119,7 +120,32 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 
 static uint64_t on_connected(struct neat_flow_operations *opCB) {
     if (config_log_level >= 1) {
-        printf("connected\n");
+        printf("connected - ");
+        
+        if (opCB->flow->family == AF_INET) {
+            printf("IPv4 - ");
+        } else if (opCB->flow->family == AF_INET6) {
+            printf("IPv6 - ");
+        }
+        
+        switch (opCB->flow->sockProtocol) {
+            case 6:
+                printf("TCP ");
+                break;
+            case 17:
+                printf("UDP ");
+                break;
+            case 132:
+                printf("SCTP ");
+                break;
+            case 136:
+                printf("UDPLite ");
+                break;
+            default:
+                printf("protocol #%d", opCB->flow->sockProtocol);
+                break;
+        }
+        printf("\n");
     }
 
     opCB->on_readable = on_readable;

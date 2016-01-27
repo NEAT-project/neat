@@ -49,6 +49,7 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
     if (buffer_filled > 0 ) {
         debug_info("got some data - %d byte", buffer_filled);
         fwrite(buffer, sizeof(char), buffer_filled, stdout);
+        printf("\n");
         fflush(stdout);
     } else {
         debug_info("buffered_amount is <= 0 - stopping on_readable");

@@ -32,29 +32,12 @@ struct neat_flow *flow;
 uv_loop_t *uv_loop;
 uv_tty_t tty;
 
-static uint64_t on_writable(struct neat_flow_operations *opCB);
+void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
 void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
 
-void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer) {
-
-
-    if (bytes_read > 0) {
-        debug_info("read %d bytes from stdin\n", (int) bytes_read);
-        stdin_buffer.buffer_filled = bytes_read;
-        memcpy(stdin_buffer.buffer, buffer, bytes_read);
-        uv_read_stop(stream);
-
-        ops.on_writable = on_writable;
-        neat_set_operations(ctx, flow, &ops);
-    }
-
-}
-
-void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {
-    buf->len = BUFFERSIZE;
-    buf->base = malloc(BUFFERSIZE);
-}
-
+/*
+    Error handler
+*/
 static uint64_t on_error(struct neat_flow_operations *opCB) {
     exit(EXIT_FAILURE);
 }
@@ -67,7 +50,6 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
     unsigned char buffer[BUFFERSIZE];
     uint32_t buffered_amount;
     neat_error_code code;
-
 
     code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffered_amount);
     if (code) {
@@ -94,7 +76,7 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
 }
 
 /*
-    Read from stdin and send it
+    Send data from stdin
 */
 static uint64_t on_writable(struct neat_flow_operations *opCB) {
     neat_error_code code;
@@ -106,9 +88,10 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
     }
 
     debug_info("sent %d bytes", stdin_buffer.buffer_filled);
-
-    ops.on_writable = NULL;
-    neat_set_operations(ctx, flow, &ops);
+    // stop writing
+    opCB->on_writable = NULL;
+    // data sent - continue reading from stdin
+    uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
     return 0;
 }
 
@@ -116,9 +99,32 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 static uint64_t on_connected(struct neat_flow_operations *opCB) {
     debug_info();
 
-    //opCB->on_readable = on_readable;
+    opCB->on_readable = on_readable;
     //opCB->on_writable = on_writable;
     return 0;
+}
+
+/*
+    Read from stdin
+*/
+void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer) {
+    if (bytes_read > 0) {
+        debug_info("read %d bytes from stdin", (int) bytes_read);
+
+        // copy input to app buffer
+        stdin_buffer.buffer_filled = bytes_read;
+        memcpy(stdin_buffer.buffer, buffer->base, bytes_read);
+
+        // stop reading from stdin and set write callback
+        uv_read_stop(stream);
+        ops.on_writable = on_writable;
+        neat_set_operations(ctx, flow, &ops);
+    }
+}
+
+void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {
+    buf->len = BUFFERSIZE;
+    buf->base = malloc(BUFFERSIZE);
 }
 
 int main(int argc, char *argv[]) {
@@ -137,7 +143,6 @@ int main(int argc, char *argv[]) {
         debug_error("could not initialize context");
         exit(EXIT_FAILURE);
     }
-
 
     uv_tty_init(uv_loop, &tty, 0, 1);
     uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);

@@ -9,9 +9,9 @@ LIST(APPEND neat_PROGRAMS
     neat_resolver_example.c
     neat_server.c
     client.c
-    #server_chargen.c
-    #server_daytime.c
-    server_discard.c
+    server_chargen.c
+    server_daytime.c
+    server_discard_echo.c
     tneat.c
     )
 

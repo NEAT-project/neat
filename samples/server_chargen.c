@@ -1,41 +1,55 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
+#include <unistd.h>
 #include "../neat.h"
 
-/*
-    This is simple chargen server (RFC 862) for neat
-*/
-
-#define NO_DEBUG_INFO
-#define CHARLEN 72
 #define BUFFERSIZE 32
-
-
-#ifdef NO_DEBUG_INFO
-#define debug_info(M, ...)
-#else
-#define debug_info(M, ...) fprintf(stderr, "[INFO][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
-#endif
-
 #define debug_error(M, ...) fprintf(stderr, "[ERROR][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 static struct neat_flow_operations ops;
+struct neat_ctx *ctx;
+struct neat_flow *flow;
 static uint32_t chargen_offset = 0;
 
+static uint64_t on_writable(struct neat_flow_operations *opCB);
+
+/*
+    Error handler
+*/
 static uint64_t on_error(struct neat_flow_operations *opCB) {
     exit(EXIT_FAILURE);
 }
 
 /*
-    send CHARLEN chars to client
+    Read data until buffered_amount == 0 - then stop event loop!
+*/
+static uint64_t on_readable(struct neat_flow_operations *opCB) {
+    // data is available to read
+    neat_error_code code;
+    unsigned char buffer[BUFFERSIZE];
+    uint32_t buffer_filled;
+
+    code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled);
+    if (code) {
+        if (code == NEAT_ERROR_WOULD_BLOCK) {
+            return 0;
+        } else {
+            debug_error("code: %d", (int)code);
+            return on_error(opCB);
+        }
+    }
+    return 0;
+}
+
+/*
+    Send data from stdin
 */
 static uint64_t on_writable(struct neat_flow_operations *opCB) {
     neat_error_code code;
-    unsigned char buffer[CHARLEN];
+    unsigned char buffer[BUFFERSIZE];
 
-    for (int i = 0; i < CHARLEN; i++) {
+    for (int i = 0; i < BUFFERSIZE; i++) {
         buffer[i] = 33+((chargen_offset+i)%72);
     }
 
@@ -44,63 +58,26 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
         chargen_offset = 0;
     }
 
-    code = neat_write(opCB->ctx, opCB->flow, buffer, CHARLEN);
+    code = neat_write(opCB->ctx, opCB->flow, buffer, BUFFERSIZE);
     if (code) {
-        debug_error("neat_write - code: %d", (int)code);
+        debug_error("code: %d", (int)code);
         return on_error(opCB);
-    } else {
-        debug_info("neat_write - %d byte", CHARLEN);
     }
 
     return 0;
 }
 
-static uint64_t on_readable(struct neat_flow_operations *opCB) {
-    // data is available to read
-    unsigned char buffer[BUFFERSIZE];
-    uint32_t buffer_filled;
-    neat_error_code code;
-    debug_info();
 
-    if ((code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled)) != 0) {
-        if (code == NEAT_ERROR_WOULD_BLOCK) {
-            debug_error("NEAT_ERROR_WOULD_BLOCK");
-            return 0;
-        } else {
-            debug_error("neat_read - code: %d", (int)code);
-            return on_error(opCB);
-        }
-    }
-
-    if (!buffer_filled) {
-        // eof is unexpected in this case
-        debug_info("client disconnected");
-        return on_error(opCB);
-    } else if (buffer_filled > 0) {
-        // throw away received data
-        debug_info("got some data - discarding...");
-        //opCB->on_readable = NULL;
-        //opCB->on_writable = on_writable;
-    }
-    return 0;
-}
-
-static uint64_t on_connected(struct neat_flow_operations *opCB)
-{
-    // now we can start writing
-    debug_info();
+static uint64_t on_connected(struct neat_flow_operations *opCB) {
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
     return 0;
 }
 
-int main(int argc, char *argv[])
-{
-    struct neat_ctx *ctx = neat_init_ctx();
-    struct neat_flow *flow;
+int main(int argc, char *argv[]) {
     uint64_t prop;
+    ctx = neat_init_ctx();
 
-    // check for successful context
     if (ctx == NULL) {
         debug_error("could not initialize context");
         exit(EXIT_FAILURE);
@@ -112,15 +89,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    ops.on_connected = on_connected;
-    ops.on_error = on_error;
-    //ops.on_all_written = on_all_written;
-    if (neat_set_operations(ctx, flow, &ops)) {
-        debug_error("neat_set_operations");
-        exit(EXIT_FAILURE);
-    }
-
-    // get properties
+    // set properties (TCP only etc..)
     if (neat_get_property(ctx, flow, &prop)) {
         debug_error("neat_get_property");
         exit(EXIT_FAILURE);
@@ -135,6 +104,15 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    // set callbacks
+    ops.on_connected = on_connected;
+    ops.on_error = on_error;
+
+    if (neat_set_operations(ctx, flow, &ops)) {
+        debug_error("neat_set_operations");
+        exit(EXIT_FAILURE);
+    }
+
     // wait for on_connected or on_error to be invoked
     if (neat_accept(ctx, flow, "*", "8080")) {
         debug_error("neat_accept");
@@ -146,5 +124,6 @@ int main(int argc, char *argv[])
     // cleanup
     neat_free_flow(flow);
     neat_free_ctx(ctx);
+
     exit(EXIT_SUCCESS);
 }

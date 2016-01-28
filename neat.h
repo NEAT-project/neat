@@ -5,7 +5,6 @@
 
 #include <sys/types.h>
 #include <netinet/in.h>
-#include <uv.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,7 +25,6 @@ void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
 void neat_stop_event_loop(struct neat_ctx *nc);
 int neat_get_backend_fd(struct neat_ctx *nc);
 void neat_free_ctx(struct neat_ctx *nc);
-uv_loop_t *neat_get_uv_loop(struct neat_ctx *nc);
 
 typedef uint64_t neat_error_code;
 struct neat_flow_operations;

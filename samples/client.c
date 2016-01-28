@@ -3,6 +3,7 @@
 #include <string.h>
 #include <poll.h>
 #include <unistd.h>
+#include <uv.h>
 #include "../neat.h"
 #include "../neat_internal.h"
 
@@ -121,13 +122,13 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 static uint64_t on_connected(struct neat_flow_operations *opCB) {
     if (config_log_level >= 1) {
         printf("connected - ");
-        
+
         if (opCB->flow->family == AF_INET) {
             printf("IPv4 - ");
         } else if (opCB->flow->family == AF_INET6) {
             printf("IPv6 - ");
         }
-        
+
         switch (opCB->flow->sockProtocol) {
             case 6:
                 printf("TCP ");
@@ -184,7 +185,7 @@ int main(int argc, char *argv[]) {
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
     ctx = neat_init_ctx();
-    uv_loop = neat_get_uv_loop(ctx);
+    uv_loop = ctx->loop;
 
     while ((arg = getopt(argc, argv, "R:S:v:P:")) != -1) {
 		switch(arg) {

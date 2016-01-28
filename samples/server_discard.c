@@ -4,10 +4,10 @@
 #include <poll.h>
 #include <unistd.h>
 #include "../neat.h"
+#include "../neat_internal.h"
 
 static uint32_t config_buffer_size = 8;
 static uint16_t config_log_level = 1;
-static uint16_t config_echo = 1;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
 
@@ -19,14 +19,11 @@ struct neat_flow *flow;
 static unsigned char *buffer;
 uint32_t buffer_filled;
 
-static uint64_t on_writable(struct neat_flow_operations *opCB);
-
 /*
     print usage and exit
 */
 static void print_usage() {
-    printf("server_discard_echo [OPTIONS]\n");
-    printf("\t- E \techo (%d)\n", config_echo);
+    printf("server_discard [OPTIONS]\n");
     printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
     printf("\t- P \tneat properties (%s)\n", config_property);
@@ -63,56 +60,51 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
 
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
-            printf("received data - %d byte\n", buffer_filled);
+            printf("[%d] received data - %d byte\n", opCB->flow->fd, buffer_filled);
         }
         if (config_log_level >= 2) {
             fwrite(buffer, sizeof(char), buffer_filled, stdout);
             printf("\n");
             fflush(stdout);
         }
-
-        if (config_echo) {
-            opCB->on_readable = NULL;
-            opCB->on_writable = on_writable;
-        }
-
     } else {
         if (config_log_level >= 1) {
-            printf("client disconncted\n");
+            printf("[%d] disconnected\n", opCB->flow->fd);
         }
         opCB->on_readable = NULL;
         opCB->on_writable = NULL;
+        neat_free_flow(opCB->flow);
     }
     return 0;
 }
-
-/*
-    Send data from stdin
-*/
-static uint64_t on_writable(struct neat_flow_operations *opCB) {
-    neat_error_code code;
-
-    code = neat_write(opCB->ctx, opCB->flow, buffer, buffer_filled);
-    if (code) {
-        debug_error("code: %d", (int)code);
-        return on_error(opCB);
-    }
-
-    if (config_log_level >= 1) {
-        printf("sent data - %d byte\n", buffer_filled);
-    }
-
-    // stop writing
-    opCB->on_writable = NULL;
-    opCB->on_readable = on_readable;
-    return 0;
-}
-
 
 static uint64_t on_connected(struct neat_flow_operations *opCB) {
-    if (config_log_level >= 1) {
-        printf("connected\n");
+    printf("[%d] connected - ", opCB->flow->fd);
+
+    if (opCB->flow->family == AF_INET) {
+        printf("IPv4 - ");
+    } else if (opCB->flow->family == AF_INET6) {
+        printf("IPv6 - ");
     }
+
+    switch (opCB->flow->sockProtocol) {
+        case 6:
+            printf("TCP ");
+            break;
+        case 17:
+            printf("UDP ");
+            break;
+        case 132:
+            printf("SCTP ");
+            break;
+        case 136:
+            printf("UDPLite ");
+            break;
+        default:
+            printf("protocol #%d", opCB->flow->sockProtocol);
+            break;
+    }
+    printf("\n");
 
     opCB->on_readable = on_readable;
     return 0;
@@ -126,14 +118,8 @@ int main(int argc, char *argv[]) {
     char arg_property_delimiter[] = ",;";
     ctx = neat_init_ctx();
 
-    while ((arg = getopt(argc, argv, "E:R:S:v:P:")) != -1) {
+    while ((arg = getopt(argc, argv, "R:S:v:P:")) != -1) {
 		switch(arg) {
-            case 'E':
-                config_echo = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - echo: %d\n", config_echo);
-                }
-                break;
             case 'S':
                 config_buffer_size = atoi(optarg);
                 if (config_log_level >= 1) {
@@ -156,12 +142,6 @@ int main(int argc, char *argv[]) {
                 print_usage();
                 break;
         }
-    }
-
-    if (config_echo) {
-        printf("acting as echo server\n");
-    } else {
-        printf("acting as discard server\n");
     }
 
     if (optind != argc) {

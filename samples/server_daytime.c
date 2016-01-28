@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "../neat.h"
+#include "../neat_internal.h"
 
 #define BUFFERSIZE 32
 #define debug_error(M, ...) fprintf(stderr, "[ERROR][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
@@ -68,6 +69,33 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 
 
 static uint64_t on_connected(struct neat_flow_operations *opCB) {
+    printf("[%d] connected - ", opCB->flow->fd);
+
+    if (opCB->flow->family == AF_INET) {
+        printf("IPv4 - ");
+    } else if (opCB->flow->family == AF_INET6) {
+        printf("IPv6 - ");
+    }
+
+    switch (opCB->flow->sockProtocol) {
+        case 6:
+            printf("TCP ");
+            break;
+        case 17:
+            printf("UDP ");
+            break;
+        case 132:
+            printf("SCTP ");
+            break;
+        case 136:
+            printf("UDPLite ");
+            break;
+        default:
+            printf("protocol #%d", opCB->flow->sockProtocol);
+            break;
+    }
+    printf("\n");
+
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
 

@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include "../neat.h"
+#include "../neat_internal.h"
 
 /*
     tneat
@@ -55,7 +56,7 @@ static void print_usage() {
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
-    
+
     exit(EXIT_FAILURE);
 }
 
@@ -86,6 +87,7 @@ static uint64_t on_error(struct neat_flow_operations *opCB) {
 static uint64_t on_writable(struct neat_flow_operations *opCB) {
     neat_error_code code;
     double time_elapsed;
+    char buffer_filesize_human[16];
 
     // every buffer is filled with chars - increased by every run
     memset(buffer_snd, 33 + config_chargen_offset++, config_snd_buffer_size);
@@ -121,7 +123,13 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 
     // stop writing if config_runtime reached or config_message_count msgs sent
     if ((config_runtime > 0 && time_elapsed >= config_runtime) || (config_message_count > 0 && stats_snd.msgs >= config_message_count)) {
-        printf("neat_write finished - %" PRIu64 " calls - %" PRIu64 " bytes in %.2f s\n", stats_snd.msgs, stats_snd.bytes, time_elapsed);
+        //printf("neat_write finished - %" PRIu64 " calls - %" PRIu64 " bytes in %.2f s\n", stats_snd.msgs, stats_snd.bytes, time_elapsed);
+        printf("neat_write finished - statistics\n");
+        printf("\tbytes\t\t: %" PRIu64 "\n", stats_snd.bytes);
+        printf("\tsnd-calls\t: %" PRIu64 "\n", stats_snd.msgs);
+        printf("\tduration\t: %.2fs\n", time_elapsed);
+        printf("\tbandwidth\t: %s/s\n", filesize_human(stats_snd.bytes/time_elapsed, buffer_filesize_human));
+
         opCB->on_writable = NULL;
         neat_stop_event_loop(opCB->ctx);
     }
@@ -156,12 +164,8 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
         stats_rcv.bytes += buffer_filled;
         gettimeofday(&stats_rcv.tv_last, NULL);
 
-        if (config_log_level >= 1) {
-            printf("neat_read - # %" PRIu64 " - %d byte\n", stats_rcv.msgs, buffer_filled);
-        }
-
         if (config_log_level >= 2) {
-            printf("neat_read - content\n");
+            printf("neat_read - # %" PRIu64 " - %d byte\n", stats_rcv.msgs, buffer_filled);
             fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
             printf("\n");
         }
@@ -171,8 +175,18 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
         time_elapsed = stats_rcv.tv_last.tv_sec - stats_rcv.tv_first.tv_sec; // sec
         time_elapsed += (stats_rcv.tv_last.tv_usec - stats_rcv.tv_first.tv_usec) / 1000000.0; // us >> sec
 
+        //printf("%" PRIu64 ", %" PRIu64 ", %.2f, %.2f, %s\n", stats_rcv.bytes, stats_rcv.msgs, time_elapsed, stats_rcv.bytes/time_elapsed, filesize_human(stats_rcv.bytes/time_elapsed, buffer_filesize_human));
         printf("%" PRIu64 ", %" PRIu64 ", %.2f, %.2f, %s\n", stats_rcv.bytes, stats_rcv.msgs, time_elapsed, stats_rcv.bytes/time_elapsed, filesize_human(stats_rcv.bytes/time_elapsed, buffer_filesize_human));
+
+        printf("client disconnected - statistics\n");
+        printf("\tbytes\t\t: %" PRIu64 "\n", stats_rcv.bytes);
+        printf("\trcv-calls\t: %" PRIu64 "\n", stats_rcv.msgs);
+        printf("\tduration\t: %.2fs\n", time_elapsed);
+        printf("\tbandwidth\t: %s/s\n", filesize_human(stats_rcv.bytes/time_elapsed, buffer_filesize_human));
+
+
         opCB->on_readable = NULL;
+        neat_free_flow(opCB->flow);
     }
 
     return 0;
@@ -184,7 +198,32 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
 static uint64_t on_connected(struct neat_flow_operations *opCB) {
 
     if (config_log_level >= 1) {
-        printf("connected\n");
+        printf("[%d] connected - ", opCB->flow->fd);
+
+        if (opCB->flow->family == AF_INET) {
+            printf("IPv4 - ");
+        } else if (opCB->flow->family == AF_INET6) {
+            printf("IPv6 - ");
+        }
+
+        switch (opCB->flow->sockProtocol) {
+            case 6:
+                printf("TCP ");
+                break;
+            case 17:
+                printf("UDP ");
+                break;
+            case 132:
+                printf("SCTP ");
+                break;
+            case 136:
+                printf("UDPLite ");
+                break;
+            default:
+                printf("protocol #%d", opCB->flow->sockProtocol);
+                break;
+        }
+        printf("\n");
     }
 
     // reset stats

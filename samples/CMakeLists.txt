@@ -11,7 +11,8 @@ LIST(APPEND neat_PROGRAMS
     client.c
     server_chargen.c
     server_daytime.c
-    server_discard_echo.c
+    server_discard.c
+    server_echo.c
     tneat.c
     )
 

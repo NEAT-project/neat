@@ -8,22 +8,26 @@ LIST(APPEND neat_PROGRAMS
     neat_basic_sctp.c
     neat_resolver_example.c
     neat_server.c
+    client.c
+    server_chargen.c
+    server_daytime.c
+    server_discard.c
+    server_echo.c
+    tneat.c
     )
 
 LIST(APPEND neat_PROGRAMS_LIBS
-    neat-static
-    uv
-    ldns
+    neat
+    ${UV_LIB}
+    ${LDNS_LIB}
     )
+
 
 # OS DEPENDENT
 #################################################
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    LIST(APPEND neat_PROGRAMS_LIBS mnl)
-
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-    link_directories("/usr/local/lib/")
-endif()
+IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    LIST(APPEND neat_PROGRAMS_LIBS ${LDNS_LIB})
+ENDIF()
 
 
 # BUILD EACH SAMPLE
@@ -36,5 +40,5 @@ FOREACH (source_file ${neat_PROGRAMS})
 	)
 
 	TARGET_LINK_LIBRARIES (${source_file_we} ${neat_PROGRAMS_LIBS})
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -Wall -std=gnu99 -g")
+	#SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -Wall -std=gnu99 -g")
 ENDFOREACH ()

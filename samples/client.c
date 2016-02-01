@@ -319,12 +319,12 @@ int main(int argc, char *argv[]) {
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_open(ctx, flow, argv[argc - 2], argv[argc - 1])) {
+    if (neat_open(ctx, flow, argv[argc - 2], argv[argc - 1]) == NEAT_OK) {
+        neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
+    } else {
         debug_error("neat_open");
         exit(EXIT_FAILURE);
     }
-
-    neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
     free(buffer_rcv);
     free(buffer_snd);

@@ -415,7 +415,9 @@ int main(int argc, char *argv[]) {
 
     if (config_active) {
         // connect to peer
-        if (neat_open(ctx, flow, argv[optind], port)) {
+        if (neat_open(ctx, flow, argv[optind], port) == NEAT_OK) {
+            neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
+        } else {
             debug_error("neat_open");
             exit(EXIT_FAILURE);
         }
@@ -429,13 +431,14 @@ int main(int argc, char *argv[]) {
             debug_error("neat_accept - *:%d\n", config_port);
             exit(EXIT_FAILURE);
         }
+
+        neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     }
 
-    neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
+
     if (config_log_level >= 1) {
         printf("freeing (flow + ctx) and bye bye!\n");
     }
-
 
     // cleanup
     free(buffer_rcv);

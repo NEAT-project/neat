@@ -490,9 +490,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, const char *port)
     flow->name = strdup(name);
     flow->port = strdup(port);
     flow->propertyAttempt = flow->propertyMask;
-    neat_he_lookup(mgr, flow, open_he_callback);
-
-    return NEAT_OK;
+    return neat_he_lookup(mgr, flow, open_he_callback);
 }
 
 static void

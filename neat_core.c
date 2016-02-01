@@ -229,10 +229,12 @@ static void free_cb(uv_handle_t *handle)
 
 void neat_free_flow(neat_flow *flow)
 {
-    if (flow->isPolling) {
+    if (flow->isPolling)
         uv_poll_stop(&flow->handle);
-    }
-    uv_close((uv_handle_t *)(&flow->handle), free_cb);
+
+    if (uv_is_active((uv_handle_t*) &(flow->handle)))
+        uv_close((uv_handle_t *)(&flow->handle), free_cb);
+
     return;
 }
 

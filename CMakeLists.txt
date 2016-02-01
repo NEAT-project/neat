@@ -44,7 +44,7 @@ ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     LIST(APPEND neat_SOURCES neat_bsd.c)
     SET(LIB_DIR "/usr/local/lib")
     SET(HDR_DIR "/usr/local/include/neat")
-    SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
+    SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include" "/usr/local/opt/openssl/include")
     SET(CMAKE_LIBRARY_PATH "/usr/local/lib")
     INCLUDE_DIRECTORIES("/usr/local/include" "/usr/local/opt/openssl/include")
 

@@ -45,10 +45,8 @@ $ sudo pkg install cmake ldns libuv
 #### OS X
 ```
 $ brew install libuv ldns
-$ brew link openssl --force
 ```
 Tested on OS X 10.11 and brew.
-It is necessary to link openssl - otherwise the openssl headers are not found and ldns compilation fails.
 
 ### Build NEAT and samples
 ```

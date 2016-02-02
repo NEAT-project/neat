@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <netinet/in.h>
 #include "../neat.h"
 #include "../neat_internal.h"
 
@@ -78,18 +79,22 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
     }
 
     switch (opCB->flow->sockProtocol) {
-    case 6:
+    case IPPROTO_TCP:
         printf("TCP ");
         break;
-    case 17:
+    case IPPROTO_UDP:
         printf("UDP ");
         break;
-    case 132:
+#ifdef IPPROTO_SCTP
+    case IPPROTO_SCTP:
         printf("SCTP ");
         break;
-    case 136:
+#endif
+#ifdef IPPROTO_UDPLITE
+    case IPPROTO_UDPLITE:
         printf("UDPLite ");
         break;
+#endif
     default:
         printf("protocol #%d", opCB->flow->sockProtocol);
         break;

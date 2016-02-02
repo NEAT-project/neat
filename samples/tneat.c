@@ -121,7 +121,8 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
     time_elapsed += (stats_snd.tv_last.tv_usec - stats_snd.tv_first.tv_usec) / 1000000.0; // us >> sec
 
     // stop writing if config_runtime reached or config_message_count msgs sent
-    if ((config_runtime > 0 && time_elapsed >= config_runtime) || (config_message_count > 0 && stats_snd.msgs >= config_message_count)) {
+    if ((config_runtime > 0 && time_elapsed >= config_runtime) ||
+        (config_runtime == 0 && config_message_count > 0 && stats_snd.msgs >= config_message_count)) {
         //printf("neat_write finished - %" PRIu64 " calls - %" PRIu64 " bytes in %.2f s\n", stats_snd.msgs, stats_snd.bytes, time_elapsed);
         printf("neat_write finished - statistics\n");
         printf("\tbytes\t\t: %" PRIu64 "\n", stats_snd.bytes);

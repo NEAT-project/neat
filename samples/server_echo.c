@@ -155,8 +155,14 @@ int main(int argc, char *argv[]) {
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "R:S:v:P:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:R:S:v:")) != -1) {
         switch(arg) {
+        case 'P':
+            arg_property = optarg;
+            if (config_log_level >= 1) {
+                printf("option - properties: %s\n", arg_property);
+            }
+            break;
         case 'S':
             config_buffer_size = atoi(optarg);
             if (config_log_level >= 1) {
@@ -167,12 +173,6 @@ int main(int argc, char *argv[]) {
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {
                 printf("option - log level: %d\n", config_log_level);
-            }
-            break;
-        case 'P':
-            arg_property = optarg;
-            if (config_log_level >= 1) {
-                printf("option - properties: %s\n", arg_property);
             }
             break;
         default:

@@ -4,6 +4,7 @@
 #include <time.h>
 #include <inttypes.h>
 #include <unistd.h>
+#include <netinet/in.h>
 #include <sys/time.h>
 #include "../neat.h"
 #include "../neat_internal.h"
@@ -41,8 +42,8 @@ struct stats {
 static struct neat_flow_operations ops;
 static struct stats stats_rcv;
 static struct stats stats_snd;
-static unsigned char *buffer_rcv;
-static unsigned char *buffer_snd;
+static unsigned char *buffer_rcv = NULL;
+static unsigned char *buffer_snd = NULL;
 
 /*
     print usage and exit
@@ -56,8 +57,6 @@ static void print_usage() {
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
-
-    exit(EXIT_FAILURE);
 }
 
 /*
@@ -207,21 +206,25 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
         }
 
         switch (opCB->flow->sockProtocol) {
-            case 6:
-                printf("TCP ");
-                break;
-            case 17:
-                printf("UDP ");
-                break;
-            case 132:
-                printf("SCTP ");
-                break;
-            case 136:
-                printf("UDPLite ");
-                break;
-            default:
-                printf("protocol #%d", opCB->flow->sockProtocol);
-                break;
+        case IPPROTO_TCP:
+            printf("TCP ");
+            break;
+        case IPPROTO_UDP:
+            printf("UDP ");
+            break;
+    #ifdef IPPROTO_SCTP
+        case IPPROTO_SCTP:
+            printf("SCTP ");
+            break;
+    #endif
+    #ifdef IPPROTO_UDPLITE
+        case IPPROTO_UDPLITE:
+            printf("UDPLite ");
+            break;
+    #endif
+        default:
+            printf("protocol #%d", opCB->flow->sockProtocol);
+            break;
         }
         printf("\n");
     }
@@ -242,93 +245,106 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
 }
 
 int main(int argc, char *argv[]) {
-    struct neat_ctx *ctx = neat_init_ctx();
-    struct neat_flow *flow;
+    struct neat_ctx *ctx = NULL;
+    struct neat_flow *flow = NULL;
     uint64_t prop;
-    int arg;
+    int arg, result;
     char *arg_property = config_property;
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
 
-    while ((arg = getopt(argc, argv, "l:n:T:R:p:v:P:")) != -1) {
-		switch(arg) {
-			case 'l':
-				config_snd_buffer_size = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - send buffer size: %d\n", config_snd_buffer_size);
-                }
-				break;
-            case 'n':
-                config_message_count = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - message limit: %d\n", config_message_count);
-                }
-                break;
-            case 'T':
-                config_runtime = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - runtime limit: %d\n", config_runtime);
-                }
-                break;
-            case 'R':
-                config_rcv_buffer_size = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - receive buffer size: %d\n", config_rcv_buffer_size);
-                }
-                break;
-            case 'p':
-                config_port = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - port: %d\n", config_port);
-                }
-                break;
-            case 'v':
-                config_log_level = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - log level: %d\n", config_log_level);
-                }
-                break;
-            case 'P':
-                arg_property = optarg;
-                if (config_log_level >= 1) {
-                    printf("option - properties: %s\n", arg_property);
-                }
-                break;
-            default:
-                print_usage();
-                break;
+    result = EXIT_SUCCESS;
+
+    while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:")) != -1) {
+        switch(arg) {
+        case 'l':
+            config_snd_buffer_size = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - send buffer size: %d\n", config_snd_buffer_size);
+            }
+            break;
+        case 'n':
+            config_message_count = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - message limit: %d\n", config_message_count);
+            }
+            break;
+        case 'p':
+            config_port = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - port: %d\n", config_port);
+            }
+            break;
+        case 'P':
+            arg_property = optarg;
+            if (config_log_level >= 1) {
+                printf("option - properties: %s\n", arg_property);
+            }
+            break;
+        case 'R':
+            config_rcv_buffer_size = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - receive buffer size: %d\n", config_rcv_buffer_size);
+            }
+            break;
+        case 'T':
+            config_runtime = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - runtime limit: %d\n", config_runtime);
+            }
+            break;
+        case 'v':
+            config_log_level = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - log level: %d\n", config_log_level);
+            }
+            break;
+        default:
+            print_usage();
+            goto cleanup;
+            break;
         }
     }
 
     if (optind == argc) {
-		config_active = 0;
+        config_active = 0;
         if (config_log_level >= 1) {
             printf("role: passive\n");
         }
-	} else if (optind + 1 == argc) {
-		config_active = 1;
+    } else if (optind + 1 == argc) {
+        config_active = 1;
         if (config_log_level >= 1) {
             printf("role: active\n");
         }
-	} else {
+    } else {
         debug_error("argument error");
         print_usage();
+        goto cleanup;
     }
 
 
-    buffer_rcv = malloc(config_rcv_buffer_size);
-    buffer_snd = malloc(config_snd_buffer_size);
+    if ((buffer_rcv = malloc(config_rcv_buffer_size)) == NULL) {
+        debug_error("could not allocate receive buffer");
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
+    if ((buffer_snd = malloc(config_snd_buffer_size)) == NULL) {
+        debug_error("could not allocate send buffer");
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
 
-    // check for successful context
-    if (ctx == NULL) {
+    if ((ctx = neat_init_ctx()) == NULL) {
         debug_error("could not initialize context");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // new neat flow
     if ((flow = neat_new_flow(ctx)) == NULL) {
         debug_error("neat_new_flow");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     ops.on_connected = on_connected;
@@ -337,13 +353,15 @@ int main(int argc, char *argv[]) {
     //ops.on_all_written = on_all_written;
     if (neat_set_operations(ctx, flow, &ops)) {
         debug_error("neat_set_operations");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // get properties
     if (neat_get_property(ctx, flow, &prop)) {
         debug_error("neat_get_property");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
 
@@ -396,16 +414,18 @@ int main(int argc, char *argv[]) {
         } else {
             printf("error - unknown property: %s\n", arg_property_ptr);
             print_usage();
+            goto cleanup;
         }
 
-    	// get next property
-     	arg_property_ptr = strtok(NULL, arg_property_delimiter);
+       // get next property
+       arg_property_ptr = strtok(NULL, arg_property_delimiter);
     }
 
     // set properties
     if (neat_set_property(ctx, flow, prop)) {
         debug_error("neat_set_property");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // workaround until port is notated in int..
@@ -419,7 +439,8 @@ int main(int argc, char *argv[]) {
             neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
         } else {
             debug_error("neat_open");
-            exit(EXIT_FAILURE);
+            result = EXIT_FAILURE;
+            goto cleanup;
         }
 
         if (config_log_level >= 1) {
@@ -429,7 +450,8 @@ int main(int argc, char *argv[]) {
         // wait for on_connected or on_error to be invoked
         if (neat_accept(ctx, flow, "*", port)) {
             debug_error("neat_accept - *:%d\n", config_port);
-            exit(EXIT_FAILURE);
+            result = EXIT_FAILURE;
+            goto cleanup;
         }
 
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
@@ -441,9 +463,14 @@ int main(int argc, char *argv[]) {
     }
 
     // cleanup
+cleanup:
     free(buffer_rcv);
     free(buffer_snd);
-    neat_free_flow(flow);
-    neat_free_ctx(ctx);
-    exit(EXIT_SUCCESS);
+    if (flow != NULL) {
+        neat_free_flow(flow);
+    }
+    if (ctx != NULL) {
+        neat_free_ctx(ctx);
+    }
+    exit(result);
 }

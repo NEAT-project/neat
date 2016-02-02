@@ -147,6 +147,7 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
         printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human));
 
         opCB->on_writable = NULL;
+        opCB->on_readable = NULL;
         free(tnf->snd.buffer);
         free(tnf->rcv.buffer);
         free(tnf);
@@ -207,6 +208,9 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
         }
 
         opCB->on_readable = NULL;
+        free(tnf->snd.buffer);
+        free(tnf->rcv.buffer);
+        free(tnf);
         neat_free_flow(opCB->flow);
     }
 

@@ -160,10 +160,10 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
     Read from stdin
 */
 void tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer) {
+    if (config_log_level >= 1) {
+        printf("read %zd bytes from stdin\n", buffer_filled);
+    }
     if (buffer_filled > 0) {
-        if (config_log_level >= 1) {
-            printf("read %d bytes from stdin\n", (int) buffer_filled);
-        }
 
         // copy input to app buffer
         stdin_buffer.buffer_filled = buffer_filled;
@@ -187,8 +187,6 @@ int main(int argc, char *argv[]) {
     char *arg_property = config_property;
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
-    ctx = neat_init_ctx();
-    uv_loop = ctx->loop;
 
     result = EXIT_SUCCESS;
 
@@ -253,6 +251,7 @@ int main(int argc, char *argv[]) {
         goto cleanup;
     }
 
+    uv_loop = ctx->loop;
     uv_tty_init(uv_loop, &tty, 0, 1);
     uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
 

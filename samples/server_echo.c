@@ -27,11 +27,9 @@ static uint64_t on_writable(struct neat_flow_operations *opCB);
 */
 static void print_usage() {
     printf("server_echo [OPTIONS]\n");
+    printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
-    printf("\t- P \tneat properties (%s)\n", config_property);
-
-    exit(EXIT_FAILURE);
 }
 
 /*
@@ -177,6 +175,7 @@ int main(int argc, char *argv[]) {
             break;
         default:
             print_usage();
+            goto cleanup;
             break;
         }
     }
@@ -184,6 +183,7 @@ int main(int argc, char *argv[]) {
     if (optind != argc) {
         debug_error("argument error");
         print_usage();
+        goto cleanup;
     }
 
     if ((buffer = malloc(config_buffer_size)) == NULL) {
@@ -261,6 +261,7 @@ int main(int argc, char *argv[]) {
         } else {
             printf("error - unknown property: %s\n", arg_property_ptr);
             print_usage();
+            goto cleanup;
         }
 
        // get next property

@@ -41,12 +41,10 @@ void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
 */
 static void print_usage() {
     printf("client [OPTIONS] HOST PORT\n");
+    printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- S \tsend buffer in byte (%d)\n", config_snd_buffer_size);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
-    printf("\t- P \tneat properties (%s)\n", config_property);
-
-    exit(EXIT_FAILURE);
 }
 
 /*
@@ -222,6 +220,7 @@ int main(int argc, char *argv[]) {
             break;
         default:
             print_usage();
+            goto cleanup;
             break;
         }
     }
@@ -229,6 +228,7 @@ int main(int argc, char *argv[]) {
     if (optind + 2 != argc) {
         debug_error("argument error");
         print_usage();
+        goto cleanup;
     }
 
     if ((buffer_rcv = malloc(config_rcv_buffer_size)) == NULL) {
@@ -319,6 +319,7 @@ int main(int argc, char *argv[]) {
         } else {
             printf("error - unknown property: %s\n", arg_property_ptr);
             print_usage();
+            goto cleanup;
         }
 
         // get next property

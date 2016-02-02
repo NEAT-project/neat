@@ -57,8 +57,6 @@ static void print_usage() {
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
-
-    exit(EXIT_FAILURE);
 }
 
 /*
@@ -303,6 +301,7 @@ int main(int argc, char *argv[]) {
             break;
         default:
             print_usage();
+            goto cleanup;
             break;
         }
     }
@@ -320,6 +319,7 @@ int main(int argc, char *argv[]) {
     } else {
         debug_error("argument error");
         print_usage();
+        goto cleanup;
     }
 
 
@@ -414,6 +414,7 @@ int main(int argc, char *argv[]) {
         } else {
             printf("error - unknown property: %s\n", arg_property_ptr);
             print_usage();
+            goto cleanup;
         }
 
        // get next property

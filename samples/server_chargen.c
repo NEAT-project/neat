@@ -6,6 +6,10 @@
 #include "../neat.h"
 #include "../neat_internal.h"
 
+static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+static uint16_t config_log_level = 1;
+
+
 #define BUFFERSIZE 32
 #define debug_error(M, ...) fprintf(stderr, "[ERROR][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
@@ -15,6 +19,14 @@ static struct neat_flow *flow = NULL;
 static uint32_t chargen_offset = 0;
 
 static uint64_t on_writable(struct neat_flow_operations *opCB);
+
+static void print_usage() {
+    printf("server_chargen [OPTIONS]\n");
+    printf("\t- P \tneat properties (%s)\n", config_property);
+    printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
+
+    exit(EXIT_FAILURE);
+}
 
 /*
     Error handler
@@ -118,9 +130,37 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
 
 int main(int argc, char *argv[]) {
     uint64_t prop;
-    int result;
+    int arg, result;
+    char *arg_property = config_property;
+    char *arg_property_ptr;
+    char arg_property_delimiter[] = ",;";
 
     result = EXIT_SUCCESS;
+
+    while ((arg = getopt(argc, argv, "P:v:")) != -1) {
+        switch(arg) {
+        case 'P':
+            arg_property = optarg;
+            if (config_log_level >= 1) {
+                printf("option - properties: %s\n", arg_property);
+            }
+            break;
+        case 'v':
+            config_log_level = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - log level: %d\n", config_log_level);
+            }
+            break;
+        default:
+            print_usage();
+            break;
+        }
+    }
+
+    if (optind != argc) {
+        debug_error("argument error");
+        print_usage();
+    }
 
     if ((ctx = neat_init_ctx()) == NULL) {
         debug_error("could not initialize context");
@@ -142,8 +182,60 @@ int main(int argc, char *argv[]) {
         goto cleanup;
     }
 
-    prop |= NEAT_PROPERTY_TCP_REQUIRED;
-    prop |= NEAT_PROPERTY_IPV4_REQUIRED;
+    // read property arguments
+    arg_property_ptr = strtok(arg_property, arg_property_delimiter);
+
+    while (arg_property_ptr != NULL) {
+        if (config_log_level >= 1) {
+            printf("setting property: %s\n", arg_property_ptr);
+        }
+
+        if (strcmp(arg_property_ptr,"NEAT_PROPERTY_OPTIONAL_SECURITY") == 0) {
+            prop |= NEAT_PROPERTY_TCP_REQUIRED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_REQUIRED_SECURITY") == 0) {
+            prop |= NEAT_PROPERTY_REQUIRED_SECURITY;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_MESSAGE") == 0) {
+            prop |= NEAT_PROPERTY_MESSAGE;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_REQUIRED") == 0) {
+            prop |= NEAT_PROPERTY_IPV4_REQUIRED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_BANNED") == 0) {
+            prop |= NEAT_PROPERTY_IPV4_BANNED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_REQUIRED") == 0) {
+            prop |= NEAT_PROPERTY_IPV6_REQUIRED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_BANNED") == 0) {
+            prop |= NEAT_PROPERTY_IPV6_BANNED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_REQUIRED") == 0) {
+            prop |= NEAT_PROPERTY_SCTP_REQUIRED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_BANNED") == 0) {
+            prop |= NEAT_PROPERTY_SCTP_BANNED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_REQUIRED") == 0) {
+            prop |= NEAT_PROPERTY_TCP_REQUIRED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_BANNED") == 0) {
+            prop |= NEAT_PROPERTY_TCP_BANNED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_REQUIRED") == 0) {
+            prop |= NEAT_PROPERTY_UDP_REQUIRED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_BANNED") == 0) {
+            prop |= NEAT_PROPERTY_UDP_BANNED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_REQUIRED") == 0) {
+            prop |= NEAT_PROPERTY_UDPLITE_REQUIRED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_BANNED") == 0) {
+            prop |= NEAT_PROPERTY_UDPLITE_BANNED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED") == 0) {
+            prop |= NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_BANNED") == 0) {
+            prop |= NEAT_PROPERTY_CONGESTION_CONTROL_BANNED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED") == 0) {
+            prop |= NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED;
+        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_BANNED") == 0) {
+            prop |= NEAT_PROPERTY_RETRANSMISSIONS_BANNED;
+        } else {
+            printf("error - unknown property: %s\n", arg_property_ptr);
+            print_usage();
+        }
+
+        // get next property
+        arg_property_ptr = strtok(NULL, arg_property_delimiter);
+    }
 
     // set properties
     if (neat_set_property(ctx, flow, prop)) {

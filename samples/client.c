@@ -161,7 +161,16 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
 */
 void tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer) {
     if (config_log_level >= 1) {
-        printf("read %zd bytes from stdin\n", buffer_filled);
+        printf("tty_read called with buffer_filled %zd\n", buffer_filled);
+    }
+    if (buffer_filled == UV_EOF) {
+        if (config_log_level >= 1) {
+            printf("stdin closed\n");
+        }
+        uv_read_stop(stream);
+        ops.on_writable = NULL;
+        neat_set_operations(ctx, flow, &ops);
+        neat_stop_event_loop(ctx);
     }
     if (buffer_filled > 0) {
 

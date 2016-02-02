@@ -25,7 +25,7 @@ static uint16_t config_active = 0;
 static uint16_t config_chargen_offset = 0;
 static uint16_t config_port = 8080;
 static uint16_t config_log_level = 1;
-static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED,NEAT_PROPERTY_IPV6_BANNED";
+static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
 /*
     macro - error report

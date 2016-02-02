@@ -26,6 +26,8 @@
     #include "neat_bsd_internal.h"
 #endif
 
+static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
+
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
 struct neat_ctx *neat_init_ctx()
@@ -153,17 +155,17 @@ uint8_t neat_add_event_cb(struct neat_ctx *nc, uint8_t event_type,
 
     for (cb_itr = cb_list_head->lh_first; cb_itr != NULL;
             cb_itr = cb_itr->next_cb.le_next) {
-  
+
         if (cb_itr == cb) {
             //TODO: Debug level
             fprintf(stderr, "Callback for %u has already been added\n",
-                    event_type); 
+                    event_type);
             return RETVAL_FAILURE;
         }
     }
 
     //TODO: Debug level
-    fprintf(stderr, "Added new callback for event type %u\n", event_type); 
+    fprintf(stderr, "Added new callback for event type %u\n", event_type);
     LIST_INSERT_HEAD(cb_list_head, cb, next_cb);
     return RETVAL_SUCCESS;
 }
@@ -206,7 +208,7 @@ void neat_run_event_cb(struct neat_ctx *nc, uint8_t event_type,
         return;
 
     cb_list_head = &(nc->event_cbs[event_type]);
-    
+
     for (cb_itr = cb_list_head->lh_first; cb_itr != NULL;
             cb_itr = cb_itr->next_cb.le_next)
         cb_itr->event_cb(nc, cb_itr->data, data);
@@ -229,10 +231,12 @@ static void free_cb(uv_handle_t *handle)
 
 void neat_free_flow(neat_flow *flow)
 {
-    if (flow->isPolling) {
+    if (flow->isPolling)
         uv_poll_stop(&flow->handle);
-    }
-    uv_close((uv_handle_t *)(&flow->handle), free_cb);
+
+    if (uv_is_active((uv_handle_t*) &(flow->handle)))
+        uv_close((uv_handle_t *)(&flow->handle), free_cb);
+
     free(flow->buffered);
     flow->buffered = NULL;
     return;
@@ -256,6 +260,7 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
                                     struct neat_flow_operations *ops)
 {
     flow->operations = ops;
+    updatePollHandle(mgr, flow, &flow->handle);
     return NEAT_OK;
 }
 
@@ -321,7 +326,7 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
-    if (uv_is_closing((uv_handle_t *)&flow->handle)) {
+    if (handle->loop == NULL || uv_is_closing((uv_handle_t *)&flow->handle)) {
         return;
     }
 
@@ -490,9 +495,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, const char *port)
     flow->name = strdup(name);
     flow->port = strdup(port);
     flow->propertyAttempt = flow->propertyMask;
-    neat_he_lookup(mgr, flow, open_he_callback);
-
-    return NEAT_OK;
+    return neat_he_lookup(mgr, flow, open_he_callback);
 }
 
 static void

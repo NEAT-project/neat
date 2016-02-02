@@ -119,21 +119,21 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
     }
 
     switch (opCB->flow->sockProtocol) {
-        case 6:
-            printf("TCP ");
-            break;
-        case 17:
-            printf("UDP ");
-            break;
-        case 132:
-            printf("SCTP ");
-            break;
-        case 136:
-            printf("UDPLite ");
-            break;
-        default:
-            printf("protocol #%d", opCB->flow->sockProtocol);
-            break;
+    case 6:
+        printf("TCP ");
+        break;
+    case 17:
+        printf("UDP ");
+        break;
+    case 132:
+        printf("SCTP ");
+        break;
+    case 136:
+        printf("UDPLite ");
+        break;
+    default:
+        printf("protocol #%d", opCB->flow->sockProtocol);
+        break;
     }
     printf("\n");
 
@@ -150,28 +150,28 @@ int main(int argc, char *argv[]) {
     ctx = neat_init_ctx();
 
     while ((arg = getopt(argc, argv, "R:S:v:P:")) != -1) {
-		switch(arg) {
-            case 'S':
-                config_buffer_size = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - buffer size: %d\n", config_buffer_size);
-                }
-                break;
-            case 'v':
-                config_log_level = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - log level: %d\n", config_log_level);
-                }
-                break;
-            case 'P':
-                arg_property = optarg;
-                if (config_log_level >= 1) {
-                    printf("option - properties: %s\n", arg_property);
-                }
-                break;
-            default:
-                print_usage();
-                break;
+        switch(arg) {
+        case 'S':
+            config_buffer_size = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - buffer size: %d\n", config_buffer_size);
+            }
+            break;
+        case 'v':
+            config_log_level = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - log level: %d\n", config_log_level);
+            }
+            break;
+        case 'P':
+            arg_property = optarg;
+            if (config_log_level >= 1) {
+                printf("option - properties: %s\n", arg_property);
+            }
+            break;
+        default:
+            print_usage();
+            break;
         }
     }
 
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
     }
 
     // new neat flow
-    if((flow = neat_new_flow(ctx)) == NULL) {
+    if ((flow = neat_new_flow(ctx)) == NULL) {
         debug_error("neat_new_flow");
         exit(EXIT_FAILURE);
     }
@@ -250,8 +250,8 @@ int main(int argc, char *argv[]) {
             print_usage();
         }
 
-    	// get next property
-     	arg_property_ptr = strtok(NULL, arg_property_delimiter);
+       // get next property
+       arg_property_ptr = strtok(NULL, arg_property_delimiter);
     }
 
     // set properties

@@ -207,21 +207,21 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
         }
 
         switch (opCB->flow->sockProtocol) {
-            case 6:
-                printf("TCP ");
-                break;
-            case 17:
-                printf("UDP ");
-                break;
-            case 132:
-                printf("SCTP ");
-                break;
-            case 136:
-                printf("UDPLite ");
-                break;
-            default:
-                printf("protocol #%d", opCB->flow->sockProtocol);
-                break;
+        case 6:
+            printf("TCP ");
+            break;
+        case 17:
+            printf("UDP ");
+            break;
+        case 132:
+            printf("SCTP ");
+            break;
+        case 136:
+            printf("UDPLite ");
+            break;
+        default:
+            printf("protocol #%d", opCB->flow->sockProtocol);
+            break;
         }
         printf("\n");
     }
@@ -252,51 +252,51 @@ int main(int argc, char *argv[]) {
 
     while ((arg = getopt(argc, argv, "l:n:T:R:p:v:P:")) != -1) {
         switch(arg) {
-            case 'l':
-                config_snd_buffer_size = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - send buffer size: %d\n", config_snd_buffer_size);
-                }
-                break;
-            case 'n':
-                config_message_count = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - message limit: %d\n", config_message_count);
-                }
-                break;
-            case 'T':
-                config_runtime = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - runtime limit: %d\n", config_runtime);
-                }
-                break;
-            case 'R':
-                config_rcv_buffer_size = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - receive buffer size: %d\n", config_rcv_buffer_size);
-                }
-                break;
-            case 'p':
-                config_port = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - port: %d\n", config_port);
-                }
-                break;
-            case 'v':
-                config_log_level = atoi(optarg);
-                if (config_log_level >= 1) {
-                    printf("option - log level: %d\n", config_log_level);
-                }
-                break;
-            case 'P':
-                arg_property = optarg;
-                if (config_log_level >= 1) {
-                    printf("option - properties: %s\n", arg_property);
-                }
-                break;
-            default:
-                print_usage();
-                break;
+        case 'l':
+            config_snd_buffer_size = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - send buffer size: %d\n", config_snd_buffer_size);
+            }
+            break;
+        case 'n':
+            config_message_count = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - message limit: %d\n", config_message_count);
+            }
+            break;
+        case 'T':
+            config_runtime = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - runtime limit: %d\n", config_runtime);
+            }
+            break;
+        case 'R':
+            config_rcv_buffer_size = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - receive buffer size: %d\n", config_rcv_buffer_size);
+            }
+            break;
+        case 'p':
+            config_port = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - port: %d\n", config_port);
+            }
+            break;
+        case 'v':
+            config_log_level = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - log level: %d\n", config_log_level);
+            }
+            break;
+        case 'P':
+            arg_property = optarg;
+            if (config_log_level >= 1) {
+                printf("option - properties: %s\n", arg_property);
+            }
+            break;
+        default:
+            print_usage();
+            break;
         }
     }
 

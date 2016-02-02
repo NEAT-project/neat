@@ -90,21 +90,21 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
     }
 
     switch (opCB->flow->sockProtocol) {
-        case 6:
-            printf("TCP ");
-            break;
-        case 17:
-            printf("UDP ");
-            break;
-        case 132:
-            printf("SCTP ");
-            break;
-        case 136:
-            printf("UDPLite ");
-            break;
-        default:
-            printf("protocol #%d", opCB->flow->sockProtocol);
-            break;
+    case 6:
+        printf("TCP ");
+        break;
+    case 17:
+        printf("UDP ");
+        break;
+    case 132:
+        printf("SCTP ");
+        break;
+    case 136:
+        printf("UDPLite ");
+        break;
+    default:
+        printf("protocol #%d", opCB->flow->sockProtocol);
+        break;
     }
     printf("\n");
 

@@ -51,8 +51,8 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
     char* time_string;
 
     // get current time
-	time_now = time(NULL);
-	time_string = ctime(&time_now);
+    time_now = time(NULL);
+    time_string = ctime(&time_now);
 
     code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) time_string, strlen(time_string));
     if (code) {
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
     }
 
     // new neat flow
-    if((flow = neat_new_flow(ctx)) == NULL) {
+    if ((flow = neat_new_flow(ctx)) == NULL) {
         debug_error("neat_new_flow");
         exit(EXIT_FAILURE);
     }

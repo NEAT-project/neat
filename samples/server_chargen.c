@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     }
 
     // new neat flow
-    if((flow = neat_new_flow(ctx)) == NULL) {
+    if ((flow = neat_new_flow(ctx)) == NULL) {
         debug_error("neat_new_flow");
         exit(EXIT_FAILURE);
     }

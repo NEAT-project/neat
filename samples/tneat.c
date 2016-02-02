@@ -251,13 +251,13 @@ int main(int argc, char *argv[]) {
     char arg_property_delimiter[] = ",;";
 
     while ((arg = getopt(argc, argv, "l:n:T:R:p:v:P:")) != -1) {
-		switch(arg) {
-			case 'l':
-				config_snd_buffer_size = atoi(optarg);
+        switch(arg) {
+            case 'l':
+                config_snd_buffer_size = atoi(optarg);
                 if (config_log_level >= 1) {
                     printf("option - send buffer size: %d\n", config_snd_buffer_size);
                 }
-				break;
+                break;
             case 'n':
                 config_message_count = atoi(optarg);
                 if (config_log_level >= 1) {
@@ -301,16 +301,16 @@ int main(int argc, char *argv[]) {
     }
 
     if (optind == argc) {
-		config_active = 0;
+        config_active = 0;
         if (config_log_level >= 1) {
             printf("role: passive\n");
         }
-	} else if (optind + 1 == argc) {
-		config_active = 1;
+    } else if (optind + 1 == argc) {
+        config_active = 1;
         if (config_log_level >= 1) {
             printf("role: active\n");
         }
-	} else {
+    } else {
         debug_error("argument error");
         print_usage();
     }
@@ -398,8 +398,8 @@ int main(int argc, char *argv[]) {
             print_usage();
         }
 
-    	// get next property
-     	arg_property_ptr = strtok(NULL, arg_property_delimiter);
+       // get next property
+       arg_property_ptr = strtok(NULL, arg_property_delimiter);
     }
 
     // set properties

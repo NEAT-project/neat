@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
     uv_loop = ctx->loop;
 
     while ((arg = getopt(argc, argv, "R:S:v:P:")) != -1) {
-		switch(arg) {
+        switch(arg) {
             case 'R':
                 config_rcv_buffer_size = atoi(optarg);
                 if (config_log_level >= 1) {
@@ -299,8 +299,8 @@ int main(int argc, char *argv[]) {
             print_usage();
         }
 
-    	// get next property
-     	arg_property_ptr = strtok(NULL, arg_property_delimiter);
+        // get next property
+        arg_property_ptr = strtok(NULL, arg_property_delimiter);
     }
 
     // set properties

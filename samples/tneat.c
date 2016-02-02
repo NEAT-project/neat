@@ -257,7 +257,7 @@ int main(int argc, char *argv[]) {
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "l:n:T:R:p:v:P:")) != -1) {
+    while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:")) != -1) {
         switch(arg) {
         case 'l':
             config_snd_buffer_size = atoi(optarg);
@@ -271,10 +271,16 @@ int main(int argc, char *argv[]) {
                 printf("option - message limit: %d\n", config_message_count);
             }
             break;
-        case 'T':
-            config_runtime = atoi(optarg);
+        case 'p':
+            config_port = atoi(optarg);
             if (config_log_level >= 1) {
-                printf("option - runtime limit: %d\n", config_runtime);
+                printf("option - port: %d\n", config_port);
+            }
+            break;
+        case 'P':
+            arg_property = optarg;
+            if (config_log_level >= 1) {
+                printf("option - properties: %s\n", arg_property);
             }
             break;
         case 'R':
@@ -283,22 +289,16 @@ int main(int argc, char *argv[]) {
                 printf("option - receive buffer size: %d\n", config_rcv_buffer_size);
             }
             break;
-        case 'p':
-            config_port = atoi(optarg);
+        case 'T':
+            config_runtime = atoi(optarg);
             if (config_log_level >= 1) {
-                printf("option - port: %d\n", config_port);
+                printf("option - runtime limit: %d\n", config_runtime);
             }
             break;
         case 'v':
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {
                 printf("option - log level: %d\n", config_log_level);
-            }
-            break;
-        case 'P':
-            arg_property = optarg;
-            if (config_log_level >= 1) {
-                printf("option - properties: %s\n", arg_property);
             }
             break;
         default:

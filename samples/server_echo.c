@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:R:S:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:S:v:")) != -1) {
         switch(arg) {
         case 'P':
             arg_property = optarg;

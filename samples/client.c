@@ -26,12 +26,12 @@ struct std_buffer {
 
 static struct neat_flow_operations ops;
 static struct std_buffer stdin_buffer;
-struct neat_ctx *ctx;
-struct neat_flow *flow;
+static struct neat_ctx *ctx = NULL;
+static struct neat_flow *flow = NULL;
 uv_loop_t *uv_loop;
 uv_tty_t tty;
-static unsigned char *buffer_rcv;
-static unsigned char *buffer_snd;
+static unsigned char *buffer_rcv = NULL;
+static unsigned char *buffer_snd= NULL;
 
 void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
 void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
@@ -185,12 +185,14 @@ void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {
 
 int main(int argc, char *argv[]) {
     uint64_t prop;
-    int arg;
+    int arg, result;
     char *arg_property = config_property;
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
     ctx = neat_init_ctx();
     uv_loop = ctx->loop;
+
+    result = EXIT_SUCCESS;
 
     while ((arg = getopt(argc, argv, "R:S:v:P:")) != -1) {
         switch(arg) {
@@ -229,28 +231,43 @@ int main(int argc, char *argv[]) {
         print_usage();
     }
 
-    buffer_rcv = malloc(config_rcv_buffer_size);
-    buffer_snd = malloc(config_snd_buffer_size);
-    stdin_buffer.buffer = malloc(config_snd_buffer_size);
+    if ((buffer_rcv = malloc(config_rcv_buffer_size)) == NULL) {
+        debug_error("could not allocate receive buffer");
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
+    if ((buffer_snd = malloc(config_snd_buffer_size)) == NULL) {
+        debug_error("could not allocate send buffer");
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
+    if ((stdin_buffer.buffer = malloc(config_snd_buffer_size)) == NULL) {
+        debug_error("could not allocate stdin buffer");
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
 
-    if (ctx == NULL) {
+    if ((ctx = neat_init_ctx()) == NULL) {
         debug_error("could not initialize context");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     uv_tty_init(uv_loop, &tty, 0, 1);
     uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
 
     // new neat flow
-    if((flow = neat_new_flow(ctx)) == NULL) {
+    if ((flow = neat_new_flow(ctx)) == NULL) {
         debug_error("neat_new_flow");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // set properties (TCP only etc..)
     if (neat_get_property(ctx, flow, &prop)) {
         debug_error("neat_get_property");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // read property arguments
@@ -311,7 +328,8 @@ int main(int argc, char *argv[]) {
     // set properties
     if (neat_set_property(ctx, flow, prop)) {
         debug_error("neat_set_property");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // set callbacks
@@ -320,7 +338,8 @@ int main(int argc, char *argv[]) {
 
     if (neat_set_operations(ctx, flow, &ops)) {
         debug_error("neat_set_operations");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // wait for on_connected or on_error to be invoked
@@ -328,16 +347,21 @@ int main(int argc, char *argv[]) {
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     } else {
         debug_error("neat_open");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
+cleanup:
     free(buffer_rcv);
     free(buffer_snd);
     free(stdin_buffer.buffer);
 
     // cleanup
-    neat_free_flow(flow);
-    neat_free_ctx(ctx);
-
-    exit(EXIT_SUCCESS);
+    if (flow != NULL) {
+        neat_free_flow(flow);
+    }
+    if (ctx != NULL) {
+        neat_free_ctx(ctx);
+    }
+    exit(result);
 }

@@ -15,9 +15,9 @@ static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_R
 #define debug_error(M, ...) fprintf(stderr, "[ERROR][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 static struct neat_flow_operations ops;
-struct neat_ctx *ctx;
-struct neat_flow *flow;
-static unsigned char *buffer;
+static struct neat_ctx *ctx = NULL;
+static struct neat_flow *flow = NULL;
+static unsigned char *buffer = NULL;
 uint32_t buffer_filled;
 
 static uint64_t on_writable(struct neat_flow_operations *opCB);
@@ -148,11 +148,12 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
 
 int main(int argc, char *argv[]) {
     uint64_t prop;
-    int arg;
+    int arg, result;
     char *arg_property = config_property;
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
-    ctx = neat_init_ctx();
+
+    result = EXIT_SUCCESS;
 
     while ((arg = getopt(argc, argv, "R:S:v:P:")) != -1) {
         switch(arg) {
@@ -185,23 +186,30 @@ int main(int argc, char *argv[]) {
         print_usage();
     }
 
-    buffer = malloc(config_buffer_size);
+    if ((buffer = malloc(config_buffer_size)) == NULL) {
+        debug_error("could not allocate buffer");
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
 
-    if (ctx == NULL) {
+    if ((ctx = neat_init_ctx()) == NULL) {
         debug_error("could not initialize context");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // new neat flow
     if ((flow = neat_new_flow(ctx)) == NULL) {
         debug_error("neat_new_flow");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // set properties (TCP only etc..)
     if (neat_get_property(ctx, flow, &prop)) {
         debug_error("neat_get_property");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // read property arguments
@@ -262,7 +270,8 @@ int main(int argc, char *argv[]) {
     // set properties
     if (neat_set_property(ctx, flow, prop)) {
         debug_error("neat_set_property");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // set callbacks
@@ -271,21 +280,28 @@ int main(int argc, char *argv[]) {
 
     if (neat_set_operations(ctx, flow, &ops)) {
         debug_error("neat_set_operations");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // wait for on_connected or on_error to be invoked
     if (neat_accept(ctx, flow, "*", "8080")) {
         debug_error("neat_accept");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
     // cleanup
+cleanup:
     free(buffer);
-    neat_free_flow(flow);
-    neat_free_ctx(ctx);
-
-    exit(EXIT_SUCCESS);
+    free(buffer);
+    if (flow != NULL) {
+        neat_free_flow(flow);
+    }
+    if (ctx != NULL) {
+        neat_free_ctx(ctx);
+    }
+    exit(result);
 }

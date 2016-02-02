@@ -42,8 +42,8 @@ struct stats {
 static struct neat_flow_operations ops;
 static struct stats stats_rcv;
 static struct stats stats_snd;
-static unsigned char *buffer_rcv;
-static unsigned char *buffer_snd;
+static unsigned char *buffer_rcv = NULL;
+static unsigned char *buffer_snd = NULL;
 
 /*
     print usage and exit
@@ -247,13 +247,15 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
 }
 
 int main(int argc, char *argv[]) {
-    struct neat_ctx *ctx = neat_init_ctx();
-    struct neat_flow *flow;
+    struct neat_ctx *ctx = NULL;
+    struct neat_flow *flow = NULL;
     uint64_t prop;
-    int arg;
+    int arg, result;
     char *arg_property = config_property;
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
+
+    result = EXIT_SUCCESS;
 
     while ((arg = getopt(argc, argv, "l:n:T:R:p:v:P:")) != -1) {
         switch(arg) {
@@ -321,19 +323,28 @@ int main(int argc, char *argv[]) {
     }
 
 
-    buffer_rcv = malloc(config_rcv_buffer_size);
-    buffer_snd = malloc(config_snd_buffer_size);
+    if ((buffer_rcv = malloc(config_rcv_buffer_size)) == NULL) {
+        debug_error("could not allocate receive buffer");
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
+    if ((buffer_snd = malloc(config_snd_buffer_size)) == NULL) {
+        debug_error("could not allocate send buffer");
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
 
-    // check for successful context
-    if (ctx == NULL) {
+    if ((ctx = neat_init_ctx()) == NULL) {
         debug_error("could not initialize context");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // new neat flow
     if ((flow = neat_new_flow(ctx)) == NULL) {
         debug_error("neat_new_flow");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     ops.on_connected = on_connected;
@@ -342,13 +353,15 @@ int main(int argc, char *argv[]) {
     //ops.on_all_written = on_all_written;
     if (neat_set_operations(ctx, flow, &ops)) {
         debug_error("neat_set_operations");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // get properties
     if (neat_get_property(ctx, flow, &prop)) {
         debug_error("neat_get_property");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
 
@@ -410,7 +423,8 @@ int main(int argc, char *argv[]) {
     // set properties
     if (neat_set_property(ctx, flow, prop)) {
         debug_error("neat_set_property");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
 
     // workaround until port is notated in int..
@@ -424,7 +438,8 @@ int main(int argc, char *argv[]) {
             neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
         } else {
             debug_error("neat_open");
-            exit(EXIT_FAILURE);
+            result = EXIT_FAILURE;
+            goto cleanup;
         }
 
         if (config_log_level >= 1) {
@@ -434,7 +449,8 @@ int main(int argc, char *argv[]) {
         // wait for on_connected or on_error to be invoked
         if (neat_accept(ctx, flow, "*", port)) {
             debug_error("neat_accept - *:%d\n", config_port);
-            exit(EXIT_FAILURE);
+            result = EXIT_FAILURE;
+            goto cleanup;
         }
 
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
@@ -446,9 +462,14 @@ int main(int argc, char *argv[]) {
     }
 
     // cleanup
+cleanup:
     free(buffer_rcv);
     free(buffer_snd);
-    neat_free_flow(flow);
-    neat_free_ctx(ctx);
-    exit(EXIT_SUCCESS);
+    if (flow != NULL) {
+        neat_free_flow(flow);
+    }
+    if (ctx != NULL) {
+        neat_free_ctx(ctx);
+    }
+    exit(result);
 }

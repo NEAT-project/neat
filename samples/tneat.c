@@ -39,6 +39,18 @@ struct stats {
     struct timeval tv_last;
 };
 
+#ifndef timersub
+#define timersub(tvp, uvp, vvp)                                         \
+        do {                                                            \
+                (vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec;          \
+                (vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec;       \
+                if ((vvp)->tv_usec < 0) {                               \
+                        (vvp)->tv_sec--;                                \
+                        (vvp)->tv_usec += 1000000;                      \
+                }                                                       \
+        } while (0)
+#endif
+
 static struct neat_flow_operations ops;
 static struct stats stats_rcv;
 static struct stats stats_snd;
@@ -85,6 +97,7 @@ static uint64_t on_error(struct neat_flow_operations *opCB) {
 */
 static uint64_t on_writable(struct neat_flow_operations *opCB) {
     neat_error_code code;
+    struct timeval diff_time;
     double time_elapsed;
     char buffer_filesize_human[16];
 
@@ -117,8 +130,8 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
         printf("\n");
     }
 
-    time_elapsed = stats_snd.tv_last.tv_sec - stats_snd.tv_first.tv_sec; // sec
-    time_elapsed += (stats_snd.tv_last.tv_usec - stats_snd.tv_first.tv_usec) / 1000000.0; // us >> sec
+    timersub(&stats_snd.tv_last, &stats_snd.tv_first, &diff_time);
+    time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
     // stop writing if config_runtime reached or config_message_count msgs sent
     if ((config_runtime > 0 && time_elapsed >= config_runtime) ||

@@ -99,6 +99,7 @@ endif()
 # COMPILER FLAGS
 #################################################
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -Wall -std=gnu99 -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wno-unused-function")
 
 
 # LIBRARIES

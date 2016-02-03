@@ -46,7 +46,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     uint32_t buffer_filled;
 
     code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled);
-    if (code) {
+    if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             return 0;
         } else {
@@ -83,7 +83,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     }
 
     code = neat_write(opCB->ctx, opCB->flow, buffer, BUFFERSIZE);
-    if (code) {
+    if (code != NEAT_OK) {
         debug_error("code: %d", (int)code);
         return on_error(opCB);
     }

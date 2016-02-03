@@ -705,6 +705,10 @@ neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 #ifdef SCTP_NODELAY
         setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
 #endif
+#ifdef SCTP_EXPLICIT_EOR
+        if (setsockopt(flow->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
+            flow->isSCTPEEOR = 1;
+#endif
         break;
 #endif
     default:
@@ -745,6 +749,10 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     case IPPROTO_SCTP:
 #ifdef SCTP_NODELAY
         setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
+#endif
+#ifdef SCTP_EXPLICIT_EOR
+        if (setsockopt(flow->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
+            flow->isSCTPEEOR = 1;
 #endif
         break;
 #endif

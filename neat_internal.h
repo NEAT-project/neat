@@ -94,6 +94,7 @@ struct neat_flow
     int ownedByCore : 1;
     int everConnected : 1;
     int isDraining : 1;
+    int isSCTPEEOR : 1;
 };
 
 typedef struct neat_flow neat_flow;

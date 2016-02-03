@@ -700,9 +700,11 @@ neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     case IPPROTO_TCP:
         setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
         break;
-#ifdef SCTP_NODELAY
+#ifdef IPPROTO_SCTP
     case IPPROTO_SCTP:
+#ifdef SCTP_NODELAY
         setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
+#endif
         break;
 #endif
     default:
@@ -739,9 +741,11 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     case IPPROTO_TCP:
         setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
         break;
-#ifdef SCTP_NODELAY
+#ifdef IPPROTO_SCTP
     case IPPROTO_SCTP:
+#ifdef SCTP_NODELAY
         setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
+#endif
         break;
 #endif
     default:

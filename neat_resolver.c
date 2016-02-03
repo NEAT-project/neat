@@ -129,7 +129,7 @@ static uint8_t neat_resolver_addr_internal(struct sockaddr_storage *addr)
     struct sockaddr_in *addr4 = NULL;
     struct sockaddr_in6 *addr6 = NULL;
     uint32_t haddr4 = 0;
-    
+
     if (addr->ss_family == AF_INET6) {
         addr6 = (struct sockaddr_in6*) addr;
         return (addr6->sin6_addr.s6_addr[0] & 0xfe) != 0xfc;
@@ -229,7 +229,7 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
     }
 
     //Signal internal error
-    if ((result_list = 
+    if ((result_list =
                 calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
         resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
         return;
@@ -290,7 +290,7 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
     }
 
     //Signal internal error
-    if ((result_list = 
+    if ((result_list =
                 calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
         resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
         return;
@@ -448,7 +448,7 @@ static uint8_t neat_resolver_check_duplicate(
                 addr_equal = neat_addr_cmp_ip6_addr(cmp_addr_6->sin6_addr,
                                                     u.resolved_addr_6);
             }
-           
+
             if (addr_equal)
                 return 1;
         }
@@ -477,7 +477,7 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
 
     if (nread == 0 && addr == NULL)
         return;
-  
+
     retval = ldns_wire2pkt(&dns_reply, (const uint8_t*) buf->base, nread);
 
     if (retval != LDNS_STATUS_OK)
@@ -544,14 +544,14 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
             else
                 addr6->sin6_family = AF_INET6;
         }
- 
+
         if (!pton_failed)
             num_resolved++;
         else
             pton_failed = 0;
 
         ldns_buffer_free(host_addr);
-       
+
         if (num_resolved >= MAX_NUM_RESOLVED)
             break;
     }
@@ -782,12 +782,12 @@ static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
 
 //Check if node is an IP literal or not. Returns -1 on failure, 0 if not
 //literal, 1 if literal
-int8_t neat_resolver_check_for_literal(uint8_t family, const char *node)
+static int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node)
 {
     struct in6_addr dummy_addr;
     int32_t v4_literal = 0, v6_literal = 0;
 
-    if (family != AF_UNSPEC && family != AF_INET && family != AF_INET6) {
+    if (*family != AF_UNSPEC && *family != AF_INET && *family != AF_INET6) {
         fprintf(stderr, "Unsupported address family\n");
         return -1;
     }
@@ -797,20 +797,20 @@ int8_t neat_resolver_check_for_literal(uint8_t family, const char *node)
     v4_literal = inet_pton(AF_INET, node, &dummy_addr);
     v6_literal = inet_pton(AF_INET6, node, &dummy_addr);
 
-    //These are the three possible error cases
-    //- if family if unspec, node has to be a domain name as we can't know which
-    //literal was intended to be used.
-    //- if family is v4 and address is v6 (or opposite), then user has made a
+    //These are the two possible error cases:
+    //if family is v4 and address is v6 (or opposite), then user has made a
     //mistake and must be notifed
-    if ((family == AF_UNSPEC && (v4_literal || v6_literal))) {
-        fprintf(stderr, "AF_UNSPEC and literals are not supported\n");
-        return -1;
-    } else if ((family == AF_INET && v6_literal) ||
-               (family == AF_INET6 && v4_literal)) {
+    if ((*family == AF_INET && v6_literal) ||
+        (*family == AF_INET6 && v4_literal)) {
         fprintf(stderr, "Mismatch between family and literal\n");
         return -1;
     }
-
+    if (*family == AF_UNSPEC) {
+        if (v4_literal)
+            *family = AF_INET;
+        if (v6_literal)
+            *family = AF_INET6;
+    }
     return v4_literal | v6_literal;
 }
 
@@ -858,7 +858,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         return RETVAL_FAILURE;
     }
 
-    if (family && family != AF_INET && family != AF_INET6) {
+    if (family && family != AF_INET && family != AF_INET6 && family != AF_UNSPEC) {
         fprintf(stderr, "Invalid family specified\n");
         return RETVAL_FAILURE;
     }
@@ -868,7 +868,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         return RETVAL_FAILURE;
     }
 
-    for (i = 0; i<proto_count; i++)
+    for (i = 0; i < proto_count; i++)
         resolver->ai_protocol[i] = ai_protocol[i];
 
     resolver->family = family;
@@ -879,7 +879,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         return RETVAL_FAILURE;
     }
 
-    retval = neat_resolver_check_for_literal(family, node);
+    retval = neat_resolver_check_for_literal(&resolver->family, node);
 
     if (retval < 0)
         return RETVAL_FAILURE;
@@ -1013,7 +1013,7 @@ void neat_resolver_reset(struct neat_resolver *resolver)
 void neat_resolver_release(struct neat_resolver *resolver)
 {
     neat_resolver_cleanup(resolver, 1);
-    
+
     //If loop is not stopped, return. Otherwise, the idle callback will never be
     //called, so we have to manually free the pairs
     if (uv_backend_fd(resolver->nc->loop) != -1)

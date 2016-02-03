@@ -523,7 +523,12 @@ accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *
     flow->handle.data = flow;
     uv_poll_init(ctx->loop, &flow->handle, flow->fd);
 
-    if (!(flow->propertyMask & NEAT_PROPERTY_MESSAGE)) {
+#if defined (IPPROTO_SCTP)
+    if ((flow->sockProtocol == IPPROTO_SCTP) ||
+        (flow->sockProtocol == IPPROTO_TCP)) {
+#else
+    if (flow->sockProtocol == IPPROTO_TCP) {
+#endif
         flow->isPolling = 1;
         flow->acceptPending = 1;
         uv_poll_start(&flow->handle, UV_READABLE, uvpollable_cb);

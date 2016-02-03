@@ -20,7 +20,8 @@ static uint32_t chargen_offset = 0;
 
 static uint64_t on_writable(struct neat_flow_operations *opCB);
 
-static void print_usage() {
+static void print_usage()
+{
     printf("server_chargen [OPTIONS]\n");
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
@@ -29,14 +30,16 @@ static void print_usage() {
 /*
     Error handler
 */
-static uint64_t on_error(struct neat_flow_operations *opCB) {
+static uint64_t on_error(struct neat_flow_operations *opCB)
+{
     exit(EXIT_FAILURE);
 }
 
 /*
     Read data and discard
 */
-static uint64_t on_readable(struct neat_flow_operations *opCB) {
+static uint64_t on_readable(struct neat_flow_operations *opCB)
+{
     // data is available to read
     neat_error_code code;
     unsigned char buffer[BUFFERSIZE];
@@ -65,7 +68,8 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
     Send data from stdin
     //XXX behave more like specified in the rfc (UDP, TCP)
 */
-static uint64_t on_writable(struct neat_flow_operations *opCB) {
+static uint64_t on_writable(struct neat_flow_operations *opCB)
+{
     neat_error_code code;
     unsigned char buffer[BUFFERSIZE];
 
@@ -88,7 +92,8 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 }
 
 
-static uint64_t on_connected(struct neat_flow_operations *opCB) {
+static uint64_t on_connected(struct neat_flow_operations *opCB)
+{
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
 
@@ -126,7 +131,8 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     uint64_t prop;
     int arg, result;
     char *arg_property = config_property;

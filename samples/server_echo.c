@@ -25,7 +25,8 @@ static uint64_t on_writable(struct neat_flow_operations *opCB);
 /*
     print usage and exit
 */
-static void print_usage() {
+static void print_usage()
+{
     printf("server_echo [OPTIONS]\n");
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size);
@@ -35,14 +36,16 @@ static void print_usage() {
 /*
     Error handler
 */
-static uint64_t on_error(struct neat_flow_operations *opCB) {
+static uint64_t on_error(struct neat_flow_operations *opCB)
+{
     exit(EXIT_FAILURE);
 }
 
 /*
     Read data until buffered_amount == 0 - then stop event loop!
 */
-static uint64_t on_readable(struct neat_flow_operations *opCB) {
+static uint64_t on_readable(struct neat_flow_operations *opCB)
+{
     // data is available to read
     neat_error_code code;
 
@@ -88,7 +91,8 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
 /*
     Send data from stdin
 */
-static uint64_t on_writable(struct neat_flow_operations *opCB) {
+static uint64_t on_writable(struct neat_flow_operations *opCB)
+{
     neat_error_code code;
 
     code = neat_write(opCB->ctx, opCB->flow, buffer, buffer_filled);
@@ -108,7 +112,8 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
 }
 
 
-static uint64_t on_connected(struct neat_flow_operations *opCB) {
+static uint64_t on_connected(struct neat_flow_operations *opCB)
+{
     printf("[%d] connected - ", opCB->flow->fd);
 
     if (opCB->flow->family == AF_INET) {
@@ -144,7 +149,8 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     uint64_t prop;
     int arg, result;
     char *arg_property = config_property;

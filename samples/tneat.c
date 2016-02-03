@@ -66,7 +66,8 @@ static struct neat_flow_operations ops;
 /*
     print usage and exit
 */
-static void print_usage() {
+static void print_usage()
+{
     printf("tneat [OPTIONS] [HOST]\n");
     printf("\t- l \tsize for each message in byte (%d)\n", config_snd_buffer_size);
     printf("\t- n \tmax number of messages to send (%d)\n", config_message_count);
@@ -80,7 +81,8 @@ static void print_usage() {
 /*
     print human readable file sizes - keep attention to provide enough buffer space
 */
-char* filesize_human(double bytes, char *buffer) {
+char* filesize_human(double bytes, char *buffer)
+{
     uint8_t i = 0;
     const char* units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
     while (bytes > 1000) {
@@ -94,14 +96,16 @@ char* filesize_human(double bytes, char *buffer) {
 /*
     error handler
 */
-static uint64_t on_error(struct neat_flow_operations *opCB) {
+static uint64_t on_error(struct neat_flow_operations *opCB)
+{
     exit(EXIT_FAILURE);
 }
 
 /*
     send *config_message_size* chars to peer
 */
-static uint64_t on_writable(struct neat_flow_operations *opCB) {
+static uint64_t on_writable(struct neat_flow_operations *opCB)
+{
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
     struct timeval diff_time;
@@ -157,7 +161,8 @@ static uint64_t on_writable(struct neat_flow_operations *opCB) {
     return 0;
 }
 
-static uint64_t on_readable(struct neat_flow_operations *opCB) {
+static uint64_t on_readable(struct neat_flow_operations *opCB)
+{
     struct tneat_flow *tnf = opCB->userData;
     uint32_t buffer_filled;
     struct timeval diff_time;
@@ -220,7 +225,8 @@ static uint64_t on_readable(struct neat_flow_operations *opCB) {
 /*
     Connection established - set callbacks and reset statistics
 */
-static uint64_t on_connected(struct neat_flow_operations *opCB) {
+static uint64_t on_connected(struct neat_flow_operations *opCB)
+{
     struct tneat_flow *tnf = NULL;
 
     // print ip-family and protocol
@@ -286,7 +292,8 @@ static uint64_t on_connected(struct neat_flow_operations *opCB) {
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     struct neat_ctx *ctx = NULL;
     struct neat_flow *flow = NULL;
     uint64_t prop;

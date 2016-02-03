@@ -84,7 +84,6 @@ static uint64_t on_readable(struct neat_flow_operations *opCB)
         }
 
         fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
-        printf("\n");
         fflush(stdout);
 
     } else {

@@ -707,7 +707,7 @@ neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 #endif
 #ifdef SCTP_EXPLICIT_EOR
         if (setsockopt(flow->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
-            flow->isSCTPEEOR = 1;
+            flow->isSCTPExplicitEOR = 1;
 #endif
         break;
 #endif
@@ -752,7 +752,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 #endif
 #ifdef SCTP_EXPLICIT_EOR
         if (setsockopt(flow->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
-            flow->isSCTPEEOR = 1;
+            flow->isSCTPExplicitEOR = 1;
 #endif
         break;
 #endif

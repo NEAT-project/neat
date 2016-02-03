@@ -13,7 +13,7 @@
 
 static struct neat_flow_operations ops;
 
-static uint64_t
+static neat_error_code
 on_error(struct neat_flow_operations *opCB)
 {
     fprintf(stderr,"unexpected error\n");
@@ -21,7 +21,7 @@ on_error(struct neat_flow_operations *opCB)
     return 0;
 }
 
-static uint64_t
+static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
@@ -49,14 +49,14 @@ on_readable(struct neat_flow_operations *opCB)
 static const char *request =
     "GET / HTTP/1.0\r\nHost:www.neat-project.org\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 
-static uint64_t
+static neat_error_code
 on_all_written(struct neat_flow_operations *opCB)
 {
     ops.on_readable = on_readable;
     return 0;
 }
 
-static uint64_t
+static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
@@ -70,7 +70,7 @@ on_writable(struct neat_flow_operations *opCB)
     return 0;
 }
 
-static uint64_t
+static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     // now we can start writing
@@ -78,7 +78,8 @@ on_connected(struct neat_flow_operations *opCB)
     return 0;
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     struct neat_ctx *ctx = neat_init_ctx();
     struct neat_flow *flow;

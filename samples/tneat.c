@@ -81,7 +81,7 @@ static void print_usage()
 /*
     print human readable file sizes - keep attention to provide enough buffer space
 */
-char* filesize_human(double bytes, char *buffer)
+static char *filesize_human(double bytes, char *buffer)
 {
     uint8_t i = 0;
     const char* units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
@@ -96,7 +96,7 @@ char* filesize_human(double bytes, char *buffer)
 /*
     error handler
 */
-static uint64_t on_error(struct neat_flow_operations *opCB)
+static neat_error_code on_error(struct neat_flow_operations *opCB)
 {
     exit(EXIT_FAILURE);
 }
@@ -104,7 +104,7 @@ static uint64_t on_error(struct neat_flow_operations *opCB)
 /*
     send *config_message_size* chars to peer
 */
-static uint64_t on_writable(struct neat_flow_operations *opCB)
+static neat_error_code on_writable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
@@ -161,7 +161,7 @@ static uint64_t on_writable(struct neat_flow_operations *opCB)
     return 0;
 }
 
-static uint64_t on_readable(struct neat_flow_operations *opCB)
+static neat_error_code on_readable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     uint32_t buffer_filled;
@@ -225,7 +225,7 @@ static uint64_t on_readable(struct neat_flow_operations *opCB)
 /*
     Connection established - set callbacks and reset statistics
 */
-static uint64_t on_connected(struct neat_flow_operations *opCB)
+static neat_error_code on_connected(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = NULL;
 

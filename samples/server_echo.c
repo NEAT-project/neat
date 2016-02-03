@@ -20,7 +20,7 @@ static struct neat_flow *flow = NULL;
 static unsigned char *buffer = NULL;
 uint32_t buffer_filled;
 
-static uint64_t on_writable(struct neat_flow_operations *opCB);
+static neat_error_code on_writable(struct neat_flow_operations *opCB);
 
 /*
     print usage and exit
@@ -36,7 +36,7 @@ static void print_usage()
 /*
     Error handler
 */
-static uint64_t on_error(struct neat_flow_operations *opCB)
+static neat_error_code on_error(struct neat_flow_operations *opCB)
 {
     exit(EXIT_FAILURE);
 }
@@ -44,7 +44,7 @@ static uint64_t on_error(struct neat_flow_operations *opCB)
 /*
     Read data until buffered_amount == 0 - then stop event loop!
 */
-static uint64_t on_readable(struct neat_flow_operations *opCB)
+static neat_error_code on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
     neat_error_code code;
@@ -91,7 +91,7 @@ static uint64_t on_readable(struct neat_flow_operations *opCB)
 /*
     Send data from stdin
 */
-static uint64_t on_writable(struct neat_flow_operations *opCB)
+static neat_error_code on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
 
@@ -112,7 +112,7 @@ static uint64_t on_writable(struct neat_flow_operations *opCB)
 }
 
 
-static uint64_t on_connected(struct neat_flow_operations *opCB)
+static neat_error_code on_connected(struct neat_flow_operations *opCB)
 {
     printf("[%d] connected - ", opCB->flow->fd);
 

@@ -17,7 +17,7 @@ struct sessionData {
     int iter;
 };
 
-static uint64_t
+static neat_error_code
 on_error(struct neat_flow_operations *opCB)
 {
     fprintf(stderr,"neatserver unexpected error\n");
@@ -25,9 +25,9 @@ on_error(struct neat_flow_operations *opCB)
     return 0;
 }
 
-static uint64_t on_readable(struct neat_flow_operations *opCB);
+static neat_error_code on_readable(struct neat_flow_operations *opCB);
 
-static uint64_t
+static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
     struct sessionData *sd = (struct sessionData *)opCB->userData;
@@ -51,7 +51,7 @@ on_writable(struct neat_flow_operations *opCB)
     return 0;
 }
 
-static uint64_t
+static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
@@ -86,7 +86,7 @@ on_readable(struct neat_flow_operations *opCB)
     return 0;
 }
 
-static uint64_t
+static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     // now we can start writing
@@ -97,7 +97,8 @@ on_connected(struct neat_flow_operations *opCB)
     return 0;
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     struct neat_ctx *ctx = neat_init_ctx();
     struct neat_flow *flow;

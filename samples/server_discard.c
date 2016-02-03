@@ -59,7 +59,6 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             return on_error(opCB);
         }
     }
-
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
             printf("[%d] received data - %d byte\n", opCB->flow->fd, buffer_filled);

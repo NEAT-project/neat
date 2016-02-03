@@ -53,6 +53,23 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             return on_error(opCB);
         }
     }
+    if (buffer_filled > 0) {
+        if (config_log_level >= 1) {
+            printf("[%d] received data - %d byte\n", opCB->flow->fd, buffer_filled);
+        }
+        if (config_log_level >= 2) {
+            fwrite(buffer, sizeof(char), buffer_filled, stdout);
+            printf("\n");
+            fflush(stdout);
+        }
+    } else {
+        if (config_log_level >= 1) {
+            printf("[%d] disconnected\n", opCB->flow->fd);
+        }
+        opCB->on_readable = NULL;
+        opCB->on_writable = NULL;
+        neat_free_flow(opCB->flow);
+    }
     return 0;
 }
 
@@ -75,6 +92,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     // stop writing
     opCB->on_readable = NULL;
     opCB->on_writable = NULL;
+    /* FIXME: Here we actually want to do a neat_shutdown() call */
     neat_free_flow(opCB->flow);
     return 0;
 }

@@ -691,9 +691,23 @@ neat_accept_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, int fd)
 static int
 neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
+    int enable = 1;
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+
     flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
+    switch (flow->sockProtocol) {
+    case IPPROTO_TCP:
+        setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+        break;
+#ifdef SCTP_NODELAY
+    case IPPROTO_SCTP:
+        setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
+        break;
+#endif
+    default:
+        break;
+    }
     uv_poll_init(ctx->loop, &flow->handle, flow->fd); // makes fd nb as side effect
     if ((flow->fd == -1) ||
         (connect(flow->fd, flow->sockAddr, slen) && (errno != EINPROGRESS))) {
@@ -719,6 +733,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     int enable = 1;
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+
     flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
     switch (flow->sockProtocol) {
     case IPPROTO_TCP:

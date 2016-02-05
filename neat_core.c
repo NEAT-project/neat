@@ -586,7 +586,7 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
     struct iovec iov;
 #if defined(SCTP_SNDINFO)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
-    struct sndinfo *sndinfo;
+    struct sctp_sndinfo *sndinfo;
 #elif defined (SCTP_SNDRCV)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
     struct sctp_sndrcvinfo *sndrcvinfo;
@@ -731,7 +731,7 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
     struct iovec iov;
 #if defined(SCTP_SNDINFO)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
-    struct sndinfo *sndinfo;
+    struct sctp_sndinfo *sndinfo;
 #elif defined (SCTP_SNDRCV)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
     struct sctp_sndrcvinfo *sndrcvinfo;

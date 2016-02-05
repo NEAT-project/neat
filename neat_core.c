@@ -231,14 +231,19 @@ static void free_cb(uv_handle_t *handle)
 
 void neat_free_flow(neat_flow *flow)
 {
+    struct neat_buffered_message *msg, *next_msg;
+
     if (flow->isPolling)
         uv_poll_stop(&flow->handle);
 
     if (flow->handle.type != UV_UNKNOWN_HANDLE)
         uv_close((uv_handle_t *)(&flow->handle), free_cb);
 
-    free(flow->buffered);
-    flow->buffered = NULL;
+    TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
+        TAILQ_REMOVE(&flow->bufferedMessages, msg, message_next);
+        free(msg->buffered);
+        free(msg);
+    }
     return;
 }
 
@@ -572,24 +577,29 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 static neat_error_code
 neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 {
-    if (!flow->buffered) {
+    struct neat_buffered_message *msg, *next_msg;
+
+    if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         return NEAT_OK;
     }
-    ssize_t rv = send(flow->fd, flow->buffered + flow->bufferedOffset,
-                      flow->bufferedSize, 0);
-    if (rv == -1 && errno == EWOULDBLOCK){
-        return NEAT_ERROR_WOULD_BLOCK;
+    TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
+        ssize_t rv = send(flow->fd, msg->buffered + msg->bufferedOffset,
+                          msg->bufferedSize, 0);
+        if (rv == -1 && errno == EWOULDBLOCK){
+            return NEAT_ERROR_WOULD_BLOCK;
+        }
+        if (rv < 0) {
+            return NEAT_ERROR_IO;
+        }
+        msg->bufferedOffset += rv;
+        msg->bufferedSize -= rv;
+        if (msg->bufferedSize == 0) {
+            TAILQ_REMOVE(&flow->bufferedMessages, msg, message_next);
+            free(msg->buffered);
+            free(msg);
+        }
     }
-    if (rv < 0) {
-        return NEAT_ERROR_IO;
-    }
-    flow->bufferedOffset += rv;
-    flow->bufferedSize -= rv;
-    if (!flow->bufferedSize) {
-        free(flow->buffered);
-        flow->buffered = NULL;
-        flow->bufferedOffset = 0;
-        flow->bufferedAllocation = 0;
+    if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         flow->isDraining = 0;
     }
     return NEAT_OK;
@@ -599,41 +609,56 @@ static neat_error_code
 neat_write_via_kernel_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
                                  const unsigned char *buffer, uint32_t amt)
 {
+    struct neat_buffered_message *msg;
+
     // todo, a better implementation here is a linked list of buffers
     // but this gets us started
-    if (!amt) {
+    if (amt == 0) {
         return NEAT_OK;
     }
 
+    if ((flow->sockProtocol != IPPROTO_TCP) || TAILQ_EMPTY(&flow->bufferedMessages)) {
+        msg = malloc(sizeof(struct neat_buffered_message));
+        if (msg == NULL) {
+            return NEAT_ERROR_INTERNAL;
+        }
+        msg->buffered = NULL;
+        msg->bufferedOffset = 0;
+        msg->bufferedSize = 0;
+        msg->bufferedAllocation= 0;
+        TAILQ_INSERT_TAIL(&flow->bufferedMessages, msg, message_next);
+    } else {
+        msg = TAILQ_LAST(&flow->bufferedMessages, neat_message_queue_head);
+    }
     // check if there is room to buffer without extending allocation
-    if ((flow->bufferedOffset + flow->bufferedSize + amt) <= flow->bufferedAllocation) {
-        memcpy (flow->buffered + flow->bufferedOffset + flow->bufferedSize,
+    if ((msg->bufferedOffset + msg->bufferedSize + amt) <= msg->bufferedAllocation) {
+        memcpy(msg->buffered + msg->bufferedOffset + msg->bufferedSize,
                 buffer, amt);
-        flow->bufferedSize += amt;
+        msg->bufferedSize += amt;
         return NEAT_OK;
     }
 
     // round up to ~8K
-    size_t needed = ((amt + flow->bufferedSize) + 8191) & ~8191;
-    if (!flow->bufferedOffset) {
-        flow->buffered = realloc(flow->buffered, needed);
-        if (!flow->buffered) {
+    size_t needed = ((amt + msg->bufferedSize) + 8191) & ~8191;
+    if (msg->bufferedOffset == 0) {
+        msg->buffered = realloc(msg->buffered, needed);
+        if (msg->buffered == NULL) {
             return NEAT_ERROR_INTERNAL;
         }
-        flow->bufferedAllocation = needed;
+        msg->bufferedAllocation = needed;
     } else {
         void *newptr = malloc(needed);
-        if (!newptr) {
+        if (newptr == NULL) {
             return NEAT_ERROR_INTERNAL;
         }
-        memcpy(newptr, flow->buffered + flow->bufferedOffset, flow->bufferedSize);
-        free(flow->buffered);
-        flow->buffered = newptr;
-        flow->bufferedAllocation = needed;
-        flow->bufferedOffset = 0;
+        memcpy(newptr, msg->buffered + msg->bufferedOffset, msg->bufferedSize);
+        free(msg->buffered);
+        msg->buffered = newptr;
+        msg->bufferedAllocation = needed;
+        msg->bufferedOffset = 0;
     }
-    memcpy (flow->buffered + flow->bufferedSize, buffer, amt);
-    flow->bufferedSize += amt;
+    memcpy(msg->buffered + msg->bufferedSize, buffer, amt);
+    msg->bufferedSize += amt;
     return NEAT_OK;
 }
 
@@ -645,19 +670,21 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
     if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
         return code;
     }
-    if (!flow->buffered && code != NEAT_ERROR_WOULD_BLOCK && amt) {
+    if (TAILQ_EMPTY(&flow->bufferedMessages) && code == NEAT_OK && amt > 0) {
         ssize_t rv = send(flow->fd, buffer, amt, 0);
-        if (rv == -1 && errno != EWOULDBLOCK){
+        if (rv == -1 && errno != EWOULDBLOCK) {
             return NEAT_ERROR_IO;
         }
-        amt -= rv;
-        buffer += rv;
+        if (rv != -1) {
+            amt -= rv;
+            buffer += rv;
+        }
     }
     code = neat_write_via_kernel_fillbuffer(ctx, flow, buffer, amt);
     if (code != NEAT_OK) {
         return code;
     }
-    if (!flow->buffered) {
+    if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         flow->isDraining = 0;
         io_all_written(ctx, flow);
     } else {
@@ -798,5 +825,6 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->connectfx = neat_connect_via_kernel;
     rv->closefx = neat_close_via_kernel;
     rv->listenfx = neat_listen_via_kernel;
+    TAILQ_INIT(&rv->bufferedMessages);
     return rv;
 }

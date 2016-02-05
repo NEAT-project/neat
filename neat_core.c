@@ -579,8 +579,18 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     struct neat_buffered_message *msg, *next_msg;
     ssize_t rv;
+#if defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
+    struct cmsghdr *cmsg;
+#endif
     struct msghdr msghdr;
     struct iovec iov;
+#if defined(SCTP_SNDINFO)
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
+    struct sndinfo *sndinfo;
+#elseif defined (SCTP_SNDRCV)
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
+    struct sctp_sndrcvinfo *sndrcvinfo;
+#endif
 
     if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         return NEAT_OK;
@@ -592,8 +602,44 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
         msghdr.msg_namelen = 0;
         msghdr.msg_iov = &iov;
         msghdr.msg_iovlen = 1;
+#ifdef IPPROTO_SCTP
+        if (flow->sockProtocol == IPPROTO_SCTP) {
+#if defined(SCTP_SNDINFO)
+            msghdr.msg_control = cmsgbuf;
+            msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo));
+            cmsg = (struct cmsghdr *)cmsgbuf;
+            cmsg->cmsg_level = IPPROTO_SCTP;
+            cmsg->cmsg_type = SCTP_SNDINFO;
+            cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
+            sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
+            memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
+            if (flow->isSCTPExplicitEOR) {
+                sndinfo->snd_flags |= SCTP_EOR;
+            }
+#elseif defined (SCTP_SNDRCV)
+            msghdr.msg_control = cmsgbuf;
+            msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
+            cmsg = (struct cmsghdr *)cmsgbuf;
+            cmsg->cmsg_level = IPPROTO_SCTP;
+            cmsg->cmsg_type = SCTP_SNDRCV;
+            cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
+            sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
+            memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
+            if (flow->isSCTPExplicitEOR) {
+                sndrcvinfo->sinfo_flags |= SCTP_EOR;
+            }
+#else
+            msghdr.msg_control = NULL;
+            msghdr.msg_controllen = 0;
+#endif
+        } else {
+            msghdr.msg_control = NULL;
+            msghdr.msg_controllen = 0;
+        }
+#else
         msghdr.msg_control = NULL;
         msghdr.msg_controllen = 0;
+#endif
         msghdr.msg_flags = 0;
         rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
         if (rv == -1 && errno == EWOULDBLOCK){
@@ -678,8 +724,18 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                       const unsigned char *buffer, uint32_t amt)
 {
     ssize_t rv;
+#if defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
+    struct cmsghdr *cmsg;
+#endif
     struct msghdr msghdr;
     struct iovec iov;
+#if defined(SCTP_SNDINFO)
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
+    struct sndinfo *sndinfo;
+#elseif defined (SCTP_SNDRCV)
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
+    struct sctp_sndrcvinfo *sndrcvinfo;
+#endif
 
     neat_error_code code = neat_write_via_kernel_flush(ctx, flow);
     if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
@@ -692,8 +748,44 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         msghdr.msg_namelen = 0;
         msghdr.msg_iov = &iov;
         msghdr.msg_iovlen = 1;
+#ifdef IPPROTO_SCTP
+        if (flow->sockProtocol == IPPROTO_SCTP) {
+#if defined(SCTP_SNDINFO)
+            msghdr.msg_control = cmsgbuf;
+            msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo));
+            cmsg = (struct cmsghdr *)cmsgbuf;
+            cmsg->cmsg_level = IPPROTO_SCTP;
+            cmsg->cmsg_type = SCTP_SNDINFO;
+            cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
+            sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
+            memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
+            if (flow->isSCTPExplicitEOR) {
+                sndinfo->snd_flags |= SCTP_EOR;
+            }
+#elseif defined (SCTP_SNDRCV)
+            msghdr.msg_control = cmsgbuf;
+            msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
+            cmsg = (struct cmsghdr *)cmsgbuf;
+            cmsg->cmsg_level = IPPROTO_SCTP;
+            cmsg->cmsg_type = SCTP_SNDRCV;
+            cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
+            sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
+            memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
+            if (flow->isSCTPExplicitEOR) {
+                sndrcvinfo->sinfo_flags |= SCTP_EOR;
+            }
+#else
+            msghdr.msg_control = NULL;
+            msghdr.msg_controllen = 0;
+#endif
+        } else {
+            msghdr.msg_control = NULL;
+            msghdr.msg_controllen = 0;
+        }
+#else
         msghdr.msg_control = NULL;
         msghdr.msg_controllen = 0;
+#endif
         msghdr.msg_flags = 0;
         rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
         if (rv == -1 && errno != EWOULDBLOCK) {

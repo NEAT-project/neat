@@ -587,7 +587,7 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 #if defined(SCTP_SNDINFO)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
     struct sndinfo *sndinfo;
-#elseif defined (SCTP_SNDRCV)
+#elif defined (SCTP_SNDRCV)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
     struct sctp_sndrcvinfo *sndrcvinfo;
 #endif
@@ -616,7 +616,7 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
             if (flow->isSCTPExplicitEOR) {
                 sndinfo->snd_flags |= SCTP_EOR;
             }
-#elseif defined (SCTP_SNDRCV)
+#elif defined (SCTP_SNDRCV)
             msghdr.msg_control = cmsgbuf;
             msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
             cmsg = (struct cmsghdr *)cmsgbuf;
@@ -732,7 +732,7 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 #if defined(SCTP_SNDINFO)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
     struct sndinfo *sndinfo;
-#elseif defined (SCTP_SNDRCV)
+#elif defined (SCTP_SNDRCV)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
     struct sctp_sndrcvinfo *sndrcvinfo;
 #endif
@@ -762,7 +762,7 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
             if (flow->isSCTPExplicitEOR) {
                 sndinfo->snd_flags |= SCTP_EOR;
             }
-#elseif defined (SCTP_SNDRCV)
+#elif defined (SCTP_SNDRCV)
             msghdr.msg_control = cmsgbuf;
             msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
             cmsg = (struct cmsghdr *)cmsgbuf;

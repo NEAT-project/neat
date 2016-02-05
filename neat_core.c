@@ -613,9 +613,11 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
             cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
             sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
             memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
+#if defined(SCTP_EOR)
             if (flow->isSCTPExplicitEOR) {
                 sndinfo->snd_flags |= SCTP_EOR;
             }
+#endif
 #elif defined (SCTP_SNDRCV)
             msghdr.msg_control = cmsgbuf;
             msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
@@ -625,9 +627,11 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
             cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
             sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
             memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
+#if defined(SCTP_EOR)
             if (flow->isSCTPExplicitEOR) {
                 sndrcvinfo->sinfo_flags |= SCTP_EOR;
             }
+#endif
 #else
             msghdr.msg_control = NULL;
             msghdr.msg_controllen = 0;
@@ -759,9 +763,11 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
             cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
             sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
             memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
+#if defined(SCTP_EOR)
             if (flow->isSCTPExplicitEOR) {
                 sndinfo->snd_flags |= SCTP_EOR;
             }
+#endif
 #elif defined (SCTP_SNDRCV)
             msghdr.msg_control = cmsgbuf;
             msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
@@ -771,9 +777,11 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
             cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
             sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
             memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
+#if defined(SCTP_EOR)
             if (flow->isSCTPExplicitEOR) {
                 sndrcvinfo->sinfo_flags |= SCTP_EOR;
             }
+#endif
 #else
             msghdr.msg_control = NULL;
             msghdr.msg_controllen = 0;

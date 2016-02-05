@@ -578,13 +578,24 @@ static neat_error_code
 neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     struct neat_buffered_message *msg, *next_msg;
+    ssize_t rv;
+    struct msghdr msghdr;
+    struct iovec iov;
 
     if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         return NEAT_OK;
     }
     TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
-        ssize_t rv = send(flow->fd, msg->buffered + msg->bufferedOffset,
-                          msg->bufferedSize, 0);
+        iov.iov_base = msg->buffered + msg->bufferedOffset;
+        iov.iov_len = msg->bufferedSize;
+        msghdr.msg_name = NULL;
+        msghdr.msg_namelen = 0;
+        msghdr.msg_iov = &iov;
+        msghdr.msg_iovlen = 1;
+        msghdr.msg_control = NULL;
+        msghdr.msg_controllen = 0;
+        msghdr.msg_flags = 0;
+        rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
         if (rv == -1 && errno == EWOULDBLOCK){
             return NEAT_ERROR_WOULD_BLOCK;
         }
@@ -666,12 +677,25 @@ static neat_error_code
 neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                       const unsigned char *buffer, uint32_t amt)
 {
+    ssize_t rv;
+    struct msghdr msghdr;
+    struct iovec iov;
+
     neat_error_code code = neat_write_via_kernel_flush(ctx, flow);
     if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
         return code;
     }
     if (TAILQ_EMPTY(&flow->bufferedMessages) && code == NEAT_OK && amt > 0) {
-        ssize_t rv = send(flow->fd, buffer, amt, 0);
+        iov.iov_base = (void *)buffer;
+        iov.iov_len = amt;
+        msghdr.msg_name = NULL;
+        msghdr.msg_namelen = 0;
+        msghdr.msg_iov = &iov;
+        msghdr.msg_iovlen = 1;
+        msghdr.msg_control = NULL;
+        msghdr.msg_controllen = 0;
+        msghdr.msg_flags = 0;
+        rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
         if (rv == -1 && errno != EWOULDBLOCK) {
             return NEAT_ERROR_IO;
         }

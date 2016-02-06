@@ -27,6 +27,8 @@
 #endif
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
+static neat_error_code neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow);
+
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
@@ -297,7 +299,10 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 static void io_writable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
-    if (!flow->operations || !flow->operations->on_writable) {
+    if (flow->isDraining) {
+        neat_write_via_kernel_flush(ctx, flow);
+    }
+    if (!flow->operations || !flow->operations->on_writable || flow->isDraining) {
         return;
     }
     READYCALLBACKSTRUCT;

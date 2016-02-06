@@ -869,6 +869,10 @@ static int
 neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     int enable = 1;
+#ifdef IPPROTO_SCTP
+    socklen_t len;
+    int size;
+#endif
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
 
@@ -879,6 +883,10 @@ neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         break;
 #ifdef IPPROTO_SCTP
     case IPPROTO_SCTP:
+        len = (socklen_t)sizeof(int);
+        if (getsockopt(flow->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
+            flow->writeLimit = size / 4;
+        }
 #ifdef SCTP_NODELAY
         setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
 #endif
@@ -914,6 +922,10 @@ static int
 neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     int enable = 1;
+#ifdef IPPROTO_SCTP
+    socklen_t len;
+    int size;
+#endif
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
 
@@ -924,6 +936,10 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         break;
 #ifdef IPPROTO_SCTP
     case IPPROTO_SCTP:
+        len = (socklen_t)sizeof(int);
+        if (getsockopt(flow->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
+            flow->writeLimit = size / 4;
+        }
 #ifdef SCTP_NODELAY
         setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
 #endif

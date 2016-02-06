@@ -610,6 +610,7 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 #else
         len = msg->bufferedSize;
 #endif
+        iov.iov_len = len;
         msghdr.msg_name = NULL;
         msghdr.msg_namelen = 0;
         msghdr.msg_iov = &iov;

@@ -86,6 +86,7 @@ struct neat_flow
     uv_poll_t handle;
 
     // The memory buffer for writing.
+    size_t writeLimit;
     struct neat_message_queue_head bufferedMessages;
 
     neat_read_impl readfx;

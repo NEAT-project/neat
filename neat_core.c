@@ -408,6 +408,7 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     newFlow->ctx = ctx;
 
     newFlow->ownedByCore = 1;
+    newFlow->isSCTPExplicitEOR = flow->isSCTPExplicitEOR;
     newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
     newFlow->operations->on_connected = flow->operations->on_connected;
     newFlow->operations->on_readable = flow->operations->on_readable;

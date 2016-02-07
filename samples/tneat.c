@@ -75,7 +75,7 @@ static void print_usage()
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime);
-    printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
+    printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
 }
 
 /*
@@ -101,6 +101,32 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
     exit(EXIT_FAILURE);
 }
 
+static neat_error_code
+on_all_written(struct neat_flow_operations *opCB)
+{
+    struct tneat_flow *tnf = opCB->userData;
+    struct timeval now, diff_time;
+    double time_elapsed;
+    char buffer_filesize_human[16];
+
+    gettimeofday(&now, NULL);
+    timersub(&now, &(tnf->snd.tv_first), &diff_time);
+    time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+
+    printf("neat_write finished - statistics\n");
+    printf("\tbytes\t\t: %" PRIu64 "\n", tnf->snd.bytes);
+    printf("\tsnd-calls\t: %" PRIu64 "\n", tnf->snd.calls);
+    printf("\tduration\t: %.2fs\n", time_elapsed);
+    printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human));
+
+    opCB->on_readable = NULL;
+    free(tnf->snd.buffer);
+    free(tnf->rcv.buffer);
+    free(tnf);
+    neat_stop_event_loop(opCB->ctx);
+    return NEAT_OK;
+}
+
 /*
     send *config_message_size* chars to peer
 */
@@ -110,17 +136,8 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     neat_error_code code;
     struct timeval diff_time;
     double time_elapsed;
-    char buffer_filesize_human[16];
+    int last_message;
 
-    // every buffer is filled with chars - offset increased by every run
-    memset(tnf->snd.buffer, 33 + config_chargen_offset++, config_snd_buffer_size);
-    config_chargen_offset = config_chargen_offset % 72;
-
-    code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size);
-    if (code) {
-        debug_error("neat_write - code: %d", (int)code);
-        return on_error(opCB);
-    }
 
     // record start time
     if (tnf->snd.calls == 0) {
@@ -131,34 +148,44 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     tnf->snd.bytes += config_snd_buffer_size;
     gettimeofday(&(tnf->snd.tv_last), NULL);
 
-    if (config_log_level >= 2) {
-        printf("neat_write - # %" PRIu64 " - %d byte\n", tnf->snd.calls, config_snd_buffer_size);
-        printf("neat_write - content\n");
-        fwrite(tnf->snd.buffer, sizeof(char), config_snd_buffer_size, stdout);
-        printf("\n");
-    }
-
     timersub(&(tnf->snd.tv_last), &(tnf->snd.tv_first), &diff_time);
     time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
     // stop writing if config_runtime reached or config_message_count msgs sent
     if ((config_runtime > 0 && time_elapsed >= config_runtime) ||
         (config_runtime == 0 && config_message_count > 0 && tnf->snd.calls >= config_message_count)) {
-        printf("neat_write finished - statistics\n");
-        printf("\tbytes\t\t: %" PRIu64 "\n", tnf->snd.bytes);
-        printf("\tsnd-calls\t: %" PRIu64 "\n", tnf->snd.calls);
-        printf("\tduration\t: %.2fs\n", time_elapsed);
-        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human));
-
-        opCB->on_writable = NULL;
-        opCB->on_readable = NULL;
-        free(tnf->snd.buffer);
-        free(tnf->rcv.buffer);
-        free(tnf);
-        neat_stop_event_loop(opCB->ctx);
+        last_message = 1;
+        opCB->on_all_written = on_all_written;
+    } else {
+        last_message = 0;
     }
 
-    return 0;
+    if (last_message == 1) {
+        opCB->on_all_written = on_all_written;
+    }
+    // every buffer is filled with chars - offset increased by every run
+    if (config_log_level >= 2) {
+        printf("neat_write - # %" PRIu64 " - %d byte\n", tnf->snd.calls, config_snd_buffer_size);
+        if (config_log_level >= 3) {
+            printf("neat_write - content\n");
+            fwrite(tnf->snd.buffer, sizeof(char), config_snd_buffer_size, stdout);
+            printf("\n");
+        }
+    }
+
+    memset(tnf->snd.buffer, 33 + config_chargen_offset++, config_snd_buffer_size);
+    config_chargen_offset = config_chargen_offset % 72;
+    code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size);
+    if (code != NEAT_OK) {
+        debug_error("neat_write - code: %d", (int)code);
+        return on_error(opCB);
+    }
+
+    if (last_message == 1) {
+        opCB->on_writable = NULL;
+    }
+
+    return NEAT_OK;
 }
 
 static neat_error_code on_readable(struct neat_flow_operations *opCB)
@@ -169,7 +196,6 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     neat_error_code code;
     char buffer_filesize_human[16];
     double time_elapsed;
-
 
     code = neat_read(opCB->ctx, opCB->flow, tnf->rcv.buffer, config_rcv_buffer_size, &buffer_filled);
     if (code) {
@@ -193,8 +219,10 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 
         if (config_log_level >= 2) {
             printf("neat_read - # %" PRIu64 " - %d byte\n", tnf->rcv.calls, buffer_filled);
-            fwrite(tnf->rcv.buffer, sizeof(char), buffer_filled, stdout);
-            printf("\n");
+            if (config_log_level >= 3) {
+                fwrite(tnf->rcv.buffer, sizeof(char), buffer_filled, stdout);
+                printf("\n");
+            }
         }
 
     } else {
@@ -219,7 +247,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         neat_free_flow(opCB->flow);
     }
 
-    return 0;
+    return NEAT_OK;
 }
 
 /*
@@ -289,7 +317,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
         opCB->on_writable = on_writable;
     }
 
-    return 0;
+    return NEAT_OK;
 }
 
 int main(int argc, char *argv[])

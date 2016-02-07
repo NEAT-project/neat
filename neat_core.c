@@ -633,7 +633,7 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
                 memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
 #if defined(SCTP_EOR)
-                if ((flow->isSCTPExplicitEOR) && (len = msg->bufferedSize)) {
+                if ((flow->isSCTPExplicitEOR) && (len == msg->bufferedSize)) {
                     sndinfo->snd_flags |= SCTP_EOR;
                 }
 #endif
@@ -647,7 +647,7 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
                 memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
 #if defined(SCTP_EOR)
-                if ((flow->isSCTPExplicitEOR) && (len = msg->bufferedSize)) {
+                if ((flow->isSCTPExplicitEOR) && (len == msg->bufferedSize)) {
                     sndrcvinfo->sinfo_flags |= SCTP_EOR;
                 }
 #endif

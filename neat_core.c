@@ -602,81 +602,81 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
         return NEAT_OK;
     }
     TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
-        iov.iov_base = msg->buffered + msg->bufferedOffset;
+        do {
+            iov.iov_base = msg->buffered + msg->bufferedOffset;
 #if defined(IPPROTO_SCTP)
-        if ((flow->sockProtocol == IPPROTO_SCTP) &&
-            (flow->isSCTPExplicitEOR) &&
-            (flow->writeLimit > 0) &&
-            (msg->bufferedSize > flow->writeLimit)) {
-            len = flow->writeLimit;
-        } else {
-            len = msg->bufferedSize;
-        }
-#else
-        len = msg->bufferedSize;
-#endif
-        iov.iov_len = len;
-        msghdr.msg_name = NULL;
-        msghdr.msg_namelen = 0;
-        msghdr.msg_iov = &iov;
-        msghdr.msg_iovlen = 1;
-#ifdef IPPROTO_SCTP
-        if (flow->sockProtocol == IPPROTO_SCTP) {
-#if defined(SCTP_SNDINFO)
-            msghdr.msg_control = cmsgbuf;
-            msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo));
-            cmsg = (struct cmsghdr *)cmsgbuf;
-            cmsg->cmsg_level = IPPROTO_SCTP;
-            cmsg->cmsg_type = SCTP_SNDINFO;
-            cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
-            sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
-            memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
-#if defined(SCTP_EOR)
-            if ((flow->isSCTPExplicitEOR) && (len = msg->bufferedSize)) {
-                sndinfo->snd_flags |= SCTP_EOR;
+            if ((flow->sockProtocol == IPPROTO_SCTP) &&
+                (flow->isSCTPExplicitEOR) &&
+                (flow->writeLimit > 0) &&
+                (msg->bufferedSize > flow->writeLimit)) {
+                len = flow->writeLimit;
+            } else {
+                len = msg->bufferedSize;
             }
+#else
+            len = msg->bufferedSize;
+#endif
+            iov.iov_len = len;
+            msghdr.msg_name = NULL;
+            msghdr.msg_namelen = 0;
+            msghdr.msg_iov = &iov;
+            msghdr.msg_iovlen = 1;
+#ifdef IPPROTO_SCTP
+            if (flow->sockProtocol == IPPROTO_SCTP) {
+#if defined(SCTP_SNDINFO)
+                msghdr.msg_control = cmsgbuf;
+                msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo));
+                cmsg = (struct cmsghdr *)cmsgbuf;
+                cmsg->cmsg_level = IPPROTO_SCTP;
+                cmsg->cmsg_type = SCTP_SNDINFO;
+                cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
+                sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
+                memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
+#if defined(SCTP_EOR)
+                if ((flow->isSCTPExplicitEOR) && (len = msg->bufferedSize)) {
+                    sndinfo->snd_flags |= SCTP_EOR;
+                }
 #endif
 #elif defined (SCTP_SNDRCV)
-            msghdr.msg_control = cmsgbuf;
-            msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
-            cmsg = (struct cmsghdr *)cmsgbuf;
-            cmsg->cmsg_level = IPPROTO_SCTP;
-            cmsg->cmsg_type = SCTP_SNDRCV;
-            cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
-            sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
-            memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
+                msghdr.msg_control = cmsgbuf;
+                msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
+                cmsg = (struct cmsghdr *)cmsgbuf;
+                cmsg->cmsg_level = IPPROTO_SCTP;
+                cmsg->cmsg_type = SCTP_SNDRCV;
+                cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
+                sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
+                memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
 #if defined(SCTP_EOR)
-            if ((flow->isSCTPExplicitEOR) && (len = msg->bufferedSize)) {
-                sndrcvinfo->sinfo_flags |= SCTP_EOR;
+                if ((flow->isSCTPExplicitEOR) && (len = msg->bufferedSize)) {
+                    sndrcvinfo->sinfo_flags |= SCTP_EOR;
+                }
+#endif
+#else
+                msghdr.msg_control = NULL;
+                msghdr.msg_controllen = 0;
+#endif
+            } else {
+                msghdr.msg_control = NULL;
+                msghdr.msg_controllen = 0;
             }
-#endif
 #else
             msghdr.msg_control = NULL;
             msghdr.msg_controllen = 0;
 #endif
-        } else {
-            msghdr.msg_control = NULL;
-            msghdr.msg_controllen = 0;
-        }
-#else
-        msghdr.msg_control = NULL;
-        msghdr.msg_controllen = 0;
-#endif
-        msghdr.msg_flags = 0;
-        rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
-        if (rv == -1 && errno == EWOULDBLOCK){
-            return NEAT_ERROR_WOULD_BLOCK;
-        }
-        if (rv < 0) {
-            return NEAT_ERROR_IO;
-        }
-        msg->bufferedOffset += rv;
-        msg->bufferedSize -= rv;
-        if (msg->bufferedSize == 0) {
-            TAILQ_REMOVE(&flow->bufferedMessages, msg, message_next);
-            free(msg->buffered);
-            free(msg);
-        }
+            msghdr.msg_flags = 0;
+            rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
+            if (rv == -1 && errno == EWOULDBLOCK){
+                return NEAT_ERROR_WOULD_BLOCK;
+            }
+            if (rv < 0) {
+                return NEAT_ERROR_IO;
+            }
+            msg->bufferedOffset += rv;
+            msg->bufferedSize -= rv;
+        } while (msg->bufferedSize > 0);
+        TAILQ_REMOVE(&flow->bufferedMessages, msg, message_next);
+        free(msg->buffered);
+        free(msg);
     }
     if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         flow->isDraining = 0;

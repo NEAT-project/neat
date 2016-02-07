@@ -299,7 +299,6 @@ int main(int argc, char *argv[])
     // cleanup
 cleanup:
     free(buffer);
-    free(buffer);
     if (flow != NULL) {
         neat_free_flow(flow);
     }

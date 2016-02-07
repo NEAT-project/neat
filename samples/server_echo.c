@@ -55,7 +55,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             if (config_log_level >= 1) {
                 printf("on_readable - NEAT_ERROR_WOULD_BLOCK\n");
             }
-            return 0;
+            return NEAT_OK;
         } else {
             debug_error("code: %d", (int)code);
             return on_error(opCB);
@@ -81,7 +81,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         opCB->on_writable = NULL;
         neat_free_flow(opCB->flow);
     }
-    return 0;
+    return NEAT_OK;
 }
 
 /*
@@ -104,7 +104,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     // stop writing
     opCB->on_writable = NULL;
     opCB->on_readable = on_readable;
-    return 0;
+    return NEAT_OK;
 }
 
 
@@ -142,7 +142,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     printf("\n");
 
     opCB->on_readable = on_readable;
-    return 0;
+    return NEAT_OK;
 }
 
 int main(int argc, char *argv[])

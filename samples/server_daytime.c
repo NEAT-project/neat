@@ -47,7 +47,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled);
     if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
-            return 0;
+            return NEAT_OK;
         } else {
             debug_error("code: %d", (int)code);
             return on_error(opCB);
@@ -70,7 +70,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         opCB->on_writable = NULL;
         neat_free_flow(opCB->flow);
     }
-    return 0;
+    return NEAT_OK;
 }
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB)
@@ -94,7 +94,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     opCB->on_writable = NULL;
     /* FIXME: Here we actually want to do a neat_shutdown() call */
     neat_free_flow(opCB->flow);
-    return 0;
+    return NEAT_OK;
 }
 
 static neat_error_code on_connected(struct neat_flow_operations *opCB)
@@ -133,7 +133,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
 
-    return 0;
+    return NEAT_OK;
 }
 
 int main(int argc, char *argv[])

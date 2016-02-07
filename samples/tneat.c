@@ -201,7 +201,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     if (code) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             debug_error("NEAT_ERROR_WOULD_BLOCK");
-            return 0;
+            return NEAT_OK;
         } else {
             debug_error("neat_read - code: %d", (int)code);
             return on_error(opCB);
@@ -224,7 +224,6 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
                 printf("\n");
             }
         }
-
     } else {
         // client disconnected - print statistics
         timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);

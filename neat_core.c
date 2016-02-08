@@ -975,6 +975,16 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     return 0;
 }
 
+static int
+neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
+{
+    if (shutdown(flow->fd, SHUT_WR) == 0) {
+        return NEAT_OK;
+    } else {
+        return NEAT_ERROR_IO;
+    }
+}
+
 // this function needs to accept all the data (buffering if necessary)
 neat_error_code
 neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
@@ -988,6 +998,12 @@ neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
 {
     return flow->readfx(ctx, flow, buffer, amt, actualAmt);
+}
+
+neat_error_code
+neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow)
+{
+    return flow->shutdownfx(ctx, flow);
 }
 
 neat_flow *neat_new_flow(neat_ctx *mgr)
@@ -1005,6 +1021,7 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->connectfx = neat_connect_via_kernel;
     rv->closefx = neat_close_via_kernel;
     rv->listenfx = neat_listen_via_kernel;
+    rv->shutdownfx = neat_shutdown_via_kernel;
     TAILQ_INIT(&rv->bufferedMessages);
     return rv;
 }

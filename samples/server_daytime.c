@@ -74,8 +74,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 
 static neat_error_code on_all_written(struct neat_flow_operations *opCB)
 {
-    /* FIXME: Here we actually want to do a neat_shutdown() call */
-    neat_free_flow(opCB->flow);
+    neat_shutdown(opCB->ctx, opCB->flow);
     return NEAT_OK;
 }
 

@@ -57,6 +57,7 @@ typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, in
 typedef int (*neat_connect_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
+typedef int (*neat_shutdown_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 
 struct neat_buffered_message {
     unsigned char *buffered; // memory for write buffers
@@ -95,6 +96,7 @@ struct neat_flow
     neat_connect_impl connectfx;
     neat_close_impl closefx;
     neat_listen_impl listenfx;
+    neat_shutdown_impl shutdownfx;
 
     int firstWritePending : 1;
     int acceptPending : 1;

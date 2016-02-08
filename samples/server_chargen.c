@@ -68,14 +68,18 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             printf("[%d] disconnected\n", opCB->flow->fd);
         }
         opCB->on_readable = NULL;
-        opCB->on_writable = NULL;
-        neat_free_flow(opCB->flow);
     }
     return NEAT_OK;
 }
 
+static neat_error_code on_all_written(struct neat_flow_operations *opCB)
+{
+    opCB->on_writable = NULL;
+    neat_free_flow(opCB->flow);
+    return NEAT_OK;
+}
+
 /*
-    Send data from stdin
     //XXX behave more like specified in the rfc (UDP, TCP)
 */
 static neat_error_code on_writable(struct neat_flow_operations *opCB)
@@ -92,6 +96,9 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
         chargen_offset = 0;
     }
 
+    if (opCB->on_readable == NULL) {
+        opCB->on_all_written = on_all_written;
+    }
     code = neat_write(opCB->ctx, opCB->flow, buffer, BUFFERSIZE);
     if (code != NEAT_OK) {
         debug_error("code: %d", (int)code);

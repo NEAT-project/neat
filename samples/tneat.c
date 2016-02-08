@@ -292,16 +292,19 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
 
     if ((opCB->userData = calloc(1, sizeof(struct tneat_flow))) == NULL) {
         debug_error("could not allocate tneat_flow");
+        exit(EXIT_FAILURE);
     }
 
     tnf = opCB->userData;
 
     if ((tnf->snd.buffer = malloc(config_snd_buffer_size)) == NULL) {
         debug_error("could not allocate send buffer");
+        exit(EXIT_FAILURE);
     }
 
     if ((tnf->rcv.buffer = malloc(config_rcv_buffer_size)) == NULL) {
         debug_error("could not allocate receive buffer");
+        exit(EXIT_FAILURE);
     }
 
     // reset stats

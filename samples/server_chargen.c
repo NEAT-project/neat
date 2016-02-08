@@ -86,11 +86,13 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
     unsigned char buffer[BUFFERSIZE];
+    int i;
 
-    for (int i = 0; i < BUFFERSIZE; i++) {
-        buffer[i] = 33+((chargen_offset+i)%72);
+    for (i = 0; i < BUFFERSIZE - 2; i++) {
+        buffer[i] = 33 + ((chargen_offset + i) % 72);
     }
-
+    buffer[i++] = '\r';
+    buffer[i++] = '\n';
     chargen_offset++;
     if (chargen_offset >= 72) {
         chargen_offset = 0;

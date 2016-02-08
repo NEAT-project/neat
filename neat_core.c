@@ -666,11 +666,15 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 #endif
             msghdr.msg_flags = 0;
             rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
-            if (rv == -1 && errno == EWOULDBLOCK){
-                return NEAT_ERROR_WOULD_BLOCK;
-            }
             if (rv < 0) {
-                return NEAT_ERROR_IO;
+                if (errno == EWOULDBLOCK) {
+                    return NEAT_ERROR_WOULD_BLOCK;
+                } else if (errno == EMSGSIZE) {
+                    /* XXX: This will be reported for the wrong message. */
+                    return NEAT_ERROR_MESSAGE_TOO_BIG;
+                } else {
+                    return NEAT_ERROR_IO;
+                }
             }
             msg->bufferedOffset += rv;
             msg->bufferedSize -= rv;
@@ -829,7 +833,11 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         msghdr.msg_flags = 0;
         rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
         if (rv == -1 && errno != EWOULDBLOCK) {
-            return NEAT_ERROR_IO;
+            if (errno == EMSGSIZE) {
+                return NEAT_ERROR_MESSAGE_TOO_BIG;
+            } else {
+                return NEAT_ERROR_IO;
+            }
         }
         if (rv != -1) {
             amt -= rv;

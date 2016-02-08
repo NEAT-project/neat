@@ -98,6 +98,7 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 #define NEAT_ERROR_INTERNAL (5)
 #define NEAT_ERROR_SECURITY (6)
 #define NEAT_ERROR_UNABLE (7)
+#define NEAT_ERROR_MESSAGE_TOO_BIG (8)
 
 // cleanup extern "C"
 #ifdef __cplusplus

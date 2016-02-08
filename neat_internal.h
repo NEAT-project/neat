@@ -86,8 +86,9 @@ struct neat_flow
     struct neat_ctx *ctx; // raw convenience pointer
     uv_poll_t handle;
 
+    size_t writeLimit;  // maximum to write if the socket supported partial writes
+    size_t writeSize;   // send buffer size
     // The memory buffer for writing.
-    size_t writeLimit;
     struct neat_message_queue_head bufferedMessages;
 
     neat_read_impl readfx;

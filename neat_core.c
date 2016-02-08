@@ -406,6 +406,8 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     newFlow->sockType = flow->sockType;
     newFlow->sockProtocol = flow->sockProtocol;
     newFlow->ctx = ctx;
+    newFlow->writeLimit = flow->writeLimit;
+    newFlow->writeSize = flow->writeSize;
 
     newFlow->ownedByCore = 1;
     newFlow->isSCTPExplicitEOR = flow->isSCTPExplicitEOR;
@@ -669,9 +671,6 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
             if (rv < 0) {
                 if (errno == EWOULDBLOCK) {
                     return NEAT_ERROR_WOULD_BLOCK;
-                } else if (errno == EMSGSIZE) {
-                    /* XXX: This will be reported for the wrong message. */
-                    return NEAT_ERROR_MESSAGE_TOO_BIG;
                 } else {
                     return NEAT_ERROR_IO;
                 }
@@ -752,6 +751,7 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 {
     ssize_t rv;
     size_t len;
+    int atomic;
 #if defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
     struct cmsghdr *cmsg;
 #endif
@@ -765,6 +765,32 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
     struct sctp_sndrcvinfo *sndrcvinfo;
 #endif
 
+    switch (flow->sockProtocol) {
+    case IPPROTO_TCP:
+        atomic = 0;
+        break;
+#ifdef IPPROTO_SCTP
+    case IPPROTO_SCTP:
+        if (flow->isSCTPExplicitEOR) {
+            atomic = 0;
+        } else {
+            atomic = 1;
+        }
+        break;
+#endif
+    case IPPROTO_UDP:
+#ifdef IPPROTO_UDPLITE
+    case IPPROTO_UDPLITE:
+#endif
+        atomic = 1;
+        break;
+    default:
+        atomic = 1;
+        break;
+    }
+    if (atomic && flow->writeSize > 0 && amt > flow->writeSize) {
+        return NEAT_ERROR_MESSAGE_TOO_BIG;
+    }
     neat_error_code code = neat_write_via_kernel_flush(ctx, flow);
     if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
         return code;
@@ -833,11 +859,7 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         msghdr.msg_flags = 0;
         rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
         if (rv == -1 && errno != EWOULDBLOCK) {
-            if (errno == EMSGSIZE) {
-                return NEAT_ERROR_MESSAGE_TOO_BIG;
-            } else {
                 return NEAT_ERROR_IO;
-            }
         }
         if (rv != -1) {
             amt -= rv;
@@ -883,24 +905,25 @@ static int
 neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     int enable = 1;
-#ifdef IPPROTO_SCTP
     socklen_t len;
     int size;
-#endif
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
 
     flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
+    len = (socklen_t)sizeof(int);
+    if (getsockopt(flow->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
+        flow->writeSize = size;
+    } else {
+        flow->writeSize = 0;
+    }
     switch (flow->sockProtocol) {
     case IPPROTO_TCP:
         setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
         break;
 #ifdef IPPROTO_SCTP
     case IPPROTO_SCTP:
-        len = (socklen_t)sizeof(int);
-        if (getsockopt(flow->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
-            flow->writeLimit = size / 4;
-        }
+        flow->writeLimit =  flow->writeSize / 4;
 #ifdef SCTP_NODELAY
         setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
 #endif
@@ -936,24 +959,25 @@ static int
 neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     int enable = 1;
-#ifdef IPPROTO_SCTP
     socklen_t len;
     int size;
-#endif
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
 
     flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
+    len = (socklen_t)sizeof(int);
+    if (getsockopt(flow->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
+        flow->writeSize = size;
+    } else {
+        flow->writeSize = 0;
+    }
     switch (flow->sockProtocol) {
     case IPPROTO_TCP:
         setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
         break;
 #ifdef IPPROTO_SCTP
     case IPPROTO_SCTP:
-        len = (socklen_t)sizeof(int);
-        if (getsockopt(flow->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
-            flow->writeLimit = size / 4;
-        }
+        flow->writeLimit = flow->writeSize / 4;
 #ifdef SCTP_NODELAY
         setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
 #endif

@@ -182,8 +182,7 @@ void tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer
         uv_read_stop(stream);
         ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
-        /* FIXME: Here we actually want to do a neat_shutdown() call */
-        neat_stop_event_loop(ctx);
+        neat_shutdown(ctx, flow);
     }
     if (buffer_filled > 0) {
         // copy input to app buffer

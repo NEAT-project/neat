@@ -48,7 +48,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled);
     if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
-            return 0;
+            return NEAT_OK;
         } else {
             debug_error("code: %d", (int)code);
             return on_error(opCB);
@@ -68,37 +68,46 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             printf("[%d] disconnected\n", opCB->flow->fd);
         }
         opCB->on_readable = NULL;
-        opCB->on_writable = NULL;
-        neat_free_flow(opCB->flow);
     }
-    return 0;
+    return NEAT_OK;
+}
+
+static neat_error_code on_all_written(struct neat_flow_operations *opCB)
+{
+    opCB->on_writable = NULL;
+    neat_free_flow(opCB->flow);
+    return NEAT_OK;
 }
 
 /*
-    Send data from stdin
     //XXX behave more like specified in the rfc (UDP, TCP)
 */
 static neat_error_code on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
     unsigned char buffer[BUFFERSIZE];
+    int i;
 
-    for (int i = 0; i < BUFFERSIZE; i++) {
-        buffer[i] = 33+((chargen_offset+i)%72);
+    for (i = 0; i < BUFFERSIZE - 2; i++) {
+        buffer[i] = 33 + ((chargen_offset + i) % 72);
     }
-
+    buffer[i++] = '\r';
+    buffer[i++] = '\n';
     chargen_offset++;
     if (chargen_offset >= 72) {
         chargen_offset = 0;
     }
 
+    if (opCB->on_readable == NULL) {
+        opCB->on_all_written = on_all_written;
+    }
     code = neat_write(opCB->ctx, opCB->flow, buffer, BUFFERSIZE);
     if (code != NEAT_OK) {
         debug_error("code: %d", (int)code);
         return on_error(opCB);
     }
 
-    return 0;
+    return NEAT_OK;
 }
 
 
@@ -138,7 +147,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     }
     printf("\n");
 
-    return 0;
+    return NEAT_OK;
 }
 
 int main(int argc, char *argv[])

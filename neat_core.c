@@ -27,6 +27,8 @@
 #endif
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
+static neat_error_code neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow);
+
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
@@ -231,14 +233,19 @@ static void free_cb(uv_handle_t *handle)
 
 void neat_free_flow(neat_flow *flow)
 {
+    struct neat_buffered_message *msg, *next_msg;
+
     if (flow->isPolling)
         uv_poll_stop(&flow->handle);
 
     if (flow->handle.type != UV_UNKNOWN_HANDLE)
         uv_close((uv_handle_t *)(&flow->handle), free_cb);
 
-    free(flow->buffered);
-    flow->buffered = NULL;
+    TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
+        TAILQ_REMOVE(&flow->bufferedMessages, msg, message_next);
+        free(msg->buffered);
+        free(msg);
+    }
     return;
 }
 
@@ -292,7 +299,10 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 static void io_writable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
-    if (!flow->operations || !flow->operations->on_writable) {
+    if (flow->isDraining) {
+        neat_write_via_kernel_flush(ctx, flow);
+    }
+    if (!flow->operations || !flow->operations->on_writable || flow->isDraining) {
         return;
     }
     READYCALLBACKSTRUCT;
@@ -398,6 +408,7 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     newFlow->ctx = ctx;
 
     newFlow->ownedByCore = 1;
+    newFlow->isSCTPExplicitEOR = flow->isSCTPExplicitEOR;
     newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
     newFlow->operations->on_connected = flow->operations->on_connected;
     newFlow->operations->on_readable = flow->operations->on_readable;
@@ -523,7 +534,12 @@ accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *
     flow->handle.data = flow;
     uv_poll_init(ctx->loop, &flow->handle, flow->fd);
 
-    if (!(flow->propertyMask & NEAT_PROPERTY_MESSAGE)) {
+#if defined (IPPROTO_SCTP)
+    if ((flow->sockProtocol == IPPROTO_SCTP) ||
+        (flow->sockProtocol == IPPROTO_TCP)) {
+#else
+    if (flow->sockProtocol == IPPROTO_TCP) {
+#endif
         flow->isPolling = 1;
         flow->acceptPending = 1;
         uv_poll_start(&flow->handle, UV_READABLE, uvpollable_cb);
@@ -567,24 +583,107 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 static neat_error_code
 neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 {
-    if (!flow->buffered) {
+    struct neat_buffered_message *msg, *next_msg;
+    ssize_t rv;
+    size_t len;
+#if defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
+    struct cmsghdr *cmsg;
+#endif
+    struct msghdr msghdr;
+    struct iovec iov;
+#if defined(SCTP_SNDINFO)
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
+    struct sctp_sndinfo *sndinfo;
+#elif defined (SCTP_SNDRCV)
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
+    struct sctp_sndrcvinfo *sndrcvinfo;
+#endif
+
+    if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         return NEAT_OK;
     }
-    ssize_t rv = send(flow->fd, flow->buffered + flow->bufferedOffset,
-                      flow->bufferedSize, 0);
-    if (rv == -1 && errno == EWOULDBLOCK){
-        return NEAT_ERROR_WOULD_BLOCK;
+    TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
+        do {
+            iov.iov_base = msg->buffered + msg->bufferedOffset;
+#if defined(IPPROTO_SCTP)
+            if ((flow->sockProtocol == IPPROTO_SCTP) &&
+                (flow->isSCTPExplicitEOR) &&
+                (flow->writeLimit > 0) &&
+                (msg->bufferedSize > flow->writeLimit)) {
+                len = flow->writeLimit;
+            } else {
+                len = msg->bufferedSize;
+            }
+#else
+            len = msg->bufferedSize;
+#endif
+            iov.iov_len = len;
+            msghdr.msg_name = NULL;
+            msghdr.msg_namelen = 0;
+            msghdr.msg_iov = &iov;
+            msghdr.msg_iovlen = 1;
+#ifdef IPPROTO_SCTP
+            if (flow->sockProtocol == IPPROTO_SCTP) {
+#if defined(SCTP_SNDINFO)
+                msghdr.msg_control = cmsgbuf;
+                msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo));
+                cmsg = (struct cmsghdr *)cmsgbuf;
+                cmsg->cmsg_level = IPPROTO_SCTP;
+                cmsg->cmsg_type = SCTP_SNDINFO;
+                cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
+                sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
+                memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
+#if defined(SCTP_EOR)
+                if ((flow->isSCTPExplicitEOR) && (len == msg->bufferedSize)) {
+                    sndinfo->snd_flags |= SCTP_EOR;
+                }
+#endif
+#elif defined (SCTP_SNDRCV)
+                msghdr.msg_control = cmsgbuf;
+                msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
+                cmsg = (struct cmsghdr *)cmsgbuf;
+                cmsg->cmsg_level = IPPROTO_SCTP;
+                cmsg->cmsg_type = SCTP_SNDRCV;
+                cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
+                sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
+                memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
+#if defined(SCTP_EOR)
+                if ((flow->isSCTPExplicitEOR) && (len == msg->bufferedSize)) {
+                    sndrcvinfo->sinfo_flags |= SCTP_EOR;
+                }
+#endif
+#else
+                msghdr.msg_control = NULL;
+                msghdr.msg_controllen = 0;
+#endif
+            } else {
+                msghdr.msg_control = NULL;
+                msghdr.msg_controllen = 0;
+            }
+#else
+            msghdr.msg_control = NULL;
+            msghdr.msg_controllen = 0;
+#endif
+            msghdr.msg_flags = 0;
+            rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
+            if (rv < 0) {
+                if (errno == EWOULDBLOCK) {
+                    return NEAT_ERROR_WOULD_BLOCK;
+                } else if (errno == EMSGSIZE) {
+                    /* XXX: This will be reported for the wrong message. */
+                    return NEAT_ERROR_MESSAGE_TOO_BIG;
+                } else {
+                    return NEAT_ERROR_IO;
+                }
+            }
+            msg->bufferedOffset += rv;
+            msg->bufferedSize -= rv;
+        } while (msg->bufferedSize > 0);
+        TAILQ_REMOVE(&flow->bufferedMessages, msg, message_next);
+        free(msg->buffered);
+        free(msg);
     }
-    if (rv < 0) {
-        return NEAT_ERROR_IO;
-    }
-    flow->bufferedOffset += rv;
-    flow->bufferedSize -= rv;
-    if (!flow->bufferedSize) {
-        free(flow->buffered);
-        flow->buffered = NULL;
-        flow->bufferedOffset = 0;
-        flow->bufferedAllocation = 0;
+    if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         flow->isDraining = 0;
     }
     return NEAT_OK;
@@ -594,41 +693,56 @@ static neat_error_code
 neat_write_via_kernel_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
                                  const unsigned char *buffer, uint32_t amt)
 {
+    struct neat_buffered_message *msg;
+
     // todo, a better implementation here is a linked list of buffers
     // but this gets us started
-    if (!amt) {
+    if (amt == 0) {
         return NEAT_OK;
     }
 
+    if ((flow->sockProtocol != IPPROTO_TCP) || TAILQ_EMPTY(&flow->bufferedMessages)) {
+        msg = malloc(sizeof(struct neat_buffered_message));
+        if (msg == NULL) {
+            return NEAT_ERROR_INTERNAL;
+        }
+        msg->buffered = NULL;
+        msg->bufferedOffset = 0;
+        msg->bufferedSize = 0;
+        msg->bufferedAllocation= 0;
+        TAILQ_INSERT_TAIL(&flow->bufferedMessages, msg, message_next);
+    } else {
+        msg = TAILQ_LAST(&flow->bufferedMessages, neat_message_queue_head);
+    }
     // check if there is room to buffer without extending allocation
-    if ((flow->bufferedOffset + flow->bufferedSize + amt) <= flow->bufferedAllocation) {
-        memcpy (flow->buffered + flow->bufferedOffset + flow->bufferedSize,
+    if ((msg->bufferedOffset + msg->bufferedSize + amt) <= msg->bufferedAllocation) {
+        memcpy(msg->buffered + msg->bufferedOffset + msg->bufferedSize,
                 buffer, amt);
-        flow->bufferedSize += amt;
+        msg->bufferedSize += amt;
         return NEAT_OK;
     }
 
     // round up to ~8K
-    size_t needed = ((amt + flow->bufferedSize) + 8191) & ~8191;
-    if (!flow->bufferedOffset) {
-        flow->buffered = realloc(flow->buffered, needed);
-        if (!flow->buffered) {
+    size_t needed = ((amt + msg->bufferedSize) + 8191) & ~8191;
+    if (msg->bufferedOffset == 0) {
+        msg->buffered = realloc(msg->buffered, needed);
+        if (msg->buffered == NULL) {
             return NEAT_ERROR_INTERNAL;
         }
-        flow->bufferedAllocation = needed;
+        msg->bufferedAllocation = needed;
     } else {
         void *newptr = malloc(needed);
-        if (!newptr) {
+        if (newptr == NULL) {
             return NEAT_ERROR_INTERNAL;
         }
-        memcpy(newptr, flow->buffered + flow->bufferedOffset, flow->bufferedSize);
-        free(flow->buffered);
-        flow->buffered = newptr;
-        flow->bufferedAllocation = needed;
-        flow->bufferedOffset = 0;
+        memcpy(newptr, msg->buffered + msg->bufferedOffset, msg->bufferedSize);
+        free(msg->buffered);
+        msg->buffered = newptr;
+        msg->bufferedAllocation = needed;
+        msg->bufferedOffset = 0;
     }
-    memcpy (flow->buffered + flow->bufferedSize, buffer, amt);
-    flow->bufferedSize += amt;
+    memcpy(msg->buffered + msg->bufferedSize, buffer, amt);
+    msg->bufferedSize += amt;
     return NEAT_OK;
 }
 
@@ -636,23 +750,105 @@ static neat_error_code
 neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                       const unsigned char *buffer, uint32_t amt)
 {
+    ssize_t rv;
+    size_t len;
+#if defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
+    struct cmsghdr *cmsg;
+#endif
+    struct msghdr msghdr;
+    struct iovec iov;
+#if defined(SCTP_SNDINFO)
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
+    struct sctp_sndinfo *sndinfo;
+#elif defined (SCTP_SNDRCV)
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
+    struct sctp_sndrcvinfo *sndrcvinfo;
+#endif
+
     neat_error_code code = neat_write_via_kernel_flush(ctx, flow);
     if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
         return code;
     }
-    if (!flow->buffered && code != NEAT_ERROR_WOULD_BLOCK && amt) {
-        ssize_t rv = send(flow->fd, buffer, amt, 0);
-        if (rv == -1 && errno != EWOULDBLOCK){
-            return NEAT_ERROR_IO;
+    if (TAILQ_EMPTY(&flow->bufferedMessages) && code == NEAT_OK && amt > 0) {
+        iov.iov_base = (void *)buffer;
+#if defined(IPPROTO_SCTP)
+        if ((flow->sockProtocol == IPPROTO_SCTP) &&
+            (flow->isSCTPExplicitEOR) &&
+            (flow->writeLimit > 0) &&
+            (amt > flow->writeLimit)) {
+            len = flow->writeLimit;
+        } else {
+            len = amt;
         }
-        amt -= rv;
-        buffer += rv;
+#else
+        len = amt;
+#endif
+        iov.iov_len = len;
+        msghdr.msg_name = NULL;
+        msghdr.msg_namelen = 0;
+        msghdr.msg_iov = &iov;
+        msghdr.msg_iovlen = 1;
+#ifdef IPPROTO_SCTP
+        if (flow->sockProtocol == IPPROTO_SCTP) {
+#if defined(SCTP_SNDINFO)
+            msghdr.msg_control = cmsgbuf;
+            msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo));
+            cmsg = (struct cmsghdr *)cmsgbuf;
+            cmsg->cmsg_level = IPPROTO_SCTP;
+            cmsg->cmsg_type = SCTP_SNDINFO;
+            cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
+            sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
+            memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
+#if defined(SCTP_EOR)
+            if ((flow->isSCTPExplicitEOR) && (len == amt)) {
+                sndinfo->snd_flags |= SCTP_EOR;
+            }
+#endif
+#elif defined (SCTP_SNDRCV)
+            msghdr.msg_control = cmsgbuf;
+            msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
+            cmsg = (struct cmsghdr *)cmsgbuf;
+            cmsg->cmsg_level = IPPROTO_SCTP;
+            cmsg->cmsg_type = SCTP_SNDRCV;
+            cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
+            sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
+            memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
+#if defined(SCTP_EOR)
+            if ((flow->isSCTPExplicitEOR) && (len == amt)) {
+                sndrcvinfo->sinfo_flags |= SCTP_EOR;
+            }
+#endif
+#else
+            msghdr.msg_control = NULL;
+            msghdr.msg_controllen = 0;
+#endif
+        } else {
+            msghdr.msg_control = NULL;
+            msghdr.msg_controllen = 0;
+        }
+#else
+        msghdr.msg_control = NULL;
+        msghdr.msg_controllen = 0;
+#endif
+        msghdr.msg_flags = 0;
+        rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
+        if (rv == -1 && errno != EWOULDBLOCK) {
+            if (errno == EMSGSIZE) {
+                return NEAT_ERROR_MESSAGE_TOO_BIG;
+            } else {
+                return NEAT_ERROR_IO;
+            }
+        }
+        if (rv != -1) {
+            amt -= rv;
+            buffer += rv;
+        }
     }
     code = neat_write_via_kernel_fillbuffer(ctx, flow, buffer, amt);
     if (code != NEAT_OK) {
         return code;
     }
-    if (!flow->buffered) {
+    if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         flow->isDraining = 0;
         io_all_written(ctx, flow);
     } else {
@@ -686,9 +882,37 @@ neat_accept_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, int fd)
 static int
 neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
+    int enable = 1;
+#ifdef IPPROTO_SCTP
+    socklen_t len;
+    int size;
+#endif
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+
     flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
+    switch (flow->sockProtocol) {
+    case IPPROTO_TCP:
+        setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+        break;
+#ifdef IPPROTO_SCTP
+    case IPPROTO_SCTP:
+        len = (socklen_t)sizeof(int);
+        if (getsockopt(flow->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
+            flow->writeLimit = size / 4;
+        }
+#ifdef SCTP_NODELAY
+        setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
+#endif
+#ifdef SCTP_EXPLICIT_EOR
+        if (setsockopt(flow->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
+            flow->isSCTPExplicitEOR = 1;
+#endif
+        break;
+#endif
+    default:
+        break;
+    }
     uv_poll_init(ctx->loop, &flow->handle, flow->fd); // makes fd nb as side effect
     if ((flow->fd == -1) ||
         (connect(flow->fd, flow->sockAddr, slen) && (errno != EINPROGRESS))) {
@@ -712,16 +936,31 @@ static int
 neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     int enable = 1;
+#ifdef IPPROTO_SCTP
+    socklen_t len;
+    int size;
+#endif
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+
     flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
     switch (flow->sockProtocol) {
     case IPPROTO_TCP:
         setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
         break;
-#ifdef SCTP_NODELAY
+#ifdef IPPROTO_SCTP
     case IPPROTO_SCTP:
+        len = (socklen_t)sizeof(int);
+        if (getsockopt(flow->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
+            flow->writeLimit = size / 4;
+        }
+#ifdef SCTP_NODELAY
         setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
+#endif
+#ifdef SCTP_EXPLICIT_EOR
+        if (setsockopt(flow->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
+            flow->isSCTPExplicitEOR = 1;
+#endif
         break;
 #endif
     default:
@@ -766,5 +1005,6 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->connectfx = neat_connect_via_kernel;
     rv->closefx = neat_close_via_kernel;
     rv->listenfx = neat_listen_via_kernel;
+    TAILQ_INIT(&rv->bufferedMessages);
     return rv;
 }

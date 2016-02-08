@@ -58,6 +58,16 @@ typedef int (*neat_connect_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 
+struct neat_buffered_message {
+    unsigned char *buffered; // memory for write buffers
+    ssize_t bufferedOffset;  // offset of data still to be written
+    ssize_t bufferedSize;    // amount of unwritten data
+    ssize_t bufferedAllocation; // size of buffered allocation
+    TAILQ_ENTRY(neat_buffered_message) message_next;
+};
+
+TAILQ_HEAD(neat_message_queue_head, neat_buffered_message);
+
 struct neat_flow
 {
     int fd;
@@ -75,11 +85,9 @@ struct neat_flow
     struct neat_ctx *ctx; // raw convenience pointer
     uv_poll_t handle;
 
-    // The memory buffer for writing.. todo a chained list of buffers
-    unsigned char *buffered; // memory for write buffers
-    ssize_t bufferedOffset;  // offset of data still to be written
-    ssize_t bufferedSize;    // amount of unwritten data
-    ssize_t bufferedAllocation; // size of buffered allocation
+    // The memory buffer for writing.
+    size_t writeLimit;
+    struct neat_message_queue_head bufferedMessages;
 
     neat_read_impl readfx;
     neat_write_impl writefx;
@@ -94,6 +102,7 @@ struct neat_flow
     int ownedByCore : 1;
     int everConnected : 1;
     int isDraining : 1;
+    int isSCTPExplicitEOR : 1;
 };
 
 typedef struct neat_flow neat_flow;

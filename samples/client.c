@@ -71,7 +71,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             if (config_log_level >= 1) {
                 printf("on_readable - NEAT_ERROR_WOULD_BLOCK\n");
             }
-            return 0;
+            return NEAT_OK;
         } else {
             debug_error("code: %d", (int)code);
             return on_error(opCB);
@@ -93,7 +93,14 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         ops.on_readable = NULL;
         neat_stop_event_loop(opCB->ctx);
     }
-    return 0;
+    return NEAT_OK;
+}
+
+static neat_error_code on_all_written(struct neat_flow_operations *opCB)
+{
+    // data sent completely - continue reading from stdin
+    uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
+    return NEAT_OK;
 }
 
 /*
@@ -102,6 +109,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 static neat_error_code on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
+
 
     code = neat_write(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled);
     if (code != NEAT_OK) {
@@ -115,9 +123,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 
     // stop writing
     opCB->on_writable = NULL;
-    // data sent - continue reading from stdin
-    uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
-    return 0;
+    return NEAT_OK;
 }
 
 
@@ -156,8 +162,9 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
         printf("\n");
     }
 
+    opCB->on_all_written = on_all_written;
     opCB->on_readable = on_readable;
-    return 0;
+    return NEAT_OK;
 }
 
 /*
@@ -179,7 +186,6 @@ void tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer
         neat_stop_event_loop(ctx);
     }
     if (buffer_filled > 0) {
-
         // copy input to app buffer
         stdin_buffer.buffer_filled = buffer_filled;
         memcpy(stdin_buffer.buffer, buffer->base, buffer_filled);

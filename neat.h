@@ -61,8 +61,9 @@ neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
 neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t inMask);
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
-                          const char *name, const char *port); // should port should be int?
-                                                // from MW: yes I think port should be int
+                            const char *name, const char *port); // should port should be int?
+                                                                 // from MW: yes I think port should be int
+neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
 
 
 // do we also need a set property with a void * or an int (e.g. timeouts) or should

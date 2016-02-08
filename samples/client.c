@@ -96,12 +96,20 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
+static neat_error_code on_all_written(struct neat_flow_operations *opCB)
+{
+    // data sent completely - continue reading from stdin
+    uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
+    return NEAT_OK;
+}
+
 /*
     Send data from stdin
 */
 static neat_error_code on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
+
 
     code = neat_write(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled);
     if (code != NEAT_OK) {
@@ -115,8 +123,6 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 
     // stop writing
     opCB->on_writable = NULL;
-    // data sent - continue reading from stdin
-    uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
     return NEAT_OK;
 }
 
@@ -156,6 +162,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
         printf("\n");
     }
 
+    opCB->on_all_written = on_all_written;
     opCB->on_readable = on_readable;
     return NEAT_OK;
 }

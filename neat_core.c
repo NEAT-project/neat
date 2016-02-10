@@ -246,7 +246,7 @@ void neat_free_flow(neat_flow *flow)
         free(msg->buffered);
         free(msg);
     }
-    free(flow->recvBuffer);
+    free(flow->readBuffer);
     return;
 }
 
@@ -313,9 +313,59 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
 static void io_readable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
+#ifdef IPPROTO_SCTP
+    ssize_t n, spaceFree;
+    size_t spaceNeeded, spaceThreshold;
+    struct msghdr msghdr;
+    struct iovec iov;
+#endif
+
     if (!flow->operations || !flow->operations->on_readable) {
         return;
     }
+#ifdef IPPROTO_SCTP
+    if ((flow->sockProtocol == IPPROTO_SCTP) &&
+        (!flow->readBufferMsgComplete)) {
+        spaceFree = flow->readBufferAllocation - flow->readBufferSize;
+        if (flow->readSize > 0) {
+            spaceThreshold = (flow->readSize / 4 + 8191) & ~8191;
+        } else {
+            spaceThreshold = 8192;
+        }
+        if (spaceFree < spaceThreshold) {
+            if (flow->readBufferAllocation == 0) {
+                spaceNeeded = spaceThreshold;
+            } else {
+                spaceNeeded = 2 * flow->readBufferAllocation;
+            }
+            flow->readBuffer = realloc(flow->readBuffer, spaceNeeded);
+            if (flow->readBuffer == NULL) {
+                flow->readBufferAllocation = 0;
+                return;
+            }
+            flow->readBufferAllocation = spaceNeeded;
+        }
+        iov.iov_base = flow->readBuffer + flow->readBufferSize;
+        iov.iov_len = flow->readBufferAllocation - flow->readBufferSize;
+        msghdr.msg_name = NULL;
+        msghdr.msg_namelen = 0;
+        msghdr.msg_iov = &iov;
+        msghdr.msg_iovlen = 1;
+        msghdr.msg_control = NULL;
+        msghdr.msg_controllen = 0;
+        msghdr.msg_flags = 0;
+        if ((n = recvmsg(flow->fd, &msghdr, 0)) < 0) {
+            return;
+        }
+        flow->readBufferSize += n;
+        if ((msghdr.msg_flags & MSG_EOR) || (n == 0)) {
+            flow->readBufferMsgComplete = 1;
+        }
+        if (!flow->readBufferMsgComplete) {
+            return;
+        }
+    }
+#endif
     READYCALLBACKSTRUCT;
     flow->operations->on_readable(flow->operations);
 }
@@ -409,6 +459,7 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     newFlow->ctx = ctx;
     newFlow->writeLimit = flow->writeLimit;
     newFlow->writeSize = flow->writeSize;
+    newFlow->readSize = flow->readSize;
 
     newFlow->ownedByCore = 1;
     newFlow->isSCTPExplicitEOR = flow->isSCTPExplicitEOR;
@@ -885,7 +936,24 @@ static neat_error_code
 neat_read_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                      unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
 {
-    ssize_t rv = recv(flow->fd, buffer, amt, 0);
+    ssize_t rv;
+
+#ifdef IPPROTO_SCTP
+    if (flow->sockProtocol == IPPROTO_SCTP) {
+        if (!flow->readBufferMsgComplete) {
+            return NEAT_ERROR_WOULD_BLOCK;
+        }
+        if (flow->readBufferSize > amt) {
+            return NEAT_ERROR_MESSAGE_TOO_BIG;
+        }
+        memcpy(buffer, flow->readBuffer, flow->readBufferSize);
+        *actualAmt = flow->readBufferSize;
+        flow->readBufferSize = 0;
+        flow->readBufferMsgComplete = 0;
+        return NEAT_OK;
+    }
+#endif
+    rv = recv(flow->fd, buffer, amt, 0);
     if (rv == -1 && errno == EWOULDBLOCK){
         return NEAT_ERROR_WOULD_BLOCK;
     }
@@ -917,6 +985,12 @@ neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         flow->writeSize = size;
     } else {
         flow->writeSize = 0;
+    }
+    len = (socklen_t)sizeof(int);
+    if (getsockopt(flow->fd, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
+        flow->readSize = size;
+    } else {
+        flow->readSize = 0;
     }
     switch (flow->sockProtocol) {
     case IPPROTO_TCP:
@@ -971,6 +1045,12 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         flow->writeSize = size;
     } else {
         flow->writeSize = 0;
+    }
+    len = (socklen_t)sizeof(int);
+    if (getsockopt(flow->fd, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
+        flow->readSize = size;
+    } else {
+        flow->readSize = 0;
     }
     switch (flow->sockProtocol) {
     case IPPROTO_TCP:

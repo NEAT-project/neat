@@ -86,14 +86,17 @@ struct neat_flow
     struct neat_ctx *ctx; // raw convenience pointer
     uv_poll_t handle;
 
-    size_t writeLimit;  // maximum to write if the socket supported partial writes
+    size_t writeLimit;  // maximum to write if the socket supports partial writes
     size_t writeSize;   // send buffer size
     // The memory buffer for writing.
     struct neat_message_queue_head bufferedMessages;
+
+    size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.
-    unsigned char *recvBuffer;    // memory for read buffer
-    size_t recvBufferSize;        // amount of received data
-    size_t recvBufferAllocation;  // size of buffered allocation
+    unsigned char *readBuffer;    // memory for read buffer
+    size_t readBufferSize;        // amount of received data
+    size_t readBufferAllocation;  // size of buffered allocation
+    int readBufferMsgComplete;    // it contains a complete user message
 
     neat_read_impl readfx;
     neat_write_impl writefx;

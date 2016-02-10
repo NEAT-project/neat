@@ -61,9 +61,9 @@ typedef int (*neat_shutdown_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 
 struct neat_buffered_message {
     unsigned char *buffered; // memory for write buffers
-    ssize_t bufferedOffset;  // offset of data still to be written
-    ssize_t bufferedSize;    // amount of unwritten data
-    ssize_t bufferedAllocation; // size of buffered allocation
+    size_t bufferedOffset;  // offset of data still to be written
+    size_t bufferedSize;    // amount of unwritten data
+    size_t bufferedAllocation; // size of buffered allocation
     TAILQ_ENTRY(neat_buffered_message) message_next;
 };
 

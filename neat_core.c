@@ -910,8 +910,10 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
         msghdr.msg_flags = 0;
         rv = sendmsg(flow->fd, (const struct msghdr *)&msghdr, 0);
-        if (rv == -1 && errno != EWOULDBLOCK) {
+        if (rv < 0 ) {
+            if (errno != EWOULDBLOCK) {
                 return NEAT_ERROR_IO;
+            }
         }
         if (rv != -1) {
             amt -= rv;

@@ -90,6 +90,10 @@ struct neat_flow
     size_t writeSize;   // send buffer size
     // The memory buffer for writing.
     struct neat_message_queue_head bufferedMessages;
+    // The memory buffer for reading. Used of SCTP reassembly.
+    unsigned char *recvBuffer;    // memory for read buffer
+    size_t recvBufferSize;        // amount of received data
+    size_t recvBufferAllocation;  // size of buffered allocation
 
     neat_read_impl readfx;
     neat_write_impl writefx;

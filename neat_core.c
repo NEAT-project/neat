@@ -246,6 +246,7 @@ void neat_free_flow(neat_flow *flow)
         free(msg->buffered);
         free(msg);
     }
+    free(flow->recvBuffer);
     return;
 }
 

@@ -77,7 +77,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     assert (results->lh_first);
     assert (!flow->resolver_results);
 
-    //he_print_results(results);
+    he_print_results(results);
 
     // right now we're just going to use the first address. Todo by HE folks
     flow->family = results->lh_first->ai_family;

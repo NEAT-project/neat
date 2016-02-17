@@ -2,6 +2,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 
 #include "neat.h"
@@ -62,6 +64,66 @@ static void he_print_results(struct neat_resolver_results *results)
 }
 
 static void
+pm_filter(struct neat_resolver_results *results) {
+
+    struct neat_resolver_res *res_itr1 = results->lh_first;
+
+    while (res_itr1 != NULL) {
+
+        struct neat_resolver_res *tmp_itr1 = res_itr1;
+        res_itr1 = res_itr1->next_res.le_next;
+        if (((tmp_itr1->ai_protocol != IPPROTO_TCP) &&
+            (tmp_itr1->ai_protocol != IPPROTO_SCTP)) ||
+            (tmp_itr1->ai_family != AF_INET)) {
+
+            LIST_REMOVE(tmp_itr1, next_res);
+            free(tmp_itr1);
+
+        } else {
+
+            struct neat_resolver_res *res_itr2 = results->lh_first;
+            while (res_itr2 != tmp_itr1) {
+                struct neat_resolver_res *tmp_itr2 = res_itr2;
+                res_itr2 = res_itr2->next_res.le_next;
+                if ((tmp_itr1->ai_protocol == tmp_itr2->ai_protocol) &&
+                    (memcmp(&tmp_itr1->dst_addr,
+                            &tmp_itr2->dst_addr,
+                            sizeof(struct sockaddr_storage)) == 0)) {
+
+                    LIST_REMOVE(tmp_itr1, next_res);
+                    free(tmp_itr1);
+                    break;
+
+                }
+
+            }
+
+        }
+
+    }
+}
+
+static void
+connect_thread_cb(void *arg) {
+
+    printf("Thread with thread ID: %u\n", (unsigned int) uv_thread_self());
+
+}
+
+static void
+do_he(struct neat_resolver_results *candidates, neat_flow *flow) {
+
+    struct neat_resolver_res *candidate;
+    uv_thread_t tid;
+    LIST_FOREACH(candidate, candidates, next_res) {
+
+        uv_thread_create(&tid,connect_thread_cb, (void *)flow);
+
+    }
+
+}
+
+static void
 he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {
     neat_flow *flow = (neat_flow *)resolver->userData1;
@@ -77,7 +139,15 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     assert (results->lh_first);
     assert (!flow->resolver_results);
 
+
+    //printf("Before filtering:\n");
+    //he_print_results(results);
+    //printf("After filtering:\n");
+    pm_filter(results);
     he_print_results(results);
+
+    // Do Happy Eyeballs on filtered out protocols and destination addesses.
+    do_he(results, flow);
 
     // right now we're just going to use the first address. Todo by HE folks
     flow->family = results->lh_first->ai_family;
@@ -85,8 +155,6 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     flow->sockProtocol = results->lh_first->ai_protocol;
     flow->resolver_results = results;
     flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
-
-    printf("Protocol %u\n", flow->sockProtocol);
 
     callback_fx(resolver->nc, (neat_flow *)resolver->userData1, NEAT_OK,
                 flow->family, flow->sockType, flow->sockProtocol, -1);

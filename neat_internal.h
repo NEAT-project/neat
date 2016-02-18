@@ -149,6 +149,15 @@ struct neat_resolver_res {
     LIST_ENTRY(neat_resolver_res) next_res;
 };
 
+// Argument to connect thread during HE.
+struct he_thread_arg {
+    struct neat_resolver_res *candidate;
+    struct neat_flow *flow;
+    uv_mutex_t *mutex_first;
+    uv_cond_t *cond_first;
+    int32_t test_val; /* TODO: Remove. */
+};
+
 
 //Intilize resolver. Sets up internal callbacks etc.
 //Resolve is required, cleanup is not

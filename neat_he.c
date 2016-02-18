@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include "neat.h"
 #include "neat_internal.h"
@@ -106,20 +107,74 @@ pm_filter(struct neat_resolver_results *results) {
 static void
 connect_thread_cb(void *arg) {
 
-    printf("Thread with thread ID: %u\n", (unsigned int) uv_thread_self());
+    struct he_thread_arg *thread_arg = ( struct he_thread_arg *)arg;
+    neat_flow *flow = thread_arg->flow;
+    uv_mutex_t *mutex_first = thread_arg->mutex_first;
+    uv_cond_t *cond_first = thread_arg->cond_first;
+
+    usleep(1000);
+
+    if (thread_arg->test_val == 2) {
+        sleep( 1 );
+    }
+
+    if (uv_mutex_trylock(mutex_first) == 0) {
+
+        printf("Thread for %u won HE\n", thread_arg->test_val);
+        fflush(stdout);
+
+        flow->fd = thread_arg->test_val;
+        uv_cond_signal(cond_first);
+        uv_mutex_unlock(mutex_first);
+
+    } else {
+
+        printf("Thread for %u lost HE\n", thread_arg->test_val);
+        fflush(stdout);
+
+    }
+
+    free(thread_arg);
 
 }
 
 static void
 do_he(struct neat_resolver_results *candidates, neat_flow *flow) {
 
-    struct neat_resolver_res *candidate;
+    uv_mutex_t *mutex_first;
+    uv_cond_t *cond_first;
+
+    mutex_first = (uv_mutex_t *) malloc(sizeof(uv_mutex_t));
+    assert(mutex_first != NULL);
+    uv_mutex_init(mutex_first);
+    uv_mutex_lock(mutex_first);
+    cond_first = (uv_cond_t *) malloc(sizeof(uv_cond_t));
+    assert(cond_first != NULL);
+    uv_cond_init(cond_first);
+
     uv_thread_t tid;
+    struct neat_resolver_res *candidate;
+    int32_t i = 1; /* TODO: Remove */
     LIST_FOREACH(candidate, candidates, next_res) {
 
-        uv_thread_create(&tid,connect_thread_cb, (void *)flow);
+        struct he_thread_arg *arg = (struct he_thread_arg *) calloc(1, sizeof(struct he_thread_arg));
+        assert(arg != NULL);
+        arg->candidate = candidate;
+        arg->flow = flow;
+        arg->mutex_first = mutex_first;
+        arg->cond_first = cond_first;
+        arg->test_val = i++; /* TODO: Remove */
+
+        uv_thread_create(&tid,connect_thread_cb, (void *)arg);
 
     }
+
+    printf("Started waiting on threads...\n");
+    uv_cond_wait(cond_first, mutex_first);
+    printf("Started waiting on threads...Done.\n");
+
+    printf("Happy Eyeball winner: %u\n", flow->fd);
+    sleep(1);
 
 }
 

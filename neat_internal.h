@@ -155,6 +155,8 @@ struct he_thread_arg {
     struct neat_flow *flow;
     uv_mutex_t *mutex_first;
     uv_cond_t *cond_first;
+    uv_mutex_t *mutex_start;
+    uv_cond_t *cond_start;
     int32_t test_val; /* TODO: Remove. */
 };
 

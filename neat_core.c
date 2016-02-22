@@ -500,11 +500,10 @@ open_he_callback(neat_ctx *ctx, neat_flow *flow,
         uv_poll_init(ctx->loop, &flow->handle, fd); // makes fd nb as side effect
         flow->everConnected = 1;
         flow->fd = fd;
-    } else
-        if (flow->connectfx(ctx, flow) == -1) {
-            io_error(ctx, flow, NEAT_ERROR_IO);
-            goto cleanup;
-        }
+    } else {
+        io_error(ctx, flow, NEAT_ERROR_IO);
+        goto cleanup;
+    }
 
     // todo he needs to consider these properties to do the right thing
     if ((flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED) &&

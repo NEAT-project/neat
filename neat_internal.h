@@ -151,13 +151,14 @@ struct neat_resolver_res {
 
 // Argument to connect thread during HE.
 struct he_thread_arg {
+    uv_mutex_t *mutex_count;
+    uint32_t *thread_count;
     struct neat_resolver_res *candidate;
     struct neat_flow *flow;
     uv_mutex_t *mutex_first;
     uv_cond_t *cond_first;
     uv_mutex_t *mutex_start;
     uv_cond_t *cond_start;
-    int32_t test_val; /* TODO: Remove. */
 };
 
 

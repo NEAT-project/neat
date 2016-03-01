@@ -23,7 +23,7 @@
 struct neat_event_cb;
 struct neat_addr;
 
-//TODO: One drawkback with using LIST from queue.h, is that a callback can only
+//TODO: One drawback with using LIST from queue.h, is that a callback can only
 //be member of one list. Decide if this is critical and improve if needed
 LIST_HEAD(neat_event_cbs, neat_event_cb);
 LIST_HEAD(neat_src_addrs, neat_addr);
@@ -48,13 +48,17 @@ struct neat_ctx {
     NEAT_INTERNAL_OS;
 };
 
+struct he_cb_ctx;
+
 typedef struct neat_ctx neat_ctx ;
 typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                            const unsigned char *buffer, uint32_t amt);
 typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
-typedef int (*neat_connect_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
+// TODO: Remove when finished HE.
+//typedef int (*neat_connect_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
+typedef int (*neat_connect_impl)(struct he_cb_ctx *he_ctx);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_shutdown_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
@@ -84,7 +88,7 @@ struct neat_flow
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
-    uv_poll_t handle;
+    uv_poll_t *handle;
 
     size_t writeLimit;  // maximum to write if the socket supports partial writes
     size_t writeSize;   // send buffer size
@@ -106,6 +110,7 @@ struct neat_flow
     neat_listen_impl listenfx;
     neat_shutdown_impl shutdownfx;
 
+    int hefirstConnect : 1;
     int firstWritePending : 1;
     int acceptPending : 1;
     int isPolling : 1;
@@ -149,6 +154,8 @@ struct neat_resolver_res {
     LIST_ENTRY(neat_resolver_res) next_res;
 };
 
+// TODO: Remove when finished HE.
+#if 0
 // Argument to connect thread during HE.
 struct he_thread_arg {
     uv_mutex_t *mutex_count;
@@ -160,7 +167,20 @@ struct he_thread_arg {
     uv_mutex_t *mutex_start;
     uv_cond_t *cond_start;
 };
+#endif
 
+// Connect context needed during HE.
+struct he_cb_ctx {
+    uv_poll_t *handle;
+    struct neat_ctx *nc;
+    struct neat_resolver_res *candidate;
+    neat_flow *flow;
+    int fd;
+    size_t writeSize;
+    size_t readSize;
+    size_t writeLimit;
+    int isSCTPExplicitEOR : 1;
+};
 
 //Intilize resolver. Sets up internal callbacks etc.
 //Resolve is required, cleanup is not
@@ -274,12 +294,16 @@ struct neat_resolver {
     neat_resolver_cleanup_t cleanup;
 };
 
+// TODO: Remove when finished HE.
 // for happy eyeballs framework
+#if 0
 typedef void (*neat_he_callback_fx)(neat_ctx *ctx,
                                     neat_flow *flow,
                                     neat_error_code code,
                                     uint8_t family, int sockType, int sockProtocol,
                                     int fd); // can be -1
+#endif
+typedef void (*neat_he_callback_fx)(uv_timer_t* handle);
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_fx callback_fx);
 

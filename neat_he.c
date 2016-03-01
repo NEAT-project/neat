@@ -104,6 +104,8 @@ pm_filter(struct neat_resolver_results *results)
     }
 }
 
+// TODO: Remove when finished HE.
+#if 0
 static void
 connect_thread_cb(void *arg)
 {
@@ -263,6 +265,7 @@ do_he(struct neat_resolver_results *candidates, neat_flow *flow)
 
     flow->resolver_results = candidates;
 }
+#endif
 
 static void
 he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
@@ -271,24 +274,67 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     neat_he_callback_fx callback_fx;
     callback_fx = (neat_he_callback_fx) (neat_flow *)resolver->userData2;
 
+    // TODO: Remove when finished HE.
+#if 0
     if (code != NEAT_RESOLVER_OK) {
         callback_fx(resolver->nc, (neat_flow *)resolver->userData1, code,
                     0, 0, 0, -1);
         return;
     }
+#endif
 
     assert (results->lh_first);
     assert (!flow->resolver_results);
 
     /* TODO: This is a fake Policy Manager that filters out TCP/SCTP/IPv4. */
     pm_filter(results);
+    printf("Happy Eyeball candidates:\n"); fflush(stdout);
+    he_print_results(results);
 
+    // TODO: Remove when finished HE.
+#if 0
     /* Do Happy Eyeballs on filtered out protocols and destination addesses. */
     flow->fd = -1; // HE fails.
     do_he(results, flow);
 
+    flow->fd = -1;
+    flow->family = results->lh_first->ai_family;
+    flow->sockType = results->lh_first->ai_socktype;
+    flow->sockProtocol = results->lh_first->ai_protocol;
+    flow->resolver_results = results;
+    flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
+
     callback_fx(resolver->nc, (neat_flow *)resolver->userData1, NEAT_OK,
                 flow->family, flow->sockType, flow->sockProtocol, flow->fd);
+#endif
+
+    flow->resolver_results = results;
+    flow->hefirstConnect = 1;
+    struct neat_resolver_res *candidate;
+    LIST_FOREACH(candidate, results, next_res) {
+
+        struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) malloc(sizeof(struct he_cb_ctx));
+        assert(he_ctx !=NULL);
+        he_ctx->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+        assert(he_ctx->handle != NULL);
+        he_ctx->handle->data = (void *)he_ctx;
+        he_ctx->nc = resolver->nc;
+        he_ctx->candidate = candidate;
+        he_ctx->flow = flow;
+        he_ctx->fd = -1;
+
+        if (flow->connectfx(he_ctx) == -1) {
+            /* TODO: Some error handling, or? */
+            printf("Issue a connect for protocol = %u\n", he_ctx->candidate->ai_protocol); fflush(stdout);
+            continue;
+        }
+
+        uv_timer_t *he_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
+        he_timer->data = (void *)he_ctx;
+        uv_timer_init(resolver->nc->loop, he_timer);
+        uv_timer_start(he_timer, callback_fx, 2000, 0);
+
+    }
 
 }
 

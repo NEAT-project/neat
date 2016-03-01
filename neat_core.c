@@ -236,10 +236,10 @@ void neat_free_flow(neat_flow *flow)
     struct neat_buffered_message *msg, *next_msg;
 
     if (flow->isPolling)
-        uv_poll_stop(&flow->handle);
+        uv_poll_stop(flow->handle);
 
-    if (flow->handle.type != UV_UNKNOWN_HANDLE)
-        uv_close((uv_handle_t *)(&flow->handle), free_cb);
+    if (flow->handle->type != UV_UNKNOWN_HANDLE)
+        uv_close((uv_handle_t *)flow->handle, free_cb);
 
     TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
         TAILQ_REMOVE(&flow->bufferedMessages, msg, message_next);
@@ -247,6 +247,7 @@ void neat_free_flow(neat_flow *flow)
         free(msg);
     }
     free(flow->readBuffer);
+    free(flow->handle);
     return;
 }
 
@@ -268,7 +269,7 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
                                     struct neat_flow_operations *ops)
 {
     flow->operations = ops;
-    updatePollHandle(mgr, flow, &flow->handle);
+    updatePollHandle(mgr, flow, flow->handle);
     return NEAT_OK;
 }
 
@@ -387,7 +388,7 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
-    if (handle->loop == NULL || uv_is_closing((uv_handle_t *)&flow->handle)) {
+    if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->handle)) {
         return;
     }
 
@@ -408,6 +409,56 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
         flow->isPolling = 0;
         uv_poll_stop(handle);
     }
+}
+
+static void
+he_connected_cb(uv_poll_t *handle, int status, int events)
+{
+    struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) handle->data;
+    neat_flow *flow = he_ctx->flow;
+
+    printf("he_connected_cb for protocol = %u\n", he_ctx->candidate->ai_protocol);
+
+    if (flow->hefirstConnect == 1) {
+        flow->hefirstConnect = 0;
+        printf("First protocol = %u\n", he_ctx->candidate->ai_protocol);
+        flow->family = he_ctx->candidate->ai_family;
+        flow->sockType = he_ctx->candidate->ai_socktype;
+        flow->sockProtocol = he_ctx->candidate->ai_protocol;
+        flow->everConnected = 1;
+        flow->fd = he_ctx->fd;
+        flow->ctx = he_ctx->nc;
+        flow->handle = handle;
+        flow->handle->data = (void *) flow;
+        flow->writeSize = he_ctx->writeSize;
+        flow->writeLimit = he_ctx->writeLimit;
+        flow->readSize = he_ctx->readSize;
+        flow->isSCTPExplicitEOR = he_ctx->isSCTPExplicitEOR;
+        flow->firstWritePending = 1;
+        flow->isPolling = 1;
+
+        free(he_ctx);
+
+        // TODO: Security layer.
+
+        uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
+    } else {
+        uv_poll_stop(handle);
+        free(handle);
+        free(he_ctx);
+    }
+}
+
+static void
+he_do_connect_cb(uv_timer_t* handle)
+{
+    struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) handle->data;
+
+    uv_timer_stop(handle);
+    free(handle);
+
+    printf("he_do_connect_cb for protocol = %u\n", he_ctx->candidate->ai_protocol);
+    uv_poll_start(he_ctx->handle, UV_WRITABLE, he_connected_cb);
 }
 
 static void uvpollable_cb(uv_poll_t *handle, int status, int events)
@@ -441,7 +492,7 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
     if (events & UV_READABLE) {
         io_readable(ctx, flow, NEAT_OK);
     }
-    updatePollHandle(ctx, flow, &flow->handle);
+    updatePollHandle(ctx, flow, flow->handle);
 }
 
 static void do_accept(neat_ctx *ctx, neat_flow *flow)
@@ -474,13 +525,15 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     if (newFlow->fd == -1) {
         neat_free_flow(newFlow);
     } else {
-        uv_poll_init(ctx->loop, &newFlow->handle, newFlow->fd); // makes fd nb as side effect
-        newFlow->handle.data = newFlow;
+        uv_poll_init(ctx->loop, newFlow->handle, newFlow->fd); // makes fd nb as side effect
+        newFlow->handle->data = newFlow;
         io_connected(ctx, newFlow, NEAT_OK);
-        uvpollable_cb(&newFlow->handle, NEAT_OK, 0);
+        uvpollable_cb(newFlow->handle, NEAT_OK, 0);
     }
 }
 
+// TODO: Remove when finished HE.
+#if 0
 static void
 open_he_callback(neat_ctx *ctx, neat_flow *flow,
                  neat_error_code code,
@@ -501,8 +554,15 @@ open_he_callback(neat_ctx *ctx, neat_flow *flow,
         flow->everConnected = 1;
         flow->fd = fd;
     } else {
+        if (flow->connectfx(ctx, flow) == -1) {
+            io_error(ctx, flow, NEAT_ERROR_IO);
+            goto cleanup;
+        }
+// TODO: Remove when finished HE.
+#if 0
         io_error(ctx, flow, NEAT_ERROR_IO);
         goto cleanup;
+#endif
     }
 
     // todo he needs to consider these properties to do the right thing
@@ -548,6 +608,7 @@ cleanup:
     }
     return;
 }
+#endif
 
 neat_error_code
 neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, const char *port)
@@ -559,7 +620,9 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, const char *port)
     flow->name = strdup(name);
     flow->port = strdup(port);
     flow->propertyAttempt = flow->propertyMask;
-    return neat_he_lookup(mgr, flow, open_he_callback);
+    // TODO: Remove when finished HE.
+    //return neat_he_lookup(mgr, flow, open_he_callback);
+    return neat_he_lookup(mgr, flow, he_do_connect_cb);
 }
 
 static void
@@ -584,8 +647,10 @@ accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *
         return;
     }
 
-    flow->handle.data = flow;
-    uv_poll_init(ctx->loop, &flow->handle, flow->fd);
+    flow->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+    assert(flow->handle != NULL);
+    flow->handle->data = flow;
+    uv_poll_init(ctx->loop, flow->handle, flow->fd);
 
 #if defined (IPPROTO_SCTP)
     if ((flow->sockProtocol == IPPROTO_SCTP) ||
@@ -595,10 +660,10 @@ accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *
 #endif
         flow->isPolling = 1;
         flow->acceptPending = 1;
-        uv_poll_start(&flow->handle, UV_READABLE, uvpollable_cb);
+        uv_poll_start(flow->handle, UV_READABLE, uvpollable_cb);
     } else {
         // do normal i/o events without accept() for non connected protocols
-        updatePollHandle(ctx, flow, &flow->handle);
+        updatePollHandle(ctx, flow, flow->handle);
     }
 }
 
@@ -929,7 +994,7 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
     } else {
         flow->isDraining = 1;
     }
-    updatePollHandle(ctx, flow, &flow->handle);
+    updatePollHandle(ctx, flow, flow->handle);
     return NEAT_OK;
 }
 
@@ -971,6 +1036,8 @@ neat_accept_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, int fd)
     return accept(fd, NULL, NULL);
 }
 
+// TODO: Remove when finished HE.
+#if 0
 static int
 neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
@@ -1015,6 +1082,56 @@ neat_connect_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     uv_poll_init(ctx->loop, &flow->handle, flow->fd); // makes fd nb as side effect
     if ((flow->fd == -1) ||
         (connect(flow->fd, flow->sockAddr, slen) && (errno != EINPROGRESS))) {
+        return -1;
+    }
+    return 0;
+}
+#endif
+
+static int
+neat_connect_via_kernel(struct he_cb_ctx *he_ctx)
+{
+    int enable = 1;
+    socklen_t len;
+    int size;
+    socklen_t slen =
+            (he_ctx->candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+
+    he_ctx->fd = socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, he_ctx->candidate->ai_protocol);
+    len = (socklen_t)sizeof(int);
+    if (getsockopt(he_ctx->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
+        he_ctx->writeSize = size;
+    } else {
+        he_ctx->writeSize = 0;
+    }
+    len = (socklen_t)sizeof(int);
+    if (getsockopt(he_ctx->fd, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
+        he_ctx->readSize = size;
+    } else {
+        he_ctx->readSize = 0;
+    }
+    switch (he_ctx->candidate->ai_protocol) {
+        case IPPROTO_TCP:
+            setsockopt(he_ctx->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+            break;
+#ifdef IPPROTO_SCTP
+        case IPPROTO_SCTP:
+            he_ctx->writeLimit =  he_ctx->writeSize / 4;
+#ifdef SCTP_NODELAY
+            setsockopt(he_ctx->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
+#endif
+#ifdef SCTP_EXPLICIT_EOR
+        if (setsockopt(he_ctx->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
+            he_ctx->isSCTPExplicitEOR = 1;
+#endif
+            break;
+#endif
+        default:
+            break;
+    }
+    uv_poll_init(he_ctx->nc->loop, he_ctx->handle, he_ctx->fd); // makes fd nb as side effect
+    if ((he_ctx->fd == -1) ||
+        (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
         return -1;
     }
     return 0;

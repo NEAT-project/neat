@@ -84,7 +84,7 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
         return;
     }
 
-    //v4 and v6 has to be handeled differently, both due to address size and
+    //v4 and v6 has to be handled differently, both due to address size and
     //available information
     if (ifm->ifa_family == AF_INET) {
         src_addr4 = (struct sockaddr_in*) &src_addr;

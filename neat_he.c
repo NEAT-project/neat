@@ -104,184 +104,12 @@ pm_filter(struct neat_resolver_results *results)
     }
 }
 
-// TODO: Remove when finished HE.
-#if 0
-static void
-connect_thread_cb(void *arg)
-{
-    struct he_thread_arg *thread_arg = ( struct he_thread_arg *)arg;
-    struct neat_resolver_res *candidate = thread_arg->candidate;
-    neat_flow *flow = thread_arg->flow;
-    uv_mutex_t *mutex_count = thread_arg->mutex_count;
-    uv_mutex_t *mutex_first = thread_arg->mutex_first;
-    uv_cond_t *cond_first = thread_arg->cond_first;
-    uv_mutex_t *mutex_start = thread_arg->mutex_start;
-    uv_cond_t *cond_start = thread_arg->cond_start;
-
-    uv_mutex_lock(mutex_count);
-    thread_arg->thread_count++;
-    uv_mutex_unlock(mutex_count);
-
-    uv_mutex_lock(mutex_start);
-    uv_cond_wait(cond_start, mutex_start);
-    uv_mutex_unlock(mutex_start);
-
-    socklen_t slen = (socklen_t)(candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
-    int fd = socket(candidate->ai_family, candidate->ai_socktype, candidate->ai_protocol);
-    if (fd == -1) {
-        goto cleanup;
-    }
-
-    if (connect(fd, (struct sockaddr *) &(candidate->dst_addr), slen) == -1) {
-        goto cleanup;
-    }
-
-    if (uv_mutex_trylock(mutex_first) == 0) {
-        flow->family = candidate->ai_family;
-        flow->sockType = candidate->ai_socktype;
-        flow->sockProtocol = candidate->ai_protocol;
-        flow->sockAddr = (struct sockaddr *) &(candidate->dst_addr);
-
-        flow->fd = fd;
-
-        socklen_t len = (socklen_t)sizeof(int);
-        int size;
-        if (getsockopt(flow->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
-            flow->writeSize = size;
-        } else {
-            flow->writeSize = 0;
-        }
-
-        len = (socklen_t)sizeof(int);
-        if (getsockopt(flow->fd, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
-            flow->readSize = size;
-        } else {
-            flow->readSize = 0;
-        }
-
-        int enable = 1;
-        switch (flow->sockProtocol) {
-            case IPPROTO_TCP:
-                setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
-                break;
-
-#ifdef IPPROTO_SCTP
-            case IPPROTO_SCTP:
-                flow->writeLimit =  flow->writeSize / 4;
-#ifdef SCTP_NODELAY
-                setsockopt(flow->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
-#endif
-
-#ifdef SCTP_EXPLICIT_EOR
-            if (setsockopt(flow->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
-            flow->isSCTPExplicitEOR = 1;
-#endif
-                break;
-#endif
-            default:
-                break;
-        }
-
-        uv_cond_signal(cond_first);
-        uv_mutex_unlock(mutex_first);
-    } else {
-        close(fd);
-    }
-
-    cleanup:
-    free(thread_arg);
-    uv_mutex_lock(mutex_count);
-    thread_arg->thread_count--;
-    if (thread_arg->thread_count == 0) {
-        uv_mutex_unlock(mutex_count);
-        uv_mutex_destroy(mutex_count);
-        (void)free(mutex_count);
-        uv_mutex_destroy(mutex_start);
-        (void)free(mutex_start);
-        uv_mutex_destroy(mutex_first);
-        (void)free(mutex_first);
-    } else {
-        uv_mutex_unlock(mutex_count);
-    }
-}
-
-static void
-do_he(struct neat_resolver_results *candidates, neat_flow *flow)
-{
-    uv_mutex_t *mutex_count;
-    uv_mutex_t *mutex_first;
-    uv_cond_t *cond_first;
-    uv_mutex_t *mutex_start;
-    uv_cond_t *cond_start;
-
-    mutex_count = (uv_mutex_t *) malloc(sizeof(uv_mutex_t));
-    assert(mutex_count != NULL);
-    uv_mutex_init(mutex_count);
-
-    mutex_first = (uv_mutex_t *) malloc(sizeof(uv_mutex_t));
-    assert(mutex_first != NULL);
-    uv_mutex_init(mutex_first);
-    uv_mutex_lock(mutex_first);
-    cond_first = (uv_cond_t *) malloc(sizeof(uv_cond_t));
-    assert(cond_first != NULL);
-    uv_cond_init(cond_first);
-
-    mutex_start = (uv_mutex_t *) malloc(sizeof(uv_mutex_t));
-    assert(mutex_start != NULL);
-    uv_mutex_init(mutex_start);
-    cond_start = (uv_cond_t *) malloc(sizeof(uv_cond_t));
-    assert(cond_start != NULL);
-    uv_cond_init(cond_start);
-
-    uv_thread_t tid;
-    struct neat_resolver_res *candidate;
-    uint32_t thread_count = 0;
-    LIST_FOREACH(candidate, candidates, next_res) {
-
-        struct he_thread_arg *arg = (struct he_thread_arg *) calloc(1, sizeof(struct he_thread_arg));
-        assert(arg != NULL);
-        arg->thread_count = &thread_count;
-        arg->mutex_count = mutex_count;
-        arg->candidate = candidate;
-        arg->flow = flow;
-        arg->mutex_first = mutex_first;
-        arg->cond_first = cond_first;
-        arg->mutex_start = mutex_start;
-        arg->cond_start = cond_start;
-
-        /* TODO: Create detached threads. */
-        uv_thread_create(&tid,connect_thread_cb, (void *)arg);
-
-    }
-
-    usleep(1000); // Avoid race condition between main and connect threads.
-
-    printf("Started waiting on threads...\n");
-    uv_mutex_lock(mutex_start);
-    uv_cond_broadcast(cond_start);
-    uv_mutex_unlock(mutex_start);
-    uv_cond_wait(cond_first, mutex_first);
-    printf("Started waiting on threads...Done.\n");
-
-    flow->resolver_results = candidates;
-}
-#endif
-
 static void
 he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {
     neat_flow *flow = (neat_flow *)resolver->userData1;
     neat_he_callback_fx callback_fx;
     callback_fx = (neat_he_callback_fx) (neat_flow *)resolver->userData2;
-
-    // TODO: Remove when finished HE.
-#if 0
-    if (code != NEAT_RESOLVER_OK) {
-        callback_fx(resolver->nc, (neat_flow *)resolver->userData1, code,
-                    0, 0, 0, -1);
-        return;
-    }
-#endif
 
     assert (results->lh_first);
     assert (!flow->resolver_results);
@@ -290,23 +118,6 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     pm_filter(results);
     printf("Happy Eyeball candidates:\n"); fflush(stdout);
     he_print_results(results);
-
-    // TODO: Remove when finished HE.
-#if 0
-    /* Do Happy Eyeballs on filtered out protocols and destination addesses. */
-    flow->fd = -1; // HE fails.
-    do_he(results, flow);
-
-    flow->fd = -1;
-    flow->family = results->lh_first->ai_family;
-    flow->sockType = results->lh_first->ai_socktype;
-    flow->sockProtocol = results->lh_first->ai_protocol;
-    flow->resolver_results = results;
-    flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
-
-    callback_fx(resolver->nc, (neat_flow *)resolver->userData1, NEAT_OK,
-                flow->family, flow->sockType, flow->sockProtocol, flow->fd);
-#endif
 
     flow->resolver_results = results;
     flow->hefirstConnect = 1;
@@ -324,15 +135,15 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         he_ctx->fd = -1;
 
         if (flow->connectfx(he_ctx) == -1) {
-            /* TODO: Some error handling, or? */
-            printf("Issue a connect for protocol = %u\n", he_ctx->candidate->ai_protocol); fflush(stdout);
+            /* TODO: Some error handling? */
             continue;
         }
+        printf("Issue a connect for protocol = %u\n", he_ctx->candidate->ai_protocol); fflush(stdout);
 
         uv_timer_t *he_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
         he_timer->data = (void *)he_ctx;
         uv_timer_init(resolver->nc->loop, he_timer);
-        uv_timer_start(he_timer, callback_fx, 2000, 0);
+        uv_timer_start(he_timer, callback_fx, 500, 0);
 
     }
 
@@ -370,7 +181,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_
     if (!ctx->resolver) {
         ctx->resolver = neat_resolver_init(ctx, he_resolve_cb, NULL);
     }
-    ctx->resolver->userData1 = (void *)flow; // todo this doesn't allow multiple sockets
+    ctx->resolver->userData1 = (void *)flow; // TODO: This doesn't allow multiple sockets
     ctx->resolver->userData2 = callback_fx;
 
     /* FIXME: derivation of the socket type is wrong.

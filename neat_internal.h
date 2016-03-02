@@ -29,11 +29,11 @@ LIST_HEAD(neat_event_cbs, neat_event_cb);
 LIST_HEAD(neat_src_addrs, neat_addr);
 
 struct neat_pib
-{ // todo
+{ // TODO
 };
 
 struct neat_cib
-{ // todo
+{ // TODO
 };
 
 struct neat_ctx {
@@ -56,8 +56,6 @@ typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                            const unsigned char *buffer, uint32_t amt);
 typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
-// TODO: Remove when finished HE.
-//typedef int (*neat_connect_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_connect_impl)(struct he_cb_ctx *he_ctx);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
@@ -153,21 +151,6 @@ struct neat_resolver_res {
     uint8_t internal;
     LIST_ENTRY(neat_resolver_res) next_res;
 };
-
-// TODO: Remove when finished HE.
-#if 0
-// Argument to connect thread during HE.
-struct he_thread_arg {
-    uv_mutex_t *mutex_count;
-    uint32_t *thread_count;
-    struct neat_resolver_res *candidate;
-    struct neat_flow *flow;
-    uv_mutex_t *mutex_first;
-    uv_cond_t *cond_first;
-    uv_mutex_t *mutex_start;
-    uv_cond_t *cond_start;
-};
-#endif
 
 // Connect context needed during HE.
 struct he_cb_ctx {
@@ -294,15 +277,7 @@ struct neat_resolver {
     neat_resolver_cleanup_t cleanup;
 };
 
-// TODO: Remove when finished HE.
 // for happy eyeballs framework
-#if 0
-typedef void (*neat_he_callback_fx)(neat_ctx *ctx,
-                                    neat_flow *flow,
-                                    neat_error_code code,
-                                    uint8_t family, int sockType, int sockProtocol,
-                                    int fd); // can be -1
-#endif
 typedef void (*neat_he_callback_fx)(uv_timer_t* handle);
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_fx callback_fx);

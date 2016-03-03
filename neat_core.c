@@ -271,7 +271,7 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
                                     struct neat_flow_operations *ops)
 {
     flow->operations = ops;
-    updatePollHandle(mgr, flow, flow->handle);
+    //updatePollHandle(mgr, flow, flow->handle);
     return NEAT_OK;
 }
 
@@ -393,7 +393,7 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->handle)) {
         return;
     }
-    
+
     int newEvents = 0;
     if (flow->operations && flow->operations->on_readable) {
         newEvents |= UV_READABLE;
@@ -520,6 +520,8 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     newFlow->operations->ctx = ctx;
     newFlow->operations->flow = flow;
 
+    newFlow->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+    assert(newFlow->handle != NULL);
     newFlow->fd = newFlow->acceptfx(ctx, newFlow, flow->fd);
     if (newFlow->fd == -1) {
         neat_free_flow(newFlow);
@@ -1105,8 +1107,9 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
         return NULL;
 
     rv->fd = -1;
-    rv->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
-    assert(rv->handle != NULL);
+    rv->handle = NULL;
+    //rv->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+    //assert(rv->handle != NULL);
     // defaults
     rv->writefx = neat_write_via_kernel;
     rv->readfx = neat_read_via_kernel;

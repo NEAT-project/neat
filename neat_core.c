@@ -271,7 +271,6 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
                                     struct neat_flow_operations *ops)
 {
     flow->operations = ops;
-    //updatePollHandle(mgr, flow, flow->handle);
     return NEAT_OK;
 }
 
@@ -451,11 +450,18 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 }
 
 static void
+on_he_timer_close_cb(uv_handle_t *handle)
+{
+    free(handle);
+}
+
+static void
 he_do_connect_cb(uv_timer_t* handle)
 {
     struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) handle->data;
 
     uv_timer_stop(handle);
+    uv_close((uv_handle_t *) handle, on_he_timer_close_cb);
 
     uv_poll_start(he_ctx->handle, UV_WRITABLE, he_connected_cb);
 }

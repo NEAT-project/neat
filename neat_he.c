@@ -114,10 +114,11 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     assert (results->lh_first);
     assert (!flow->resolver_results);
 
+#if 0
     /* TODO: This is a fake Policy Manager that filters out TCP/SCTP/IPv4. */
     pm_filter(results);
-    printf("Happy Eyeball candidates:\n"); fflush(stdout);
     he_print_results(results);
+#endif
 
     flow->resolver_results = results;
     flow->hefirstConnect = 1;
@@ -138,7 +139,6 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
             /* TODO: Some error handling? */
             continue;
         }
-        printf("Issue a connect for protocol = %u\n", he_ctx->candidate->ai_protocol); fflush(stdout);
 
         uv_timer_t *he_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
         he_timer->data = (void *)he_ctx;

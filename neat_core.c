@@ -423,11 +423,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) handle->data;
     neat_flow *flow = he_ctx->flow;
 
-    printf("he_connected_cb for protocol = %u with status = %d\n", he_ctx->candidate->ai_protocol, status); fflush(stdout);
-
     if (flow->hefirstConnect && (status == 0)) {
         flow->hefirstConnect = 0;
-        printf("First protocol = %u\n", he_ctx->candidate->ai_protocol);
         flow->family = he_ctx->candidate->ai_family;
         flow->sockType = he_ctx->candidate->ai_socktype;
         flow->sockProtocol = he_ctx->candidate->ai_protocol;
@@ -449,7 +446,6 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
-        printf("Not first protocol = %u\n", he_ctx->candidate->ai_protocol); fflush(stdout);
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, NULL);
         free(he_ctx);
@@ -463,7 +459,6 @@ he_do_connect_cb(uv_timer_t* handle)
 
     uv_timer_stop(handle);
 
-    printf("he_do_connect_cb for protocol = %u\n", he_ctx->candidate->ai_protocol);
     uv_poll_start(he_ctx->handle, UV_WRITABLE, he_connected_cb);
 }
 
@@ -614,7 +609,6 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     flow->ctx = ctx;
     flow->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
     assert(flow->handle != NULL);
-    printf("flow->handle is allocated\n");
 
     if (!ctx->resolver)
         ctx->resolver = neat_resolver_init(ctx, accept_resolve_cb, NULL);

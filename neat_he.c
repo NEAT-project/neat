@@ -64,6 +64,8 @@ static void he_print_results(struct neat_resolver_results *results)
     }
 }
 
+/* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
+#if 0
 static void
 pm_filter(struct neat_resolver_results *results)
 {
@@ -103,6 +105,7 @@ pm_filter(struct neat_resolver_results *results)
 
     }
 }
+#endif
 
 static void
 he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
@@ -114,8 +117,8 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     assert (results->lh_first);
     assert (!flow->resolver_results);
 
+    /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
 #if 0
-    /* TODO: This is a fake Policy Manager that filters out TCP/SCTP/IPv4. */
     pm_filter(results);
     he_print_results(results);
 #endif

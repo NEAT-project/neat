@@ -390,12 +390,10 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
-    if (flow->handle != NULL) {
-        if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->handle)) {
-            return;
-        }
+    if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->handle)) {
+        return;
     }
-
+    
     int newEvents = 0;
     if (flow->operations && flow->operations->on_readable) {
         newEvents |= UV_READABLE;

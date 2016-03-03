@@ -1113,7 +1113,8 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
         return NULL;
 
     rv->fd = -1;
-    rv->handle = NULL;
+    rv->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+    assert(rv->handle != NULL);
     // defaults
     rv->writefx = neat_write_via_kernel;
     rv->readfx = neat_read_via_kernel;

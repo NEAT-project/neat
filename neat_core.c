@@ -443,6 +443,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
+        flow->closefx(he_ctx->nc, flow);
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, NULL);
         free(he_ctx);

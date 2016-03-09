@@ -420,6 +420,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) handle->data;
     neat_flow *flow = he_ctx->flow;
 
+    //TODO: Final place to filter based on policy
+    //TODO: This one uses the first result, so is wrong
     if (flow->hefirstConnect && (status == 0)) {
         flow->hefirstConnect = 0;
         flow->family = he_ctx->candidate->ai_family;

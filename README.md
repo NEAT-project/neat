@@ -99,3 +99,7 @@ The best way to look at how to use the resolver is to look at the example file,
 - [ ] Design a better algorithm for choosing servers, prioritizing servers sent to
   user.
 - [ ] Lots of other stuff that I can't think of now.
+
+# Acknowledgement
+
+This work has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 644334 (NEAT). The views expressed are solely those of the author(s).

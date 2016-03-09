@@ -47,7 +47,7 @@ on_readable(struct neat_flow_operations *opCB)
 }
 
 static const char *request =
-    "GET / HTTP/1.0\r\nHost:bsd10.fh-muenster.de\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
+    "GET /cgi-bin/he HTTP/1.0\r\nHost:bsd10.fh-muenster.de\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 
 static neat_error_code
 on_all_written(struct neat_flow_operations *opCB)

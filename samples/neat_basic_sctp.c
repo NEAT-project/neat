@@ -25,11 +25,11 @@ static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
-    unsigned char buffer[32];
+    unsigned char buffer[2048];
     uint32_t amt;
     neat_error_code code;
 
-    code = neat_read(opCB->ctx, opCB->flow, buffer, 32, &amt);
+    code = neat_read(opCB->ctx, opCB->flow, buffer, 2048, &amt);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
         return 0;
     }

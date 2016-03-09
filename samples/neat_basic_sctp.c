@@ -81,15 +81,23 @@ on_connected(struct neat_flow_operations *opCB)
 int
 main(int argc, char *argv[])
 {
-    struct neat_ctx *ctx = neat_init_ctx();
-    struct neat_flow *flow;
+    struct neat_ctx *ctx = NULL;
+    struct neat_flow *flow = NULL;
     uint64_t prop;
+    int result;
 
-    if (ctx == NULL) {
+    result = EXIT_SUCCESS;
+
+    if ((ctx = neat_init_ctx()) == NULL) {
         fprintf(stderr, "could not initialize context\n");
-        exit(EXIT_FAILURE);
+        result = EXIT_FAILURE;
+        goto cleanup;
     }
-    flow = neat_new_flow(ctx);
+    if ((flow = neat_new_flow(ctx)) == NULL) {
+        fprintf(stderr, "could not initialize context\n");
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
     neat_get_property(ctx, flow, &prop);
     prop |= NEAT_PROPERTY_SCTP_REQUIRED;
     neat_set_property(ctx, flow, prop);
@@ -102,10 +110,16 @@ main(int argc, char *argv[])
     // wait for on_connected or on_error to be invoked
     if (neat_open(ctx, flow, "bsd10.fh-muenster.de", "80") == NEAT_OK)
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
-    else
+    else {
         fprintf(stderr, "Could not open flow\n");
-
-    neat_free_flow(flow);
-    neat_free_ctx(ctx);
-    exit(EXIT_SUCCESS);
+        result = EXIT_FAILURE;
+    }
+cleanup:
+    if (flow != NULL) {
+        neat_free_flow(flow);
+    }
+    if (ctx != NULL) {
+        neat_free_ctx(ctx);
+    }
+    exit(result);
 }

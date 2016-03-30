@@ -56,7 +56,7 @@ typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                            const unsigned char *buffer, uint32_t amt);
 typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
-typedef int (*neat_connect_impl)(struct he_cb_ctx *he_ctx);
+typedef int (*neat_connect_impl)(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_shutdown_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
@@ -278,8 +278,8 @@ struct neat_resolver {
 };
 
 // for happy eyeballs framework
-typedef void (*neat_he_callback_fx)(uv_timer_t* handle);
+//typedef void (*neat_he_callback_fx)(uv_timer_t* handle);
 
-neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_fx callback_fx);
+neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);
 
 #endif

@@ -111,8 +111,8 @@ static void
 he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {
     neat_flow *flow = (neat_flow *)resolver->userData1;
-    neat_he_callback_fx callback_fx;
-    callback_fx = (neat_he_callback_fx) (neat_flow *)resolver->userData2;
+    uv_poll_cb callback_fx;
+    callback_fx = (uv_poll_cb) (neat_flow *)resolver->userData2;
 
     assert (results->lh_first);
     assert (!flow->resolver_results);
@@ -138,21 +138,21 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         he_ctx->flow = flow;
         he_ctx->fd = -1;
 
-        if (flow->connectfx(he_ctx) == -1) {
+        if (flow->connectfx(he_ctx, callback_fx) == -1) {
             /* TODO: Some error handling? */
             continue;
         }
 
-        uv_timer_t *he_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
+/*        uv_timer_t *he_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
         he_timer->data = (void *)he_ctx;
         uv_timer_init(resolver->nc->loop, he_timer);
-        uv_timer_start(he_timer, callback_fx, 500, 0);
+        uv_timer_start(he_timer, callback_fx, 500, 0);*/
 
     }
 
 }
 
-neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_fx callback_fx)
+neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx)
 {
     int protocols[NEAT_MAX_NUM_PROTO]; /* We only support SCTP, TCP, UDP, and UDPLite */
     uint8_t nr_of_protocols;

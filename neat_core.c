@@ -452,7 +452,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     }
 }
 
-static void
+/*static void
 on_he_timer_close_cb(uv_handle_t *handle)
 {
     free(handle);
@@ -467,7 +467,7 @@ he_do_connect_cb(uv_timer_t* handle)
     uv_close((uv_handle_t *) handle, on_he_timer_close_cb);
 
     uv_poll_start(he_ctx->handle, UV_WRITABLE, he_connected_cb);
-}
+}*/
 
 static void uvpollable_cb(uv_poll_t *handle, int status, int events)
 {
@@ -553,7 +553,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, const char *port)
     flow->port = strdup(port);
     flow->propertyAttempt = flow->propertyMask;
 
-    return neat_he_lookup(mgr, flow, he_do_connect_cb);
+    return neat_he_lookup(mgr, flow, he_connected_cb);
 }
 
 static void
@@ -968,7 +968,7 @@ neat_accept_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, int fd)
 }
 
 static int
-neat_connect_via_kernel(struct he_cb_ctx *he_ctx)
+neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 {
     int enable = 1;
     socklen_t len;
@@ -1013,6 +1013,7 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx)
         (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
         return -1;
     }
+    uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx);
     return 0;
 }
 

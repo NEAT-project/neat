@@ -277,9 +277,6 @@ struct neat_resolver {
     neat_resolver_cleanup_t cleanup;
 };
 
-// for happy eyeballs framework
-//typedef void (*neat_he_callback_fx)(uv_timer_t* handle);
-
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);
 
 #endif

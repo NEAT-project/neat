@@ -143,11 +143,6 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
             continue;
         }
 
-/*        uv_timer_t *he_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
-        he_timer->data = (void *)he_ctx;
-        uv_timer_init(resolver->nc->loop, he_timer);
-        uv_timer_start(he_timer, callback_fx, 500, 0);*/
-
     }
 
 }

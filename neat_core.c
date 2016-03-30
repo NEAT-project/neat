@@ -452,23 +452,6 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     }
 }
 
-/*static void
-on_he_timer_close_cb(uv_handle_t *handle)
-{
-    free(handle);
-}
-
-static void
-he_do_connect_cb(uv_timer_t* handle)
-{
-    struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) handle->data;
-
-    uv_timer_stop(handle);
-    uv_close((uv_handle_t *) handle, on_he_timer_close_cb);
-
-    uv_poll_start(he_ctx->handle, UV_WRITABLE, he_connected_cb);
-}*/
-
 static void uvpollable_cb(uv_poll_t *handle, int status, int events)
 {
     neat_flow *flow = handle->data;

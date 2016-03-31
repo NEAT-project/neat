@@ -247,7 +247,8 @@ void neat_free_flow(neat_flow *flow)
     if (flow->isPolling)
         uv_poll_stop(flow->handle);
 
-    if (flow->handle->type != UV_UNKNOWN_HANDLE)
+    if ((flow->handle != NULL) &&
+        (flow->handle->type != UV_UNKNOWN_HANDLE))
         uv_close((uv_handle_t *)flow->handle, free_cb);
 
     return;

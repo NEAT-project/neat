@@ -28,7 +28,7 @@ void neat_free_ctx(struct neat_ctx *nc);
 
 typedef uint64_t neat_error_code;
 struct neat_flow_operations;
-typedef uint64_t (*neat_flow_operations_fx)(struct neat_flow_operations *);
+typedef neat_error_code (*neat_flow_operations_fx)(struct neat_flow_operations *);
 
 struct neat_flow_operations
 {

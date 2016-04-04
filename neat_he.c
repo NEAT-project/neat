@@ -2,7 +2,10 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include "neat.h"
 #include "neat_internal.h"
@@ -61,38 +64,90 @@ static void he_print_results(struct neat_resolver_results *results)
     }
 }
 
+/* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
+#if 0
+static void
+pm_filter(struct neat_resolver_results *results)
+{
+    struct neat_resolver_res *res_itr1 = results->lh_first;
+
+    while (res_itr1 != NULL) {
+
+        struct neat_resolver_res *tmp_itr1 = res_itr1;
+        res_itr1 = res_itr1->next_res.le_next;
+        if (((tmp_itr1->ai_protocol != IPPROTO_TCP) &&
+            (tmp_itr1->ai_protocol != IPPROTO_SCTP)) ||
+            (tmp_itr1->ai_family != AF_INET)) {
+
+            LIST_REMOVE(tmp_itr1, next_res);
+            free(tmp_itr1);
+
+        } else {
+
+            struct neat_resolver_res *res_itr2 = results->lh_first;
+            while (res_itr2 != tmp_itr1) {
+                struct neat_resolver_res *tmp_itr2 = res_itr2;
+                res_itr2 = res_itr2->next_res.le_next;
+                if ((tmp_itr1->ai_protocol == tmp_itr2->ai_protocol) &&
+                    (memcmp(&tmp_itr1->dst_addr,
+                            &tmp_itr2->dst_addr,
+                            sizeof(struct sockaddr_storage)) == 0)) {
+
+                    LIST_REMOVE(tmp_itr1, next_res);
+                    free(tmp_itr1);
+                    break;
+
+                }
+
+            }
+
+        }
+
+    }
+}
+#endif
+
 static void
 he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {
     neat_flow *flow = (neat_flow *)resolver->userData1;
-    neat_he_callback_fx callback_fx;
-    callback_fx = (neat_he_callback_fx) (neat_flow *)resolver->userData2;
-
-    if (code != NEAT_RESOLVER_OK) {
-        callback_fx(resolver->nc, (neat_flow *)resolver->userData1, code,
-                    0, 0, 0, -1);
-        return;
-    }
+    uv_poll_cb callback_fx;
+    callback_fx = (uv_poll_cb) (neat_flow *)resolver->userData2;
 
     assert (results->lh_first);
     assert (!flow->resolver_results);
 
-    //he_print_results(results);
+    /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
+#if 0
+    pm_filter(results);
+    he_print_results(results);
+#endif
 
-    // right now we're just going to use the first address. Todo by HE folks
-    flow->family = results->lh_first->ai_family;
-    flow->sockType = results->lh_first->ai_socktype;
-    flow->sockProtocol = results->lh_first->ai_protocol;
     flow->resolver_results = results;
-    flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
+    flow->hefirstConnect = 1;
+    struct neat_resolver_res *candidate;
+    LIST_FOREACH(candidate, results, next_res) {
+        //TODO: Potential place to filter based on policy
+        struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) malloc(sizeof(struct he_cb_ctx));
+        assert(he_ctx !=NULL);
+        he_ctx->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+        assert(he_ctx->handle != NULL);
+        he_ctx->handle->data = (void *)he_ctx;
+        he_ctx->nc = resolver->nc;
+        he_ctx->candidate = candidate;
+        he_ctx->flow = flow;
+        he_ctx->fd = -1;
 
-    printf("Protocol %u\n", flow->sockProtocol);
+        if (flow->connectfx(he_ctx, callback_fx) == -1) {
+            /* TODO: Some error handling? */
+            continue;
+        }
 
-    callback_fx(resolver->nc, (neat_flow *)resolver->userData1, NEAT_OK,
-                flow->family, flow->sockType, flow->sockProtocol, -1);
+    }
+
 }
 
-neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_fx callback_fx)
+neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx)
 {
     int protocols[NEAT_MAX_NUM_PROTO]; /* We only support SCTP, TCP, UDP, and UDPLite */
     uint8_t nr_of_protocols;
@@ -124,7 +179,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, neat_he_callback_
     if (!ctx->resolver) {
         ctx->resolver = neat_resolver_init(ctx, he_resolve_cb, NULL);
     }
-    ctx->resolver->userData1 = (void *)flow; // todo this doesn't allow multiple sockets
+    ctx->resolver->userData1 = (void *)flow; // TODO: This doesn't allow multiple sockets
     ctx->resolver->userData2 = callback_fx;
 
     /* FIXME: derivation of the socket type is wrong.

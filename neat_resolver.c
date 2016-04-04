@@ -916,6 +916,8 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
             continue;
 
+        //TODO: Potential place to filter based on policy
+
         neat_resolver_create_pairs(resolver, nsrc_addr);
     }
 

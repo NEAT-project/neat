@@ -122,7 +122,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     }
 
     // stop writing
-    opCB->on_writable = NULL;
+    ops.on_writable = NULL;
     return NEAT_OK;
 }
 
@@ -162,8 +162,8 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
         printf("\n");
     }
 
-    opCB->on_all_written = on_all_written;
-    opCB->on_readable = on_readable;
+    ops.on_all_written = on_all_written;
+    ops.on_readable = on_readable;
     return NEAT_OK;
 }
 
@@ -192,7 +192,6 @@ void tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer
         // stop reading from stdin and set write callback
         uv_read_stop(stream);
         ops.on_writable = on_writable;
-        neat_set_operations(ctx, flow, &ops);
     }
 }
 

@@ -47,7 +47,7 @@ on_readable(struct neat_flow_operations *opCB)
 }
 
 static const char *request =
-    "GET / HTTP/1.0\r\nHost:www.neat-project.org\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
+    "GET / HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 
 static neat_error_code
 on_all_written(struct neat_flow_operations *opCB)
@@ -88,6 +88,12 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
+    if (argc != 2) {
+        fprintf(stderr, "usage: neat_http_get HOST\n");
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
+
     if ((ctx = neat_init_ctx()) == NULL) {
         fprintf(stderr, "could not initialize context\n");
         result = EXIT_FAILURE;
@@ -109,7 +115,7 @@ main(int argc, char *argv[])
     neat_set_operations(ctx, flow, &ops);
 
     // wait for on_connected or on_error to be invoked
-    if (neat_open(ctx, flow, "www.neat-project.org", "80") == NEAT_OK)
+    if (neat_open(ctx, flow, argv[1], "80") == NEAT_OK)
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     else {
         fprintf(stderr, "Could not open flow\n");

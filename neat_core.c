@@ -272,6 +272,7 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
                                     struct neat_flow_operations *ops)
 {
     flow->operations = ops;
+    updatePollHandle(mgr, flow, flow->handle);
     return NEAT_OK;
 }
 
@@ -390,8 +391,10 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
-    if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->handle)) {
-        return;
+    if (flow->handle != NULL) {
+        if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->handle)) {
+            return;
+        }
     }
 
     int newEvents = 0;
@@ -406,7 +409,9 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     }
     if (newEvents) {
         flow->isPolling = 1;
-        uv_poll_start(handle, newEvents, uvpollable_cb);
+        if (flow->handle != NULL) {
+            uv_poll_start(handle, newEvents, uvpollable_cb);
+        }
     } else {
         flow->isPolling = 0;
         if (flow->handle != NULL) {
@@ -442,10 +447,37 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         free(he_ctx);
 
+        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
+#if 0
+        struct sockaddr_storage addr;
+        socklen_t addr_len = sizeof(addr);
+        getpeername(flow->fd, (struct sockaddr *)&addr, &addr_len);
+        char ip_address[INET_ADDRSTRLEN];
+        getnameinfo((struct sockaddr *)&addr,
+                    addr_len,
+                    ip_address,
+                    INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
+        printf("Winning connection attempt to %s with protocol %d\n", ip_address, flow->sockProtocol);
+#endif
+
         // TODO: Security layer.
 
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
+
+        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
+#if 0
+        struct sockaddr_storage addr;
+        socklen_t addr_len = sizeof(addr);
+        getpeername(flow->fd, (struct sockaddr *)&addr, &addr_len);
+        char ip_address[INET_ADDRSTRLEN];
+        getnameinfo((struct sockaddr *)&addr,
+                    addr_len,
+                ip_address,
+                INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
+        printf("Loosing connection attempt to %s with protocol %d\n", ip_address, flow->sockProtocol);
+#endif
+
         flow->closefx(he_ctx->nc, flow);
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, NULL);
@@ -1102,9 +1134,6 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 
     rv->fd = -1;
     rv->handle = NULL;
-    //rv->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
-    //assert(rv->handle != NULL);
-    // defaults
     rv->writefx = neat_write_via_kernel;
     rv->readfx = neat_read_via_kernel;
     rv->acceptfx = neat_accept_via_kernel;

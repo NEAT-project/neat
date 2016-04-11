@@ -281,7 +281,7 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
     flow->operations->ctx = ctx;\
     flow->operations->flow = flow;
 
-static void io_error(neat_ctx *ctx, neat_flow *flow,
+void io_error(neat_ctx *ctx, neat_flow *flow,
                      neat_error_code code)
 {
     if (!flow->operations || !flow->operations->on_error) {
@@ -477,11 +477,18 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
                 INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
         printf("Loosing connection attempt to %s with protocol %d\n", ip_address, flow->sockProtocol);
 #endif
+        if ( status < 0 ) {
+            flow->heConnectAttemptCount--;
+        }
 
         flow->closefx(he_ctx->nc, flow);
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, NULL);
+        neat_ctx *ctx = he_ctx->nc;
         free(he_ctx);
+        if (flow->heConnectAttemptCount == 1) {
+            io_error(ctx, flow, NEAT_ERROR_IO );
+        }
     }
 }
 

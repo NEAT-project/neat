@@ -108,6 +108,8 @@ struct neat_flow
     neat_listen_impl listenfx;
     neat_shutdown_impl shutdownfx;
 
+    uint8_t heConnectAttemptCount;
+
     int hefirstConnect : 1;
     int firstWritePending : 1;
     int acceptPending : 1;
@@ -189,6 +191,9 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
 //to wait after first reply from DNS server. Initial values are 30s and 1s.
 void neat_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
         uint16_t t2);
+
+void io_error(neat_ctx *ctx, neat_flow *flow,
+              neat_error_code code);
 
 enum neat_events{
     //A new address has been added to an interface

@@ -68,6 +68,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             printf("[%d] disconnected\n", opCB->flow->fd);
         }
         opCB->on_readable = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
     }
     return NEAT_OK;
 }
@@ -75,6 +76,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 static neat_error_code on_all_written(struct neat_flow_operations *opCB)
 {
     opCB->on_writable = NULL;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     neat_free_flow(opCB->flow);
     return NEAT_OK;
 }
@@ -100,6 +102,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 
     if (opCB->on_readable == NULL) {
         opCB->on_all_written = on_all_written;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
     }
     code = neat_write(opCB->ctx, opCB->flow, buffer, BUFFERSIZE);
     if (code != NEAT_OK) {
@@ -115,6 +118,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
 {
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     printf("[%d] connected - ", opCB->flow->fd);
 

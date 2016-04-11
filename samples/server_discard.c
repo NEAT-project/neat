@@ -73,6 +73,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             printf("[%d] disconnected\n", opCB->flow->fd);
         }
         opCB->on_readable = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
         neat_free_flow(opCB->flow);
     }
     return NEAT_OK;
@@ -112,6 +113,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     printf("\n");
 
     opCB->on_readable = on_readable;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
 }
 

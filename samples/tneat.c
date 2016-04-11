@@ -120,6 +120,7 @@ on_all_written(struct neat_flow_operations *opCB)
     printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human));
 
     opCB->on_readable = NULL;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     free(tnf->snd.buffer);
     free(tnf->rcv.buffer);
     free(tnf);
@@ -163,6 +164,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     if (last_message == 1) {
         opCB->on_all_written = on_all_written;
     }
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     // every buffer is filled with chars - offset increased by every run
     if (config_log_level >= 2) {
         printf("neat_write - # %" PRIu64 " - %d byte\n", tnf->snd.calls, config_snd_buffer_size);
@@ -183,6 +185,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 
     if (last_message == 1) {
         opCB->on_writable = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
     }
 
     return NEAT_OK;
@@ -240,6 +243,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         }
 
         opCB->on_readable = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
         free(tnf->snd.buffer);
         free(tnf->rcv.buffer);
         free(tnf);
@@ -318,6 +322,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     if (config_active) {
         opCB->on_writable = on_writable;
     }
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     return NEAT_OK;
 }

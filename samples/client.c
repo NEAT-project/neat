@@ -59,6 +59,8 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
 /*
     Read data until buffered_amount == 0 - then stop event loop!
 */
+static neat_error_code on_all_written(struct neat_flow_operations *opCB);
+
 static neat_error_code on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
@@ -91,8 +93,13 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             printf("disconnected\n");
         }
         ops.on_readable = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, &ops);
         neat_stop_event_loop(opCB->ctx);
     }
+
+    ops.on_all_written = on_all_written;
+    ops.on_readable = on_readable;
+    neat_set_operations(opCB->ctx, opCB->flow, &ops);
     return NEAT_OK;
 }
 
@@ -110,7 +117,6 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
 
-
     code = neat_write(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled);
     if (code != NEAT_OK) {
         debug_error("code: %d", (int)code);
@@ -123,6 +129,8 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 
     // stop writing
     ops.on_writable = NULL;
+    ops.on_readable = on_readable;
+    neat_set_operations(ctx, flow, &ops);
     return NEAT_OK;
 }
 
@@ -162,16 +170,18 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
         printf("\n");
     }
 
-    ops.on_all_written = on_all_written;
-    ops.on_readable = on_readable;
+    uv_tty_init(ctx->loop, &tty, 0, 1);
+    uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
+
     return NEAT_OK;
 }
 
 /*
-    Read from stdin
+    Read from stdinq
 */
 void tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
 {
+
     if (config_log_level >= 1) {
         printf("tty_read called with buffer_filled %zd\n", buffer_filled);
     }
@@ -192,6 +202,8 @@ void tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer
         // stop reading from stdin and set write callback
         uv_read_stop(stream);
         ops.on_writable = on_writable;
+        neat_set_operations(ctx, flow, &ops);
+
     }
 }
 
@@ -271,10 +283,6 @@ int main(int argc, char *argv[])
         result = EXIT_FAILURE;
         goto cleanup;
     }
-
-    uv_loop = ctx->loop;
-    uv_tty_init(uv_loop, &tty, 0, 1);
-    uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
 
     // new neat flow
     if ((flow = neat_new_flow(ctx)) == NULL) {

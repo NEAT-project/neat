@@ -138,6 +138,16 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         he_ctx->flow = flow;
         he_ctx->fd = -1;
 
+        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
+#if 0
+        char ip_address[INET_ADDRSTRLEN];
+        getnameinfo((struct sockaddr *)&(candidate->dst_addr),
+                    (socklen_t)sizeof(candidate->dst_addr),
+                    ip_address,
+                    INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
+        printf("Initiating connection attempt to %s with protocol %d\n", ip_address, candidate->ai_protocol);
+#endif
+
         if (flow->connectfx(he_ctx, callback_fx) == -1) {
             /* TODO: Some error handling? */
             continue;

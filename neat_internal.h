@@ -12,6 +12,8 @@
     #include "neat_bsd.h"
 #endif
 
+#include "neat_log.h"
+
 #define NEAT_INTERNAL_CTX \
     void (*cleanup)(struct neat_ctx *nc); \
     struct neat_src_addrs src_addrs; \

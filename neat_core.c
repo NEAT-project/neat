@@ -34,7 +34,11 @@ static neat_error_code neat_write_via_kernel_flush(struct neat_ctx *ctx, struct 
 //init function
 struct neat_ctx *neat_init_ctx()
 {
-    struct neat_ctx *nc = calloc(sizeof(struct neat_ctx), 1);
+    struct neat_ctx *nc;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
+    nc = calloc(sizeof(struct neat_ctx), 1);
+
     if (!nc) {
         return NULL;
     }
@@ -71,28 +75,38 @@ struct neat_ctx *neat_init_ctx()
 //TODO: Add support for embedding libuv loops in other event loops
 void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     uv_run(nc->loop, (uv_run_mode) run_mode);
     uv_loop_close(nc->loop);
 }
 
 void neat_stop_event_loop(struct neat_ctx *nc)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     uv_stop(nc->loop);
 }
 
 int neat_get_backend_fd(struct neat_ctx *nc)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     return uv_backend_fd(nc->loop);
 }
 
 static void neat_walk_cb(uv_handle_t *handle, void *arg)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     if (!uv_is_closing(handle))
         uv_close(handle, NULL);
 }
 
 static void neat_close_loop(struct neat_ctx *nc)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     uv_walk(nc->loop, neat_walk_cb, nc);
     //Let all close handles run
     uv_run(nc->loop, UV_RUN_DEFAULT);
@@ -101,6 +115,8 @@ static void neat_close_loop(struct neat_ctx *nc)
 
 static void neat_core_cleanup(struct neat_ctx *nc)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     //We need to gracefully clean-up loop resources
     neat_close_loop(nc);
     neat_addr_free_src_list(nc);
@@ -114,6 +130,8 @@ static void neat_core_cleanup(struct neat_ctx *nc)
 //TODO: Consider adding callback, like for resolver
 void neat_free_ctx(struct neat_ctx *nc)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     neat_core_cleanup(nc);
 
     if (nc->resolver) {
@@ -136,6 +154,7 @@ uint8_t neat_add_event_cb(struct neat_ctx *nc, uint8_t event_type,
     uint8_t i = 0;
     struct neat_event_cbs *cb_list_head;
     struct neat_event_cb *cb_itr;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     if (event_type > NEAT_MAX_EVENT)
         return RETVAL_FAILURE;
@@ -175,8 +194,9 @@ uint8_t neat_add_event_cb(struct neat_ctx *nc, uint8_t event_type,
 uint8_t neat_remove_event_cb(struct neat_ctx *nc, uint8_t event_type,
         struct neat_event_cb *cb)
 {
-    struct neat_event_cbs *cb_list_head;
+    struct neat_event_cbs *cb_list_head = NULL;
     struct neat_event_cb *cb_itr = NULL;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     if (event_type > NEAT_MAX_EVENT ||
         !nc->event_cbs)
@@ -202,8 +222,9 @@ uint8_t neat_remove_event_cb(struct neat_ctx *nc, uint8_t event_type,
 void neat_run_event_cb(struct neat_ctx *nc, uint8_t event_type,
         void *data)
 {
-    struct neat_event_cbs *cb_list_head;
+    struct neat_event_cbs *cb_list_head = NULL;
     struct neat_event_cb *cb_itr = NULL;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     if (event_type > NEAT_MAX_EVENT ||
         !nc->event_cbs)
@@ -219,10 +240,12 @@ void neat_run_event_cb(struct neat_ctx *nc, uint8_t event_type,
 static void free_cb(uv_handle_t *handle)
 {
     neat_flow *flow = handle->data;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     flow->closefx(flow->ctx, flow);
     free((char *)flow->name);
     free((char *)flow->port);
-   if (flow->resolver_results) {
+    if (flow->resolver_results) {
         neat_resolver_free_results(flow->resolver_results);
     }
     if (flow->ownedByCore) {
@@ -243,6 +266,7 @@ static void free_cb(uv_handle_t *handle)
 void neat_free_flow(neat_flow *flow)
 {
     //struct neat_buffered_message *msg, *next_msg;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     if (flow->isPolling)
         uv_poll_stop(flow->handle);
@@ -257,6 +281,8 @@ void neat_free_flow(neat_flow *flow)
 neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,
                                   uint64_t *outMask)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     *outMask = flow->propertyUsed;
     return NEAT_OK;
 }
@@ -264,6 +290,8 @@ neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,
 neat_error_code neat_set_property(neat_ctx *mgr, neat_flow *flow,
                                   uint64_t inMask)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     flow->propertyMask = inMask;
     return NEAT_OK;
 }
@@ -271,6 +299,8 @@ neat_error_code neat_set_property(neat_ctx *mgr, neat_flow *flow,
 neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
                                     struct neat_flow_operations *ops)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     flow->operations = ops;
     updatePollHandle(mgr, flow, flow->handle);
     return NEAT_OK;
@@ -284,6 +314,8 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
 static void io_error(neat_ctx *ctx, neat_flow *flow,
                      neat_error_code code)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     if (!flow->operations || !flow->operations->on_error) {
         return;
     }
@@ -294,6 +326,8 @@ static void io_error(neat_ctx *ctx, neat_flow *flow,
 static void io_connected(neat_ctx *ctx, neat_flow *flow,
                          neat_error_code code)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     if (!flow->operations || !flow->operations->on_connected) {
         return;
     }
@@ -304,6 +338,8 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 static void io_writable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     if (flow->isDraining) {
         neat_write_via_kernel_flush(ctx, flow);
     }
@@ -317,12 +353,14 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
 static void io_readable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
+
 #ifdef IPPROTO_SCTP
     ssize_t n, spaceFree;
     size_t spaceNeeded, spaceThreshold;
     struct msghdr msghdr;
     struct iovec iov;
 #endif
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     if (!flow->operations || !flow->operations->on_readable) {
         return;
@@ -376,6 +414,8 @@ static void io_readable(neat_ctx *ctx, neat_flow *flow,
 
 static void io_all_written(neat_ctx *ctx, neat_flow *flow)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     if (!flow->operations || !flow->operations->on_all_written) {
         return;
     }
@@ -391,6 +431,8 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     if (flow->handle != NULL) {
         if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->handle)) {
             return;
@@ -424,6 +466,8 @@ static void
 he_connected_cb(uv_poll_t *handle, int status, int events)
 {
     struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) handle->data;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     neat_flow *flow = he_ctx->flow;
 
     //TODO: Final place to filter based on policy
@@ -489,6 +533,7 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
 {
     neat_flow *flow = handle->data;
     neat_ctx *ctx = flow->ctx;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     if ((events & UV_READABLE) && flow->acceptPending) {
         do_accept(ctx, flow);
@@ -521,7 +566,12 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
 
 static void do_accept(neat_ctx *ctx, neat_flow *flow)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     neat_flow *newFlow = neat_new_flow(ctx);
+
+
+
     newFlow->name = strdup (flow->name);
     newFlow->port = strdup (flow->port);
     newFlow->propertyMask = flow->propertyMask;
@@ -561,6 +611,8 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
 neat_error_code
 neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, const char *port)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     if (flow->name) {
         return NEAT_ERROR_BAD_ARGUMENT;
     }
@@ -577,6 +629,7 @@ accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *
 {
     neat_flow *flow = (neat_flow *)resolver->userData1;
     struct neat_ctx *ctx = flow->ctx;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     if (code != NEAT_RESOLVER_OK) {
         io_error(ctx, flow, code);
@@ -616,8 +669,10 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                             const char *name, const char *port)
 {
     int protocols[NEAT_MAX_NUM_PROTO]; /* We only support SCTP, TCP, UDP, and UDPLite */
-    uint8_t nr_of_protocols = neat_property_translate_protocols(
-            flow->propertyMask, protocols);
+    uint8_t nr_of_protocols;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
+    nr_of_protocols = neat_property_translate_protocols(flow->propertyMask, protocols);
 
     if (nr_of_protocols == 0)
         return NEAT_ERROR_UNABLE;
@@ -663,6 +718,7 @@ neat_write_via_kernel_flush(struct neat_ctx *ctx, struct neat_flow *flow)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
     struct sctp_sndrcvinfo *sndrcvinfo;
 #endif
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         return NEAT_OK;
@@ -756,6 +812,7 @@ neat_write_via_kernel_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
                                  const unsigned char *buffer, uint32_t amt)
 {
     struct neat_buffered_message *msg;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     // TODO: A better implementation here is a linked list of buffers
     // but this gets us started
@@ -827,6 +884,7 @@ neat_write_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
     struct sctp_sndrcvinfo *sndrcvinfo;
 #endif
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     switch (flow->sockProtocol) {
     case IPPROTO_TCP:
@@ -950,6 +1008,7 @@ neat_read_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                      unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
 {
     ssize_t rv;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
 #ifdef IPPROTO_SCTP
     if (flow->sockProtocol == IPPROTO_SCTP) {
@@ -980,6 +1039,8 @@ neat_read_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 static int
 neat_accept_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, int fd)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     return accept(fd, NULL, NULL);
 }
 
@@ -991,6 +1052,7 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     int size;
     socklen_t slen =
             (he_ctx->candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     he_ctx->fd = socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, he_ctx->candidate->ai_protocol);
     len = (socklen_t)sizeof(int);
@@ -1036,6 +1098,7 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 static int
 neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
     if (flow->fd != -1) {
         // we might want a fx callback here to split between
         // kernel and userspace.. same for connect read and write
@@ -1052,6 +1115,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     int size;
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     flow->fd = socket(flow->family, flow->sockType, flow->sockProtocol);
     len = (socklen_t)sizeof(int);
@@ -1097,6 +1161,8 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 static int
 neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     if (shutdown(flow->fd, SHUT_WR) == 0) {
         return NEAT_OK;
     } else {
@@ -1109,6 +1175,8 @@ neat_error_code
 neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
            const unsigned char *buffer, uint32_t amt)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     return flow->writefx(ctx, flow, buffer, amt);
 }
 
@@ -1116,18 +1184,25 @@ neat_error_code
 neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     return flow->readfx(ctx, flow, buffer, amt, actualAmt);
 }
 
 neat_error_code
 neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
     return flow->shutdownfx(ctx, flow);
 }
 
 neat_flow *neat_new_flow(neat_ctx *mgr)
 {
-    neat_flow *rv = (neat_flow *)calloc (1, sizeof (neat_flow));
+    neat_flow *rv;
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+
+    rv = (neat_flow *)calloc (1, sizeof (neat_flow));
 
     if (!rv)
         return NULL;

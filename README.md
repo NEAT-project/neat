@@ -30,10 +30,9 @@ wants. A typical first step is to resolve a domain name.
 * `libuv`
 * `ldns`
 * `libmnl (linux only)`
-* 
 
-| OS        | shorthand command           | 
-| ------------- |:-------------:| 
+| OS        | command           | 
+| ------------- |:-------------| 
 | Ubuntu*      | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` | 
 | FreeBSD      | `pkg install cmake ldns libuv`     |   
 | OS X | `brew install libuv ldns`      |   
@@ -59,7 +58,7 @@ Don't forget to run ldconfig after installing neat the first time.
 Neat offers a flexible way to control debug output via eviroment variables. 
 
 | variable        | default           | supported values |
-| -------------  |:-------------:| ------------- |
+| :-------------  |:-------------| :------------- |
 | `NEAT_LOG_LEVEL` | `NEAT_LOG_INFO` | `NEAT_LOG_OFF`, `NEAT_LOG_ERROR`, `NEAT_LOG_WARNING`, `NEAT_LOG_INFO`, `NEAT_LOG_DEBUG`
 | `NEAT_LOG_FILE`  | undefined (stderr)     | filename, e.g. "neat.log"
 

@@ -1273,7 +1273,7 @@ neat_accept_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow, struct soc
     socklen_t addr_len = sizeof(struct sockaddr_in);
     memset((void *) &remote_addr, 0, sizeof(struct sockaddr_in));
     if (((newsock = usrsctp_accept(sock, (struct sockaddr *) &remote_addr, &addr_len)) == NULL) && (errno != EINPROGRESS)) {
-        perror("usrsctp_accept");
+        neat_log(NEAT_LOG_ERROR, "%s: usrsctp_accept failed - %s", __FUNCTION__, strerror(errno));
         return NULL;
     }
     usrsctp_set_ulpinfo(newsock, (void *)flow);
@@ -1288,6 +1288,7 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     int size;
     socklen_t slen =
             (he_ctx->candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+    char addrsrcbuf[slen], addrdstbuf[slen];
 	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     he_ctx->sock = usrsctp_socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, he_ctx->candidate->ai_protocol, neat_usrsctp_receive, neat_usrsctp_send, 0, he_ctx->flow);
@@ -1314,14 +1315,16 @@ if (he_ctx->sock)
     if (usrsctp_setsockopt(he_ctx->sock, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
         he_ctx->isSCTPExplicitEOR = 1;
 #endif
-char addrsrcbuf[slen], addrdstbuf[slen];
-    printf("Connect from %s to %s\n", inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, slen), inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->dst_addr))->sin_addr), addrdstbuf, slen));
+
+    neat_log(NEAT_LOG_INFO, "%s: Connect from %s to %s", __FUNCTION__,
+        inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, slen),
+        inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->dst_addr))->sin_addr), addrdstbuf, slen));
 
     if (!(he_ctx->sock) || (usrsctp_connect(he_ctx->sock, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
-        perror("usrsctp_connect");
+        neat_log(NEAT_LOG_ERROR, "%s: usrsctp_connect failed - %s", __FUNCTION__, strerror(errno));
         return -1;
     } else {
-    printf("usrsctp_socket connected\n");
+        neat_log(NEAT_LOG_INFO, "%s: usrsctp_socket connected", __FUNCTION__);
     }
 
 
@@ -1356,7 +1359,7 @@ static int
 neat_close_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
 {
 	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
-    printf("neat_close_via_usrsctp\n");
+
     if (flow->sock)
         usrsctp_close(flow->sock);
     return 0;
@@ -1370,12 +1373,10 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
     int size;
 	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
-    printf("neat_listen_via_usrsctp\n");
-
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
-   if (!(flow->sock = usrsctp_socket(flow->family, flow->sockType, flow->sockProtocol, neat_usrsctp_receive, neat_usrsctp_send, 0, flow))) {
-        perror("user_socket");
+    if (!(flow->sock = usrsctp_socket(flow->family, flow->sockType, flow->sockProtocol, neat_usrsctp_receive, neat_usrsctp_send, 0, flow))) {
+        neat_log(NEAT_LOG_ERROR, "%s: user_socket failed - %s", __FUNCTION__, strerror(errno));
         return -1;
     }
     usrsctp_set_non_blocking(flow->sock, 1);
@@ -1402,13 +1403,14 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
 #endif
     usrsctp_setsockopt(flow->sock, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     char addrbuf[slen];
-    printf("Bind to %s\n", inet_ntop(AF_INET, &(((struct sockaddr_in *)flow->sockAddr)->sin_addr), addrbuf, slen));
+    neat_log(NEAT_LOG_INFO, "%s: Bind to %s", __FUNCTION__,
+        inet_ntop(AF_INET, &(((struct sockaddr_in *)flow->sockAddr)->sin_addr), addrbuf, slen));
     if (usrsctp_bind(flow->sock, (struct sockaddr *)(flow->sockAddr), slen) == -1) {
-        perror("Error binding usrsctp socket");
+        neat_log(NEAT_LOG_ERROR, "%s: Error binding usrsctp socket - %s", __FUNCTION__, strerror(errno));
         return -1;
     }
     if (usrsctp_listen(flow->sock, 1) == -1) {
-        perror("Error listening on usrsctp socket");
+        neat_log(NEAT_LOG_ERROR, "%s: Error listening on usrsctp socket - %s", __FUNCTION__, strerror(errno));
         return -1;
     }
     return 0;

@@ -11,38 +11,42 @@ uint8_t neat_log_level = NEAT_LOG_INFO;
 FILE *neat_log_fd = NULL;
 
 /*
- * initiate log system
+ * Initiate log system
  *  - currently supports stderr and file
  */
 uint8_t neat_log_init() {
-    const char* env_log_level = getenv("NEAT_LOG_LEVEL");
-    const char* env_log_file = getenv("NEAT_LOG_FILE");
+    const char* env_log_level;
+    const char* env_log_file;
 
+    env_log_level = getenv("NEAT_LOG_LEVEL");
+    env_log_file = getenv("NEAT_LOG_FILE");
+
+    // use stderr as default output until init finished...
     neat_log_fd = stderr;
 
     // determine Loglevel
     if (env_log_level == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "%s - NEAT_LOG_LEVEL : default", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : default", __FUNCTION__);
     } else if (strcmp(env_log_level,"NEAT_LOG_DEBUG") == 0) {
-        neat_log(NEAT_LOG_DEBUG, "%s - NEAT_LOG_LEVEL : NEAT_LOG_DEBUG", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_DEBUG", __FUNCTION__);
         neat_log_level = NEAT_LOG_DEBUG;
     } else if (strcmp(env_log_level,"NEAT_LOG_INFO") == 0) {
-        neat_log(NEAT_LOG_DEBUG, "%s - NEAT_LOG_LEVEL : NEAT_LOG_INFO", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_INFO", __FUNCTION__);
         neat_log_level = NEAT_LOG_INFO;
     } else if (strcmp(env_log_level,"NEAT_LOG_WARNING") == 0) {
-        neat_log(NEAT_LOG_DEBUG, "%s - NEAT_LOG_LEVEL : NEAT_LOG_WARNING", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_WARNING", __FUNCTION__);
         neat_log_level = NEAT_LOG_WARNING;
     } else if (strcmp(env_log_level,"NEAT_LOG_ERROR") == 0) {
-        neat_log(NEAT_LOG_DEBUG, "%s - NEAT_LOG_LEVEL : NEAT_LOG_ERROR", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_ERROR", __FUNCTION__);
         neat_log_level = NEAT_LOG_ERROR;
     } else if (strcmp(env_log_level,"NEAT_LOG_OFF") == 0) {
-        neat_log(NEAT_LOG_DEBUG, "%s - NEAT_LOG_LEVEL : NEAT_LOG_OFF", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_OFF", __FUNCTION__);
         neat_log_level = NEAT_LOG_OFF;
     }
 
     // determine output fd
     if (env_log_file != NULL) {
-        neat_log(NEAT_LOG_DEBUG, "%s - using logfile: %s", __FUNCTION__, env_log_file);
+        neat_log(NEAT_LOG_INFO, "%s - using logfile: %s", __FUNCTION__, env_log_file);
         neat_log_fd = fopen (env_log_file, "w");
 
         if (neat_log_fd == NULL) {
@@ -51,12 +55,17 @@ uint8_t neat_log_init() {
             return RETVAL_FAILURE;
         }
     }
+    neat_log(NEAT_LOG_INFO, "%s - opening logfile ...", __FUNCTION__);
 
     return RETVAL_SUCCESS;
 }
 
+/*
+ * Write logfile entry
+ */
 void neat_log(uint8_t level, const char* format, ...) {
 
+    // skip unwanted loglevels
     if (neat_log_level < level) {
         return;
     }
@@ -70,10 +79,14 @@ void neat_log(uint8_t level, const char* format, ...) {
     va_start(argptr, format);
     vfprintf(neat_log_fd, format, argptr);
     va_end(argptr);
-    fprintf(neat_log_fd, "\n");
+    fprintf(neat_log_fd, "\n"); // xxx:ugly solution...
 }
 
+/*
+ * Close logfile
+ */
 uint8_t neat_log_close() {
+    neat_log(NEAT_LOG_INFO, "%s - closing logfile ...", __FUNCTION__);
     if (neat_log_fd != stderr) {
         if (fclose(neat_log_fd) == 0) {
             return RETVAL_SUCCESS;
@@ -83,5 +96,4 @@ uint8_t neat_log_close() {
     }
 
     return RETVAL_SUCCESS;
-
 }

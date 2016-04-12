@@ -181,13 +181,13 @@ uint8_t neat_add_event_cb(struct neat_ctx *nc, uint8_t event_type,
 
         if (cb_itr == cb) {
             //TODO: Debug level
-            neat_log(NEAT_LOG_INFO, "Callback for %u has already been added",event_type);
+            neat_log(NEAT_LOG_INFO, "%s - Callback for %u has already been added", __FUNCTION__, event_type);
             return RETVAL_FAILURE;
         }
     }
 
     //TODO: Debug level
-    neat_log(NEAT_LOG_INFO, "Added new callback for event type %u", event_type);
+    neat_log(NEAT_LOG_INFO, "%s - Added new callback for event type %u", __FUNCTION__, event_type);
     LIST_INSERT_HEAD(cb_list_head, cb, next_cb);
     return RETVAL_SUCCESS;
 }
@@ -213,7 +213,7 @@ uint8_t neat_remove_event_cb(struct neat_ctx *nc, uint8_t event_type,
 
     if (cb_itr) {
         //TODO: Debug level print
-        fprintf(stderr, "Removed callback for type %u\n", event_type);
+        neat_log(NEAT_LOG_INFO, "%s - Removed callback for type %u", __FUNCTION__, event_type);
         LIST_REMOVE(cb_itr, next_cb);
     }
 

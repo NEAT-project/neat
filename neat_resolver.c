@@ -814,6 +814,63 @@ static int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node)
     return v4_literal | v6_literal;
 }
 
+static void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
+                                              const char *filename,
+                                              int events,
+                                              int status)
+{
+    char nameserver_str[1024] = {0};
+    char resolv_path[1024];
+    size_t resolv_path_len = sizeof(resolv_path);
+    FILE *resolv_ptr = NULL;
+    char *resolv_line = NULL, *token = NULL;
+
+    if (!(events & UV_CHANGE))
+        return;
+
+    memset(resolv_path, 0, resolv_path_len);
+    if (uv_fs_event_getpath(handle, resolv_path, &resolv_path_len)) {
+        fprintf(stderr, "Could not store resolv.conf path in buffer\n");
+        exit(EXIT_FAILURE);
+    }
+
+    //TODO: Read filename dynamically
+    if (!(resolv_ptr = fopen(resolv_path, "r"))) {
+        fprintf(stderr, "Failed to open resolv-file\n");
+        return;
+    }
+
+    //Parse resolv.conf and add to 
+    fprintf(stderr, "%s updated\n", resolv_path);
+
+    while ((resolv_line = fgets(nameserver_str, sizeof(nameserver_str),
+                                resolv_ptr))) {
+        if (ferror(resolv_ptr)) {
+            fprintf(stderr, "Failed to read line from resolv-file\n");
+            //Reason for break and not return is that we might have got SOME
+            //useful information from resolv.conf
+            break;
+        }
+
+        //Takes care of newline and other weirdness at the start, so give the
+        //first word on line
+        token = strtok(resolv_line, " \t\r\n");
+
+        if (!token)
+            continue;
+
+        if (strcmp(token, "nameserver") && strcmp(token, "server"))
+            continue;
+
+        if (!(token = strtok(NULL, " \t\r\n")))
+            continue;
+
+        printf("Nameserver: %s\n", token);
+    }
+
+    //Iterate through servers
+}
+
 static uint8_t neat_validate_protocols(int protocols[], uint8_t proto_count)
 {
     uint8_t i;
@@ -928,7 +985,9 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
 //Initialize the resolver. Set up callbacks etc.
 struct neat_resolver *
 neat_resolver_init(struct neat_ctx *nc,
-                   neat_resolver_handle_t handle_resolve, neat_resolver_cleanup_t cleanup)
+                   const char *resolv_conf_path,
+                   neat_resolver_handle_t handle_resolve,
+                   neat_resolver_cleanup_t cleanup)
 {
     struct neat_resolver *resolver = calloc(sizeof(struct neat_resolver), 1);
     if (!handle_resolve || !resolver)
@@ -958,6 +1017,24 @@ neat_resolver_init(struct neat_ctx *nc,
     resolver->idle_handle.data = resolver;
     uv_timer_init(nc->loop, &(resolver->timeout_handle));
     resolver->timeout_handle.data = resolver;
+
+    if (uv_fs_event_init(nc->loop, &(resolver->resolv_conf_handle))) {
+        fprintf(stderr, "Could not initialize fs event handle\n");
+        return NULL;
+    }
+
+    resolver->resolv_conf_handle.data = resolver;
+
+    if (uv_fs_event_start(&(resolver->resolv_conf_handle),
+                      neat_resolver_resolv_conf_updated,
+                      resolv_conf_path, 0)) {
+        fprintf(stderr, "Could not start fs event handle\n");
+        return NULL;
+    }
+
+    //Initial resolv.conf-parsing
+    neat_resolver_resolv_conf_updated(&(resolver->resolv_conf_handle), NULL,
+                                      UV_CHANGE, 0);
 
     return resolver;
 }
@@ -1000,9 +1077,11 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
     if (free_mem) {
         neat_remove_event_cb(resolver->nc, NEAT_NEWADDR, &(resolver->newaddr_cb));
         neat_remove_event_cb(resolver->nc, NEAT_DELADDR, &(resolver->deladdr_cb));
+        uv_fs_event_stop(&(resolver->resolv_conf_handle));
     } else {
         memset(resolver->domain_name, 0, MAX_DOMAIN_LENGTH);
     }
+
 
     memset(resolver->ai_protocol, 0, sizeof(resolver->ai_protocol));
 }

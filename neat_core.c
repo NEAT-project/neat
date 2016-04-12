@@ -636,7 +636,8 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     assert(flow->handle != NULL);
 
     if (!ctx->resolver)
-        ctx->resolver = neat_resolver_init(ctx, accept_resolve_cb, NULL);
+        ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf",
+                                           accept_resolve_cb, NULL);
 
     ctx->resolver->userData1 = (void *)flow;
 

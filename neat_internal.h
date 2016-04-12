@@ -168,6 +168,7 @@ struct he_cb_ctx {
 //Intilize resolver. Sets up internal callbacks etc.
 //Resolve is required, cleanup is not
 struct neat_resolver *neat_resolver_init(struct neat_ctx *nc,
+                                         const char *resolv_conf_path,
                                          neat_resolver_handle_t handle_resolve,
                                          neat_resolver_cleanup_t cleanup);
 
@@ -265,6 +266,7 @@ struct neat_resolver {
     struct neat_resolver_pairs resolver_pairs_del;
     uv_idle_t idle_handle;
     uv_timer_t timeout_handle;
+    uv_fs_event_t resolv_conf_handle;
 
     //Result is the resolved addresses, code is one of the neat_resolver_codes.
     //Ownsership of results is transfered to application, so it is the

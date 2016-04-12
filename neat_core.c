@@ -35,6 +35,7 @@ static neat_error_code neat_write_via_kernel_flush(struct neat_ctx *ctx, struct 
 struct neat_ctx *neat_init_ctx()
 {
     struct neat_ctx *nc;
+    neat_log_init();
     neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     nc = calloc(sizeof(struct neat_ctx), 1);
@@ -144,6 +145,7 @@ void neat_free_ctx(struct neat_ctx *nc)
 
     free(nc->loop);
     free(nc);
+    neat_log_close();
 }
 
 //The three functions that deal with the NEAT callback API. Nothing very
@@ -179,14 +181,13 @@ uint8_t neat_add_event_cb(struct neat_ctx *nc, uint8_t event_type,
 
         if (cb_itr == cb) {
             //TODO: Debug level
-            fprintf(stderr, "Callback for %u has already been added\n",
-                    event_type);
+            neat_log(NEAT_LOG_INFO, "Callback for %u has already been added",event_type);
             return RETVAL_FAILURE;
         }
     }
 
     //TODO: Debug level
-    fprintf(stderr, "Added new callback for event type %u\n", event_type);
+    neat_log(NEAT_LOG_INFO, "Added new callback for event type %u", event_type);
     LIST_INSERT_HEAD(cb_list_head, cb, next_cb);
     return RETVAL_SUCCESS;
 }

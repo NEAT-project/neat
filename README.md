@@ -30,23 +30,15 @@ wants. A typical first step is to resolve a domain name.
 * `libuv`
 * `ldns`
 * `libmnl (linux only)`
+* 
 
-#### Ubuntu
-For current systems (>=15.10) use the following command
-```
-$ sudo apt-get install cmake libuv1-dev libldns-dev libmnl-dev
-```
-Older ubuntu might have a ppa for libuv1 https://launchpad.net/~cz.nic-labs/+archive/ubuntu/knot-dns
+| OS        | shorthand command           | 
+| ------------- |:-------------:| 
+| Ubuntu*      | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` | 
+| FreeBSD      | `pkg install cmake ldns libuv`     |   
+| OS X | `brew install libuv ldns`      |   
 
-#### FreeBSD
-```
-$ sudo pkg install cmake ldns libuv  
-```
-#### OS X
-```
-$ brew install libuv ldns
-```
-Tested on OS X 10.11 and brew.
+*Older ubuntu might have a ppa for libuv1 https://launchpad.net/~cz.nic-labs/+archive/ubuntu/knot-dns
 
 ### Build NEAT and samples
 ```
@@ -63,12 +55,18 @@ $ sudo make install
 ```
 Don't forget to run ldconfig after installing neat the first time.
 
+### Debug ouput :page_with_curl:
+Neat offers a flexible way to control debug output via eviroment variables. 
+
+| variable        | default           | supported values |
+| -------------  |:-------------:| ------------- |
+| `NEAT_LOG_LEVEL` | `NEAT_LOG_INFO` | `NEAT_LOG_OFF`, `NEAT_LOG_ERROR`, `NEAT_LOG_WARNING`, `NEAT_LOG_INFO`, `NEAT_LOG_DEBUG`
+| `NEAT_LOG_FILE`  | undefined (stderr)     | filename, e.g. "neat.log"
+
 ### TODO
-- [ ] Give user control of how loop is run so that it for example can be integrated
-  into other event loops.
+- [ ] Give user control of how loop is run so that it for example can be integrated into other event loops.
 - [ ] Monitor more stuff, like routes?
-- [ ] Implement some form of logging/verbose mode. This is something that we should
-  all agree on.
+- [x] Implement some form of logging/verbose mode. This is something that we should all agree on.
 - [ ] Find a platform-independent alternative to ldns.
 
 ## Buildbots :fire:

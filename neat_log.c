@@ -18,7 +18,6 @@ uint8_t neat_log_init() {
     const char* env_log_level = getenv("NEAT_LOG_LEVEL");
     const char* env_log_file = getenv("NEAT_LOG_FILE");
 
-    neat_log_level = NEAT_LOG_DEBUG;
     neat_log_fd = stderr;
 
     // determine Loglevel
@@ -63,7 +62,7 @@ void neat_log(uint8_t level, const char* format, ...) {
     }
 
     if (neat_log_fd == NULL) {
-        fprintf(stderr, "neat_log_fd is NULL\n");
+        fprintf(stderr, "neat_log_fd is NULL - neat_log_init() required!\n");
         return;
     }
 

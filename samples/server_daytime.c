@@ -67,6 +67,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             printf("[%d] disconnected\n", opCB->flow->fd);
         }
         opCB->on_readable = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
         neat_free_flow(opCB->flow);
     }
     return NEAT_OK;
@@ -85,6 +86,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     char *time_string;
 
     opCB->on_all_written = on_all_written;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     // get current time
     time_now = time(NULL);
     time_string = ctime(&time_now);
@@ -96,6 +98,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     }
     // stop writing
     opCB->on_writable = NULL;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
 }
 
@@ -134,6 +137,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
 
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     return NEAT_OK;
 }

@@ -39,6 +39,7 @@ on_readable(struct neat_flow_operations *opCB)
     if (!amt) { // eof
         fflush(stdout);
         ops.on_readable = NULL; // do not read more
+        neat_set_operations(opCB->ctx, opCB->flow, &ops);
         neat_stop_event_loop(opCB->ctx);
     } else if (amt > 0) {
         fwrite(buffer, 1, amt, stdout);
@@ -53,6 +54,7 @@ static neat_error_code
 on_all_written(struct neat_flow_operations *opCB)
 {
     ops.on_readable = on_readable;
+    neat_set_operations(opCB->ctx, opCB->flow, &ops);
     return 0;
 }
 
@@ -67,6 +69,7 @@ on_writable(struct neat_flow_operations *opCB)
         return on_error(opCB);
     }
     ops.on_writable = NULL;
+    neat_set_operations(opCB->ctx, opCB->flow, &ops);
     return 0;
 }
 
@@ -75,6 +78,7 @@ on_connected(struct neat_flow_operations *opCB)
 {
     // now we can start writing
     ops.on_writable = on_writable;
+    neat_set_operations(opCB->ctx, opCB->flow, &ops);
     return 0;
 }
 

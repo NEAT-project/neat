@@ -136,8 +136,11 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         he_ctx->nc = resolver->nc;
         he_ctx->candidate = candidate;
         he_ctx->flow = flow;
+#ifdef USRSCTP_SUPPORT
+        he_ctx->sock = NULL;
+#else
         he_ctx->fd = -1;
-
+#endif
         /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
 #if 0
         char ip_address[INET_ADDRSTRLEN];
@@ -151,7 +154,8 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         if (flow->connectfx(he_ctx, callback_fx) == -1) {
             /* TODO: Some error handling? */
             continue;
-        }
+        } else
+            break;
 
     }
 

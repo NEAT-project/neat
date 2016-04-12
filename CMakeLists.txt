@@ -63,13 +63,31 @@ ELSE()
 
 ENDIF()
 
+#################################################
+# CHECK OPTIONS
+#################################################
+
+option(USRSCTP_SUPPORT "Include usrsctp" 0)
+if (USRSCTP_SUPPORT)
+	add_definitions(-DUSRSCTP_SUPPORT)
+	add_definitions(-DINET)
+	add_definitions(-DINET6)
+	add_definitions(-DSCTP_DEBUG)
+	LIST(APPEND neat_HEADERS neat_usrsctp.h)
+	LIST(APPEND neat_SOURCES neat_usrsctp.c)
+
+	FIND_LIBRARY(USRSCTP_LIB usrsctp)
+	LIST(APPEND neat_LIBS ${USRSCTP_LIB})
+    MESSAGE(STATUS "USRSCTP found: " ${USRSCTP_LIB})
+endif()
+
 # REQUIREMENTS
 #################################################
 CHECK_INCLUDE_FILE(uv.h HAVE_SYS_UV_H)
 FIND_LIBRARY(UV_LIB uv)
 MESSAGE(STATUS "UV found: " ${UV_LIB})
 IF(NOT HAVE_SYS_UV_H OR NOT UV_LIB)
-    message(FATAL_ERROR "uv.h not not found - libuv installed?")
+    message(FATAL_ERROR "uv.h not found - libuv installed?")
 endif()
 
 
@@ -94,6 +112,12 @@ IF(HAVE_NETINET_SCTP_H)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
 ENDIF()
 
+IF (USRSCTP_SUPPORT)
+    CHECK_INCLUDE_FILE(usrsctp.h HAVE_USRSCTP_H)
+    IF (NOT HAVE_USRSCTP_H)
+        message(FATAL_ERROR "usrsctp.h not found - usrsctp installed?")
+    ENDIF()
+ENDIF()
 
 # COMPILER FLAGS
 #################################################

@@ -1119,7 +1119,7 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     socklen_t len;
     int size;
 #ifdef __linux__
-    //char if_name[IF_NAMESIZE];
+    char if_name[IF_NAMESIZE];
 #endif
 
     socklen_t slen =
@@ -1142,13 +1142,13 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     }
 
 #ifdef __linux__
-    /*if (if_indextoname(he_ctx->candidate->if_idx, if_name)) {
+    if (if_indextoname(he_ctx->candidate->if_idx, if_name)) {
         if (setsockopt(he_ctx->fd, SOL_SOCKET, SO_BINDTODEVICE, if_name,
                 strlen(if_name)) < 0) {
             //Not a critical error
             fprintf(stderr, "Could not bind socket to interface %s\n", if_name);
         }
-    }*/
+    }
 #endif
 
     len = (socklen_t)sizeof(int);

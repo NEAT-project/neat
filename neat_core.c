@@ -10,6 +10,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <uv.h>
+#include <errno.h>
+
+#ifdef __linux__
+    #include <net/if.h>
+#endif
 
 #include "neat.h"
 #include "neat_internal.h"
@@ -1142,11 +1147,39 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     int enable = 1;
     socklen_t len;
     int size;
+#ifdef __linux__
+    char if_name[IF_NAMESIZE];
+#endif
+
     socklen_t slen =
             (he_ctx->candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
     neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     he_ctx->fd = socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, he_ctx->candidate->ai_protocol);
+
+    if (he_ctx->fd < 0) {
+        fprintf(stderr, "Failed to create he socket\n");
+        return -1;
+    }
+
+    /* Bind to address + interface (if Linux) */
+    if (bind(he_ctx->fd, (struct sockaddr*) &(he_ctx->candidate->src_addr),
+            he_ctx->candidate->src_addr_len)) {
+        fprintf(stderr, "Failed to bind socket to IP. Error: %s\n",
+                strerror(errno));
+        return -1;
+    }
+
+#ifdef __linux__
+    if (if_indextoname(he_ctx->candidate->if_idx, if_name)) {
+        if (setsockopt(he_ctx->fd, SOL_SOCKET, SO_BINDTODEVICE, if_name,
+                strlen(if_name)) < 0) {
+            //Not a critical error
+            fprintf(stderr, "Could not bind socket to interface %s\n", if_name);
+        }
+    }
+#endif
+
     len = (socklen_t)sizeof(int);
     if (getsockopt(he_ctx->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
         he_ctx->writeSize = size;

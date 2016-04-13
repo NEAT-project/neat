@@ -348,6 +348,35 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
+#ifdef NEAT_LOG
+    char proto[16];
+
+    switch (flow->sockProtocol) {
+        case IPPROTO_UDP:
+            snprintf(proto, 16, "UDP");
+            break;
+        case IPPROTO_TCP:
+            snprintf(proto, 16, "TCP");
+            break;
+#ifdef IPPROTO_SCTP
+        case IPPROTO_SCTP:
+            snprintf(proto, 16, "SCTP");
+            break;
+#endif
+#ifdef IPPROTO_UDPLITE
+        case IPPROTO_UDPLITE:
+            snprintf(proto, 16, "UDPLite");
+            break;
+#endif
+        default:
+            snprintf(proto, 16, "proto%d", flow->sockProtocol);
+            break;
+    }
+
+    neat_log(NEAT_LOG_INFO, "Connected: %s/%s", proto, (flow->family == AF_INET ? "IPv4" : "IPv6" ));
+#endif // NEAT_LOG
+
+
     if (!flow->operations || !flow->operations->on_connected) {
         return;
     }

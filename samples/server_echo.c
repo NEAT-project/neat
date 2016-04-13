@@ -117,37 +117,6 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 
 static neat_error_code on_connected(struct neat_flow_operations *opCB)
 {
-    printf("[%d] connected - ", opCB->flow->fd);
-
-    if (opCB->flow->family == AF_INET) {
-        printf("IPv4 - ");
-    } else if (opCB->flow->family == AF_INET6) {
-        printf("IPv6 - ");
-    }
-
-    switch (opCB->flow->sockProtocol) {
-    case IPPROTO_TCP:
-        printf("TCP ");
-        break;
-    case IPPROTO_UDP:
-        printf("UDP ");
-        break;
-#ifdef IPPROTO_SCTP
-    case IPPROTO_SCTP:
-        printf("SCTP ");
-        break;
-#endif
-#ifdef IPPROTO_UDPLITE
-    case IPPROTO_UDPLITE:
-        printf("UDPLite ");
-        break;
-#endif
-    default:
-        printf("protocol #%d", opCB->flow->sockProtocol);
-        break;
-    }
-    printf("\n");
-
     opCB->on_all_written = on_all_written;
     opCB->on_readable = on_readable;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);

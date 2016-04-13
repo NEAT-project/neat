@@ -1158,15 +1158,14 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     he_ctx->fd = socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, he_ctx->candidate->ai_protocol);
 
     if (he_ctx->fd < 0) {
-        fprintf(stderr, "Failed to create he socket\n");
+        neat_log(NEAT_LOG_ERROR, "Failed to create he socket");
         return -1;
     }
 
     /* Bind to address + interface (if Linux) */
     if (bind(he_ctx->fd, (struct sockaddr*) &(he_ctx->candidate->src_addr),
             he_ctx->candidate->src_addr_len)) {
-        fprintf(stderr, "Failed to bind socket to IP. Error: %s\n",
-                strerror(errno));
+        neat_log(NEAT_LOG_ERROR, "Failed to bind socket to IP. Error: %s", strerror(errno));
         return -1;
     }
 
@@ -1175,7 +1174,7 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         if (setsockopt(he_ctx->fd, SOL_SOCKET, SO_BINDTODEVICE, if_name,
                 strlen(if_name)) < 0) {
             //Not a critical error
-            fprintf(stderr, "Could not bind socket to interface %s\n", if_name);
+            neat_log(NEAT_LOG_WARNING, "Could not bind socket to interface %s", if_name);
         }
     }
 #endif

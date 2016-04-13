@@ -160,8 +160,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         if (flow->connectfx(he_ctx, callback_fx) == -1) {
             /* TODO: Some error handling? */
             continue;
-        } else
-            break;
+        }
 
     }
 

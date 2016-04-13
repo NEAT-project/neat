@@ -119,7 +119,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
     nsrc_addr = (struct neat_addr*) calloc(sizeof(struct neat_addr), 1);
 
     if (nsrc_addr == NULL) {
-        neat_log(NEAT_LOG_ERROR, "Could not allocate memory for %s", __FUNCTION__, addr_str);
+        neat_log(NEAT_LOG_ERROR, "%s: Could not allocate memory for %s", __FUNCTION__, addr_str);
         //TODO: Trigger a refresh of available addresses
         return;
     }

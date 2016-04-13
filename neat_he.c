@@ -191,7 +191,8 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
         return NEAT_ERROR_UNABLE;
 
     if (!ctx->resolver) {
-        ctx->resolver = neat_resolver_init(ctx, he_resolve_cb, NULL);
+        ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf",
+                                           he_resolve_cb, NULL);
     }
     ctx->resolver->userData1 = (void *)flow; // TODO: This doesn't allow multiple sockets
     ctx->resolver->userData2 = callback_fx;

@@ -110,7 +110,8 @@ int main(int argc, char *argv[])
     int32_t test_proto[NEAT_MAX_NUM_PROTO];
     uint8_t n;
 
-    resolver = nc ? neat_resolver_init(nc, resolver_handle, resolver_cleanup) : NULL;
+    resolver = nc ? neat_resolver_init(nc, "/etc/resolv.conf", resolver_handle,
+                                       resolver_cleanup) : NULL;
 
     if (nc == NULL || resolver == NULL)
         exit(EXIT_FAILURE);

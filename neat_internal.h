@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <uv.h>
 
+#include "neat.h"
 #include "neat_queue.h"
 #ifdef __linux__
     #include "neat_linux.h"
@@ -60,7 +61,7 @@ struct neat_ctx {
 
 struct he_cb_ctx;
 
-typedef struct neat_ctx neat_ctx ;
+typedef struct neat_ctx neat_ctx;
 typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,

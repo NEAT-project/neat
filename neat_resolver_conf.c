@@ -47,8 +47,8 @@ static void neat_resolver_delete_servers(struct neat_resolver *resolver)
 
         LIST_REMOVE(server_to_delete, next_server);
         free(server_to_delete);
-        
-        printf("Deleted address %s from DNS list\n", dst_addr_buf);
+
+        neat_log(NEAT_LOG_INFO, "Deleted address %s from DNS list", dst_addr_buf);
     }
 }
 
@@ -81,7 +81,7 @@ static void neat_resolver_resolv_check_addr(struct neat_resolver *resolver,
         }
 
         if (addr_equal) {
-            printf("Addr %s found in resolver list\n", dst_addr_buf);
+            neat_log(NEAT_LOG_INFO, "Addr %s found in resolver list", dst_addr_buf);
             server->mark = NEAT_RESOLVER_SERVER_ACTIVE;
             return;
         }
@@ -89,7 +89,7 @@ static void neat_resolver_resolv_check_addr(struct neat_resolver *resolver,
 
     //TODO: Decide how to handle this error!
     if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {
-        fprintf(stderr, "Failed to allocate memory for DNS server\n");
+        neat_log(NEAT_LOG_ERROR, "Failed to allocate memory for DNS server");
         return;
     }
 
@@ -105,7 +105,7 @@ static void neat_resolver_resolv_check_addr(struct neat_resolver *resolver,
         inet_ntop(AF_INET6, &(dst_addr6->sin6_addr), dst_addr_buf, INET6_ADDRSTRLEN);
     }
 
-    fprintf(stdout, "Added %s to resolver list\n", dst_addr_buf);
+    neat_log(NEAT_LOG_INFO, "Added %s to resolver list", dst_addr_buf);
 }
 
 void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
@@ -127,13 +127,13 @@ void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
 
     memset(resolv_path, 0, resolv_path_len);
     if (uv_fs_event_getpath(handle, resolv_path, &resolv_path_len)) {
-        fprintf(stderr, "Could not store resolv.conf path in buffer\n");
+        neat_log(NEAT_LOG_ERROR, "Could not store resolv.conf path in buffer");
         exit(EXIT_FAILURE);
     }
 
     //TODO: Read filename dynamically
     if (!(resolv_ptr = fopen(resolv_path, "r"))) {
-        fprintf(stderr, "Failed to open resolv-file\n");
+        neat_log(NEAT_LOG_ERROR, "Failed to open resolv-file");
         return;
     }
 
@@ -143,7 +143,7 @@ void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
     while ((resolv_line = fgets(nameserver_str, sizeof(nameserver_str),
                                 resolv_ptr))) {
         if (ferror(resolv_ptr)) {
-            fprintf(stderr, "Failed to read line from resolv-file\n");
+            neat_log(NEAT_LOG_ERROR, "Failed to read line from resolv-file");
             //Reason for break and not return is that we might have got SOME
             //useful information from resolv.conf
             break;
@@ -178,7 +178,7 @@ void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
             neat_resolver_resolv_check_addr(resolver, &server_addr);
             continue;
         } else {
-            fprintf(stderr, "Could not parse server %s\n", token);        
+            neat_log(NEAT_LOG_ERROR, "Could not parse server %s", token);
         }
     }
 
@@ -203,7 +203,7 @@ uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver)
         inet_pton(AF_INET, INET_DNS_SERVERS[i], &(addr4->sin_addr));
 
         if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {
-            fprintf(stderr, "Failed to allocate memory for DNS server\n");
+            neat_log(NEAT_LOG_ERROR, "Failed to allocate memory for DNS server");
             return 0;
         }
 
@@ -218,7 +218,7 @@ uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver)
         inet_pton(AF_INET, INET6_DNS_SERVERS[i], &(addr6->sin6_addr));
 
         if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {
-            fprintf(stderr, "Failed to allocate memory for DNS server\n");
+            neat_log(NEAT_LOG_ERROR, "Failed to allocate memory for DNS server");
             return 0;
         }
 
@@ -231,4 +231,3 @@ uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver)
                                       UV_CHANGE, 0);
     return 1;
 }
-

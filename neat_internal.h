@@ -123,8 +123,10 @@ typedef struct neat_flow neat_flow;
 //NEAT resolver public data structures/functions
 struct neat_resolver;
 struct neat_resolver_res;
+struct neat_resolver_server;
 
 LIST_HEAD(neat_resolver_results, neat_resolver_res);
+LIST_HEAD(neat_resolver_servers, neat_resolver_server);
 
 typedef void (*neat_resolver_handle_t)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
 typedef void (*neat_resolver_cleanup_t)(struct neat_resolver *resolver);
@@ -136,6 +138,22 @@ enum neat_resolver_code {
     NEAT_RESOLVER_TIMEOUT,
     //Signal internal error
     NEAT_RESOLVER_ERROR,
+};
+
+enum neat_resolver_mark {
+    //Set for our well-known global servers
+    NEAT_RESOLVER_SERVER_STATIC = 0,
+    //Indicate that this server should be deleted (i.e., it is removed from
+    //resolv.conf)
+    NEAT_RESOLVER_SERVER_DELETE,
+    //Indicate that this server should be kept
+    NEAT_RESOLVER_SERVER_ACTIVE
+};
+
+struct neat_resolver_server {
+    struct sockaddr_storage server_addr;
+    uint8_t mark;
+    LIST_ENTRY(neat_resolver_server) next_server;
 };
 
 //Struct passed to resolver callback, mirrors what we get back from getaddrinfo
@@ -259,6 +277,9 @@ struct neat_resolver {
     //decide that it is a problem
     struct neat_event_cb newaddr_cb;
     struct neat_event_cb deladdr_cb;
+
+    //Keep track of all DNS servers seen until now
+    struct neat_resolver_servers server_list;
 
     //List of all active resolver pairs
     struct neat_resolver_pairs resolver_pairs;

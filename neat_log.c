@@ -26,7 +26,7 @@ uint8_t neat_log_init() {
     // use stderr as default output until init finished...
     neat_log_fd = stderr;
 
-    // determine Loglevel
+    // determine log level
     if (env_log_level == NULL) {
         neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : default", __FUNCTION__);
     } else if (strcmp(env_log_level,"NEAT_LOG_DEBUG") == 0) {

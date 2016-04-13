@@ -40,7 +40,7 @@ static void he_print_results(struct neat_resolver_results *results)
                 break;
 #endif
             default:
-                snprintf(proto, 16, "proto%d/", result->ai_protocol);
+                snprintf(proto, 16, "proto%d", result->ai_protocol);
                 break;
         }
         switch (result->ai_family) {

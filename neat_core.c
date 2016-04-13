@@ -274,7 +274,7 @@ static void free_cb(uv_handle_t *handle)
 #if defined(USRSCTP_SUPPORT)
 void neat_usrsctp_close_sockflow(struct neat_flow *fl)
 {
-	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     fl->closefx(fl->ctx, fl);
     neat_free_flow(fl);
@@ -283,7 +283,7 @@ void neat_usrsctp_close_sockflow(struct neat_flow *fl)
 
 void neat_free_flow(neat_flow *flow)
 {
-	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
 #if !defined(USRSCTP_SUPPORT)
     if (flow->isPolling)
@@ -387,7 +387,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 static void io_writable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
-	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
 #if !defined(USRSCTP_SUPPORT)
     if (flow->isDraining) {
@@ -622,7 +622,7 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
 #if defined(USRSCTP_SUPPORT)
 void neat_usrsctp_start_do_accept(neat_ctx *ctx, neat_flow *flow)
 {
-	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
     do_accept(ctx, flow);
 }
 #endif
@@ -1269,7 +1269,7 @@ neat_usrsctp_receive(struct socket *sock, union sctp_sockstore addr, void *data,
                         size_t datalen, struct sctp_rcvinfo rcv, int flags, void *ulp_info)
 {
     struct neat_flow *flow = (struct neat_flow *)(ulp_info);
-	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     if (!flow->operations || !flow->operations->on_readable) {
         return -1;
@@ -1286,7 +1286,7 @@ static int
 neat_usrsctp_send(struct socket *sock, uint32_t sb_free, void *ulp_info)
 {
     struct neat_flow *flow = (struct neat_flow *)(ulp_info);
-	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     io_writable(flow->ctx, flow, NEAT_OK);
     return 0;
@@ -1298,7 +1298,7 @@ neat_accept_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow, struct soc
 {
     struct sockaddr_in remote_addr;
     struct socket *newsock;
-	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     socklen_t addr_len = sizeof(struct sockaddr_in);
     memset((void *) &remote_addr, 0, sizeof(struct sockaddr_in));
@@ -1319,7 +1319,7 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     socklen_t slen =
             (he_ctx->candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
     char addrsrcbuf[slen], addrdstbuf[slen];
-	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     he_ctx->sock = usrsctp_socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, he_ctx->candidate->ai_protocol, neat_usrsctp_receive, neat_usrsctp_send, 0, he_ctx->flow);
 if (he_ctx->sock)
@@ -1388,7 +1388,7 @@ if (he_ctx->sock)
 static int
 neat_close_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
 {
-	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     if (flow->sock)
         usrsctp_close(flow->sock);
@@ -1401,7 +1401,7 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
     int enable = 1;
     socklen_t len;
     int size;
-	neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
 
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);

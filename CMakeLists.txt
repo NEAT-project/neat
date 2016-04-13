@@ -83,6 +83,11 @@ if (USRSCTP_SUPPORT)
     MESSAGE(STATUS "USRSCTP found: " ${USRSCTP_LIB})
 endif()
 
+option(NEAT_LOG "enable NEAT log module" 1)
+if (NEAT_LOG)
+    add_definitions(-DNEAT_LOG)
+endif()
+
 # REQUIREMENTS
 #################################################
 CHECK_INCLUDE_FILE(uv.h HAVE_SYS_UV_H)

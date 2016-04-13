@@ -79,8 +79,8 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
 
     if (mnl_attr_parse(nl_hdr, sizeof(struct ifaddrmsg),
                 neat_linux_parse_nlattr, &tb_storage) != MNL_CB_OK) {
-        fprintf(stderr, "Failed to parse nlattr for msg of type %d\n",
-                nl_hdr->nlmsg_type);
+        neat_log(NEAT_LOG_ERROR, "Failed to parse nlattr for msg of type %d",
+                __FUNCTION__, nl_hdr->nlmsg_type);
         return;
     }
 
@@ -115,7 +115,7 @@ static void neat_linux_nl_alloc(uv_handle_t *handle, size_t suggested_size,
 {
     struct neat_ctx *nc = handle->data;
 
-    memset(nc->mnl_rcv_buf, 0, MNL_SOCKET_BUFFER_SIZE); 
+    memset(nc->mnl_rcv_buf, 0, MNL_SOCKET_BUFFER_SIZE);
     buf->base = nc->mnl_rcv_buf;
     buf->len = MNL_SOCKET_BUFFER_SIZE;
 }
@@ -133,8 +133,8 @@ static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
     while (mnl_nlmsg_ok(nl_hdr, numbytes)) {
         if (nl_hdr->nlmsg_type == RTM_NEWADDR ||
             nl_hdr->nlmsg_type == RTM_DELADDR)
-            neat_linux_handle_addr(nc, nl_hdr);  
-       
+            neat_linux_handle_addr(nc, nl_hdr);
+
         nl_hdr = mnl_nlmsg_next(nl_hdr, &numbytes);
     }
 }
@@ -154,32 +154,32 @@ struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *nc)
 {
     //TODO: Consider allocator function
     if ((nc->mnl_rcv_buf = calloc(MNL_SOCKET_BUFFER_SIZE, 1)) == NULL) {
-        fprintf(stderr, "Failed to allocate netlink buffer\n");
+        neat_log(NEAT_LOG_ERROR, "Failed to allocate netlink buffer", __FUNCTION__);
         return NULL;
     }
 
     //Configure netlink and start requesting addresses
     if ((nc->mnl_sock = mnl_socket_open(NETLINK_ROUTE)) == NULL) {
-        fprintf(stderr, "Failed to allocate netlink socket\n");
+        neat_log(NEAT_LOG_ERROR, "Failed to allocate netlink socket", __FUNCTION__);
         return NULL;
     }
 
     if (mnl_socket_bind(nc->mnl_sock, (1 << (RTNLGRP_IPV4_IFADDR - 1)) |
                 (1 << (RTNLGRP_IPV6_IFADDR - 1)), 0)) {
-        fprintf(stderr, "Failed to bind netlink socket\n");
+        neat_log(NEAT_LOG_ERROR, "Failed to bind netlink socket", __FUNCTION__);
         return NULL;
     }
-    
+
     //We need to build a list of all available source addresses as soon as
     //possible. It is started here
     if (neat_linux_request_addrs(nc->mnl_sock) <= 0) {
-        fprintf(stderr, "Failed to request addresses\n");
+        neat_log(NEAT_LOG_ERROR, "Failed to request addresses", __FUNCTION__);
         return NULL;
     }
 
     //Add socket to event loop
     if (uv_udp_init(nc->loop, &(nc->uv_nl_handle))) {
-        fprintf(stderr, "Failed to initialize uv UDP handle\n");
+        neat_log(NEAT_LOG_ERROR, "Failed to initialize uv UDP handle", __FUNCTION__);
         return NULL;
     }
 
@@ -187,16 +187,16 @@ struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *nc)
     nc->uv_nl_handle.data = nc;
 
     if (uv_udp_open(&(nc->uv_nl_handle), mnl_socket_get_fd(nc->mnl_sock))) {
-        fprintf(stderr, "Could not add netlink socket to uv\n");
+        neat_log(NEAT_LOG_ERROR, "Could not add netlink socket to uv", __FUNCTION__);
         return NULL;
     }
 
     if (uv_udp_recv_start(&(nc->uv_nl_handle), neat_linux_nl_alloc,
                 neat_linux_nl_recv)) {
-        fprintf(stderr, "Could not start receiving netlink packets\n");
+        neat_log(NEAT_LOG_ERROR, "Could not start receiving netlink packets", __FUNCTION__);
         return NULL;
     }
-     
+
     nc->cleanup = neat_linux_cleanup;
 
     //Configure netlink socket, add to event loop and start dumping

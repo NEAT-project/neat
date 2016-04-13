@@ -54,8 +54,8 @@ $ sudo make install
 ```
 Don't forget to run ldconfig after installing neat the first time.
 
-### Debug ouput :page_with_curl:
-Neat offers a flexible way to control debug output via eviroment variables. 
+### Debug output :page_with_curl:
+Neat offers a flexible way to control debug output via environment variables. 
 
 | variable        | default           | supported values |
 | :-------------  |:-------------| :------------- |

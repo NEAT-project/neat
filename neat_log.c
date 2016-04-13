@@ -7,6 +7,8 @@
 #include "neat_log.h"
 #include "neat_core.h"
 
+#ifdef NEAT_LOG
+
 uint8_t neat_log_level = NEAT_LOG_INFO;
 FILE *neat_log_fd = NULL;
 
@@ -24,7 +26,7 @@ uint8_t neat_log_init() {
     // use stderr as default output until init finished...
     neat_log_fd = stderr;
 
-    // determine Loglevel
+    // determine log level
     if (env_log_level == NULL) {
         neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : default", __FUNCTION__);
     } else if (strcmp(env_log_level,"NEAT_LOG_DEBUG") == 0) {
@@ -75,6 +77,21 @@ void neat_log(uint8_t level, const char* format, ...) {
         return;
     }
 
+    switch (level) {
+        case NEAT_LOG_ERROR:
+            fprintf(neat_log_fd, "[ERR] ");
+            break;
+        case NEAT_LOG_WARNING:
+            fprintf(neat_log_fd, "[WRN] ");
+            break;
+        case NEAT_LOG_INFO:
+            fprintf(neat_log_fd, "[INF] ");
+            break;
+        case NEAT_LOG_DEBUG:
+            fprintf(neat_log_fd, "[DBG] ");
+            break;
+    }
+
     va_list argptr;
     va_start(argptr, format);
     vfprintf(neat_log_fd, format, argptr);
@@ -97,3 +114,17 @@ uint8_t neat_log_close() {
 
     return RETVAL_SUCCESS;
 }
+
+#else // NEAT_LOG
+    uint8_t neat_log_init() {
+        return RETVAL_SUCCESS;
+    }
+
+    void neat_log(uint8_t level, const char* format, ...) {
+        return;
+    }
+
+    uint8_t neat_log_close() {
+        return RETVAL_SUCCESS;
+    }
+#endif

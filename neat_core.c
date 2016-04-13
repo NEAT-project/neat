@@ -1119,7 +1119,7 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     socklen_t len;
     int size;
 #ifdef __linux__
-    char if_name[IF_NAMESIZE];
+    //char if_name[IF_NAMESIZE];
 #endif
 
     socklen_t slen =

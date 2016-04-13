@@ -7,6 +7,8 @@
 #include "neat_log.h"
 #include "neat_core.h"
 
+#ifdef NEAT_LOG
+
 uint8_t neat_log_level = NEAT_LOG_INFO;
 FILE *neat_log_fd = NULL;
 
@@ -112,3 +114,17 @@ uint8_t neat_log_close() {
 
     return RETVAL_SUCCESS;
 }
+
+#else // NEAT_LOG
+    uint8_t neat_log_init() {
+        return RETVAL_SUCCESS;
+    }
+
+    void neat_log(uint8_t level, const char* format, ...) {
+        return;
+    }
+
+    uint8_t neat_log_close() {
+        return RETVAL_SUCCESS;
+    }
+#endif

@@ -75,6 +75,21 @@ void neat_log(uint8_t level, const char* format, ...) {
         return;
     }
 
+    switch (level) {
+        case NEAT_LOG_ERROR:
+            fprintf(neat_log_fd, "[ERR] ");
+            break;
+        case NEAT_LOG_WARNING:
+            fprintf(neat_log_fd, "[WRN] ");
+            break;
+        case NEAT_LOG_INFO:
+            fprintf(neat_log_fd, "[INF] ");
+            break;
+        case NEAT_LOG_DEBUG:
+            fprintf(neat_log_fd, "[DBG] ");
+            break;
+    }
+
     va_list argptr;
     va_start(argptr, format);
     vfprintf(neat_log_fd, format, argptr);

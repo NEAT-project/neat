@@ -1135,7 +1135,7 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 
     /* Bind to address + interface (if Linux) */
     if (bind(he_ctx->fd, (struct sockaddr*) &(he_ctx->candidate->src_addr),
-            sizeof(struct sockaddr_storage))) {
+            he_ctx->candidate->src_addr_len)) {
         fprintf(stderr, "Failed to bind socket to IP. Error: %s\n",
                 strerror(errno));
         return -1;

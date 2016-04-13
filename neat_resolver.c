@@ -21,6 +21,7 @@
 #include "neat_core.h"
 #include "neat_addr.h"
 #include "neat_resolver.h"
+#include "neat_resolver_conf.h"
 
 static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
         struct neat_addr *src_addr);
@@ -336,7 +337,7 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 static void neat_resolver_dns_sent_cb(uv_udp_send_t *req, int status)
 {
     //Callback will be used to send the follow-up request to check for errors
-    //printf("UDP send callback", __FUNCTION__);
+    //printf("UDP send callback\n");
 }
 
 //libuv gives the user control of how memory is allocated. This callback is
@@ -619,11 +620,10 @@ static uint8_t neat_resolver_send_query(struct neat_resolver_src_dst_addr *pair)
 //Create one SRC/DST DNS resolver pair. Pair has already been allocated
 static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
         struct neat_resolver_src_dst_addr *pair,
-        const char *dst_addr_str)
+        const struct sockaddr_storage *server_addr)
 {
-    struct sockaddr_in *dst_addr4;
-    struct sockaddr_in6 *dst_addr6;
-    void *dst_addr_pton = NULL;
+    struct sockaddr_in *dst_addr4, *server_addr4;
+    struct sockaddr_in6 *dst_addr6, *server_addr6;
     uint8_t family = pair->src_addr->family;
 #ifdef __linux__
     uv_os_fd_t socket_fd = -1;
@@ -631,20 +631,17 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
 #endif
 
     if (family == AF_INET) {
+        server_addr4 = (struct sockaddr_in*) server_addr;
         dst_addr4 = &(pair->dst_addr.u.v4.addr4);
         dst_addr4->sin_family = AF_INET;
         dst_addr4->sin_port = htons(LDNS_PORT);
-        dst_addr_pton = &(dst_addr4->sin_addr);
+        dst_addr4->sin_addr = server_addr4->sin_addr;
     } else {
+        server_addr6 = (struct sockaddr_in6*) server_addr;
         dst_addr6 = &(pair->dst_addr.u.v6.addr6);
         dst_addr6->sin6_family = AF_INET6;
         dst_addr6->sin6_port = htons(LDNS_PORT);
-        dst_addr_pton = &(dst_addr6->sin6_addr);
-    }
-
-    if (!inet_pton(family, dst_addr_str, dst_addr_pton)) {
-        neat_log(NEAT_LOG_ERROR, "%s - Failed to convert destination address", __FUNCTION__);
-        return RETVAL_FAILURE;
+        dst_addr6->sin6_addr = server_addr6->sin6_addr;
     }
 
     //Configure uv_udp_handle
@@ -689,7 +686,6 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
         return RETVAL_IGNORE;
     }
 #endif
-
     return RETVAL_SUCCESS;
 }
 
@@ -698,21 +694,20 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
 static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
         struct neat_addr *src_addr)
 {
-    const char **dns_addrs = (const char **) ((src_addr->family == AF_INET) ?
-            INET_DNS_SERVERS : INET6_DNS_SERVERS);
-    uint8_t num_dns = src_addr->family == AF_INET ? sizeof(INET_DNS_SERVERS) :
-        sizeof(INET6_DNS_SERVERS);
-    uint8_t i;
     struct neat_resolver_src_dst_addr *resolver_pair;
+    struct neat_resolver_server *server_itr;
 
     //After adding support for restart, we can end up here without a domain
     //name. There is not point continuing if we have no domain name to resolve
     if (!resolver->domain_name[0])
         return RETVAL_SUCCESS;
 
-    num_dns /= sizeof(const char*);
+    for (server_itr = resolver->server_list.lh_first; server_itr != NULL;
+            server_itr = server_itr->next_server.le_next) {
 
-    for (i = 0; i < num_dns; i++) {
+        if (src_addr->family != server_itr->server_addr.ss_family)
+            continue;
+
         resolver_pair = (struct neat_resolver_src_dst_addr*)
             calloc(sizeof(struct neat_resolver_src_dst_addr), 1);
 
@@ -725,7 +720,7 @@ static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
         resolver_pair->src_addr = src_addr;
 
         if (neat_resolver_create_pair(resolver->nc, resolver_pair,
-                    dns_addrs[i]) == RETVAL_FAILURE) {
+                    &(server_itr->server_addr)) == RETVAL_FAILURE) {
             neat_log(NEAT_LOG_ERROR, "%s - Failed to create resolver pair", __FUNCTION__);
             neat_resolver_mark_pair_del(resolver_pair);
             continue;
@@ -929,7 +924,9 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
 //Initialize the resolver. Set up callbacks etc.
 struct neat_resolver *
 neat_resolver_init(struct neat_ctx *nc,
-                   neat_resolver_handle_t handle_resolve, neat_resolver_cleanup_t cleanup)
+                   const char *resolv_conf_path,
+                   neat_resolver_handle_t handle_resolve,
+                   neat_resolver_cleanup_t cleanup)
 {
     struct neat_resolver *resolver = calloc(sizeof(struct neat_resolver), 1);
     if (!handle_resolve || !resolver)
@@ -960,6 +957,23 @@ neat_resolver_init(struct neat_ctx *nc,
     uv_timer_init(nc->loop, &(resolver->timeout_handle));
     resolver->timeout_handle.data = resolver;
 
+    if (uv_fs_event_init(nc->loop, &(resolver->resolv_conf_handle))) {
+        fprintf(stderr, "Could not initialize fs event handle\n");
+        return NULL;
+    }
+
+    resolver->resolv_conf_handle.data = resolver;
+
+    if (uv_fs_event_start(&(resolver->resolv_conf_handle),
+                      neat_resolver_resolv_conf_updated,
+                      resolv_conf_path, 0)) {
+        fprintf(stderr, "Could not start fs event handle\n");
+        return NULL;
+    }
+
+    if (!neat_resolver_add_initial_servers(resolver))
+        return NULL;
+
     return resolver;
 }
 
@@ -967,6 +981,7 @@ neat_resolver_init(struct neat_ctx *nc,
 static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_mem)
 {
     struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
+    struct neat_resolver_server *server;
 
     resolver_itr = resolver->resolver_pairs.lh_first;
 
@@ -1001,9 +1016,18 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
     if (free_mem) {
         neat_remove_event_cb(resolver->nc, NEAT_NEWADDR, &(resolver->newaddr_cb));
         neat_remove_event_cb(resolver->nc, NEAT_DELADDR, &(resolver->deladdr_cb));
+        uv_fs_event_stop(&(resolver->resolv_conf_handle));
+
+        //Remove all entries in the server table
+        while (resolver->server_list.lh_first != NULL) {
+            server = resolver->server_list.lh_first;
+            LIST_REMOVE(resolver->server_list.lh_first, next_server);
+            free(server);
+        }
     } else {
         memset(resolver->domain_name, 0, MAX_DOMAIN_LENGTH);
     }
+
 
     memset(resolver->ai_protocol, 0, sizeof(resolver->ai_protocol));
 }

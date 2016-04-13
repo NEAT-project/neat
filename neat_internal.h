@@ -12,6 +12,15 @@
     #include "neat_bsd.h"
 #endif
 
+#ifdef USRSCTP_SUPPORT
+    #include "neat_usrsctp.h"
+    #include <usrsctp.h>
+#else
+    #define NEAT_INTERNAL_USRSCTP
+#endif
+
+#include "neat_log.h"
+
 #define NEAT_INTERNAL_CTX \
     void (*cleanup)(struct neat_ctx *nc); \
     struct neat_src_addrs src_addrs; \
@@ -46,6 +55,7 @@ struct neat_ctx {
     // resolver
     NEAT_INTERNAL_CTX;
     NEAT_INTERNAL_OS;
+    NEAT_INTERNAL_USRSCTP;
 };
 
 struct he_cb_ctx;
@@ -55,11 +65,20 @@ typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow
                                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                            const unsigned char *buffer, uint32_t amt);
+#if !defined(USRSCTP_SUPPORT)
 typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
+#else
+typedef struct socket * (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, struct socket *sock);
+#endif
 typedef int (*neat_connect_impl)(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_shutdown_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
+#if defined(USRSCTP_SUPPORT)
+typedef int (*neat_usrsctp_receive_cb)(struct socket *sock, union sctp_sockstore addr, void *data,
+                                 size_t datalen, struct sctp_rcvinfo, int flags, void *ulp_info);
+typedef int (*neat_usrsctp_send_cb)(struct socket *sock, uint32_t free, void *ulp_info);
+#endif
 
 struct neat_buffered_message {
     unsigned char *buffered; // memory for write buffers
@@ -73,7 +92,11 @@ TAILQ_HEAD(neat_message_queue_head, neat_buffered_message);
 
 struct neat_flow
 {
+#if defined(USRSCTP_SUPPORT)
+    struct socket *sock;
+#else
     int fd;
+#endif
     struct neat_flow_operations *operations; // see ownedByCore flag
     const char *name;
     const char *port;
@@ -100,6 +123,11 @@ struct neat_flow
     size_t readBufferAllocation;  // size of buffered allocation
     int readBufferMsgComplete;    // it contains a complete user message
 
+#if defined(USRSCTP_SUPPORT)
+    unsigned char *readbuffer;
+    ssize_t readlen;
+#endif
+
     neat_read_impl readfx;
     neat_write_impl writefx;
     neat_accept_impl acceptfx;
@@ -107,6 +135,11 @@ struct neat_flow
     neat_close_impl closefx;
     neat_listen_impl listenfx;
     neat_shutdown_impl shutdownfx;
+
+#if defined(USRSCTP_SUPPORT)
+    neat_usrsctp_receive_cb usrsctp_receivefx;
+    neat_usrsctp_send_cb usrsctp_sendfx;
+#endif
 
     int hefirstConnect : 1;
     int firstWritePending : 1;
@@ -176,7 +209,11 @@ struct he_cb_ctx {
     struct neat_ctx *nc;
     struct neat_resolver_res *candidate;
     neat_flow *flow;
+#if defined(USRSCTP_SUPPORT)
+    struct socket *sock;
+#else
     int fd;
+#endif
     size_t writeSize;
     size_t readSize;
     size_t writeLimit;

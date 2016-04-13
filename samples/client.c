@@ -93,13 +93,13 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             printf("disconnected\n");
         }
         ops.on_readable = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, &ops);
+        neat_set_operations(ctx, flow, &ops);
         neat_stop_event_loop(opCB->ctx);
     }
 
     ops.on_all_written = on_all_written;
     ops.on_readable = on_readable;
-    neat_set_operations(opCB->ctx, opCB->flow, &ops);
+    neat_set_operations(ctx, flow, &ops);
     return NEAT_OK;
 }
 

@@ -41,9 +41,11 @@ on_writable(struct neat_flow_operations *opCB)
         // read now
         opCB->on_writable = NULL;
         opCB->on_readable = on_readable;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
     } else {
         // we are done
         opCB->on_writable = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
         free (opCB->userData);
         opCB->userData = NULL;
         neat_free_flow(opCB->flow);
@@ -81,6 +83,7 @@ on_readable(struct neat_flow_operations *opCB)
             sd->iter++;
             opCB->on_readable = NULL;
             opCB->on_writable = on_writable;
+            neat_set_operations(opCB->ctx, opCB->flow, opCB);
         }
     }
     return 0;
@@ -94,6 +97,7 @@ on_connected(struct neat_flow_operations *opCB)
     ((struct sessionData *)(opCB->userData))->toread = 100;
     ((struct sessionData *)(opCB->userData))->iter = 0;
     opCB->on_writable = on_writable;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return 0;
 }
 

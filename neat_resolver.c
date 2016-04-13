@@ -822,6 +822,9 @@ static void neat_resolver_delete_servers(struct neat_resolver *resolver)
 {
     struct neat_resolver_server *server = resolver->server_list.lh_first;
     struct neat_resolver_server *server_to_delete;
+    char dst_addr_buf[INET6_ADDRSTRLEN];
+    struct sockaddr_in *server_addr4;
+    struct sockaddr_in6* server_addr6;
 
     while (server != NULL) {
         if (server->mark != NEAT_RESOLVER_SERVER_DELETE) {
@@ -832,8 +835,18 @@ static void neat_resolver_delete_servers(struct neat_resolver *resolver)
         server_to_delete = server;
         server = server->next_server.le_next;
 
+        if (server_to_delete->server_addr.ss_family == AF_INET) {
+            server_addr4 = (struct sockaddr_in*) &(server_to_delete->server_addr);
+            inet_ntop(AF_INET, &(server_addr4->sin_addr), dst_addr_buf, INET6_ADDRSTRLEN);
+        } else {
+            server_addr6 = (struct sockaddr_in6*) &(server_to_delete->server_addr);
+            inet_ntop(AF_INET6, &(server_addr6->sin6_addr), dst_addr_buf, INET6_ADDRSTRLEN);
+        }
+
         LIST_REMOVE(server_to_delete, next_server);
-        free(server);
+        free(server_to_delete);
+        
+        printf("Deleted address %s from DNS list\n", dst_addr_buf);
     }
 }
 
@@ -866,7 +879,7 @@ static void neat_resolver_resolv_check_addr(struct neat_resolver *resolver,
         }
 
         if (addr_equal) {
-            printf("Addr %s found in list\n", dst_addr_buf);
+            printf("Addr %s found in resolver list\n", dst_addr_buf);
             server->mark = NEAT_RESOLVER_SERVER_ACTIVE;
             return;
         }
@@ -927,9 +940,6 @@ static void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
     //Mark all nameservers as ready to delete
     neat_resolver_reset_mark(resolver);
 
-    //Parse resolv.conf and add to 
-    fprintf(stderr, "%s updated\n", resolv_path);
-
     while ((resolv_line = fgets(nameserver_str, sizeof(nameserver_str),
                                 resolv_ptr))) {
         if (ferror(resolv_ptr)) {
@@ -951,8 +961,6 @@ static void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
 
         if (!(token = strtok(NULL, " \t\r\n")))
             continue;
-
-        printf("Nameserver: %s\n", token);
 
         //Parse IP, check if server is seen and add server to list if not
         retval = inet_pton(AF_INET, token, &(server_addr4->sin_addr));

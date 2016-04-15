@@ -17,8 +17,6 @@ static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
-#define debug_error(M, ...) fprintf(stderr, "[ERROR][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
-
 struct std_buffer {
     unsigned char *buffer;
     uint32_t buffer_filled;
@@ -35,9 +33,10 @@ static unsigned char *buffer_snd= NULL;
 
 void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
 void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
+static neat_error_code on_all_written(struct neat_flow_operations *opCB);
 
 /*
-    print usage and exit
+    Print usage and exit
 */
 static void print_usage()
 {
@@ -53,36 +52,43 @@ static void print_usage()
 */
 static neat_error_code on_error(struct neat_flow_operations *opCB)
 {
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
+
     exit(EXIT_FAILURE);
 }
 
 /*
-    Read data until buffered_amount == 0 - then stop event loop!
+    Read data from neat
 */
-static neat_error_code on_all_written(struct neat_flow_operations *opCB);
-
 static neat_error_code on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
     uint32_t buffer_filled;
     neat_error_code code;
 
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
+
     code = neat_read(opCB->ctx, opCB->flow, buffer_rcv, config_rcv_buffer_size, &buffer_filled);
     if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             if (config_log_level >= 1) {
-                printf("on_readable - NEAT_ERROR_WOULD_BLOCK\n");
+                fprintf(stderr, "%s - neat_read - NEAT_ERROR_WOULD_BLOCK\n", __FUNCTION__);
             }
             return NEAT_OK;
         } else {
-            debug_error("code: %d", (int)code);
+            fprintf(stderr, "%s - neat_read - error: %d\n", __FUNCTION__, (int)code);
             return on_error(opCB);
         }
     }
 
+    // all fine
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
-            printf("received %d byte\n", buffer_filled);
+            fprintf(stderr, "%s - received %d bytes\n", __FUNCTION__, buffer_filled);
         }
 
         fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
@@ -90,23 +96,14 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 
     } else {
         if (config_log_level >= 1) {
-            printf("disconnected\n");
+            fprintf(stderr, "%s - disconnected\n", __FUNCTION__);
         }
         ops.on_readable = NULL;
+        ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
         neat_stop_event_loop(opCB->ctx);
     }
 
-    ops.on_all_written = on_all_written;
-    ops.on_readable = on_readable;
-    neat_set_operations(ctx, flow, &ops);
-    return NEAT_OK;
-}
-
-static neat_error_code on_all_written(struct neat_flow_operations *opCB)
-{
-    // data sent completely - continue reading from stdin
-    uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
     return NEAT_OK;
 }
 
@@ -117,67 +114,100 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
 
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
+
     code = neat_write(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled);
     if (code != NEAT_OK) {
-        debug_error("code: %d", (int)code);
+        fprintf(stderr, "%s - neat_write - error: %d\n", __FUNCTION__, (int)code);
         return on_error(opCB);
     }
 
     if (config_log_level >= 1) {
-        printf("sent %d bytes\n", stdin_buffer.buffer_filled);
+        fprintf(stderr, "%s - sent %d bytes\n", __FUNCTION__, stdin_buffer.buffer_filled);
     }
 
     // stop writing
     ops.on_writable = NULL;
-    ops.on_readable = on_readable;
     neat_set_operations(ctx, flow, &ops);
     return NEAT_OK;
 }
 
+static neat_error_code on_all_written(struct neat_flow_operations *opCB)
+{
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
+
+    // data sent completely - continue reading from stdin
+    uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
+    return NEAT_OK;
+}
 
 static neat_error_code on_connected(struct neat_flow_operations *opCB)
 {
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
+
     uv_tty_init(ctx->loop, &tty, 0, 1);
     uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
+
+    ops.on_readable = on_readable;
+    neat_set_operations(ctx, flow, &ops);
 
     return NEAT_OK;
 }
 
 /*
-    Read from stdinq
+    Read from stdin
 */
 void tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
 {
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
 
     if (config_log_level >= 1) {
-        printf("tty_read called with buffer_filled %zd\n", buffer_filled);
+        fprintf(stderr, "%s - tty_read called with buffer_filled %zd\n", __FUNCTION__, buffer_filled);
     }
+
+    // error case
     if (buffer_filled == UV_EOF) {
         if (config_log_level >= 1) {
-            printf("stdin closed\n");
+            fprintf(stderr, "%s - tty_read - UV_EOF\n", __FUNCTION__);
         }
         uv_read_stop(stream);
         ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
         neat_shutdown(ctx, flow);
     }
+
+    // all fine
     if (buffer_filled > 0) {
         // copy input to app buffer
         stdin_buffer.buffer_filled = buffer_filled;
         memcpy(stdin_buffer.buffer, buffer->base, buffer_filled);
 
-        // stop reading from stdin and set write callback
+        // stop reading from stdin and set write callbacks
         uv_read_stop(stream);
         ops.on_writable = on_writable;
+        ops.on_all_written = on_all_written;
         neat_set_operations(ctx, flow, &ops);
-
     }
+
+    free(buffer->base);
 }
 
-void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf)
+void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
 {
-    buf->len = config_rcv_buffer_size;
-    buf->base = malloc(config_rcv_buffer_size);
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
+
+    buffer->len = config_rcv_buffer_size;
+    buffer->base = malloc(config_rcv_buffer_size);
 }
 
 int main(int argc, char *argv[])
@@ -195,25 +225,25 @@ int main(int argc, char *argv[])
         case 'P':
             arg_property = optarg;
             if (config_log_level >= 1) {
-                printf("option - properties: %s\n", arg_property);
+                fprintf(stderr, "%s - option - properties: %s\n", __FUNCTION__, arg_property);
             }
             break;
         case 'R':
             config_rcv_buffer_size = atoi(optarg);
             if (config_log_level >= 1) {
-                printf("option - receive buffer size: %d\n", config_rcv_buffer_size);
+                fprintf(stderr, "%s - option - receive buffer size: %d\n", __FUNCTION__, config_rcv_buffer_size);
             }
             break;
         case 'S':
             config_snd_buffer_size = atoi(optarg);
             if (config_log_level >= 1) {
-                printf("option - send buffer size: %d\n", config_snd_buffer_size);
+                fprintf(stderr, "%s - option - send buffer size: %d\n", __FUNCTION__, config_snd_buffer_size);
             }
             break;
         case 'v':
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {
-                printf("option - log level: %d\n", config_log_level);
+                fprintf(stderr, "%s - option - log level: %d\n", __FUNCTION__, config_log_level);
             }
             break;
         default:
@@ -224,43 +254,43 @@ int main(int argc, char *argv[])
     }
 
     if (optind + 2 != argc) {
-        debug_error("argument error");
+        fprintf(stderr, "%s - error: option - argument error\n", __FUNCTION__);
         print_usage();
         goto cleanup;
     }
 
     if ((buffer_rcv = malloc(config_rcv_buffer_size)) == NULL) {
-        debug_error("could not allocate receive buffer");
+        fprintf(stderr, "%s - error: could not allocate receive buffer\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
     if ((buffer_snd = malloc(config_snd_buffer_size)) == NULL) {
-        debug_error("could not allocate send buffer");
+        fprintf(stderr, "%s - error: could not allocate send buffer\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
     if ((stdin_buffer.buffer = malloc(config_snd_buffer_size)) == NULL) {
-        debug_error("could not allocate stdin buffer");
+        fprintf(stderr, "%s - error: could not allocate stdin buffer\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     if ((ctx = neat_init_ctx()) == NULL) {
-        debug_error("could not initialize context");
+        fprintf(stderr, "%s - error: could not initialize context\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // new neat flow
     if ((flow = neat_new_flow(ctx)) == NULL) {
-        debug_error("neat_new_flow");
+        fprintf(stderr, "%s - error: could not create new neat flow\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // set properties (TCP only etc..)
     if (neat_get_property(ctx, flow, &prop)) {
-        debug_error("neat_get_property");
+        fprintf(stderr, "%s - error: neat_get_property\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -270,7 +300,7 @@ int main(int argc, char *argv[])
 
     while (arg_property_ptr != NULL) {
         if (config_log_level >= 1) {
-            printf("setting property: %s\n", arg_property_ptr);
+            fprintf(stderr, "%s - setting property: %s\n", __FUNCTION__, arg_property_ptr);
         }
 
         if (strcmp(arg_property_ptr,"NEAT_PROPERTY_OPTIONAL_SECURITY") == 0) {
@@ -312,7 +342,7 @@ int main(int argc, char *argv[])
         } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_BANNED") == 0) {
             prop |= NEAT_PROPERTY_RETRANSMISSIONS_BANNED;
         } else {
-            printf("error - unknown property: %s\n", arg_property_ptr);
+            fprintf(stderr, "%s - error: unknown property: %s\n", __FUNCTION__, arg_property_ptr);
             print_usage();
             goto cleanup;
         }
@@ -323,7 +353,7 @@ int main(int argc, char *argv[])
 
     // set properties
     if (neat_set_property(ctx, flow, prop)) {
-        debug_error("neat_set_property");
+        fprintf(stderr, "%s - error: neat_set_property\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -333,7 +363,7 @@ int main(int argc, char *argv[])
     ops.on_error = on_error;
 
     if (neat_set_operations(ctx, flow, &ops)) {
-        debug_error("neat_set_operations");
+        fprintf(stderr, "%s - error: neat_set_operations\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -342,7 +372,7 @@ int main(int argc, char *argv[])
     if (neat_open(ctx, flow, argv[argc - 2], argv[argc - 1]) == NEAT_OK) {
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     } else {
-        debug_error("neat_open");
+        fprintf(stderr, "%s - error: neat_open\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }

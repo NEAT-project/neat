@@ -47,6 +47,7 @@ struct neat_flow_operations
 
 struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
 void neat_free_flow(struct neat_flow *flow);
+void neat_free_final_flow(struct neat_flow *flow);
 
 neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
                                     struct neat_flow_operations *ops);

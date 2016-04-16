@@ -165,13 +165,14 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
 
         uv_poll_cb callback_fx;
         callback_fx = resolver->userData2;
-printf("call connectfx\n");
         if (flow->connectfx(he_ctx, callback_fx) == -1) {
-        printf("no connection\n");
+            neat_log(NEAT_LOG_DEBUG, "%s: Connect failed", __func__);
             continue;
         } else {
-        printf("connectfx returned: increase attempts\n");
+            neat_log(NEAT_LOG_DEBUG, "%s: Connect successful", __func__);
             flow->heConnectAttemptCount++;
+            if (candidate->ai_protocol == IPPROTO_SCTP)
+                break;
         }
 
     }

@@ -598,7 +598,6 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     neat_flow *flow = he_ctx->flow;
-printf("flow=%p status=%d\n", (void *)flow, status);
     //TODO: Final place to filter based on policy
     //TODO: This one uses the first result, so is wrong
     if (flow->hefirstConnect && (status == 0)) {
@@ -637,7 +636,6 @@ printf("flow=%p status=%d\n", (void *)flow, status);
 //#endif
 
         // TODO: Security layer.
-printf("call uvpollable_cb\n");
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
 
@@ -656,7 +654,7 @@ printf("call uvpollable_cb\n");
         if ( status < 0 ) {
             flow->heConnectAttemptCount--;
         }
-printf("call close flow %p\n", (void *)flow);
+        neat_log(NEAT_LOG_DEBUG, "%s: Close socket %d", __func__, flow->fd);
         flow->closefx(he_ctx->nc, flow);
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, NULL);
@@ -1245,6 +1243,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 
     socklen_t slen =
             (he_ctx->candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+    char addrsrcbuf[slen];
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
 #if defined(USRSCTP_SUPPORT)
@@ -1258,6 +1257,8 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     }
 
     /* Bind to address + interface (if Linux) */
+    neat_log(NEAT_LOG_INFO, "%s: Bind to %s", __func__,
+           inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, slen));
     if (bind(he_ctx->fd, (struct sockaddr*) &(he_ctx->candidate->src_addr),
             he_ctx->candidate->src_addr_len)) {
         neat_log(NEAT_LOG_ERROR, "Failed to bind socket to IP. Error: %s", strerror(errno));
@@ -1308,6 +1309,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     uv_poll_init(he_ctx->nc->loop, he_ctx->handle, he_ctx->fd); // makes fd nb as side effect
     if ((he_ctx->fd == -1) ||
         (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
+        neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d", __func__, he_ctx->fd);
         return -1;
     }
     uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx);
@@ -1322,6 +1324,7 @@ neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     if (flow->fd != -1) {
+        neat_log(NEAT_LOG_DEBUG, "%s: Close fd %d", __func__, flow->fd);
         // we might want a fx callback here to split between
         // kernel and userspace.. same for connect read and write
         close(flow->fd);

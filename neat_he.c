@@ -151,19 +151,8 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         he_ctx->flow = flow;
 #ifdef USRSCTP_SUPPORT
         he_ctx->sock = NULL;
-#else
+#endif
         he_ctx->fd = -1;
-#endif
-        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-#if 0
-        char ip_address[INET_ADDRSTRLEN];
-        getnameinfo((struct sockaddr *)&(candidate->dst_addr),
-                    (socklen_t)sizeof(candidate->dst_addr),
-                    ip_address,
-                    INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
-        printf("Initiating connection attempt to %s with protocol %d\n", ip_address, candidate->ai_protocol);
-#endif
-
         /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
 #if 0
         char ip_address[INET_ADDRSTRLEN];
@@ -176,10 +165,12 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
 
         uv_poll_cb callback_fx;
         callback_fx = resolver->userData2;
-
+printf("call connectfx\n");
         if (flow->connectfx(he_ctx, callback_fx) == -1) {
+        printf("no connection\n");
             continue;
         } else {
+        printf("connectfx returned: increase attempts\n");
             flow->heConnectAttemptCount++;
         }
 
@@ -195,6 +186,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     int protocols[NEAT_MAX_NUM_PROTO]; /* We only support SCTP, TCP, UDP, and UDPLite */
     uint8_t nr_of_protocols;
     uint8_t family;
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) &&
         (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED))

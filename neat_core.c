@@ -1258,6 +1258,13 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         return -1;
     }
 
+    /* Bind to address + interface (if Linux) */
+    if (bind(he_ctx->fd, (struct sockaddr*) &(he_ctx->candidate->src_addr),
+            he_ctx->candidate->src_addr_len)) {
+        neat_log(NEAT_LOG_ERROR, "Failed to bind socket to IP. Error: %s", strerror(errno));
+        return -1;
+    }
+
 #ifdef __linux__
     if (if_indextoname(he_ctx->candidate->if_idx, if_name)) {
         if (setsockopt(he_ctx->fd, SOL_SOCKET, SO_BINDTODEVICE, if_name,

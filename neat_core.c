@@ -443,7 +443,10 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_writable(flow->operations);
 }
 
-static neat_error_code io_readable(neat_ctx *ctx, neat_flow *flow,
+#define READ_WITH_ERROR 0
+#define READ_OK 1
+
+static int io_readable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
 #if defined(IPPROTO_SCTP)
@@ -464,7 +467,7 @@ static neat_error_code io_readable(neat_ctx *ctx, neat_flow *flow,
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations || !flow->operations->on_readable) {
-        return NEAT_ERROR_IO;
+        return READ_WITH_ERROR;
     }
 #if defined(IPPROTO_SCTP)
     if ((flow->sockProtocol == IPPROTO_SCTP) &&
@@ -484,7 +487,7 @@ static neat_error_code io_readable(neat_ctx *ctx, neat_flow *flow,
             flow->readBuffer = realloc(flow->readBuffer, spaceNeeded);
             if (flow->readBuffer == NULL) {
                 flow->readBufferAllocation = 0;
-                return NEAT_ERROR_IO;
+                return READ_WITH_ERROR;
             }
             flow->readBufferAllocation = spaceNeeded;
         }
@@ -499,14 +502,14 @@ static neat_error_code io_readable(neat_ctx *ctx, neat_flow *flow,
         msghdr.msg_controllen = 0;
         msghdr.msg_flags = 0;
         if ((n = recvmsg(flow->fd, &msghdr, 0)) < 0) {
-            return NEAT_ERROR_IO;
+            return READ_WITH_ERROR;
         }
         flow->readBufferSize += n;
         if ((msghdr.msg_flags & MSG_EOR) || (n == 0)) {
             flow->readBufferMsgComplete = 1;
         }
         if (!flow->readBufferMsgComplete) {
-            NEAT_ERROR_MESSAGE_TOO_BIG;
+            READ_WITH_ERROR;
         }
 #else
         n = usrsctp_recvv(flow->sock, flow->readBuffer + flow->readBufferSize,
@@ -514,11 +517,7 @@ static neat_error_code io_readable(neat_ctx *ctx, neat_flow *flow,
                                (struct sockaddr *) &addr, &len, (void *)&rn,
                                 &infolen, &infotype, &flags);
         if (n < 0) {
-            if (errno == EWOULDBLOCK) {
-                return NEAT_ERROR_WOULD_BLOCK;
-            } else {
-                return NEAT_ERROR_IO;
-            }
+            return READ_WITH_ERROR;
         }
         neat_log(NEAT_LOG_INFO, " %zd bytes received\n", n);
         flow->readBufferSize += n;
@@ -527,19 +526,19 @@ static neat_error_code io_readable(neat_ctx *ctx, neat_flow *flow,
         }
         if (!flow->readBufferMsgComplete) {
             neat_log(NEAT_LOG_DEBUG, "Message not complete, yet");
-            return NEAT_ERROR_MESSAGE_TOO_BIG;
+            return READ_WITH_ERROR;
         }
         READYCALLBACKSTRUCT;
         flow->operations->on_readable(flow->operations);
         if (n == 0) {
-            return NEAT_CONNECTION_TERMINATED;
+            return READ_WITH_ERROR;
         }
 #endif
     }
 #endif
     READYCALLBACKSTRUCT;
     flow->operations->on_readable(flow->operations);
-    return NEAT_OK;
+    return READ_OK;
 }
 
 static void io_all_written(neat_ctx *ctx, neat_flow *flow)
@@ -1570,7 +1569,7 @@ static void handle_upcall(struct socket *sock, void *arg, int flags)
             neat_error_code code = NEAT_OK;
             do {
                 code = io_readable(ctx, flow, NEAT_OK);
-            } while (code != NEAT_ERROR_WOULD_BLOCK && code != NEAT_ERROR_IO && code != NEAT_CONNECTION_TERMINATED);
+            } while (code != READ_WITH_ERROR);
         }
     }
 }

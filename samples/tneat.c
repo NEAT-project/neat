@@ -243,7 +243,16 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             printf("neat_read - connection closed\n");
         }
 
-        if (!config_active) {
+        opCB->on_readable = NULL;
+        opCB->on_writable = NULL;
+        opCB->on_all_written = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
+
+        // we are client
+        if (config_active) {
+            neat_free_flow(opCB->flow);
+            neat_stop_event_loop(opCB->ctx);
+        } else  { // we are server
             // print statistics
             timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
             time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
@@ -257,13 +266,10 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
                 printf("\tduration\t: %.2fs\n", time_elapsed);
                 printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human));
             }
+
+            neat_free_flow(opCB->flow);
         }
 
-        opCB->on_readable = NULL;
-        opCB->on_writable = NULL;
-        opCB->on_all_written = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_stop_event_loop(opCB->ctx);
         free(tnf->snd.buffer);
         free(tnf->rcv.buffer);
         free(tnf);
@@ -525,7 +531,7 @@ int main(int argc, char *argv[])
     // cleanup
 cleanup:
     if (flow != NULL) {
-        neat_free_flow(flow);
+        //neat_free_flow(flow);
     }
     if (ctx != NULL) {
         neat_free_ctx(ctx);

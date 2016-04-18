@@ -9,8 +9,6 @@
 
 // clang -g neat_server.c ../build/libneatS.a -luv -lldns -lmnl
 
-#define debug_error(M, ...) fprintf(stderr, "[ERROR][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
-
 
 /*
  This is a very simple example of a basic server.

@@ -7,7 +7,6 @@
 #include <netinet/in.h>
 #include <sys/time.h>
 #include "../neat.h"
-#include "../neat_internal.h"
 
 /*
     tneat

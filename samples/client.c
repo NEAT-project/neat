@@ -43,6 +43,7 @@ static void print_usage()
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __FUNCTION__);
     }
+    
     printf("client [OPTIONS] HOST PORT\n");
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);

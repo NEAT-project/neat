@@ -48,7 +48,5 @@ FOREACH (source_file ${neat_PROGRAMS})
         ${source_file_we}
         ${source_file}
     )
-
     TARGET_LINK_LIBRARIES (${source_file_we} ${neat_PROGRAMS_LIBS})
-    #SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -Wall -std=gnu99 -g")
 ENDFOREACH ()

@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Could not open flow\n");
         result = EXIT_FAILURE;
     }
-    
+
 cleanup:
     if (flow != NULL) {
         neat_free_flow(flow);

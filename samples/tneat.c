@@ -28,24 +28,19 @@ static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
 /*
-    macro - error report
-*/
-#define debug_error(M, ...) fprintf(stderr, "[ERROR][%s:%d] " M "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
-
-/*
     macro - tvp-uvp=vvp
 */
 
 #ifndef timersub
-#define timersub(tvp, uvp, vvp)                                         \
-        do {                                                            \
-                (vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec;          \
-                (vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec;       \
-                if ((vvp)->tv_usec < 0) {                               \
-                        (vvp)->tv_sec--;                                \
-                        (vvp)->tv_usec += 1000000;                      \
-                }                                                       \
-        } while (0)
+#define timersub(tvp, uvp, vvp)                                 \
+    do {                                                        \
+        (vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec;          \
+        (vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec;       \
+        if ((vvp)->tv_usec < 0) {                               \
+            (vvp)->tv_sec--;                                    \
+            (vvp)->tv_usec += 1000000;                          \
+        }                                                       \
+    } while (0)
 #endif
 
 struct tneat_flow_direction {
@@ -101,8 +96,7 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
     exit(EXIT_FAILURE);
 }
 
-static neat_error_code
-on_all_written(struct neat_flow_operations *opCB)
+static neat_error_code on_all_written(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     struct timeval now, diff_time;
@@ -113,12 +107,14 @@ on_all_written(struct neat_flow_operations *opCB)
     timersub(&now, &(tnf->snd.tv_first), &diff_time);
     time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
+    // print statistics
     printf("neat_write finished - statistics\n");
     printf("\tbytes\t\t: %" PRIu64 "\n", tnf->snd.bytes);
     printf("\tsnd-calls\t: %" PRIu64 "\n", tnf->snd.calls);
     printf("\tduration\t: %.2fs\n", time_elapsed);
     printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human));
 
+    // unset callbacks and cleanup
     opCB->on_readable = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
     free(tnf->snd.buffer);
@@ -138,7 +134,6 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     struct timeval diff_time;
     double time_elapsed;
     int last_message;
-
 
     // record start time
     if (tnf->snd.calls == 0) {
@@ -162,9 +157,15 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     }
 
     if (last_message == 1) {
+        opCB->on_writable = NULL;
         opCB->on_all_written = on_all_written;
     }
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
+
+    memset(tnf->snd.buffer, 33 + config_chargen_offset++, config_snd_buffer_size);
+    config_chargen_offset = config_chargen_offset % 72;
+    code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size);
+
     // every buffer is filled with chars - offset increased by every run
     if (config_log_level >= 2) {
         printf("neat_write - # %" PRIu64 " - %d byte\n", tnf->snd.calls, config_snd_buffer_size);
@@ -175,17 +176,9 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
         }
     }
 
-    memset(tnf->snd.buffer, 33 + config_chargen_offset++, config_snd_buffer_size);
-    config_chargen_offset = config_chargen_offset % 72;
-    code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size);
     if (code != NEAT_OK) {
-        debug_error("neat_write - code: %d", (int)code);
+        fprintf(stderr, "%s - neat_write error: code %d\n", __FUNCTION__, (int)code);
         return on_error(opCB);
-    }
-
-    if (last_message == 1) {
-        opCB->on_writable = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
     }
 
     return NEAT_OK;
@@ -203,10 +196,10 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     code = neat_read(opCB->ctx, opCB->flow, tnf->rcv.buffer, config_rcv_buffer_size, &buffer_filled);
     if (code) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
-            debug_error("NEAT_ERROR_WOULD_BLOCK");
+            fprintf(stderr, "%s - neat_read warning: NEAT_ERROR_WOULD_BLOCK\n", __FUNCTION__);
             return NEAT_OK;
         } else {
-            debug_error("neat_read - code: %d", (int)code);
+            fprintf(stderr, "%s - neat_read error: code %d\n", __FUNCTION__, (int)code);
             return on_error(opCB);
         }
     }
@@ -261,19 +254,19 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = NULL;
 
     if ((opCB->userData = calloc(1, sizeof(struct tneat_flow))) == NULL) {
-        debug_error("could not allocate tneat_flow");
+        fprintf(stderr, "%s - could not allocate tneat_flow\n", __FUNCTION__);
         exit(EXIT_FAILURE);
     }
 
     tnf = opCB->userData;
 
     if ((tnf->snd.buffer = malloc(config_snd_buffer_size)) == NULL) {
-        debug_error("could not allocate send buffer");
+        fprintf(stderr, "%s - could not allocate send buffer\n", __FUNCTION__);
         exit(EXIT_FAILURE);
     }
 
     if ((tnf->rcv.buffer = malloc(config_rcv_buffer_size)) == NULL) {
-        debug_error("could not allocate receive buffer");
+        fprintf(stderr, "%s - could not allocate receive buffer\n", __FUNCTION__);
         exit(EXIT_FAILURE);
     }
 
@@ -367,20 +360,20 @@ int main(int argc, char *argv[])
             printf("role: active\n");
         }
     } else {
-        debug_error("argument error");
+        fprintf(stderr, "%s - argument error\n", __FUNCTION__);
         print_usage();
         goto cleanup;
     }
 
     if ((ctx = neat_init_ctx()) == NULL) {
-        debug_error("could not initialize context");
+        fprintf(stderr, "%s - neat_init_ctx failed\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // new neat flow
     if ((flow = neat_new_flow(ctx)) == NULL) {
-        debug_error("neat_new_flow");
+        fprintf(stderr, "%s - neat_new_flow failed\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -390,14 +383,14 @@ int main(int argc, char *argv[])
 
     //ops.on_all_written = on_all_written;
     if (neat_set_operations(ctx, flow, &ops)) {
-        debug_error("neat_set_operations");
+        fprintf(stderr, "%s - neat_set_operations failed\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // get properties
     if (neat_get_property(ctx, flow, &prop)) {
-        debug_error("neat_get_property");
+        fprintf(stderr, "%s - neat_get_property failed\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -461,7 +454,7 @@ int main(int argc, char *argv[])
 
     // set properties
     if (neat_set_property(ctx, flow, prop)) {
-        debug_error("neat_set_property");
+        fprintf(stderr, "%s - neat_set_property failed\n", __FUNCTION__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -479,14 +472,14 @@ int main(int argc, char *argv[])
             }
             neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
         } else {
-            debug_error("neat_open");
+            fprintf(stderr, "%s - neat_open failed\n", __FUNCTION__);
             result = EXIT_FAILURE;
             goto cleanup;
         }
     } else {
         // wait for on_connected or on_error to be invoked
         if (neat_accept(ctx, flow, "*", port)) {
-            debug_error("neat_accept - *:%d\n", config_port);
+            fprintf(stderr, "%s - neat_accept failed\n", __FUNCTION__);
             result = EXIT_FAILURE;
             goto cleanup;
         }

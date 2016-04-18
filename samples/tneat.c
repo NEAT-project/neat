@@ -4,6 +4,7 @@
 #include <time.h>
 #include <inttypes.h>
 #include <unistd.h>
+#include <assert.h>
 #include <netinet/in.h>
 #include <sys/time.h>
 #include "../neat.h"
@@ -45,8 +46,8 @@ static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_R
 
 struct tneat_flow_direction {
     unsigned char *buffer;
-    uint64_t calls;
-    uint64_t bytes;
+    uint32_t calls;
+    uint32_t bytes;
     struct timeval tv_first;
     struct timeval tv_last;
 };
@@ -125,18 +126,18 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
 
     // print statistics
     printf("neat_write finished - statistics\n");
-    printf("\tbytes\t\t: %" PRIu64 "\n", tnf->snd.bytes);
-    printf("\tsnd-calls\t: %" PRIu64 "\n", tnf->snd.calls);
+    printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
+    printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
     printf("\tduration\t: %.2fs\n", time_elapsed);
     printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human));
 
     // unset callbacks and cleanup
     opCB->on_readable = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
+    neat_stop_event_loop(opCB->ctx);
     free(tnf->snd.buffer);
     free(tnf->rcv.buffer);
     free(tnf);
-    neat_stop_event_loop(opCB->ctx);
     return NEAT_OK;
 }
 
@@ -149,11 +150,12 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     neat_error_code code;
     struct timeval diff_time;
     double time_elapsed;
-    int last_message;
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __FUNCTION__);
     }
+
+    assert(opCB->on_writable != NULL);
 
     // record start time
     if (tnf->snd.calls == 0) {
@@ -169,32 +171,28 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 
     // stop writing if config_runtime reached or config_message_count msgs sent
     if ((config_runtime > 0 && time_elapsed >= config_runtime) ||
-        (config_runtime == 0 && config_message_count > 0 && tnf->snd.calls >= config_message_count)) {
-        last_message = 1;
-        opCB->on_all_written = on_all_written;
-    } else {
-        last_message = 0;
-    }
+        (config_message_count > 0 && tnf->snd.calls >= config_message_count)) {
 
-    if (last_message == 1) {
         opCB->on_writable = NULL;
         opCB->on_all_written = on_all_written;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
     }
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     memset(tnf->snd.buffer, 33 + config_chargen_offset++, config_snd_buffer_size);
     config_chargen_offset = config_chargen_offset % 72;
-    code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size);
-
+    
     // every buffer is filled with chars - offset increased by every run
     if (config_log_level >= 2) {
-        printf("neat_write - # %" PRIu64 " - %d byte\n", tnf->snd.calls, config_snd_buffer_size);
+        printf("neat_write - # %u - %d byte\n", tnf->snd.calls, config_snd_buffer_size);
         if (config_log_level >= 3) {
             printf("neat_write - content\n");
             fwrite(tnf->snd.buffer, sizeof(char), config_snd_buffer_size, stdout);
             printf("\n");
         }
     }
+
+    code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size);
+
 
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: code %d\n", __FUNCTION__, (int)code);
@@ -238,7 +236,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         gettimeofday(&(tnf->rcv.tv_last), NULL);
 
         if (config_log_level >= 2) {
-            printf("neat_read - # %" PRIu64 " - %d byte\n", tnf->rcv.calls, buffer_filled);
+            printf("neat_read - # %u- %d byte\n", tnf->rcv.calls, buffer_filled);
             if (config_log_level >= 3) {
                 fwrite(tnf->rcv.buffer, sizeof(char), buffer_filled, stdout);
                 printf("\n");
@@ -249,12 +247,12 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
         time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
-        printf("%" PRIu64 ", %" PRIu64 ", %.2f, %.2f, %s\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human));
+        printf("%u, %u, %.2f, %.2f, %s\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human));
 
         if (config_log_level >= 1) {
             printf("client disconnected - statistics\n");
-            printf("\tbytes\t\t: %" PRIu64 "\n", tnf->rcv.bytes);
-            printf("\trcv-calls\t: %" PRIu64 "\n", tnf->rcv.calls);
+            printf("\tbytes\t\t: %u\n", tnf->rcv.bytes);
+            printf("\trcv-calls\t: %u\n", tnf->rcv.calls);
             printf("\tduration\t: %.2fs\n", time_elapsed);
             printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human));
         }

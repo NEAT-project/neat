@@ -63,6 +63,10 @@ static struct neat_flow_operations ops;
 */
 static void print_usage()
 {
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
+
     printf("tneat [OPTIONS] [HOST]\n");
     printf("\t- l \tsize for each message in byte (%d)\n", config_snd_buffer_size);
     printf("\t- n \tmax number of messages to send (%d)\n", config_message_count);
@@ -80,6 +84,11 @@ static char *filesize_human(double bytes, char *buffer)
 {
     uint8_t i = 0;
     const char* units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
+
     while (bytes > 1000) {
         bytes /= 1000;
         i++;
@@ -93,6 +102,9 @@ static char *filesize_human(double bytes, char *buffer)
 */
 static neat_error_code on_error(struct neat_flow_operations *opCB)
 {
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
     exit(EXIT_FAILURE);
 }
 
@@ -102,6 +114,10 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
     struct timeval now, diff_time;
     double time_elapsed;
     char buffer_filesize_human[16];
+
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
 
     gettimeofday(&now, NULL);
     timersub(&now, &(tnf->snd.tv_first), &diff_time);
@@ -134,6 +150,10 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     struct timeval diff_time;
     double time_elapsed;
     int last_message;
+
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
 
     // record start time
     if (tnf->snd.calls == 0) {
@@ -192,6 +212,10 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     neat_error_code code;
     char buffer_filesize_human[16];
     double time_elapsed;
+
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
 
     code = neat_read(opCB->ctx, opCB->flow, tnf->rcv.buffer, config_rcv_buffer_size, &buffer_filled);
     if (code) {
@@ -252,6 +276,10 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 static neat_error_code on_connected(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = NULL;
+
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __FUNCTION__);
+    }
 
     if ((opCB->userData = calloc(1, sizeof(struct tneat_flow))) == NULL) {
         fprintf(stderr, "%s - could not allocate tneat_flow\n", __FUNCTION__);

@@ -4,7 +4,6 @@
 #include <time.h>
 #include <inttypes.h>
 #include <unistd.h>
-#include <assert.h>
 #include <netinet/in.h>
 #include <sys/time.h>
 #include "../neat.h"
@@ -155,8 +154,6 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __FUNCTION__);
     }
 
-    assert(opCB->on_writable != NULL);
-
     // record start time
     if (tnf->snd.calls == 0) {
         gettimeofday(&(tnf->snd.tv_first), NULL);
@@ -180,7 +177,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 
     memset(tnf->snd.buffer, 33 + config_chargen_offset++, config_snd_buffer_size);
     config_chargen_offset = config_chargen_offset % 72;
-    
+
     // every buffer is filled with chars - offset increased by every run
     if (config_log_level >= 2) {
         printf("neat_write - # %u - %d byte\n", tnf->snd.calls, config_snd_buffer_size);

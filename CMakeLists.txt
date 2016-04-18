@@ -128,7 +128,7 @@ ENDIF()
 
 # COMPILER FLAGS
 #################################################
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -g -O1 -Wall -Werror -Wno-unused-function")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -O1 -Wall -Werror -Wno-unused-function")
 
 
 # LIBRARIES

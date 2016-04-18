@@ -144,9 +144,8 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         he_ctx->flow = flow;
 #ifdef USRSCTP_SUPPORT
         he_ctx->sock = NULL;
-#else
-        he_ctx->fd = -1;
 #endif
+        he_ctx->fd = -1;
         /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
 #if 0
         char ip_address[INET_ADDRSTRLEN];
@@ -161,7 +160,6 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
             /* TODO: Some error handling? */
             continue;
         }
-
     }
 
 }

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <usrsctp.h>
 #include <unistd.h>
+#include <stdarg.h>
 
 #include "neat.h"
 #include "neat_internal.h"
@@ -21,11 +22,6 @@ static void neat_usrsctp_sctp4_readable(uv_poll_t *handle,
     if (status < 0) {
         neat_log(NEAT_LOG_ERROR, "%s: socket not readable", __FUNCTION__);
         return;
-    }
-    struct neat_ctx *ct = handle->data;
-    struct neat_flow *fl = ct->flow;
-    if (fl && (events & UV_READABLE) && fl->acceptPending) {
-        neat_usrsctp_start_do_accept(ct, fl);
     }
     usrsctp_recv_function_sctp4();
 }
@@ -84,83 +80,99 @@ void neat_handle_usrsctp_timeout(uv_timer_t *handle)
     usrsctp_handle_timers(10);
 }
 
+void
+neat_log_debug(const char *format, ...)
+{
+    va_list ap;
+
+    va_start(ap, format);
+    neat_log(NEAT_LOG_DEBUG, format, ap);
+    va_end(ap);
+}
+
 struct neat_ctx *neat_usrsctp_init_ctx(struct neat_ctx *ctx)
 {
     int ret;
-    printf("neat_usrsctp_init_ctx\n");
-    ctx->cleanup = neat_usrsctp_cleanup;
 
-    /* usrsctp_init should be called in the application */
+    neat_log(NEAT_LOG_DEBUG, "%s", __FUNCTION__);
+    ctx->cleanup = neat_usrsctp_cleanup;
 
     uv_timer_init(ctx->loop, &(ctx->usrsctp_timer_handle));
     ctx->usrsctp_timer_handle.data = ctx;
     uv_timer_start(&(ctx->usrsctp_timer_handle), neat_handle_usrsctp_timeout, 10, 10);
     ctx->sctp4_fd = usrsctp_open_sctp4_socket();
-    printf("sctp4_fd=%d\n", ctx->sctp4_fd);
+    neat_log(NEAT_LOG_DEBUG, "sctp4_fd=%d", ctx->sctp4_fd);
 
-    if ((ret = uv_poll_init(ctx->loop, &(ctx->uv_sctp4_handle), ctx->sctp4_fd)) < 0) {
-        neat_log(NEAT_LOG_ERROR, "%s: can't initialize uv_sctp4_handle (%s)", __FUNCTION__, uv_strerror(ret)););
-        neat_free_ctx(ctx);
-        return NULL;
-    }
+    if (ctx->sctp4_fd != -1) {
+        if ((ret = uv_poll_init(ctx->loop, &(ctx->uv_sctp4_handle), ctx->sctp4_fd)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "%s: can't initialize uv_sctp4_handle (%s)", __FUNCTION__, uv_strerror(ret));
+            neat_free_ctx(ctx);
+            return NULL;
+        }
 
-    ctx->uv_sctp4_handle.data = ctx;
-    if ((ret = uv_poll_start(&(ctx->uv_sctp4_handle),
-                                 UV_READABLE,
-                                 neat_usrsctp_sctp4_readable)) < 0) {
-        neat_log(NEAT_LOG_ERROR, "%s: can't start receiving sctp4 readable events (%s)", __FUNCTION__, uv_strerror(ret));
-        neat_free_ctx(ctx);
-        return NULL;
+        ctx->uv_sctp4_handle.data = ctx;
+        if ((ret = uv_poll_start(&(ctx->uv_sctp4_handle),
+                                     UV_READABLE,
+                                     neat_usrsctp_sctp4_readable)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "%s: can't start receiving sctp4 readable events (%s)", __FUNCTION__, uv_strerror(ret));
+            neat_free_ctx(ctx);
+            return NULL;
+        }
     }
 
     ctx->udpsctp4_fd = usrsctp_open_udpsctp4_socket();
-    printf("udpsctp4_fd=%d\n", ctx->udpsctp4_fd);
-    if ((ret = uv_poll_init(ctx->loop, &(ctx->uv_udpsctp4_handle), ctx->udpsctp4_fd)) < 0) {
-        neat_log(NEAT_LOG_ERROR, "%s: can't initialize uv_udpsctp4_handle (%s)", __FUNCTION__, uv_strerror(ret));
-        neat_free_ctx(ctx);
-        return NULL;
-    }
-    ctx->uv_udpsctp4_handle.data = ctx;
-    if ((ret = uv_poll_start(&(ctx->uv_udpsctp4_handle),
-                                 UV_READABLE,
-                                 neat_usrsctp_udpsctp4_readable)) < 0) {
-        neat_log(NEAT_LOG_ERROR, "%s: can't start receiving udpsctp4 readable events (%s)", __FUNCTION__, uv_strerror(ret));
-        neat_free_ctx(ctx);
-        return NULL;
+    neat_log(NEAT_LOG_DEBUG, "udpsctp4_fd=%d", ctx->udpsctp4_fd);
+    if (ctx->udpsctp4_fd != -1) {
+        if ((ret = uv_poll_init(ctx->loop, &(ctx->uv_udpsctp4_handle), ctx->udpsctp4_fd)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "%s: can't initialize uv_udpsctp4_handle (%s)", __FUNCTION__, uv_strerror(ret));
+            neat_free_ctx(ctx);
+            return NULL;
+        }
+        ctx->uv_udpsctp4_handle.data = ctx;
+        if ((ret = uv_poll_start(&(ctx->uv_udpsctp4_handle),
+                                     UV_READABLE,
+                                     neat_usrsctp_udpsctp4_readable)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "%s: can't start receiving udpsctp4 readable events (%s)", __FUNCTION__, uv_strerror(ret));
+            neat_free_ctx(ctx);
+            return NULL;
+        }
     }
 
     ctx->sctp6_fd = usrsctp_open_sctp6_socket();
-    printf("sctp6_fd=%d\n", ctx->sctp6_fd);
-    if ((ret = uv_poll_init(ctx->loop, &(ctx->uv_sctp6_handle), ctx->sctp6_fd)) < 0) {
-        neat_log(NEAT_LOG_ERROR, "%s: can't initialize uv_sctp6_handle (%s)", __FUNCTION__, uv_strerror(ret));
-        neat_free_ctx(ctx);
-        return NULL;
+    neat_log(NEAT_LOG_DEBUG, "sctp6_fd=%d", ctx->sctp6_fd);
+    if (ctx->sctp6_fd != -1) {
+        if ((ret = uv_poll_init(ctx->loop, &(ctx->uv_sctp6_handle), ctx->sctp6_fd)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "%s: can't initialize uv_sctp6_handle (%s)", __FUNCTION__, uv_strerror(ret));
+            neat_free_ctx(ctx);
+            return NULL;
+        }
+        ctx->uv_sctp6_handle.data = ctx;
+        if ((ret = uv_poll_start(&(ctx->uv_sctp6_handle),
+                                     UV_READABLE,
+                                     neat_usrsctp_sctp6_readable)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "%s: can't start receiving sctp4 readable events (%s)", __FUNCTION__, uv_strerror(ret));
+            neat_free_ctx(ctx);
+            return NULL;
+        }
     }
-    ctx->uv_sctp6_handle.data = ctx;
-    if ((ret = uv_poll_start(&(ctx->uv_sctp6_handle),
-                                 UV_READABLE,
-                                 neat_usrsctp_sctp6_readable)) < 0) {
-        neat_log(NEAT_LOG_ERROR, "%s: can't start receiving sctp4 readable events (%s)", __FUNCTION__, uv_strerror(ret));
-        neat_free_ctx(ctx);
-        return NULL;
-    }
-
 
     ctx->udpsctp6_fd = usrsctp_open_udpsctp6_socket();
-    printf("udpsctp6_fd=%d\n", ctx->udpsctp6_fd);
-    if ((ret = uv_poll_init(ctx->loop, &(ctx->uv_udpsctp6_handle), ctx->udpsctp6_fd)) < 0) {
-        neat_log(NEAT_LOG_ERROR, "%s: can't initialize uv_udpsctp6_handle (%s)", __FUNCTION__, uv_strerror(ret));
-        neat_free_ctx(ctx);
-        return NULL;
+    neat_log(NEAT_LOG_DEBUG, "udpsctp6_fd=%d", ctx->udpsctp6_fd);
+    if (ctx->udpsctp6_fd != -1) {
+        if ((ret = uv_poll_init(ctx->loop, &(ctx->uv_udpsctp6_handle), ctx->udpsctp6_fd)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "%s: can't initialize uv_udpsctp6_handle (%s)", __FUNCTION__, uv_strerror(ret));
+            neat_free_ctx(ctx);
+            return NULL;
+        }
+        ctx->uv_udpsctp6_handle.data = ctx;
+        if ((ret = uv_poll_start(&(ctx->uv_udpsctp6_handle),
+                                     UV_READABLE,
+                                     neat_usrsctp_udpsctp6_readable)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "%s: can't start receiving udpsctp6 readable events (%s)", __FUNCTION__, uv_strerror(ret));
+            neat_free_ctx(ctx);
+            return NULL;
+        }
     }
-    ctx->uv_udpsctp6_handle.data = ctx;
-    if ((ret = uv_poll_start(&(ctx->uv_udpsctp6_handle),
-                                 UV_READABLE,
-                                 neat_usrsctp_udpsctp6_readable)) < 0) {
-        neat_log(NEAT_LOG_ERROR, "%s: can't start receiving udpsctp6 readable events (%s)", __FUNCTION__, uv_strerror(ret));
-        neat_free_ctx(ctx);
-        return NULL;
-    }
-
+    usrsctp_init(0, NULL, neat_log_debug);
     return ctx;
 }

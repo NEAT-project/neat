@@ -131,6 +131,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
 
     flow->resolver_results = results;
     flow->hefirstConnect = 1;
+    flow->heConnectAttemptCount = 0;
     struct neat_resolver_res *candidate;
     LIST_FOREACH(candidate, results, next_res) {
         //TODO: Potential place to filter based on policy
@@ -157,13 +158,27 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         printf("Initiating connection attempt to %s with protocol %d\n", ip_address, candidate->ai_protocol);
 #endif
 
+        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
+#if 0
+        char ip_address[INET_ADDRSTRLEN];
+        getnameinfo((struct sockaddr *)&(candidate->dst_addr),
+                    (socklen_t)sizeof(candidate->dst_addr),
+                    ip_address,
+                    INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
+        printf("Initiating connection attempt to %s with protocol %d\n", ip_address, candidate->ai_protocol);
+#endif
+
         if (flow->connectfx(he_ctx, callback_fx) == -1) {
-            /* TODO: Some error handling? */
             continue;
+        } else {
+            flow->heConnectAttemptCount++;
         }
 
     }
 
+    if (flow->heConnectAttemptCount == 0) {
+        io_error(resolver->nc, flow, NEAT_ERROR_IO );
+    }
 }
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx)

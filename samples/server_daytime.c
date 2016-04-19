@@ -11,10 +11,6 @@ static uint16_t config_log_level = 1;
 
 #define BUFFERSIZE 32
 
-static struct neat_flow_operations ops;
-static struct neat_ctx *ctx = NULL;
-static struct neat_flow *flow = NULL;
-
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
 
 /*
@@ -77,6 +73,8 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             printf("peer disconnected\n");
         }
         opCB->on_readable = NULL;
+        opCB->on_writable = NULL;
+        opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
         neat_free_flow(opCB->flow);
     }
@@ -89,6 +87,10 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __FUNCTION__);
     }
 
+    opCB->on_readable = NULL;
+    opCB->on_writable = NULL;
+    opCB->on_all_written = NULL;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     neat_shutdown(opCB->ctx, opCB->flow);
     return NEAT_OK;
 }
@@ -103,6 +105,8 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __FUNCTION__);
     }
 
+    opCB->on_readable = NULL;
+    opCB->on_writable = NULL;
     opCB->on_all_written = on_all_written;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
     // get current time
@@ -128,6 +132,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
 
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
+    opCB->on_all_written = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     return NEAT_OK;
@@ -140,6 +145,9 @@ int main(int argc, char *argv[])
     char *arg_property = config_property;
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
+    struct neat_ctx *ctx = NULL;
+    struct neat_flow *flow = NULL;
+    struct neat_flow_operations ops;
 
     result = EXIT_SUCCESS;
 

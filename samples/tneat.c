@@ -19,7 +19,7 @@
 static uint32_t config_rcv_buffer_size = 512;
 static uint32_t config_snd_buffer_size = 1024;
 static uint32_t config_message_count = 32;
-static uint32_t config_runtime = 0;
+static uint32_t config_runtime_max = 0;
 static uint16_t config_active = 0;
 static uint16_t config_chargen_offset = 0;
 static uint16_t config_port = 8080;
@@ -55,11 +55,10 @@ struct tneat_flow {
     struct tneat_flow_direction snd;
 };
 
-static struct neat_flow_operations ops;
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
 
 /*
-    print usage and exit
+    print usage
 */
 static void print_usage()
 {
@@ -73,7 +72,7 @@ static void print_usage()
     printf("\t- p \tport [receive on|send to] (%d)\n", config_port);
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
-    printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime);
+    printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime_max);
     printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
 }
 
@@ -124,7 +123,7 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
     time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
     // runtime- or message-limit reached
-    if ((config_runtime > 0 && time_elapsed >= config_runtime) ||
+    if ((config_runtime_max > 0 && time_elapsed >= config_runtime_max) ||
         (config_message_count > 0 && tnf->snd.calls >= config_message_count)) {
 
         // print statistics
@@ -175,8 +174,8 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     gettimeofday(&(tnf->snd.tv_last), NULL);
 
     // every message contains a different payload (i++)
-    memset(tnf->snd.buffer, 33 + config_chargen_offset++, config_snd_buffer_size);
-    config_chargen_offset = config_chargen_offset % 72;
+    config_chargen_offset = (config_chargen_offset+1) % 72;
+    memset(tnf->snd.buffer, 33 + config_chargen_offset, config_snd_buffer_size);
 
     if (config_log_level >= 2) {
         printf("neat_write - # %u - %d byte\n", tnf->snd.calls, config_snd_buffer_size);
@@ -326,11 +325,12 @@ int main(int argc, char *argv[])
 {
     struct neat_ctx *ctx = NULL;
     struct neat_flow *flow = NULL;
-    uint64_t prop;
+    struct neat_flow_operations ops;
     int arg, result;
     char *arg_property = config_property;
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
+    uint64_t prop;
 
     result = EXIT_SUCCESS;
 
@@ -367,9 +367,9 @@ int main(int argc, char *argv[])
             }
             break;
         case 'T':
-            config_runtime = atoi(optarg);
+            config_runtime_max = atoi(optarg);
             if (config_log_level >= 1) {
-                printf("option - runtime limit: %d\n", config_runtime);
+                printf("option - runtime limit: %d\n", config_runtime_max);
             }
             break;
         case 'v':

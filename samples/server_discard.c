@@ -6,13 +6,10 @@
 #include <netinet/in.h>
 #include "../neat.h"
 
-static uint32_t config_buffer_size = 8;
+static uint32_t config_buffer_size = 128;
 static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
-static struct neat_flow_operations ops;
-static struct neat_ctx *ctx = NULL;
-static struct neat_flow *flow = NULL;
 static unsigned char *buffer = NULL;
 static uint32_t buffer_filled;
 
@@ -105,6 +102,9 @@ int main(int argc, char *argv[])
     char *arg_property = config_property;
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
+    struct neat_ctx *ctx = NULL;
+    struct neat_flow *flow = NULL;
+    struct neat_flow_operations ops;
 
     result = EXIT_SUCCESS;
 

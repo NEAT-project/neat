@@ -10,11 +10,6 @@ LIST(APPEND neat_PROGRAMS
     neat_resolver_example.c
     neat_server.c
     client.c
-    server_chargen.c
-    server_daytime.c
-    server_discard.c
-    server_echo.c
-    tneat.c
     )
 
 LIST(APPEND neat_PROGRAMS_LIBS
@@ -23,6 +18,20 @@ LIST(APPEND neat_PROGRAMS_LIBS
     ${LDNS_LIB}
     )
 
+IF (USRSCTP_SUPPORT)
+    add_definitions(-DUSRSCTP_SUPPORT)
+    LIST(APPEND neat_PROGRAMS neat_basic_usrsctp.c)
+    LIST(APPEND neat_PROGRAMS neat_usrsctp_server.c)
+    LIST(APPEND neat_PROGRAMS_LIBS ${USRSCTP_LIB})
+ELSE()
+    LIST(APPEND neat_PROGRAMS
+        server_daytime.c
+        server_chargen.c
+        server_discard.c
+        server_echo.c
+        tneat.c
+    )
+ENDIF()
 
 # OS DEPENDENT
 #################################################
@@ -34,12 +43,10 @@ ENDIF()
 # BUILD EACH SAMPLE
 #################################################
 FOREACH (source_file ${neat_PROGRAMS})
-	GET_FILENAME_COMPONENT (source_file_we ${source_file} NAME_WE)
-	ADD_EXECUTABLE (
-		${source_file_we}
-		${source_file}
-	)
-
-	TARGET_LINK_LIBRARIES (${source_file_we} ${neat_PROGRAMS_LIBS})
-	#SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -Wall -std=gnu99 -g")
+    GET_FILENAME_COMPONENT (source_file_we ${source_file} NAME_WE)
+    ADD_EXECUTABLE (
+        ${source_file_we}
+        ${source_file}
+    )
+    TARGET_LINK_LIBRARIES (${source_file_we} ${neat_PROGRAMS_LIBS})
 ENDFOREACH ()

@@ -16,7 +16,9 @@ LIST(APPEND neat_SOURCES
     neat_addr.c
     neat_he.c
     neat_resolver.c
+    neat_resolver_conf.c
     neat_property_helpers.c
+    neat_log.c
     )
 
 # OS DEPENDENT
@@ -63,13 +65,36 @@ ELSE()
 
 ENDIF()
 
+#################################################
+# CHECK OPTIONS
+#################################################
+
+option(USRSCTP_SUPPORT "Include usrsctp" 0)
+if (USRSCTP_SUPPORT)
+	add_definitions(-DUSRSCTP_SUPPORT)
+	add_definitions(-DINET)
+	add_definitions(-DINET6)
+	add_definitions(-DSCTP_DEBUG)
+	LIST(APPEND neat_HEADERS neat_usrsctp.h)
+	LIST(APPEND neat_SOURCES neat_usrsctp.c)
+
+	FIND_LIBRARY(USRSCTP_LIB usrsctp)
+	LIST(APPEND neat_LIBS ${USRSCTP_LIB})
+    MESSAGE(STATUS "USRSCTP found: " ${USRSCTP_LIB})
+endif()
+
+option(NEAT_LOG "enable NEAT log module" 1)
+if (NEAT_LOG)
+    add_definitions(-DNEAT_LOG)
+endif()
+
 # REQUIREMENTS
 #################################################
 CHECK_INCLUDE_FILE(uv.h HAVE_SYS_UV_H)
 FIND_LIBRARY(UV_LIB uv)
 MESSAGE(STATUS "UV found: " ${UV_LIB})
 IF(NOT HAVE_SYS_UV_H OR NOT UV_LIB)
-    message(FATAL_ERROR "uv.h not not found - libuv installed?")
+    message(FATAL_ERROR "uv.h not found - libuv installed?")
 endif()
 
 
@@ -94,11 +119,16 @@ IF(HAVE_NETINET_SCTP_H)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
 ENDIF()
 
+IF (USRSCTP_SUPPORT)
+    CHECK_INCLUDE_FILE(usrsctp.h HAVE_USRSCTP_H)
+    IF (NOT HAVE_USRSCTP_H)
+        message(FATAL_ERROR "usrsctp.h not found - usrsctp installed?")
+    ENDIF()
+ENDIF()
 
 # COMPILER FLAGS
 #################################################
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -Wall -std=gnu99 -g")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wno-unused-function")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -O1 -Wall -Werror -Wno-unused-function")
 
 
 # LIBRARIES

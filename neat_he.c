@@ -14,53 +14,58 @@
 static void he_print_results(struct neat_resolver_results *results)
 {
     struct neat_resolver_res *result;
-    char addr_name[INET6_ADDRSTRLEN];
-    char serv_name[6];
+    char addr_name_src[INET6_ADDRSTRLEN], addr_name_dst[INET6_ADDRSTRLEN];
+    char serv_name_src[6], serv_name_dst[6];
+    char proto[16];
+    char family[16];
 
-    fprintf(stderr, "Results:\n");
+    neat_log(NEAT_LOG_INFO, "Happy-Eyeballs results:");
+
     LIST_FOREACH(result, results, next_res) {
         switch (result->ai_protocol) {
-        case IPPROTO_UDP:
-            fprintf(stderr, "UDP/");
-            break;
-        case IPPROTO_TCP:
-            fprintf(stderr, "TCP/");
-            break;
+            case IPPROTO_UDP:
+                snprintf(proto, 16, "UDP");
+                break;
+            case IPPROTO_TCP:
+                snprintf(proto, 16, "TCP");
+                break;
 #ifdef IPPROTO_SCTP
-        case IPPROTO_SCTP:
-            fprintf(stderr, "SCTP/");
-            break;
+            case IPPROTO_SCTP:
+                snprintf(proto, 16, "SCTP");
+                break;
 #endif
 #ifdef IPPROTO_UDPLITE
-        case IPPROTO_UDPLITE:
-            fprintf(stderr, "UDPLITE/");
-            break;
+            case IPPROTO_UDPLITE:
+                snprintf(proto, 16, "UDPLite");
+                break;
 #endif
-        default:
-            fprintf(stderr, "proto%d/", result->ai_protocol);
-            break;
+            default:
+                snprintf(proto, 16, "proto%d", result->ai_protocol);
+                break;
         }
         switch (result->ai_family) {
-        case AF_INET:
-            fprintf(stderr, "IPv4");
-            break;
-        case AF_INET6:
-            fprintf(stderr, "IPv6");
-            break;
-        default:
-            fprintf(stderr, "family%d", result->ai_family);
-            break;
+            case AF_INET:
+                snprintf(family, 16, "IPv4");
+                break;
+            case AF_INET6:
+                snprintf(family, 16, "IPv6");
+                break;
+            default:
+                snprintf(family, 16, "family%d", result->ai_family);
+                break;
         }
         getnameinfo((struct sockaddr *)&result->src_addr, result->src_addr_len,
-                    addr_name, sizeof(addr_name),
-                    serv_name, sizeof(serv_name),
+                    addr_name_src, sizeof(addr_name_src),
+                    serv_name_src, sizeof(serv_name_src),
                     NI_NUMERICHOST | NI_NUMERICSERV);
-        fprintf(stderr, ": %s:%s->", addr_name, serv_name);
+
         getnameinfo((struct sockaddr *)&result->dst_addr, result->dst_addr_len,
-                    addr_name, sizeof(addr_name),
-                    serv_name, sizeof(serv_name),
+                    addr_name_dst, sizeof(addr_name_dst),
+                    serv_name_dst, sizeof(serv_name_dst),
                     NI_NUMERICHOST | NI_NUMERICSERV);
-        fprintf(stderr, "%s:%s\n", addr_name, serv_name);
+
+        neat_log(NEAT_LOG_INFO, "\t%s/%s - %s:%s -> %s:%s", proto, family,
+            addr_name_src, serv_name_src, addr_name_dst, serv_name_dst);
     }
 }
 
@@ -120,8 +125,9 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
 #if 0
     pm_filter(results);
-    he_print_results(results);
 #endif
+    he_print_results(results);
+
 
     flow->resolver_results = results;
     flow->hefirstConnect = 1;
@@ -137,7 +143,20 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         he_ctx->nc = resolver->nc;
         he_ctx->candidate = candidate;
         he_ctx->flow = flow;
+#ifdef USRSCTP_SUPPORT
+        he_ctx->sock = NULL;
+#else
         he_ctx->fd = -1;
+#endif
+        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
+#if 0
+        char ip_address[INET_ADDRSTRLEN];
+        getnameinfo((struct sockaddr *)&(candidate->dst_addr),
+                    (socklen_t)sizeof(candidate->dst_addr),
+                    ip_address,
+                    INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
+        printf("Initiating connection attempt to %s with protocol %d\n", ip_address, candidate->ai_protocol);
+#endif
 
         /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
 #if 0
@@ -192,7 +211,8 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
         return NEAT_ERROR_UNABLE;
 
     if (!ctx->resolver) {
-        ctx->resolver = neat_resolver_init(ctx, he_resolve_cb, NULL);
+        ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf",
+                                           he_resolve_cb, NULL);
     }
     ctx->resolver->userData1 = (void *)flow; // TODO: This doesn't allow multiple sockets
     ctx->resolver->userData2 = callback_fx;

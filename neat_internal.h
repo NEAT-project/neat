@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <uv.h>
 
+#include "neat.h"
 #include "neat_queue.h"
 #ifdef __linux__
     #include "neat_linux.h"
@@ -11,6 +12,15 @@
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
     #include "neat_bsd.h"
 #endif
+
+#ifdef USRSCTP_SUPPORT
+    #include "neat_usrsctp.h"
+    #include <usrsctp.h>
+#else
+    #define NEAT_INTERNAL_USRSCTP
+#endif
+
+#include "neat_log.h"
 
 #define NEAT_INTERNAL_CTX \
     void (*cleanup)(struct neat_ctx *nc); \
@@ -46,20 +56,30 @@ struct neat_ctx {
     // resolver
     NEAT_INTERNAL_CTX;
     NEAT_INTERNAL_OS;
+    NEAT_INTERNAL_USRSCTP;
 };
 
 struct he_cb_ctx;
 
-typedef struct neat_ctx neat_ctx ;
+typedef struct neat_ctx neat_ctx;
 typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                            const unsigned char *buffer, uint32_t amt);
+#if !defined(USRSCTP_SUPPORT)
 typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
+#else
+typedef struct socket * (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, struct socket *sock);
+#endif
 typedef int (*neat_connect_impl)(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_shutdown_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
+#if defined(USRSCTP_SUPPORT)
+typedef int (*neat_usrsctp_receive_cb)(struct socket *sock, union sctp_sockstore addr, void *data,
+                                 size_t datalen, struct sctp_rcvinfo, int flags, void *ulp_info);
+typedef int (*neat_usrsctp_send_cb)(struct socket *sock, uint32_t free, void *ulp_info);
+#endif
 
 struct neat_buffered_message {
     unsigned char *buffered; // memory for write buffers
@@ -73,7 +93,11 @@ TAILQ_HEAD(neat_message_queue_head, neat_buffered_message);
 
 struct neat_flow
 {
+#if defined(USRSCTP_SUPPORT)
+    struct socket *sock;
+#else
     int fd;
+#endif
     struct neat_flow_operations *operations; // see ownedByCore flag
     const char *name;
     const char *port;
@@ -100,6 +124,11 @@ struct neat_flow
     size_t readBufferAllocation;  // size of buffered allocation
     int readBufferMsgComplete;    // it contains a complete user message
 
+#if defined(USRSCTP_SUPPORT)
+    unsigned char *readbuffer;
+    ssize_t readlen;
+#endif
+
     neat_read_impl readfx;
     neat_write_impl writefx;
     neat_accept_impl acceptfx;
@@ -108,7 +137,12 @@ struct neat_flow
     neat_listen_impl listenfx;
     neat_shutdown_impl shutdownfx;
 
-    uint8_t heConnectAttemptCount;
+	uint8_t heConnectAttemptCount;
+
+#if defined(USRSCTP_SUPPORT)
+    neat_usrsctp_receive_cb usrsctp_receivefx;
+    neat_usrsctp_send_cb usrsctp_sendfx;
+#endif
 
     int hefirstConnect : 1;
     int firstWritePending : 1;
@@ -125,8 +159,10 @@ typedef struct neat_flow neat_flow;
 //NEAT resolver public data structures/functions
 struct neat_resolver;
 struct neat_resolver_res;
+struct neat_resolver_server;
 
 LIST_HEAD(neat_resolver_results, neat_resolver_res);
+LIST_HEAD(neat_resolver_servers, neat_resolver_server);
 
 typedef void (*neat_resolver_handle_t)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
 typedef void (*neat_resolver_cleanup_t)(struct neat_resolver *resolver);
@@ -138,6 +174,22 @@ enum neat_resolver_code {
     NEAT_RESOLVER_TIMEOUT,
     //Signal internal error
     NEAT_RESOLVER_ERROR,
+};
+
+enum neat_resolver_mark {
+    //Set for our well-known global servers
+    NEAT_RESOLVER_SERVER_STATIC = 0,
+    //Indicate that this server should be deleted (i.e., it is removed from
+    //resolv.conf)
+    NEAT_RESOLVER_SERVER_DELETE,
+    //Indicate that this server should be kept
+    NEAT_RESOLVER_SERVER_ACTIVE
+};
+
+struct neat_resolver_server {
+    struct sockaddr_storage server_addr;
+    uint8_t mark;
+    LIST_ENTRY(neat_resolver_server) next_server;
 };
 
 //Struct passed to resolver callback, mirrors what we get back from getaddrinfo
@@ -160,7 +212,11 @@ struct he_cb_ctx {
     struct neat_ctx *nc;
     struct neat_resolver_res *candidate;
     neat_flow *flow;
+#if defined(USRSCTP_SUPPORT)
+    struct socket *sock;
+#else
     int fd;
+#endif
     size_t writeSize;
     size_t readSize;
     size_t writeLimit;
@@ -170,6 +226,7 @@ struct he_cb_ctx {
 //Intilize resolver. Sets up internal callbacks etc.
 //Resolve is required, cleanup is not
 struct neat_resolver *neat_resolver_init(struct neat_ctx *nc,
+                                         const char *resolv_conf_path,
                                          neat_resolver_handle_t handle_resolve,
                                          neat_resolver_cleanup_t cleanup);
 
@@ -264,12 +321,16 @@ struct neat_resolver {
     struct neat_event_cb newaddr_cb;
     struct neat_event_cb deladdr_cb;
 
+    //Keep track of all DNS servers seen until now
+    struct neat_resolver_servers server_list;
+
     //List of all active resolver pairs
     struct neat_resolver_pairs resolver_pairs;
     //Need to defer free until libuv has clean up memory
     struct neat_resolver_pairs resolver_pairs_del;
     uv_idle_t idle_handle;
     uv_timer_t timeout_handle;
+    uv_fs_event_t resolv_conf_handle;
 
     //Result is the resolved addresses, code is one of the neat_resolver_codes.
     //Ownsership of results is transfered to application, so it is the

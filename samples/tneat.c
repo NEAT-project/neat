@@ -60,7 +60,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB);
 static void print_usage()
 {
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __FUNCTION__);
+        fprintf(stderr, "%s()\n", __func__);
     }
 
     printf("tneat [OPTIONS] [HOST]\n");
@@ -82,7 +82,7 @@ static char *filesize_human(double bytes, char *buffer, size_t buffersize)
     const char* units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
 
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __FUNCTION__);
+        fprintf(stderr, "%s()\n", __func__);
     }
 
     while (bytes > 1000) {
@@ -99,7 +99,7 @@ static char *filesize_human(double bytes, char *buffer, size_t buffersize)
 static neat_error_code on_error(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __FUNCTION__);
+        fprintf(stderr, "%s()\n", __func__);
     }
     exit(EXIT_FAILURE);
 }
@@ -112,7 +112,7 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
     char buffer_filesize_human[32];
 
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __FUNCTION__);
+        fprintf(stderr, "%s()\n", __func__);
     }
 
     gettimeofday(&now, NULL);
@@ -152,7 +152,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     neat_error_code code;
 
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __FUNCTION__);
+        fprintf(stderr, "%s()\n", __func__);
     }
 
     // record first send call
@@ -186,7 +186,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size);
 
     if (code != NEAT_OK) {
-        fprintf(stderr, "%s - neat_write error: code %d\n", __FUNCTION__, (int)code);
+        fprintf(stderr, "%s - neat_write error: code %d\n", __func__, (int)code);
         return on_error(opCB);
     }
 
@@ -203,16 +203,16 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     double time_elapsed;
 
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __FUNCTION__);
+        fprintf(stderr, "%s()\n", __func__);
     }
 
     code = neat_read(opCB->ctx, opCB->flow, tnf->rcv.buffer, config_rcv_buffer_size, &buffer_filled);
     if (code) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
-            fprintf(stderr, "%s - neat_read warning: NEAT_ERROR_WOULD_BLOCK\n", __FUNCTION__);
+            fprintf(stderr, "%s - neat_read warning: NEAT_ERROR_WOULD_BLOCK\n", __func__);
             return NEAT_OK;
         } else {
-            fprintf(stderr, "%s - neat_read error: code %d\n", __FUNCTION__, (int)code);
+            fprintf(stderr, "%s - neat_read error: code %d\n", __func__, (int)code);
             return on_error(opCB);
         }
     }
@@ -282,23 +282,23 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = NULL;
 
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __FUNCTION__);
+        fprintf(stderr, "%s()\n", __func__);
     }
 
     if ((opCB->userData = calloc(1, sizeof(struct tneat_flow))) == NULL) {
-        fprintf(stderr, "%s - could not allocate tneat_flow\n", __FUNCTION__);
+        fprintf(stderr, "%s - could not allocate tneat_flow\n", __func__);
         exit(EXIT_FAILURE);
     }
 
     tnf = opCB->userData;
 
     if ((tnf->snd.buffer = malloc(config_snd_buffer_size)) == NULL) {
-        fprintf(stderr, "%s - could not allocate send buffer\n", __FUNCTION__);
+        fprintf(stderr, "%s - could not allocate send buffer\n", __func__);
         exit(EXIT_FAILURE);
     }
 
     if ((tnf->rcv.buffer = malloc(config_rcv_buffer_size)) == NULL) {
-        fprintf(stderr, "%s - could not allocate receive buffer\n", __FUNCTION__);
+        fprintf(stderr, "%s - could not allocate receive buffer\n", __func__);
         exit(EXIT_FAILURE);
     }
 
@@ -393,20 +393,20 @@ int main(int argc, char *argv[])
             printf("role: active\n");
         }
     } else {
-        fprintf(stderr, "%s - argument error\n", __FUNCTION__);
+        fprintf(stderr, "%s - argument error\n", __func__);
         print_usage();
         goto cleanup;
     }
 
     if ((ctx = neat_init_ctx()) == NULL) {
-        fprintf(stderr, "%s - neat_init_ctx failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - neat_init_ctx failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // new neat flow
     if ((flow = neat_new_flow(ctx)) == NULL) {
-        fprintf(stderr, "%s - neat_new_flow failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - neat_new_flow failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -416,14 +416,14 @@ int main(int argc, char *argv[])
 
     //ops.on_all_written = on_all_written;
     if (neat_set_operations(ctx, flow, &ops)) {
-        fprintf(stderr, "%s - neat_set_operations failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // get properties
     if (neat_get_property(ctx, flow, &prop)) {
-        fprintf(stderr, "%s - neat_get_property failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - neat_get_property failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -487,7 +487,7 @@ int main(int argc, char *argv[])
 
     // set properties
     if (neat_set_property(ctx, flow, prop)) {
-        fprintf(stderr, "%s - neat_set_property failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - neat_set_property failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -505,14 +505,14 @@ int main(int argc, char *argv[])
             }
             neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
         } else {
-            fprintf(stderr, "%s - neat_open failed\n", __FUNCTION__);
+            fprintf(stderr, "%s - neat_open failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
         }
     } else {
         // wait for on_connected or on_error to be invoked
         if (neat_accept(ctx, flow, "*", port)) {
-            fprintf(stderr, "%s - neat_accept failed\n", __FUNCTION__);
+            fprintf(stderr, "%s - neat_accept failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
         }

@@ -10,7 +10,7 @@ static const char *request = "GET / HTTP/1.0\r\nUser-agent: libneat\r\nConnectio
 
 static neat_error_code on_error(struct neat_flow_operations *opCB)
 {
-    fprintf(stderr, "%s\n", __FUNCTION__);
+    fprintf(stderr, "%s\n", __func__);
     exit(EXIT_FAILURE);
 }
 

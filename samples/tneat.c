@@ -1,10 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
-#include <inttypes.h>
 #include <unistd.h>
-#include <netinet/in.h>
 #include <sys/time.h>
 #include "../neat.h"
 
@@ -79,7 +76,7 @@ static void print_usage()
 /*
     print human readable file sizes - keep attention to provide enough buffer space
 */
-static char *filesize_human(double bytes, char *buffer)
+static char *filesize_human(double bytes, char *buffer, size_t buffersize)
 {
     uint8_t i = 0;
     const char* units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
@@ -92,7 +89,7 @@ static char *filesize_human(double bytes, char *buffer)
         bytes /= 1000;
         i++;
     }
-    sprintf(buffer, "%.*f %s", i, bytes, units[i]);
+    snprintf(buffer, buffersize, "%.*f %s", i, bytes, units[i]);
     return buffer;
 }
 
@@ -112,7 +109,7 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = opCB->userData;
     struct timeval now, diff_time;
     double time_elapsed;
-    char buffer_filesize_human[16];
+    char buffer_filesize_human[32];
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __FUNCTION__);
@@ -131,7 +128,7 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
         printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
         printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
         printf("\tduration\t: %.2fs\n", time_elapsed);
-        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human));
+        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
 
         opCB->on_writable = NULL;
 
@@ -202,7 +199,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     uint32_t buffer_filled;
     struct timeval diff_time;
     neat_error_code code;
-    char buffer_filesize_human[16];
+    char buffer_filesize_human[32];
     double time_elapsed;
 
     if (config_log_level >= 2) {
@@ -256,14 +253,14 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
             time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
-            printf("%u, %u, %.2f, %.2f, %s\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human));
+            printf("%u, %u, %.2f, %.2f, %s\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
 
             if (config_log_level >= 1) {
                 printf("client disconnected - statistics\n");
                 printf("\tbytes\t\t: %u\n", tnf->rcv.bytes);
                 printf("\trcv-calls\t: %u\n", tnf->rcv.calls);
                 printf("\tduration\t: %.2fs\n", time_elapsed);
-                printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human));
+                printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
             }
 
             neat_free_flow(opCB->flow);

@@ -40,10 +40,12 @@ LIST_HEAD(neat_src_addrs, neat_addr);
 
 struct neat_pib
 { // TODO
+    uint8_t dummy;
 };
 
 struct neat_cib
 { // TODO
+    uint8_t dummy;
 };
 
 struct neat_ctx {
@@ -56,7 +58,7 @@ struct neat_ctx {
     // resolver
     NEAT_INTERNAL_CTX;
     NEAT_INTERNAL_OS;
-    NEAT_INTERNAL_USRSCTP;
+    NEAT_INTERNAL_USRSCTP
 };
 
 struct he_cb_ctx;

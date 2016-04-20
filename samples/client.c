@@ -1,9 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <poll.h>
 #include <unistd.h>
-#include <netinet/in.h>
 #include <uv.h>
 #include "../neat.h"
 #include "../neat_internal.h"
@@ -43,7 +41,7 @@ static void print_usage()
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __FUNCTION__);
     }
-    
+
     printf("client [OPTIONS] HOST PORT\n");
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);

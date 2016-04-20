@@ -1,9 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <poll.h>
 #include <unistd.h>
-#include <netinet/in.h>
 #include "../neat.h"
 
 static uint32_t config_buffer_size = 128;

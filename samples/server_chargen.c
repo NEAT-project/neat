@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <netinet/in.h>
 #include "../neat.h"
 
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
@@ -10,9 +9,6 @@ static uint16_t config_log_level = 1;
 
 #define BUFFERSIZE 32
 
-static struct neat_flow_operations ops;
-static struct neat_ctx *ctx = NULL;
-static struct neat_flow *flow = NULL;
 static uint32_t chargen_offset = 0;
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
@@ -119,7 +115,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
         opCB->on_all_written = on_all_written;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
     }
-    
+
     code = neat_write(opCB->ctx, opCB->flow, buffer, BUFFERSIZE);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: %d\n", __FUNCTION__, (int)code);
@@ -150,6 +146,11 @@ int main(int argc, char *argv[])
     char *arg_property = config_property;
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
+
+    struct neat_ctx *ctx = NULL;
+    struct neat_flow *flow = NULL;
+    struct neat_flow_operations ops;
+
 
     result = EXIT_SUCCESS;
 

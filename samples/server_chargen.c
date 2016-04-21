@@ -6,10 +6,10 @@
 
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 static uint16_t config_log_level = 1;
+static uint16_t chargen_offset = 0;
 
 #define BUFFERSIZE 32
 
-static uint32_t chargen_offset = 0;
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
 
@@ -59,6 +59,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             return on_error(opCB);
         }
     }
+
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
             printf("received data - %d byte\n", buffer_filled);
@@ -70,19 +71,22 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         }
     } else {
         if (config_log_level >= 1) {
-            printf("disconnected\n");
+            printf("peer disconnected\n");
         }
         opCB->on_readable = NULL;
+        opCB->on_writable = NULL;
+        opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
+        neat_free_flow(opCB->flow);
     }
     return NEAT_OK;
 }
 
 static neat_error_code on_all_written(struct neat_flow_operations *opCB)
 {
-    opCB->on_writable = NULL;
+    opCB->on_writable = on_writable;
+    opCB->on_all_written = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
-    neat_free_flow(opCB->flow);
     return NEAT_OK;
 }
 
@@ -105,16 +109,12 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 
     buffer[i++] = '\r';
     buffer[i++] = '\n';
-    chargen_offset++;
 
-    if (chargen_offset >= 72) {
-        chargen_offset = 0;
-    }
+    chargen_offset = (chargen_offset + 1)%72;
 
-    if (opCB->on_readable == NULL) {
-        opCB->on_all_written = on_all_written;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-    }
+    opCB->on_writable = NULL;
+    opCB->on_all_written = on_all_written;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     code = neat_write(opCB->ctx, opCB->flow, buffer, BUFFERSIZE);
     if (code != NEAT_OK) {
@@ -134,6 +134,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
 
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
+    opCB->on_all_written = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     return NEAT_OK;
@@ -146,11 +147,9 @@ int main(int argc, char *argv[])
     char *arg_property = config_property;
     char *arg_property_ptr;
     char arg_property_delimiter[] = ",;";
-
     struct neat_ctx *ctx = NULL;
     struct neat_flow *flow = NULL;
     struct neat_flow_operations ops;
-
 
     result = EXIT_SUCCESS;
 
@@ -285,9 +284,6 @@ int main(int argc, char *argv[])
 
     // cleanup
 cleanup:
-    if (flow != NULL) {
-        neat_free_flow(flow);
-    }
     if (ctx != NULL) {
         neat_free_ctx(ctx);
     }

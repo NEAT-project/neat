@@ -74,7 +74,7 @@ static void print_usage()
 }
 
 /*
-    print human readable file sizes - keep attention to provide enough buffer space
+    print human readable file sizes - helper function
 */
 static char *filesize_human(double bytes, char *buffer, size_t buffersize)
 {
@@ -235,8 +235,8 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         }
     // peer disconnected
     } else if (buffer_filled == 0){
-        if (config_log_level >= 2) {
-            printf("neat_read - connection closed\n");
+        if (config_log_level >= 1) {
+            printf("connection closed\n");
         }
 
         opCB->on_readable = NULL;
@@ -522,14 +522,11 @@ int main(int argc, char *argv[])
 
 
     if (config_log_level >= 1) {
-        printf("freeing (flow + ctx) and bye bye!\n");
+        printf("freeing ctx bye bye!\n");
     }
 
     // cleanup
 cleanup:
-    if (flow != NULL) {
-        //neat_free_flow(flow);
-    }
     if (ctx != NULL) {
         neat_free_ctx(ctx);
     }

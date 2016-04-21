@@ -306,7 +306,10 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     }
 
     // reset stats
-    memset(tnf, 0, sizeof(struct tneat_flow));
+    tnf->snd.calls = 0;
+    tnf->snd.bytes = 0;
+    tnf->rcv.calls = 0;
+    tnf->rcv.bytes = 0;
 
     // set callbacks
     opCB->on_readable = on_readable;

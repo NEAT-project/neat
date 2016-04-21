@@ -516,7 +516,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                                flow->readBufferAllocation - flow->readBufferSize,
                                (struct sockaddr *) &addr, &len, (void *)&rn,
                                 &infolen, &infotype, &flags);
-        if (n < 0) {
+        if (n <= 0) {
             return READ_WITH_ERROR;
         }
         neat_log(NEAT_LOG_INFO, " %zd bytes received\n", n);
@@ -526,11 +526,6 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         }
         if (!flow->readBufferMsgComplete) {
             neat_log(NEAT_LOG_DEBUG, "Message not complete, yet");
-            return READ_WITH_ERROR;
-        }
-        READYCALLBACKSTRUCT;
-        flow->operations->on_readable(flow->operations);
-        if (n == 0) {
             return READ_WITH_ERROR;
         }
 #endif

@@ -443,8 +443,10 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_writable(flow->operations);
 }
 
-#define READ_WITH_ERROR 0
-#define READ_OK 1
+
+#define READ_OK 0
+#define READ_WITH_ERROR 1
+#define READ_WITH_ZERO 2
 
 static int io_readable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
@@ -461,7 +463,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     unsigned int infotype;
     struct sctp_recvv_rn rn;
     socklen_t infolen = sizeof(struct sctp_recvv_rn);
-    int flags;
+    int flags = 0;
 #endif
 #endif
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -512,11 +514,18 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             READ_WITH_ERROR;
         }
 #else
+        len = sizeof(struct sockaddr);
+        memset((void *)&addr, 0, sizeof(struct sockaddr_in));
+#ifdef HAVE_SIN_LEN
+	    addr.sin_len = sizeof(struct sockaddr_in);
+#endif
+	    addr.sin_family = AF_INET;
+
         n = usrsctp_recvv(flow->sock, flow->readBuffer + flow->readBufferSize,
                                flow->readBufferAllocation - flow->readBufferSize,
                                (struct sockaddr *) &addr, &len, (void *)&rn,
                                 &infolen, &infotype, &flags);
-        if (n <= 0) {
+        if (n < 0) {
             return READ_WITH_ERROR;
         }
         neat_log(NEAT_LOG_INFO, " %zd bytes received\n", n);
@@ -527,6 +536,11 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         if (!flow->readBufferMsgComplete) {
             neat_log(NEAT_LOG_DEBUG, "Message not complete, yet");
             return READ_WITH_ERROR;
+        }
+        READYCALLBACKSTRUCT;
+        flow->operations->on_readable(flow->operations);
+        if (n == 0) {
+            return READ_WITH_ZERO;
         }
 #endif
     }
@@ -1564,10 +1578,11 @@ static void handle_upcall(struct socket *sock, void *arg, int flags)
             io_writable(ctx, flow, NEAT_OK);
         }
         if (events & SCTP_EVENT_READ) {
-            neat_error_code code = NEAT_OK;
+            neat_error_code code;
+
             do {
                 code = io_readable(ctx, flow, NEAT_OK);
-            } while (code != READ_WITH_ERROR);
+            } while (code == READ_OK);
         }
     }
 }

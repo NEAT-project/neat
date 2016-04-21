@@ -122,7 +122,7 @@ main(int argc, char *argv[])
     neat_set_property(ctx, flow, prop);
 
     // wait for on_connected or on_error to be invoked
-    neat_accept(ctx, flow, "*", "8080");
+    neat_accept(ctx, flow, "*", 8080);
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
     neat_free_flow(flow);

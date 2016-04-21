@@ -172,8 +172,6 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         } else {
             neat_log(NEAT_LOG_DEBUG, "%s: Connect successful", __func__);
             flow->heConnectAttemptCount++;
-            if (candidate->ai_protocol == IPPROTO_SCTP)
-                break;
         }
 
     }

@@ -511,7 +511,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             flow->readBufferMsgComplete = 1;
         }
         if (!flow->readBufferMsgComplete) {
-            READ_WITH_ERROR;
+            return READ_WITH_ERROR;
         }
 #else
         len = sizeof(struct sockaddr);
@@ -632,7 +632,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         free(he_ctx);
 
         /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-//#if 0
+#if 0
         struct sockaddr_storage addr;
         socklen_t addr_len = sizeof(addr);
         getpeername(flow->fd, (struct sockaddr *)&addr, &addr_len);
@@ -642,14 +642,14 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
                     ip_address,
                     INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
         printf("Winning connection attempt to %s with protocol %d\n", ip_address, flow->sockProtocol);
-//#endif
+#endif
 
         // TODO: Security layer.
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
 
         /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-//#if 0
+#if 0
         struct sockaddr_storage addr;
         socklen_t addr_len = sizeof(addr);
         getpeername(flow->fd, (struct sockaddr *)&addr, &addr_len);
@@ -659,7 +659,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
                 ip_address,
                 INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
         printf("Loosing connection attempt to %s with protocol %d\n", ip_address, flow->sockProtocol);
-//#endif
+#endif
         if ( status < 0 ) {
             flow->heConnectAttemptCount--;
         }
@@ -876,7 +876,7 @@ static neat_error_code
 neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     struct neat_buffered_message *msg, *next_msg;
-    ssize_t rv;
+    ssize_t rv = 0;
     size_t len;
 #if defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
     struct cmsghdr *cmsg;

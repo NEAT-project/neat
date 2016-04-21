@@ -24,10 +24,9 @@ static struct neat_flow_operations ops;
 static struct std_buffer stdin_buffer;
 static struct neat_ctx *ctx = NULL;
 static struct neat_flow *flow = NULL;
-uv_loop_t *uv_loop;
-uv_tty_t tty;
 static unsigned char *buffer_rcv = NULL;
 static unsigned char *buffer_snd= NULL;
+static uv_tty_t tty;
 
 void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
 void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
@@ -217,8 +216,11 @@ int main(int argc, char *argv[])
     uint64_t prop;
     int arg, result;
     char *arg_property = config_property;
-    char *arg_property_ptr;
+    char *arg_property_ptr = NULL;
     char arg_property_delimiter[] = ",;";
+
+    memset(&ops, 0, sizeof(ops));
+    memset(&stdin_buffer, 0, sizeof(stdin_buffer));
 
     result = EXIT_SUCCESS;
 

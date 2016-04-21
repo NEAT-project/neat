@@ -62,14 +62,14 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
-            printf("received data - %d byte\n", buffer_filled);
+            printf("data received - %d byte\n", buffer_filled);
         }
         if (config_log_level >= 2) {
             fwrite(buffer, sizeof(char), buffer_filled, stdout);
             printf("\n");
             fflush(stdout);
         }
-    } else {
+    } else { // peer disconnected
         if (config_log_level >= 1) {
             printf("peer disconnected\n");
         }
@@ -79,11 +79,16 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
         neat_free_flow(opCB->flow);
     }
+
     return NEAT_OK;
 }
 
 static neat_error_code on_all_written(struct neat_flow_operations *opCB)
 {
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __func__);
+    }
+
     opCB->on_writable = on_writable;
     opCB->on_all_written = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
@@ -132,6 +137,10 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
+    if (config_log_level >= 1) {
+        printf("peer connected\n");
+    }
+
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
     opCB->on_all_written = NULL;
@@ -145,11 +154,13 @@ int main(int argc, char *argv[])
     uint64_t prop;
     int arg, result;
     char *arg_property = config_property;
-    char *arg_property_ptr;
+    char *arg_property_ptr = NULL;
     char arg_property_delimiter[] = ",;";
     struct neat_ctx *ctx = NULL;
     struct neat_flow *flow = NULL;
     struct neat_flow_operations ops;
+
+    memset(&ops, 0, sizeof(ops));
 
     result = EXIT_SUCCESS;
 

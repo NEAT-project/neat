@@ -149,6 +149,10 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
+    if (config_log_level >= 1) {
+        printf("peer connected\n");
+    }
+
     if ((opCB->userData = calloc(1, sizeof(struct echo_flow))) == NULL) {
         fprintf(stderr, "%s - could not allocate echo_flow\n", __func__);
         exit(EXIT_FAILURE);
@@ -173,11 +177,13 @@ int main(int argc, char *argv[])
     uint64_t prop;
     int arg, result;
     char *arg_property = config_property;
-    char *arg_property_ptr;
+    char *arg_property_ptr = NULL;
     char arg_property_delimiter[] = ",;";
     static struct neat_ctx *ctx = NULL;
     static struct neat_flow *flow = NULL;
     static struct neat_flow_operations ops;
+
+    memset(&ops, 0, sizeof(ops));
 
     result = EXIT_SUCCESS;
 
@@ -318,9 +324,6 @@ int main(int argc, char *argv[])
 
     // cleanup
 cleanup:
-    if (flow != NULL) {
-        neat_free_flow(flow);
-    }
     if (ctx != NULL) {
         neat_free_ctx(ctx);
     }

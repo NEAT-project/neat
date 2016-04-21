@@ -131,7 +131,6 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
         printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
 
         opCB->on_writable = NULL;
-
         neat_shutdown(opCB->ctx, opCB->flow);
     // continue sending
     } else {
@@ -285,6 +284,10 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
+    if (config_log_level >= 1) {
+        printf("connected\n");
+    }
+
     if ((opCB->userData = calloc(1, sizeof(struct tneat_flow))) == NULL) {
         fprintf(stderr, "%s - could not allocate tneat_flow\n", __func__);
         exit(EXIT_FAILURE);
@@ -303,10 +306,7 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     }
 
     // reset stats
-    tnf->snd.calls = 0;
-    tnf->snd.bytes = 0;
-    tnf->rcv.calls = 0;
-    tnf->rcv.bytes = 0;
+    memset(tnf, 0, sizeof(struct tneat_flow));
 
     // set callbacks
     opCB->on_readable = on_readable;
@@ -325,9 +325,11 @@ int main(int argc, char *argv[])
     struct neat_flow_operations ops;
     int arg, result;
     char *arg_property = config_property;
-    char *arg_property_ptr;
+    char *arg_property_ptr = NULL;
     char arg_property_delimiter[] = ",;";
     uint64_t prop;
+
+    memset(&ops, 0, sizeof(ops));
 
     result = EXIT_SUCCESS;
 

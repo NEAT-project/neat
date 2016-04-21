@@ -9,7 +9,7 @@ static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
 static unsigned char *buffer = NULL;
-static uint32_t buffer_filled;
+static uint32_t buffer_filled = 0;
 
 /*
     print usage and exit
@@ -62,6 +62,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             return on_error(opCB);
         }
     }
+
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
             printf("received data - %d byte\n", buffer_filled);
@@ -88,6 +89,10 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
+    if (config_log_level >= 1) {
+        printf("peer connected\n");
+    }
+
     opCB->on_readable = on_readable;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
@@ -98,11 +103,13 @@ int main(int argc, char *argv[])
     uint64_t prop;
     int arg, result;
     char *arg_property = config_property;
-    char *arg_property_ptr;
+    char *arg_property_ptr = NULL;
     char arg_property_delimiter[] = ",;";
     struct neat_ctx *ctx = NULL;
     struct neat_flow *flow = NULL;
     struct neat_flow_operations ops;
+
+    memset(&ops, 0, sizeof(ops));
 
     result = EXIT_SUCCESS;
 
@@ -250,9 +257,6 @@ int main(int argc, char *argv[])
     // cleanup
 cleanup:
     free(buffer);
-    if (flow != NULL) {
-        neat_free_flow(flow);
-    }
     if (ctx != NULL) {
         neat_free_ctx(ctx);
     }

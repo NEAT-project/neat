@@ -4,57 +4,100 @@
 
 ### neat_new_flow()
 ```c
-struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
+struct neat_flow*
+neat_new_flow(
+    struct neat_ctx *ctx);
 ```
 
 ### neat_set_operations()
 ```c
-neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_flow_operations *ops);
+neat_error_code neat_set_operations(
+    struct neat_ctx *ctx,
+    struct neat_flow *flow,
+    struct neat_flow_operations *ops);
 ```
 
 ### neat_free_flow()
 ```c
-void neat_free_flow(struct neat_flow *flow);
+void
+neat_free_flow(
+    struct neat_flow *flow);
 ```
 
 ### neat_set_operations()
 ```c
-neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_flow_operations *ops);
+neat_error_code
+    neat_set_operations(
+        struct neat_ctx *ctx,
+        struct neat_flow *flow,
+        struct neat_flow_operations *ops);
 ```
 
 ### neat_open()
 ```c
-neat_error_code neat_open(struct neat_ctx *ctx, struct neat_flow *flow, const char *name, const char *port);
+neat_error_code
+    neat_open(
+        struct neat_ctx *ctx,
+        struct neat_flow *flow,
+        const char *name,
+        const char *port);
 ```
 
 ### neat_read()
 ```c
-neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow, unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
+neat_error_code
+    neat_read(
+        struct neat_ctx *ctx,
+        struct neat_flow *flow,
+        unsigned char *buffer,
+        uint32_t amt,
+        uint32_t *actualAmt);
 ```
 
 ### neat_write()
 ```c
-neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow, const unsigned char *buffer, uint32_t amt);
+neat_error_code
+    neat_write(
+        struct neat_ctx *ctx,
+        struct neat_flow *flow,
+        const unsigned char *buffer,
+        uint32_t amt);
 ```
 
 ### neat_get_property()
 ```c
-neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow, uint64_t *outMask);
+neat_error_code
+    neat_get_property(
+        struct neat_ctx *ctx,
+        struct neat_flow *flow,
+        uint64_t *outMask);
 ```
 
 ### neat_set_property
 ```c
-neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow, uint64_t inMask);
+neat_error_code
+    neat_set_property(
+        struct neat_ctx *ctx,
+        struct neat_flow *flow,
+        uint64_t inMask);
 ```
 
 ### neat_accept
 ```c
-neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow, const char *name, const char *port);
+neat_error_code
+    neat_accept(
+        struct neat_ctx *ctx,
+        struct neat_flow *flow,
+        const char *name,
+        const char *port);
 ```
 
 ### neat_shutdown
 ```c
-neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
+neat_error_code
+    neat_shutdown(
+        struct neat_ctx *ctx,
+        struct neat_flow *flow);
 ```
 
 ## Callbacks

@@ -22,6 +22,7 @@ static uint16_t config_chargen_offset = 0;
 static uint16_t config_port = 8080;
 static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+static uint8_t done = 0;
 
 /*
     macro - tvp-uvp=vvp
@@ -130,13 +131,10 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
         printf("\tduration\t: %.2fs\n", time_elapsed);
         printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
 
-        opCB->on_writable = NULL;
-        neat_shutdown(opCB->ctx, opCB->flow);
-    // continue sending
-    } else {
-        opCB->on_writable = on_writable;
+        done = 1;
     }
 
+    opCB->on_writable = on_writable;
     opCB->on_all_written = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
@@ -152,6 +150,14 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
+    }
+
+    if (done) {
+        opCB->on_readable = NULL;
+        opCB->on_writable = NULL;
+        opCB->on_all_written = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
+        neat_shutdown(opCB->ctx, opCB->flow);
     }
 
     // record first send call

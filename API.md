@@ -116,7 +116,7 @@ neat_error_code neat_set_property(
     uint64_t inMask);
 ```
 Set NEAT property mask.
-See [Property](##Property) for details.
+See [Property](#properties) for details.
 
 #### neat_accept
 ```c

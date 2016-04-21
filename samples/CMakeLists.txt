@@ -39,6 +39,8 @@ IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     LIST(APPEND neat_PROGRAMS_LIBS ${LDNS_LIB})
 ENDIF()
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -Wall -Werror -Wextra -pedantic -Wno-unused-function  -Wno-unused-parameter")
+
 
 # BUILD EACH SAMPLE
 #################################################

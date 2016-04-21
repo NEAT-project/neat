@@ -28,36 +28,36 @@ uint8_t neat_log_init() {
 
     // determine log level
     if (env_log_level == NULL) {
-        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : default", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : default", __func__);
     } else if (strcmp(env_log_level,"NEAT_LOG_DEBUG") == 0) {
-        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_DEBUG", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_DEBUG", __func__);
         neat_log_level = NEAT_LOG_DEBUG;
     } else if (strcmp(env_log_level,"NEAT_LOG_INFO") == 0) {
-        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_INFO", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_INFO", __func__);
         neat_log_level = NEAT_LOG_INFO;
     } else if (strcmp(env_log_level,"NEAT_LOG_WARNING") == 0) {
-        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_WARNING", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_WARNING", __func__);
         neat_log_level = NEAT_LOG_WARNING;
     } else if (strcmp(env_log_level,"NEAT_LOG_ERROR") == 0) {
-        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_ERROR", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_ERROR", __func__);
         neat_log_level = NEAT_LOG_ERROR;
     } else if (strcmp(env_log_level,"NEAT_LOG_OFF") == 0) {
-        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_OFF", __FUNCTION__);
+        neat_log(NEAT_LOG_INFO, "%s - NEAT_LOG_LEVEL : NEAT_LOG_OFF", __func__);
         neat_log_level = NEAT_LOG_OFF;
     }
 
     // determine output fd
     if (env_log_file != NULL) {
-        neat_log(NEAT_LOG_INFO, "%s - using logfile: %s", __FUNCTION__, env_log_file);
+        neat_log(NEAT_LOG_INFO, "%s - using logfile: %s", __func__, env_log_file);
         neat_log_fd = fopen (env_log_file, "w");
 
         if (neat_log_fd == NULL) {
             neat_log_fd = stderr;
-            neat_log(NEAT_LOG_ERROR, "%s - could not open logfile, using stderr", __FUNCTION__);
+            neat_log(NEAT_LOG_ERROR, "%s - could not open logfile, using stderr", __func__);
             return RETVAL_FAILURE;
         }
     }
-    neat_log(NEAT_LOG_INFO, "%s - opening logfile ...", __FUNCTION__);
+    neat_log(NEAT_LOG_INFO, "%s - opening logfile ...", __func__);
 
     return RETVAL_SUCCESS;
 }
@@ -103,7 +103,7 @@ void neat_log(uint8_t level, const char* format, ...) {
  * Close logfile
  */
 uint8_t neat_log_close() {
-    neat_log(NEAT_LOG_INFO, "%s - closing logfile ...", __FUNCTION__);
+    neat_log(NEAT_LOG_INFO, "%s - closing logfile ...", __func__);
     if (neat_log_fd != stderr) {
         if (fclose(neat_log_fd) == 0) {
             return RETVAL_SUCCESS;

@@ -3,14 +3,12 @@
 #include <string.h>
 #include "../neat.h"
 
-
-static struct neat_flow_operations ops;
 static uint32_t config_rcv_buffer_size = 1024;
 static const char *request = "GET / HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 
 static neat_error_code on_error(struct neat_flow_operations *opCB)
 {
-    fprintf(stderr, "%s\n", __FUNCTION__);
+    fprintf(stderr, "%s\n", __func__);
     exit(EXIT_FAILURE);
 }
 
@@ -18,7 +16,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
     unsigned char buffer[config_rcv_buffer_size];
-    uint32_t bytes_read;
+    uint32_t bytes_read = 0;
     neat_error_code code;
 
     code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read);
@@ -30,20 +28,12 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 
     if (!bytes_read) { // eof
         fflush(stdout);
-        ops.on_readable = NULL; // do not read more
-        neat_set_operations(opCB->ctx, opCB->flow, &ops);
+        opCB->on_readable = NULL; // do not read more
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
         neat_stop_event_loop(opCB->ctx);
     } else if (bytes_read > 0) {
         fwrite(buffer, sizeof(char), bytes_read, stdout);
     }
-    return 0;
-}
-
-
-static neat_error_code on_all_written(struct neat_flow_operations *opCB)
-{
-    ops.on_readable = on_readable;
-    neat_set_operations(opCB->ctx, opCB->flow, &ops);
     return 0;
 }
 
@@ -54,17 +44,17 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     if (code != NEAT_OK) {
         return on_error(opCB);
     }
-    ops.on_writable = NULL;
-    neat_set_operations(opCB->ctx, opCB->flow, &ops);
+    opCB->on_writable = NULL;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return 0;
 }
 
 static neat_error_code on_connected(struct neat_flow_operations *opCB)
 {
     // now we can start writing
-    ops.on_writable = on_writable;
-    ops.on_all_written = on_all_written;
-    neat_set_operations(opCB->ctx, opCB->flow, &ops);
+    opCB->on_readable = on_readable;
+    opCB->on_writable = on_writable;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return 0;
 }
 
@@ -72,8 +62,11 @@ int main(int argc, char *argv[])
 {
     struct neat_ctx *ctx = NULL;
     struct neat_flow *flow = NULL;
-    uint64_t prop;
+    struct neat_flow_operations ops;
+    uint64_t prop = 0;
     int result;
+
+    memset(&ops, 0, sizeof(ops));
 
     result = EXIT_SUCCESS;
 

@@ -1,20 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <poll.h>
 #include <unistd.h>
-#include <netinet/in.h>
 #include "../neat.h"
 
-static uint32_t config_buffer_size = 8;
+static uint32_t config_buffer_size = 128;
 static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
-static struct neat_flow_operations ops;
-static struct neat_ctx *ctx = NULL;
-static struct neat_flow *flow = NULL;
 static unsigned char *buffer = NULL;
-static uint32_t buffer_filled;
+static uint32_t buffer_filled = 0;
 
 /*
     print usage and exit
@@ -22,7 +17,7 @@ static uint32_t buffer_filled;
 static void print_usage()
 {
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __FUNCTION__);
+        fprintf(stderr, "%s()\n", __func__);
     }
 
     printf("server_discard [OPTIONS]\n");
@@ -37,7 +32,7 @@ static void print_usage()
 static neat_error_code on_error(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __FUNCTION__);
+        fprintf(stderr, "%s()\n", __func__);
     }
 
     exit(EXIT_FAILURE);
@@ -52,7 +47,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     neat_error_code code;
 
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __FUNCTION__);
+        fprintf(stderr, "%s()\n", __func__);
     }
 
     code = neat_read(opCB->ctx, opCB->flow, buffer, config_buffer_size, &buffer_filled);
@@ -63,10 +58,11 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
             }
             return NEAT_OK;
         } else {
-            fprintf(stderr, "%s - neat_read error: %d\n", __FUNCTION__, (int)code);
+            fprintf(stderr, "%s - neat_read error: %d\n", __func__, (int)code);
             return on_error(opCB);
         }
     }
+
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
             printf("received data - %d byte\n", buffer_filled);
@@ -90,7 +86,11 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 static neat_error_code on_connected(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __FUNCTION__);
+        fprintf(stderr, "%s()\n", __func__);
+    }
+
+    if (config_log_level >= 1) {
+        printf("peer connected\n");
     }
 
     opCB->on_readable = on_readable;
@@ -103,8 +103,13 @@ int main(int argc, char *argv[])
     uint64_t prop;
     int arg, result;
     char *arg_property = config_property;
-    char *arg_property_ptr;
+    char *arg_property_ptr = NULL;
     char arg_property_delimiter[] = ",;";
+    struct neat_ctx *ctx = NULL;
+    struct neat_flow *flow = NULL;
+    struct neat_flow_operations ops;
+
+    memset(&ops, 0, sizeof(ops));
 
     result = EXIT_SUCCESS;
 
@@ -136,33 +141,33 @@ int main(int argc, char *argv[])
     }
 
     if (optind != argc) {
-        fprintf(stderr, "%s - argument error\n", __FUNCTION__);
+        fprintf(stderr, "%s - argument error\n", __func__);
         print_usage();
         goto cleanup;
     }
 
     if ((buffer = malloc(config_buffer_size)) == NULL) {
-        fprintf(stderr, "%s - malloc failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - malloc failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     if ((ctx = neat_init_ctx()) == NULL) {
-        fprintf(stderr, "%s - neat_init_ctx failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - neat_init_ctx failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // new neat flow
     if ((flow = neat_new_flow(ctx)) == NULL) {
-        fprintf(stderr, "%s - neat_new_flow failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - neat_new_flow failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // set properties (TCP only etc..)
     if (neat_get_property(ctx, flow, &prop)) {
-        fprintf(stderr, "%s - neat_get_property failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - neat_get_property failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -225,7 +230,7 @@ int main(int argc, char *argv[])
 
     // set properties
     if (neat_set_property(ctx, flow, prop)) {
-        fprintf(stderr, "%s - neat_set_property failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - neat_set_property failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -235,14 +240,14 @@ int main(int argc, char *argv[])
     ops.on_error = on_error;
 
     if (neat_set_operations(ctx, flow, &ops)) {
-        fprintf(stderr, "%s - neat_set_operations failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // wait for on_connected or on_error to be invoked
     if (neat_accept(ctx, flow, "*", "8080")) {
-        fprintf(stderr, "%s - neat_accept failed\n", __FUNCTION__);
+        fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -252,9 +257,6 @@ int main(int argc, char *argv[])
     // cleanup
 cleanup:
     free(buffer);
-    if (flow != NULL) {
-        neat_free_flow(flow);
-    }
     if (ctx != NULL) {
         neat_free_ctx(ctx);
     }

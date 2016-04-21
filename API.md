@@ -1,104 +1,140 @@
 # NEAT API
 
 ## functions
+#### neat_init_ctx()
+```c
+struct neat_ctx *neat_init_ctx();
+```
+Initialize neat context.
 
-### neat_new_flow()
+#### neat_start_event_loop()
+```c
+void neat_start_event_loop(
+    struct neat_ctx *nc,
+    neat_run_mode run_mode);
+```
+Start the internal NEAT event loop.
+
+#### neat_stop_event_loop()
+```c
+void neat_stop_event_loop(
+    struct neat_ctx *nc);
+```
+Stop the internal NEAT event loop.
+
+#### neat_get_backend_fd()
+```c
+int neat_get_backend_fd(
+    struct neat_ctx *nc);
+```
+Return the internal file descriptor.
+
+####
+```c
+void neat_free_ctx(
+    struct neat_ctx *nc);
+```
+Free any resource used by the context.
+Loop must be stopped by `neat_stop_event_loop()` before this function is called.
+
+
+#### neat_new_flow()
 ```c
 struct neat_flow*
 neat_new_flow(
     struct neat_ctx *ctx);
 ```
+Create a new NEAT flow.
 
-### neat_set_operations()
+#### neat_free_flow()
+```c
+void neat_free_flow(
+    struct neat_flow *flow);
+```
+Free the neat flow.
+
+#### neat_set_operations()
 ```c
 neat_error_code neat_set_operations(
     struct neat_ctx *ctx,
     struct neat_flow *flow,
     struct neat_flow_operations *ops);
 ```
+Set the NEAT operation callbacks.
 
-### neat_free_flow()
+* on_connected
+* on_error
+* on_readable
+* on_writable
+* on_all_written
+
+#### neat_open()
 ```c
-void
-neat_free_flow(
+neat_error_code neat_open(
+    struct neat_ctx *ctx,
+    struct neat_flow *flow,
+    const char *name,
+    const char *port);
+```
+Open a neat flow.
+
+#### neat_read()
+```c
+neat_error_code neat_read(
+    struct neat_ctx *ctx,
+    struct neat_flow *flow,
+    unsigned char *buffer,
+    uint32_t amt,
+    uint32_t *actualAmt);
+```
+Read data from a neat flow.
+
+#### neat_write()
+```c
+neat_error_code neat_write(
+    struct neat_ctx *ctx,
+    struct neat_flow *flow,
+    const unsigned char *buffer,
+    uint32_t amt);
+```
+Write data to a neat flow.
+
+#### neat_get_property()
+```c
+neat_error_code neat_get_property(
+    struct neat_ctx *ctx,
+    struct neat_flow *flow,
+    uint64_t *outMask);
+```
+Get NEAT property mask.
+
+#### neat_set_property
+```c
+neat_error_code neat_set_property(
+    struct neat_ctx *ctx,
+    struct neat_flow *flow,
+    uint64_t inMask);
+```
+Set NEAT property mask.
+See [Property](##Property) for details.
+
+#### neat_accept
+```c
+neat_error_code neat_accept(
+    struct neat_ctx *ctx,
+    struct neat_flow *flow,
+    const char *name,
+    const char *port);
+```
+Accept a new flow.
+
+#### neat_shutdown
+```c
+neat_error_code neat_shutdown(
+    struct neat_ctx *ctx,
     struct neat_flow *flow);
 ```
-
-### neat_set_operations()
-```c
-neat_error_code
-    neat_set_operations(
-        struct neat_ctx *ctx,
-        struct neat_flow *flow,
-        struct neat_flow_operations *ops);
-```
-
-### neat_open()
-```c
-neat_error_code
-    neat_open(
-        struct neat_ctx *ctx,
-        struct neat_flow *flow,
-        const char *name,
-        const char *port);
-```
-
-### neat_read()
-```c
-neat_error_code
-    neat_read(
-        struct neat_ctx *ctx,
-        struct neat_flow *flow,
-        unsigned char *buffer,
-        uint32_t amt,
-        uint32_t *actualAmt);
-```
-
-### neat_write()
-```c
-neat_error_code
-    neat_write(
-        struct neat_ctx *ctx,
-        struct neat_flow *flow,
-        const unsigned char *buffer,
-        uint32_t amt);
-```
-
-### neat_get_property()
-```c
-neat_error_code
-    neat_get_property(
-        struct neat_ctx *ctx,
-        struct neat_flow *flow,
-        uint64_t *outMask);
-```
-
-### neat_set_property
-```c
-neat_error_code
-    neat_set_property(
-        struct neat_ctx *ctx,
-        struct neat_flow *flow,
-        uint64_t inMask);
-```
-
-### neat_accept
-```c
-neat_error_code
-    neat_accept(
-        struct neat_ctx *ctx,
-        struct neat_flow *flow,
-        const char *name,
-        const char *port);
-```
-
-### neat_shutdown
-```c
-neat_error_code
-    neat_shutdown(
-        struct neat_ctx *ctx,
-        struct neat_flow *flow);
-```
+Shutdown NEAT connection.
 
 ## Callbacks
 

@@ -1,4 +1,4 @@
-![alt text](doc/neat_logo.svg "NEAT LOGO")
+![alt text](doc/neat_logo.png "NEAT LOGO")
 
 **A New, Evolutive API and Transport-Layer Architecture for the Internet**
 

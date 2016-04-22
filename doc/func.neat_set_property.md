@@ -28,3 +28,11 @@ See [Property](#properties) for details.
 * NEAT_PROPERTY_CONGESTION_CONTROL_BANNED
 * NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED
 * NEAT_PROPERTY_RETRANSMISSIONS_BANNED
+
+### Example
+```c
+neat_get_property(ctx, flow, &prop);
+prop |= NEAT_PROPERTY_OPTIONAL_SECURITY;
+prop |= NEAT_PROPERTY_TCP_REQUIRED; /* FIXME: Remove this once HE works */
+neat_set_property(ctx, flow, prop);
+```

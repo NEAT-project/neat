@@ -12,7 +12,7 @@
 * [neat_start_event_loop()](func.neat_start_event_loop.md)
 * [neat_stop_event_loop()](func.neat_stop_event_loop.md)
 * [neat_get_backend_fd()](func.neat_get_backend_fd.md)
-* [neat_free_ctx](func.neat_free_ctx.md)
+* [neat_free_ctx()](func.neat_free_ctx.md)
 * [neat_new_flow()](func.neat_new_flow.md)
 * [neat_free_flow()](func.neat_free_flow.md)
 * [neat_set_operations()](func.neat_set_operations.md)

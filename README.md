@@ -33,7 +33,7 @@ wants. A typical first step is to resolve a domain name.
 * `libmnl (linux only)`
 
 | OS        | command           |
-| --------- |:-------------|
+| :-------- |:-------------|
 | Ubuntu*   | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` |
 | FreeBSD   | `pkg install cmake ldns libuv`     |   
 | OS X      | `brew install libuv ldns`      |   
@@ -53,15 +53,18 @@ $ sudo make install
 ```
 Don't forget to run ldconfig after installing neat the first time.
 
+## Read the docs :bulb:
+
+
 ## Buildbots :fire:
-The [buildbots](http://buildbot.nplab.de:28010/waterfall) are triggered by every commit in every branch.
+We are running [buildbots](http://buildbot.nplab.de:28010/waterfall) to support our continuous integration process.
 
 If you are only interested in a single branch, just add `?branch=BRANCHNAME` to the URL. http://buildbot.nplab.de:28010/waterfall?branch=master
 
 
 ## Acknowledgement
 
-* https://www.neat-project.org
-* https://twitter.com/H2020Neatt
+* [www.neat-project.org](https://www.neat-project.org)
+* [witter.com/H2020Neat](https://twitter.com/H2020Neat)
 
 This work has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 644334 (NEAT). The views expressed are solely those of the author(s).

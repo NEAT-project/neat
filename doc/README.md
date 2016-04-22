@@ -1,4 +1,11 @@
-# NEAT API
+# NEAT documentation
+
+* [Functions](#functions)
+* [Callbacks](#callbacks)
+* [Return codes](#return-codes)
+* [Debug output](#debug-output)
+* [Internals](#internals)
+  * [DNS Resolver](#dns-resolver)   
 
 ## Functions
 * [neat_init_ctx()](func.neat_init_ctx.md)
@@ -62,7 +69,7 @@
 * NEAT_ERROR_UNABLE
 * NEAT_ERROR_MESSAGE_TOO_BIG
 
-## Debug output :page_with_curl:
+## Debug output
 Neat offers a flexible way to control debug output via environment variables.
 
 | variable         | default           | supported values
@@ -70,7 +77,8 @@ Neat offers a flexible way to control debug output via environment variables.
 | `NEAT_LOG_LEVEL` | `NEAT_LOG_INFO`   | `NEAT_LOG_OFF`, `NEAT_LOG_ERROR`, `NEAT_LOG_WARNING`, `NEAT_LOG_INFO`, `NEAT_LOG_DEBUG`
 | `NEAT_LOG_FILE`  | undefined (stderr)| filename, e.g. "neat.log"
 
-## NEAT DNS resolver
+## Internals
+### DNS resolver
 
 NEAT contains an asynchronous multi-prefix DNS resolver. DNS requests for the
 given domain will be sent to four public DNS servers on every available

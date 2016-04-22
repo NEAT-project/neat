@@ -742,17 +742,9 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     newFlow->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
     assert(newFlow->handle != NULL);
 
-    if (!(newFlow->sockProtocol == IPPROTO_SCTP)) {
-        newFlow->fd = newFlow->acceptfx(ctx, newFlow, flow->fd);
-        if (newFlow->fd == -1) {
-            neat_free_flow(newFlow);
-        } else {
-            uv_poll_init(ctx->loop, newFlow->handle, newFlow->fd); // makes fd nb as side effect
-            newFlow->handle->data = newFlow;
-            io_connected(ctx, newFlow, NEAT_OK);
-            uvpollable_cb(newFlow->handle, NEAT_OK, 0);
-        }
-    } else {
+    switch (newFlow->sockProtocol) {
+#ifdef IPPROTO_SCTP
+    case IPPROTO_SCTP:
 #if defined(USRSCTP_SUPPORT)
         newFlow->sock = newFlow->acceptusrsctpfx(ctx, newFlow, flow->sock);
         if (!newFlow->sock) {
@@ -772,6 +764,18 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
             uvpollable_cb(newFlow->handle, NEAT_OK, 0);
         }
 #endif
+        break;
+#endif
+    default:
+        newFlow->fd = newFlow->acceptfx(ctx, newFlow, flow->fd);
+        if (newFlow->fd == -1) {
+            neat_free_flow(newFlow);
+        } else {
+            uv_poll_init(ctx->loop, newFlow->handle, newFlow->fd); // makes fd nb as side effect
+            newFlow->handle->data = newFlow;
+            io_connected(ctx, newFlow, NEAT_OK);
+            uvpollable_cb(newFlow->handle, NEAT_OK, 0);
+        }
     }
 }
 

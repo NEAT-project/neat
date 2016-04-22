@@ -2,6 +2,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(neat)
 INCLUDE(CheckIncludeFile)
+INCLUDE(CheckStructHasMember)
 set(CMAKE_MACOSX_RPATH 1)
 
 # SOURCES + HEADERS
@@ -66,20 +67,42 @@ ELSE()
 ENDIF()
 
 #################################################
+# CHECK STRUCT MEMBERS
+#################################################
+
+check_struct_has_member("struct sockaddr" "sa_len" "sys/types.h;sys/socket.h" HAVE_SA_LEN)
+if (HAVE_SA_LEN)
+    message(STATUS "HAVE_SA_LEN")
+    add_definitions(-DHAVE_SA_LEN)
+endif()
+
+check_struct_has_member("struct sockaddr_in" "sin_len" "sys/types.h;netinet/in.h" HAVE_SIN_LEN)
+if (HAVE_SIN_LEN)
+    message(STATUS "HAVE_SIN_LEN")
+    add_definitions(-DHAVE_SIN_LEN)
+endif()
+
+check_struct_has_member("struct sockaddr_in6" "sin6_len" "sys/types.h;netinet/in.h" HAVE_SIN6_LEN)
+if( HAVE_SIN6_LEN)
+    message(STATUS "HAVE_SIN6_LEN")
+    add_definitions(-DHAVE_SIN6_LEN)
+endif()
+
+#################################################
 # CHECK OPTIONS
 #################################################
 
 option(USRSCTP_SUPPORT "Include usrsctp" 0)
 if (USRSCTP_SUPPORT)
-	add_definitions(-DUSRSCTP_SUPPORT)
-	add_definitions(-DINET)
-	add_definitions(-DINET6)
-	add_definitions(-DSCTP_DEBUG)
-	LIST(APPEND neat_HEADERS neat_usrsctp.h)
-	LIST(APPEND neat_SOURCES neat_usrsctp.c)
+    add_definitions(-DUSRSCTP_SUPPORT)
+    add_definitions(-DINET)
+    add_definitions(-DINET6)
+    add_definitions(-DSCTP_DEBUG)
+    LIST(APPEND neat_HEADERS neat_usrsctp.h)
+    LIST(APPEND neat_SOURCES neat_usrsctp.c)
 
-	FIND_LIBRARY(USRSCTP_LIB usrsctp)
-	LIST(APPEND neat_LIBS ${USRSCTP_LIB})
+    FIND_LIBRARY(USRSCTP_LIB usrsctp)
+    LIST(APPEND neat_LIBS ${USRSCTP_LIB})
     MESSAGE(STATUS "USRSCTP found: " ${USRSCTP_LIB})
 endif()
 

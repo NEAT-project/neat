@@ -51,7 +51,7 @@ In order to install the neat library, simply run - don't forget to run ldconfig 
 $ sudo make install
 ```
 
-For an easy entry to NEAT, have a look at `neat_http_get.c` for an simple http client.
+For an easy entry to NEAT, have a look at `neat_http_get.c` for a simple http client.
 
 ## Read the docs :bulb:
 Have a look at our [documentation](doc/README.md)!

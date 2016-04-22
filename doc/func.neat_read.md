@@ -1,4 +1,4 @@
-#### neat_read()
+## neat_read()
 ```c
 neat_error_code neat_read(
     struct neat_ctx *ctx,

@@ -32,7 +32,7 @@ wants. A typical first step is to resolve a domain name.
 
 | OS        | command           |
 | :-------- |:-------------|
-| Ubuntu*   | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` |
+| Ubuntu    | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` |
 | FreeBSD   | `pkg install cmake ldns libuv`     |   
 | OS X      | `brew install libuv ldns`      |   
 
@@ -51,7 +51,7 @@ In order to install the neat library, simply run - don't forget to run ldconfig 
 $ sudo make install
 ```
 
-For an easy entry to NEAT, have a look at the `neat_http_get.c` sample for an simple http client. 
+For an easy entry to NEAT, have a look at `neat_http_get.c` for an simple http client.
 
 ## Read the docs :bulb:
 Have a look at our [documentation](doc/README.md)!

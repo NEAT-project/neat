@@ -1,4 +1,4 @@
-#### neat_set_operations()
+## neat_set_operations()
 ```c
 neat_error_code neat_set_operations(
     struct neat_ctx *ctx,

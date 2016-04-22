@@ -1,4 +1,4 @@
-#### neat_open()
+## neat_open()
 ```c
 neat_error_code neat_open(
     struct neat_ctx *ctx,

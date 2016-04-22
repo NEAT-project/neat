@@ -1,4 +1,4 @@
-#### neat_shutdown
+## neat_shutdown
 ```c
 neat_error_code neat_shutdown(
     struct neat_ctx *ctx,

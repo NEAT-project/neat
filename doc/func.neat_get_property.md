@@ -1,4 +1,4 @@
-#### neat_get_property()
+## neat_get_property()
 ```c
 neat_error_code neat_get_property(
     struct neat_ctx *ctx,

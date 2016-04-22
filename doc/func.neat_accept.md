@@ -1,4 +1,4 @@
-#### neat_accept
+## neat_accept
 ```c
 neat_error_code neat_accept(
     struct neat_ctx *ctx,

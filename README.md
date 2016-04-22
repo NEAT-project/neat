@@ -6,7 +6,6 @@ NEAT supports **FreeBSD**, **Linux**, **OS X** and **NetBSD**
 
 
 ## NEAT internals :nut_and_bolt:
-
 NEAT is a callback based library and everything revovles around the neat_ctx
 struct. This struct has to be initialized before anything else can be done. NEAT
 uses libuv as event library, and this loop is available to users so that they
@@ -37,20 +36,20 @@ wants. A typical first step is to resolve a domain name.
 | FreeBSD   | `pkg install cmake ldns libuv`     |   
 | OS X      | `brew install libuv ldns`      |   
 
-## Build NEAT and samples :rocket:
-```
-$ cd build
+## Quickstart :rocket:
+```shell
+$ cd <path-to-neat-src>
+$ mkdir build && cd build
 $ cmake ..
-$ make
+$ cmake --build .
 ```
 This will generate makefiles and compile the library and the samples.
 You will find the shared and the static library in the `build` directory and the samples in `build/samples` directory.
 
-In order to install:
-```
+In order to install the neat library, simply run
+```shell
 $ sudo make install
 ```
-Don't forget to run ldconfig after installing neat the first time.
 
 ## Read the docs :bulb:
 Have a look at our [documentation](doc/README.md)!

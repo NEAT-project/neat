@@ -1,4 +1,5 @@
-# NEAT
+![alt text](doc/neat_logo.svg "NEAT LOGO")
+
 **A New, Evolutive API and Transport-Layer Architecture for the Internet**
 
 NEAT supports **FreeBSD**, **Linux**, **OS X** and **NetBSD**
@@ -31,9 +32,9 @@ wants. A typical first step is to resolve a domain name.
 * `ldns`
 * `libmnl (linux only)`
 
-| OS        | command           | 
-| ------------- |:-------------| 
-| Ubuntu*      | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` | 
+| OS        | command           |
+| ------------- |:-------------|
+| Ubuntu*      | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` |
 | FreeBSD      | `pkg install cmake ldns libuv`     |   
 | OS X | `brew install libuv ldns`      |   
 
@@ -55,7 +56,7 @@ $ sudo make install
 Don't forget to run ldconfig after installing neat the first time.
 
 ### Debug output :page_with_curl:
-Neat offers a flexible way to control debug output via environment variables. 
+Neat offers a flexible way to control debug output via environment variables.
 
 | variable        | default           | supported values |
 | :-------------  |:-------------| :------------- |
@@ -69,7 +70,7 @@ Neat offers a flexible way to control debug output via environment variables.
 - [ ] Find a platform-independent alternative to ldns.
 
 ## Buildbots :fire:
-The [buildbots](http://buildbot.nplab.de:28010/waterfall) are triggered by every commit in every branch. 
+The [buildbots](http://buildbot.nplab.de:28010/waterfall) are triggered by every commit in every branch.
 
 If you are only interested in a single branch, just add `?branch=BRANCHNAME` to the URL. http://buildbot.nplab.de:28010/waterfall?branch=master
 

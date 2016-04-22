@@ -49,9 +49,6 @@
                            +------------------+
 ```
 
-
-
-
 ## Return codes
 
 * NEAT_ERROR_OK
@@ -64,3 +61,35 @@
 * NEAT_ERROR_SECURITY
 * NEAT_ERROR_UNABLE
 * NEAT_ERROR_MESSAGE_TOO_BIG
+
+## Debug output :page_with_curl:
+Neat offers a flexible way to control debug output via environment variables.
+
+| variable         | default           | supported values
+| :-------------   |:------------------| :------------- 
+| `NEAT_LOG_LEVEL` | `NEAT_LOG_INFO`   | `NEAT_LOG_OFF`, `NEAT_LOG_ERROR`, `NEAT_LOG_WARNING`, `NEAT_LOG_INFO`, `NEAT_LOG_DEBUG`
+| `NEAT_LOG_FILE`  | undefined (stderr)| filename, e.g. "neat.log"
+
+## NEAT DNS resolver
+
+NEAT contains an asynchronous multi-prefix DNS resolver. DNS requests for the
+given domain will be sent to four public DNS servers on every available
+interface (address). It is possible to limit query to only v4 or v6 addresses,
+and a v4 interface is only used to request A records while v6 is only used to
+request AAAA records.
+
+In case of DNS poisoning or similar, the resolved address is compared agains the
+well-known internal IPs (ULA or IANA A/B/C). An internal IP is flagged and it is
+(so far) up to the user of NEAT to know if it is safe or not to use this IP.
+
+The best way to look at how to use the resolver is to look at the example file,
+`neat_resolver_example.c`
+
+### TODO
+- [ ] Read DNS-servers from resolv.conf. This requires us to decide on a generic way
+  for specifying with interface/IP a server belongs to.
+- [ ] Make resolver work on other OS' than Linux.
+- [ ] Make it optional (as much as possible) if resolver should use stack or heap.
+- [ ] Design a better algorithm for choosing servers, prioritizing servers sent to
+  user.
+- [ ] Lots of other stuff that I can't think of now.

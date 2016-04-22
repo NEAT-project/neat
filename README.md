@@ -46,10 +46,12 @@ $ cmake --build .
 This will generate makefiles and compile the library and the samples.
 You will find the shared and the static library in the `build` directory and the samples in `build/samples` directory.
 
-In order to install the neat library, simply run
+In order to install the neat library, simply run - don't forget to run ldconfig after installing neat the first time.
 ```shell
 $ sudo make install
 ```
+
+For an easy entry to NEAT, have a look at the `neat_http_get.c` sample for an simple http client. 
 
 ## Read the docs :bulb:
 Have a look at our [documentation](doc/README.md)!
@@ -62,6 +64,6 @@ If you are only interested in a single branch, just add `?branch=BRANCHNAME` to 
 
 ## Acknowledgement
 * [www.neat-project.org](https://www.neat-project.org)
-* [witter.com/H2020Neat](https://twitter.com/H2020Neat)
+* [twitter.com/H2020Neat](https://twitter.com/H2020Neat)
 
 This work has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 644334 (NEAT). The views expressed are solely those of the author(s).

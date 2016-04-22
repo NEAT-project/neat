@@ -53,12 +53,6 @@ $ sudo make install
 ```
 Don't forget to run ldconfig after installing neat the first time.
 
-### TODO
-- [ ] Give user control of how loop is run so that it for example can be integrated into other event loops.
-- [ ] Monitor more stuff, like routes?
-- [x] Implement some form of logging/verbose mode. This is something that we should all agree on.
-- [ ] Find a platform-independent alternative to ldns.
-
 ## Buildbots :fire:
 The [buildbots](http://buildbot.nplab.de:28010/waterfall) are triggered by every commit in every branch.
 
@@ -66,5 +60,8 @@ If you are only interested in a single branch, just add `?branch=BRANCHNAME` to 
 
 
 ## Acknowledgement
+
+* https://www.neat-project.org
+* https://twitter.com/H2020Neatt
 
 This work has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 644334 (NEAT). The views expressed are solely those of the author(s).

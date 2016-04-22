@@ -66,7 +66,7 @@
 Neat offers a flexible way to control debug output via environment variables.
 
 | variable         | default           | supported values
-| :-------------   |:------------------| :------------- 
+| :-------------   |:------------------| :-------------
 | `NEAT_LOG_LEVEL` | `NEAT_LOG_INFO`   | `NEAT_LOG_OFF`, `NEAT_LOG_ERROR`, `NEAT_LOG_WARNING`, `NEAT_LOG_INFO`, `NEAT_LOG_DEBUG`
 | `NEAT_LOG_FILE`  | undefined (stderr)| filename, e.g. "neat.log"
 
@@ -93,3 +93,9 @@ The best way to look at how to use the resolver is to look at the example file,
 - [ ] Design a better algorithm for choosing servers, prioritizing servers sent to
   user.
 - [ ] Lots of other stuff that I can't think of now.
+
+### TODO
+- [ ] Give user control of how loop is run so that it for example can be integrated into other event loops.
+- [ ] Monitor more stuff, like routes?
+- [x] Implement some form of logging/verbose mode. This is something that we should all agree on.
+- [ ] Find a platform-independent alternative to ldns.

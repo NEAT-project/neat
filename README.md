@@ -25,8 +25,7 @@ platform-independent structure.
 After NEAT has been initialized, it is up to the user to do what he or she
 wants. A typical first step is to resolve a domain name.
 
-## Getting started :rocket:
-### Requirements
+## Requirements :point_up:
 * `cmake`
 * `libuv`
 * `ldns`
@@ -38,7 +37,7 @@ wants. A typical first step is to resolve a domain name.
 | FreeBSD   | `pkg install cmake ldns libuv`     |   
 | OS X      | `brew install libuv ldns`      |   
 
-### Build NEAT and samples
+## Build NEAT and samples :rocket:
 ```
 $ cd build
 $ cmake ..
@@ -54,7 +53,7 @@ $ sudo make install
 Don't forget to run ldconfig after installing neat the first time.
 
 ## Read the docs :bulb:
-
+Have a look at our [documentation](doc/README.md)!
 
 ## Buildbots :fire:
 We are running [buildbots](http://buildbot.nplab.de:28010/waterfall) to support our continuous integration process.
@@ -63,7 +62,6 @@ If you are only interested in a single branch, just add `?branch=BRANCHNAME` to 
 
 
 ## Acknowledgement
-
 * [www.neat-project.org](https://www.neat-project.org)
 * [witter.com/H2020Neat](https://twitter.com/H2020Neat)
 

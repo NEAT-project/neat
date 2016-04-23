@@ -1,4 +1,3 @@
-
 INCLUDE_DIRECTORIES(..)
 
 # SOURCES, HEADERS, LIBS
@@ -45,10 +44,10 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -Wall -Werror -Wextra -pedanti
 
 
 FOREACH (source_file ${neat_PROGRAMS})
-    GET_FILENAME_COMPONENT (source_file_we ${source_file} NAME_WE)
+    GET_FILENAME_COMPONENT(source_file_we ${source_file} NAME_WE)
     ADD_EXECUTABLE (
         ${source_file_we}
         ${source_file}
     )
-    TARGET_LINK_LIBRARIES (${source_file_we} ${neat_PROGRAMS_LIBS})
+    TARGET_LINK_LIBRARIES(${source_file_we} ${neat_PROGRAMS_LIBS})
 ENDFOREACH ()

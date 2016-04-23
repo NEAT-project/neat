@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     neat_set_operations(ctx, flow, &ops);
 
     // wait for on_connected or on_error to be invoked
-    if (neat_open(ctx, flow, argv[1], "80") == NEAT_OK)
+    if (neat_open(ctx, flow, argv[1], 80) == NEAT_OK)
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     else {
         fprintf(stderr, "Could not open flow\n");

@@ -77,15 +77,21 @@ IF (HAVE_SA_LEN)
 ENDIF()
 
 CHECK_STRUCT_HAS_MEMBER("struct sockaddr_in" "sin_len" "sys/types.h;netinet/in.h" HAVE_SIN_LEN)
-if (HAVE_SIN_LEN)
+IF (HAVE_SIN_LEN)
     MESSAGE(STATUS "HAVE_SIN_LEN")
     ADD_DEFINITIONS(-DHAVE_SIN_LEN)
 ENDIF()
 
 CHECK_STRUCT_HAS_MEMBER("struct sockaddr_in6" "sin6_len" "sys/types.h;netinet/in.h" HAVE_SIN6_LEN)
-if( HAVE_SIN6_LEN)
+IF (HAVE_SIN6_LEN)
     MESSAGE(STATUS "HAVE_SIN6_LEN")
     ADD_DEFINITIONS(-DHAVE_SIN6_LEN)
+ENDIF()
+
+CHECK_STRUCT_HAS_MEMBER("struct sockaddr_storage" "ss_len" "sys/types.h;sys/socket.h" HAVE_SS_LEN)
+IF (HAVE_SS_LEN)
+    MESSAGE(STATUS "HAVE_SS_LEN")
+    ADD_DEFINITIONS(-DHAVE_SS_LEN)
 ENDIF()
 
 #################################################
@@ -120,14 +126,12 @@ IF(NOT HAVE_SYS_UV_H OR NOT UV_LIB)
     MESSAGE(FATAL_ERROR "uv.h not found - libuv installed?")
 ENDIF()
 
-
 CHECK_INCLUDE_FILE(ldns/ldns.h HAVE_SYS_LDNS_H)
 FIND_LIBRARY(LDNS_LIB ldns)
 MESSAGE(STATUS "LDNS found: " ${LDNS_LIB})
 IF(NOT HAVE_SYS_LDNS_H OR NOT LDNS_LIB)
     MESSAGE(FATAL_ERROR "ldns/ldns.h not found - libdns installed?")
 ENDIF()
-
 
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     FIND_LIBRARY(MNL_LIB mnl)

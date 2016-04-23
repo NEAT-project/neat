@@ -1,5 +1,5 @@
 
-include_directories(..)
+INCLUDE_DIRECTORIES(..)
 
 # SOURCES, HEADERS, LIBS
 #################################################
@@ -39,11 +39,11 @@ IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     LIST(APPEND neat_PROGRAMS_LIBS ${LDNS_LIB})
 ENDIF()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -Wall -Werror -Wextra -pedantic -Wno-unused-function  -Wno-unused-parameter")
-
-
 # BUILD EACH SAMPLE
 #################################################
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -Wall -Werror -Wextra -pedantic -Wno-unused-function  -Wno-unused-parameter")
+
+
 FOREACH (source_file ${neat_PROGRAMS})
     GET_FILENAME_COMPONENT (source_file_we ${source_file} NAME_WE)
     ADD_EXECUTABLE (

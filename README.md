@@ -65,9 +65,9 @@ We are running [buildbots](http://buildbot.nplab.de:28010/waterfall) to support 
 
 If you are only interested in a single branch, just add `?branch=BRANCHNAME` to the URL. http://buildbot.nplab.de:28010/waterfall?branch=master
 
-
-## Acknowledgement
+## Links :link:
 * [www.neat-project.org](https://www.neat-project.org)
 * [twitter.com/H2020Neat](https://twitter.com/H2020Neat)
 
+## Acknowledgement
 This work has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 644334 (NEAT). The views expressed are solely those of the author(s).

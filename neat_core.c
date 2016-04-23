@@ -257,7 +257,6 @@ static void free_cb(uv_handle_t *handle)
 
     flow->closefx(flow->ctx, flow);
     free((char *)flow->name);
-    free((char *)flow->port);
     if (flow->resolver_results) {
         neat_resolver_free_results(flow->resolver_results);
     }
@@ -645,7 +644,7 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
 
     neat_flow *newFlow = neat_new_flow(ctx);
     newFlow->name = strdup (flow->name);
-    newFlow->port = strdup (flow->port);
+    newFlow->port = flow->port;
     newFlow->propertyMask = flow->propertyMask;
     newFlow->propertyAttempt = flow->propertyAttempt;
     newFlow->propertyUsed = flow->propertyUsed;
@@ -692,7 +691,7 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
 }
 
 neat_error_code
-neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, const char *port)
+neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -701,7 +700,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, const char *port)
     }
 
     flow->name = strdup(name);
-    flow->port = strdup(port);
+    flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
 
     return neat_he_lookup(mgr, flow, he_connected_cb);
@@ -753,7 +752,7 @@ accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *
 }
 
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
-                            const char *name, const char *port)
+                            const char *name, uint16_t port)
 {
     int protocols[NEAT_MAX_NUM_PROTO]; /* We only support SCTP, TCP, UDP, and UDPLite */
     uint8_t nr_of_protocols;
@@ -771,7 +770,7 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
         name = "0.0.0.0";
 
     flow->name = strdup(name);
-    flow->port = strdup(port);
+    flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
     flow->ctx = ctx;
     flow->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));

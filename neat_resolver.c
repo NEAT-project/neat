@@ -846,17 +846,14 @@ static uint8_t neat_validate_protocols(int protocols[], uint8_t proto_count)
 //Public NEAT resolver functions
 //getaddrinfo starts a query for the provided service
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-        const char *node, const char *service, int ai_protocol[],
+        const char *node, uint16_t port, int ai_protocol[],
         uint8_t proto_count)
 {
     struct neat_addr *nsrc_addr = NULL;
-    int32_t dst_port = 0;
     int8_t retval;
     uint8_t i;
 
-    dst_port = atoi(service);
-
-    if (dst_port <= 0 || dst_port > UINT16_MAX) {
+    if (port <= 0 || port > UINT16_MAX) {
         neat_log(NEAT_LOG_ERROR, "%s - Invalid service specified", __func__);
         return RETVAL_FAILURE;
     }
@@ -875,7 +872,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         resolver->ai_protocol[i] = ai_protocol[i];
 
     resolver->family = family;
-    resolver->dst_port = htons(dst_port);
+    resolver->dst_port = htons(port);
 
     if ((strlen(node) + 1) > MAX_DOMAIN_LENGTH) {
         neat_log(NEAT_LOG_ERROR, "%s - Domain name too long", __func__);

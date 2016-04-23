@@ -503,14 +503,9 @@ int main(int argc, char *argv[])
         goto cleanup;
     }
 
-    // workaround until port is notated in int..
-    // XXX
-    char port[10];
-    sprintf(port, "%d", config_port);
-
     if (config_active) {
         // connect to peer
-        if (neat_open(ctx, flow, argv[optind], port) == NEAT_OK) {
+        if (neat_open(ctx, flow, argv[optind], config_port) == NEAT_OK) {
             if (config_log_level >= 1) {
                 printf("neat_open - connecting to %s:%d\n", argv[optind], config_port);
             }
@@ -522,7 +517,7 @@ int main(int argc, char *argv[])
         }
     } else {
         // wait for on_connected or on_error to be invoked
-        if (neat_accept(ctx, flow, "*", port)) {
+        if (neat_accept(ctx, flow, "*", config_port)) {
             fprintf(stderr, "%s - neat_accept failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;

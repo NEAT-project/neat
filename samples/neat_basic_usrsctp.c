@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     ops.on_all_written = on_all_written;
     neat_set_operations(ctx, flow, &ops);
     // wait for on_connected or on_error to be invoked
-    neat_open(ctx, flow, "212.201.121.100", "80");
+    neat_open(ctx, flow, "212.201.121.100", 80);
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     neat_usrsctp_close_sockflow(flow);
     neat_free_ctx(ctx);

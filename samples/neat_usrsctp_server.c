@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
     neat_set_property(ctx, flow, prop);
     ctx->flow = flow;
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, "172.16.204.131", "5001")) {
+    if (neat_accept(ctx, flow, "172.16.204.131", 5001)) {
         debug_error("neat_accept");
         result = EXIT_FAILURE;
         goto cleanup;

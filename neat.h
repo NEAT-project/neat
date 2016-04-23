@@ -51,7 +51,7 @@ void neat_free_flow(struct neat_flow *flow);
 neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
                                     struct neat_flow_operations *ops);
 neat_error_code neat_open(struct neat_ctx *ctx, struct neat_flow *flow,
-                          const char *name, const uint16_t port);
+                          const char *name, uint16_t port);
 neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
@@ -61,7 +61,7 @@ neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
 neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t inMask);
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
-                            const char *name, const uint16_t port);
+                            const char *name, uint16_t port);
 neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
 
 

@@ -537,7 +537,7 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
             } else {
                 addr4->sin_family = AF_INET;
 #ifdef HAVE_SIN_LEN
-                addr4->sin_family = sizeof(struct sockaddr_in);
+                addr4->sin_len = sizeof(struct sockaddr_in);
 #endif
             }
         } else {

@@ -146,14 +146,14 @@ struct neat_flow
     neat_usrsctp_send_cb usrsctp_sendfx;
 #endif
 
-    int hefirstConnect : 1;
-    int firstWritePending : 1;
-    int acceptPending : 1;
-    int isPolling : 1;
-    int ownedByCore : 1;
-    int everConnected : 1;
-    int isDraining : 1;
-    int isSCTPExplicitEOR : 1;
+    unsigned int hefirstConnect : 1;
+    unsigned int firstWritePending : 1;
+    unsigned int acceptPending : 1;
+    unsigned int isPolling : 1;
+    unsigned int ownedByCore : 1;
+    unsigned int everConnected : 1;
+    unsigned int isDraining : 1;
+    unsigned int isSCTPExplicitEOR : 1;
 };
 
 typedef struct neat_flow neat_flow;

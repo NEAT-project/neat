@@ -199,7 +199,7 @@ uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver)
     struct sockaddr_storage server_addr;
     struct sockaddr_in *addr4 = (struct sockaddr_in*) &server_addr;
     struct sockaddr_in6 *addr6 = (struct sockaddr_in6*) &server_addr;
-    int i = 0;
+    uint i = 0;
 
     LIST_INIT(&(resolver->server_list));
 

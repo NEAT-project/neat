@@ -69,7 +69,6 @@ ENDIF()
 #################################################
 # CHECK STRUCT MEMBERS
 #################################################
-
 CHECK_STRUCT_HAS_MEMBER("struct sockaddr" "sa_len" "sys/types.h;sys/socket.h" HAVE_SA_LEN)
 IF (HAVE_SA_LEN)
     MESSAGE(STATUS "HAVE_SA_LEN")
@@ -97,6 +96,11 @@ ENDIF()
 #################################################
 # CHECK OPTIONS
 #################################################
+# Debug build type as default
+if (NOT CMAKE_BUILD_TYPE)
+    message(STATUS "No build type selected, using DEBUG")
+    set(CMAKE_BUILD_TYPE "DEBUG")
+endif()
 
 OPTION(USRSCTP_SUPPORT "Include usrsctp" 0)
 IF (USRSCTP_SUPPORT)
@@ -155,8 +159,12 @@ ENDIF()
 
 # COMPILER FLAGS
 #################################################
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -O1 -Wall -Werror -Wno-unused-function")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -pedantic -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter")
 
+IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
+    MESSAGE(STATUS "Building in DEBUG mode")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1")
+ENDIF()
 
 # LIBRARIES
 #################################################

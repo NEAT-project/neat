@@ -117,7 +117,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
 {
     neat_flow *flow = (neat_flow *)resolver->userData1;
     uv_poll_cb callback_fx;
-    callback_fx = (uv_poll_cb) (neat_flow *)resolver->userData2;
+    callback_fx = resolver->userData2;
 
     assert (results->lh_first);
     assert (!flow->resolver_results);
@@ -215,7 +215,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
                                            he_resolve_cb, NULL);
     }
     ctx->resolver->userData1 = (void *)flow; // TODO: This doesn't allow multiple sockets
-    ctx->resolver->userData2 = (void *)callback_fx;
+    ctx->resolver->userData2 = callback_fx;
 
     /* FIXME: derivation of the socket type is wrong.
      * FIXME: Make use of the array of protocols

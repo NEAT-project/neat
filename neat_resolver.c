@@ -238,19 +238,19 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
 
     if (resolver->family == AF_INET) {
         u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
+        u.dst_addr4->sin_family = AF_INET;
+        u.dst_addr4->sin_port = resolver->dst_port;
 #ifdef HAVE_SIN_LEN
         u.dst_addr4->sin_len = sizeof(struct sockaddr_in);
 #endif
-        u.dst_addr4->sin_family = AF_INET;
-        u.dst_addr4->sin_port = resolver->dst_port;
         dst_addr_pton = &(u.dst_addr4->sin_addr);
     } else {
         u.dst_addr6 = (struct sockaddr_in6*) &dst_addr;
+        u.dst_addr6->sin6_family = AF_INET6;
+        u.dst_addr6->sin6_port = resolver->dst_port;
 #ifdef HAVE_SIN6_LEN
         u.dst_addr6->sin6_len = sizeof(struct sockaddr_in6);
 #endif
-        u.dst_addr6->sin6_family = AF_INET6;
-        u.dst_addr6->sin6_port = resolver->dst_port;
         dst_addr_pton = &(u.dst_addr6->sin6_addr);
 
     }
@@ -532,10 +532,14 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
             addr4 = (struct sockaddr_in*) &(pair->resolved_addr[num_resolved]);
 
             if (!inet_pton(AF_INET, (const char*) ldns_buffer_begin(host_addr),
-                    &(addr4->sin_addr)))
+                    &(addr4->sin_addr))) {
                 pton_failed = 1;
-            else
+            } else {
                 addr4->sin_family = AF_INET;
+#ifdef HAVE_SIN_LEN
+                addr4->sin_family = sizeof(struct sockaddr_in);
+#endif
+            }
         } else {
             ldns_rdf2buffer_str_aaaa(host_addr, rdf_result);
             if (neat_resolver_check_duplicate(pair,
@@ -547,10 +551,14 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
             addr6 = (struct sockaddr_in6*) &(pair->resolved_addr[num_resolved]);
 
             if (!inet_pton(AF_INET6, (const char*) ldns_buffer_begin(host_addr),
-                    &(addr6->sin6_addr)))
+                    &(addr6->sin6_addr))) {
                 pton_failed = 1;
-            else
+            } else {
                 addr6->sin6_family = AF_INET6;
+#ifdef HAVE_SIN6_LEN
+                addr6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
+            }
         }
 
         if (!pton_failed)
@@ -643,12 +651,18 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
         dst_addr4->sin_family = AF_INET;
         dst_addr4->sin_port = htons(LDNS_PORT);
         dst_addr4->sin_addr = server_addr4->sin_addr;
+#ifdef HAVE_SIN_LEN
+        dst_addr4->sin_len = sizeof(struct sockaddr_in);
+#endif
     } else {
         server_addr6 = (struct sockaddr_in6*) server_addr;
         dst_addr6 = &(pair->dst_addr.u.v6.addr6);
         dst_addr6->sin6_family = AF_INET6;
         dst_addr6->sin6_port = htons(LDNS_PORT);
         dst_addr6->sin6_addr = server_addr6->sin6_addr;
+#ifdef HAVE_SIN6_LEN
+        dst_addr6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
     }
 
     //Configure uv_udp_handle

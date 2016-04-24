@@ -1,4 +1,4 @@
-![alt text](doc/neat_logo.png "NEAT LOGO")
+<img src="https://rawgit.com/NEAT-project/neat/weinrank/api_description/doc/neat_logo.svg" width="350"/>
 
 **A New, Evolutive API and Transport-Layer Architecture for the Internet**
 

@@ -117,7 +117,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
 {
     neat_flow *flow = (neat_flow *)resolver->userData1;
     uv_poll_cb callback_fx;
-    callback_fx = (uv_poll_cb) (neat_flow *)resolver->userData2;
+    callback_fx = resolver->userData2;
 
     assert (results->lh_first);
     assert (!flow->resolver_results);

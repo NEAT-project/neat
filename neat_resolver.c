@@ -867,8 +867,8 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
     int8_t retval;
     uint8_t i;
 
-    if (port <= 0) {
-        neat_log(NEAT_LOG_ERROR, "%s - Invalid service specified", __func__);
+    if (port == 0) {
+        neat_log(NEAT_LOG_ERROR, "%s - Invalid port specified", __func__);
         return RETVAL_FAILURE;
     }
 

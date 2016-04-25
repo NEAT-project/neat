@@ -115,9 +115,15 @@ pm_filter(struct neat_resolver_results *results)
 static void
 he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
     neat_flow *flow = (neat_flow *)resolver->userData1;
-    uv_poll_cb callback_fx;
-    callback_fx = resolver->userData2;
+
+    if (code == NEAT_RESOLVER_TIMEOUT)  {
+        io_error(resolver->nc, flow, NEAT_ERROR_IO);
+    } else if ( code == NEAT_RESOLVER_ERROR ) {
+        io_error(resolver->nc, flow, NEAT_ERROR_IO);
+    }
 
     assert (results->lh_first);
     assert (!flow->resolver_results);
@@ -167,6 +173,9 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
                     INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
         printf("Initiating connection attempt to %s with protocol %d\n", ip_address, candidate->ai_protocol);
 #endif
+
+        uv_poll_cb callback_fx;
+        callback_fx = (uv_poll_cb) (neat_flow *)resolver->userData2;
 
         if (flow->connectfx(he_ctx, callback_fx) == -1) {
             continue;

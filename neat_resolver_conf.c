@@ -75,8 +75,8 @@ static void neat_resolver_resolv_check_addr(struct neat_resolver *resolver,
         } else {
             dst_addr6 = (struct sockaddr_in6*) dst_addr;
             server_addr6 = (struct sockaddr_in6*) &(server->server_addr);
-            addr_equal = neat_addr_cmp_ip6_addr(dst_addr6->sin6_addr,
-                                                server_addr6->sin6_addr);
+            addr_equal = neat_addr_cmp_ip6_addr(&(dst_addr6->sin6_addr),
+                                                &(server_addr6->sin6_addr));
             inet_ntop(AF_INET6, &(dst_addr6->sin6_addr), dst_addr_buf, INET6_ADDRSTRLEN);
         }
 
@@ -199,7 +199,7 @@ uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver)
     struct sockaddr_storage server_addr;
     struct sockaddr_in *addr4 = (struct sockaddr_in*) &server_addr;
     struct sockaddr_in6 *addr6 = (struct sockaddr_in6*) &server_addr;
-    int i = 0;
+    uint16_t i = 0;
 
     LIST_INIT(&(resolver->server_list));
 

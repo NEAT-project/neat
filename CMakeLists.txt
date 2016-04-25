@@ -159,7 +159,7 @@ ENDIF()
 
 # COMPILER FLAGS
 #################################################
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -pedantic -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter")
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")

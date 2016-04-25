@@ -1,12 +1,13 @@
-#Standard stuff
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(neat)
+
 INCLUDE(CheckIncludeFile)
-set(CMAKE_MACOSX_RPATH 1)
+INCLUDE(CheckStructHasMember)
+SET(CMAKE_MACOSX_RPATH 1)
 
 # SOURCES + HEADERS
 #################################################
-list(APPEND neat_HEADERS
+LIST(APPEND neat_HEADERS
     neat.h
     neat_queue.h
     )
@@ -23,14 +24,14 @@ LIST(APPEND neat_SOURCES
 
 # OS DEPENDENT
 #################################################
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_HEADERS neat_linux.h)
     LIST(APPEND neat_SOURCES neat_linux.c)
     SET(LIB_DIR "/usr/local/lib")
     SET(HDR_DIR "/usr/local/include/neat")
 
-ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_HEADERS neat_bsd.h)
     LIST(APPEND neat_SOURCES neat_bsd.c)
@@ -40,7 +41,7 @@ ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     SET(CMAKE_LIBRARY_PATH /usr/local/lib)
     INCLUDE_DIRECTORIES("/usr/local/include")
 
-ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_HEADERS neat_bsd.h)
     LIST(APPEND neat_SOURCES neat_bsd.c)
@@ -50,7 +51,7 @@ ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     SET(CMAKE_LIBRARY_PATH "/usr/local/lib")
     INCLUDE_DIRECTORIES("/usr/local/include" "/usr/local/opt/openssl/include")
 
-ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
+ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_HEADERS neat_bsd.h)
     LIST(APPEND neat_SOURCES neat_bsd.c)
@@ -66,47 +67,73 @@ ELSE()
 ENDIF()
 
 #################################################
+# CHECK STRUCT MEMBERS
+#################################################
+
+CHECK_STRUCT_HAS_MEMBER("struct sockaddr" "sa_len" "sys/types.h;sys/socket.h" HAVE_SA_LEN)
+IF (HAVE_SA_LEN)
+    MESSAGE(STATUS "HAVE_SA_LEN")
+    ADD_DEFINITIONS(-DHAVE_SA_LEN)
+ENDIF()
+
+CHECK_STRUCT_HAS_MEMBER("struct sockaddr_in" "sin_len" "sys/types.h;netinet/in.h" HAVE_SIN_LEN)
+IF (HAVE_SIN_LEN)
+    MESSAGE(STATUS "HAVE_SIN_LEN")
+    ADD_DEFINITIONS(-DHAVE_SIN_LEN)
+ENDIF()
+
+CHECK_STRUCT_HAS_MEMBER("struct sockaddr_in6" "sin6_len" "sys/types.h;netinet/in.h" HAVE_SIN6_LEN)
+IF (HAVE_SIN6_LEN)
+    MESSAGE(STATUS "HAVE_SIN6_LEN")
+    ADD_DEFINITIONS(-DHAVE_SIN6_LEN)
+ENDIF()
+
+CHECK_STRUCT_HAS_MEMBER("struct sockaddr_storage" "ss_len" "sys/types.h;sys/socket.h" HAVE_SS_LEN)
+IF (HAVE_SS_LEN)
+    MESSAGE(STATUS "HAVE_SS_LEN")
+    ADD_DEFINITIONS(-DHAVE_SS_LEN)
+ENDIF()
+
+#################################################
 # CHECK OPTIONS
 #################################################
 
-option(USRSCTP_SUPPORT "Include usrsctp" 0)
-if (USRSCTP_SUPPORT)
-	add_definitions(-DUSRSCTP_SUPPORT)
-	add_definitions(-DINET)
-	add_definitions(-DINET6)
-	add_definitions(-DSCTP_DEBUG)
-	LIST(APPEND neat_HEADERS neat_usrsctp.h)
-	LIST(APPEND neat_SOURCES neat_usrsctp.c)
+OPTION(USRSCTP_SUPPORT "Include usrsctp" 0)
+IF (USRSCTP_SUPPORT)
+    ADD_DEFINITIONS(-DUSRSCTP_SUPPORT)
+    ADD_DEFINITIONS(-DINET)
+    ADD_DEFINITIONS(-DINET6)
+    ADD_DEFINITIONS(-DSCTP_DEBUG)
+    LIST(APPEND neat_HEADERS neat_usrsctp.h)
+    LIST(APPEND neat_SOURCES neat_usrsctp.c)
 
-	FIND_LIBRARY(USRSCTP_LIB usrsctp)
-	LIST(APPEND neat_LIBS ${USRSCTP_LIB})
+    FIND_LIBRARY(USRSCTP_LIB usrsctp)
+    LIST(APPEND neat_LIBS ${USRSCTP_LIB})
     MESSAGE(STATUS "USRSCTP found: " ${USRSCTP_LIB})
-endif()
+ENDIF()
 
-option(NEAT_LOG "enable NEAT log module" 1)
-if (NEAT_LOG)
-    add_definitions(-DNEAT_LOG)
-endif()
+OPTION(NEAT_LOG "enable NEAT log module" 1)
+IF (NEAT_LOG)
+    ADD_DEFINITIONS(-DNEAT_LOG)
+ENDIF()
 
 # REQUIREMENTS
 #################################################
 CHECK_INCLUDE_FILE(uv.h HAVE_SYS_UV_H)
 FIND_LIBRARY(UV_LIB uv)
 MESSAGE(STATUS "UV found: " ${UV_LIB})
-IF(NOT HAVE_SYS_UV_H OR NOT UV_LIB)
-    message(FATAL_ERROR "uv.h not found - libuv installed?")
-endif()
-
+IF (NOT HAVE_SYS_UV_H OR NOT UV_LIB)
+    MESSAGE(FATAL_ERROR "uv.h not found - libuv installed?")
+ENDIF()
 
 CHECK_INCLUDE_FILE(ldns/ldns.h HAVE_SYS_LDNS_H)
 FIND_LIBRARY(LDNS_LIB ldns)
 MESSAGE(STATUS "LDNS found: " ${LDNS_LIB})
-IF(NOT HAVE_SYS_LDNS_H OR NOT LDNS_LIB)
+IF (NOT HAVE_SYS_LDNS_H OR NOT LDNS_LIB)
     MESSAGE(FATAL_ERROR "ldns/ldns.h not found - libdns installed?")
 ENDIF()
 
-
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     FIND_LIBRARY(MNL_LIB mnl)
     CHECK_INCLUDE_FILE(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
     IF(NOT HAVE_SYS_LIBMNL_H OR NOT MNL_LIB)
@@ -115,20 +142,20 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 ENDIF()
 
 CHECK_INCLUDE_FILE(netinet/sctp.h HAVE_NETINET_SCTP_H)
-IF(HAVE_NETINET_SCTP_H)
+IF (HAVE_NETINET_SCTP_H)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
 ENDIF()
 
 IF (USRSCTP_SUPPORT)
     CHECK_INCLUDE_FILE(usrsctp.h HAVE_USRSCTP_H)
     IF (NOT HAVE_USRSCTP_H)
-        message(FATAL_ERROR "usrsctp.h not found - usrsctp installed?")
+        MESSAGE(FATAL_ERROR "usrsctp.h not found - usrsctp installed?")
     ENDIF()
 ENDIF()
 
 # COMPILER FLAGS
 #################################################
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -O1 -Wall -Werror -Wno-unused-function")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -O1 -Wall -Werror -Wno-unused-function")
 
 
 # LIBRARIES
@@ -138,7 +165,7 @@ LIST(APPEND neat_LIBS
     ${LDNS_LIB}
     )
 
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     LIST(APPEND neat_LIBS ${MNL_LIB})
 ENDIF()
 

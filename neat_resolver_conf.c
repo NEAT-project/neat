@@ -167,6 +167,9 @@ void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
 
         if (retval) {
             server_addr4->sin_family = AF_INET;
+#ifdef HAVE_SIN_LEN
+            server_addr4->sin_len = sizeof(struct sockaddr_in);
+#endif
             neat_resolver_resolv_check_addr(resolver, &server_addr);
             continue;
         }
@@ -175,6 +178,9 @@ void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
 
         if (retval) {
             server_addr6->sin6_family = AF_INET6;
+#ifdef HAVE_SIN6_LEN
+            server_addr6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
             neat_resolver_resolv_check_addr(resolver, &server_addr);
             continue;
         } else {
@@ -200,6 +206,9 @@ uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver)
     for (i = 0; i < (sizeof(INET_DNS_SERVERS) / sizeof(const char*)); i++) {
         memset(addr4, 0, sizeof(struct sockaddr_in));
         addr4->sin_family = AF_INET;
+#ifdef HAVE_SIN_LEN
+        addr4->sin_len = sizeof(struct sockaddr_in);
+#endif
         inet_pton(AF_INET, INET_DNS_SERVERS[i], &(addr4->sin_addr));
 
         if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {
@@ -215,6 +224,9 @@ uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver)
     for (i = 0; i < (sizeof(INET6_DNS_SERVERS) / sizeof(const char*)); i++) {
         memset(addr6, 0, sizeof(struct sockaddr_in6));
         addr6->sin6_family = AF_INET6;
+#ifdef HAVE_SIN6_LEN
+        addr6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
         inet_pton(AF_INET, INET6_DNS_SERVERS[i], &(addr6->sin6_addr));
 
         if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {

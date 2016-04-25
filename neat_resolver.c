@@ -435,8 +435,8 @@ static uint8_t neat_resolver_check_duplicate(
                           src_addr_4->sin_addr.s_addr);
         } else {
             cmp_addr_6 = &(itr->src_addr->u.v6.addr6);
-            addr_equal = neat_addr_cmp_ip6_addr(cmp_addr_6->sin6_addr,
-                                                src_addr_6->sin6_addr);
+            addr_equal = neat_addr_cmp_ip6_addr(&(cmp_addr_6->sin6_addr),
+                                                &(src_addr_6->sin6_addr));
         }
 
         if (!addr_equal)
@@ -453,8 +453,8 @@ static uint8_t neat_resolver_check_duplicate(
                               cmp_addr_4->sin_addr.s_addr);
             } else {
                 cmp_addr_6 = (struct sockaddr_in6*) &(itr->resolved_addr[i]);
-                addr_equal = neat_addr_cmp_ip6_addr(cmp_addr_6->sin6_addr,
-                                                    u.resolved_addr_6);
+                addr_equal = neat_addr_cmp_ip6_addr(&(cmp_addr_6->sin6_addr),
+                                                    &(u.resolved_addr_6));
             }
 
             if (addr_equal)
@@ -791,7 +791,7 @@ static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
         } else {
             addr6_cmp = &(resolver_pair->src_addr->u.v6.addr6);
 
-            if (neat_addr_cmp_ip6_addr(addr6_cmp->sin6_addr, addr6->sin6_addr))
+            if (neat_addr_cmp_ip6_addr(&(addr6_cmp->sin6_addr), &(addr6->sin6_addr)))
                 neat_resolver_mark_pair_del(resolver_pair);
         }
     }
@@ -867,8 +867,8 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
     int8_t retval;
     uint8_t i;
 
-    if (port <= 0 || port > UINT16_MAX) {
-        neat_log(NEAT_LOG_ERROR, "%s - Invalid service specified", __func__);
+    if (port == 0) {
+        neat_log(NEAT_LOG_ERROR, "%s - Invalid port specified", __func__);
         return RETVAL_FAILURE;
     }
 

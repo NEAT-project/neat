@@ -410,7 +410,7 @@ static void io_readable(neat_ctx *ctx, neat_flow *flow,
 {
 #if defined(IPPROTO_SCTP) && !defined(USRSCTP_SUPPORT)
     ssize_t n, spaceFree;
-    size_t spaceNeeded, spaceThreshold;
+    ssize_t spaceNeeded, spaceThreshold;
     struct msghdr msghdr;
     struct iovec iov;
 #endif

@@ -26,6 +26,7 @@ LIST(APPEND neat_SOURCES
 #################################################
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
+    ADD_DEFINITIONS("-D_XOPEN_SOURCE=600")
     LIST(APPEND neat_HEADERS neat_linux.h)
     LIST(APPEND neat_SOURCES neat_linux.c)
     SET(LIB_DIR "/usr/local/lib")

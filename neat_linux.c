@@ -63,8 +63,7 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
     struct sockaddr_in *src_addr4;
     struct sockaddr_in6 *src_addr6;
     struct ifa_cacheinfo *ci;
-    uint32_t *addr6_ptr, ifa_pref = 0, ifa_valid = 0;
-    uint8_t i;
+    uint32_t ifa_pref = 0, ifa_valid = 0;
 
     //On Linux, lo has a fixed index. We have no interest in that interface
     //TODO: Consider other filters - bridges, ifb, ...
@@ -93,10 +92,7 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
     } else {
         src_addr6 = (struct sockaddr_in6*) &src_addr;
         src_addr6->sin6_family = AF_INET6;
-        addr6_ptr = (uint32_t*) mnl_attr_get_payload(attr_table[IFA_ADDRESS]);
-
-        for (i=0; i<4; i++)
-            src_addr6->sin6_addr.s6_addr32[i] = *(addr6_ptr + i);
+        memcpy(&src_addr6->sin6_addr, mnl_attr_get_payload(attr_table[IFA_ADDRESS]), sizeof(struct in6_addr));
 
         ci = (struct ifa_cacheinfo*) mnl_attr_get_payload(attr_table[IFA_CACHEINFO]);
         ifa_pref = ci->ifa_prefered;

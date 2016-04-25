@@ -1,11 +1,11 @@
-# NEAT
+<img src="https://rawgit.com/NEAT-project/neat/weinrank/api_description/doc/neat_logo.svg" width="350"/>
+
 **A New, Evolutive API and Transport-Layer Architecture for the Internet**
 
 NEAT supports **FreeBSD**, **Linux**, **OS X** and **NetBSD**
 
 
 ## NEAT internals :nut_and_bolt:
-
 NEAT is a callback based library and everything revovles around the neat_ctx
 struct. This struct has to be initialized before anything else can be done. NEAT
 uses libuv as event library, and this loop is available to users so that they
@@ -24,79 +24,50 @@ platform-independent structure.
 After NEAT has been initialized, it is up to the user to do what he or she
 wants. A typical first step is to resolve a domain name.
 
-## Getting started :muscle:
-### Requirements
+## Requirements :point_up:
 * `cmake`
 * `libuv`
 * `ldns`
 * `libmnl (linux only)`
 
-| OS        | command           | 
-| ------------- |:-------------| 
-| Ubuntu*      | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` | 
-| FreeBSD      | `pkg install cmake ldns libuv`     |   
-| OS X | `brew install libuv ldns`      |   
+| OS        | command           |
+| :-------- |:-------------|
+| Ubuntu    | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` |
+| FreeBSD   | `pkg install cmake ldns libuv`     |   
+| OS X      | `brew install libuv ldns`      |   
 
-*Older ubuntu might have a ppa for libuv1 https://launchpad.net/~cz.nic-labs/+archive/ubuntu/knot-dns
-
-### Build NEAT and samples
-```
-$ cd build
+## Quickstart :rocket:
+```shell
+$ cd <path-to-neat-src>
+$ mkdir build && cd build
 $ cmake ..
-$ make
+$ cmake --build .
 ```
 This will generate makefiles and compile the library and the samples.
 You will find the shared and the static library in the `build` directory and the samples in `build/samples` directory.
 
-In order to install:
+For an easy entry to NEAT, have a look at `neat_http_get.c` in the samples folder.
+```shell
+$ ./neat_http_get www.neat-project.org
 ```
+
+In order to (optionally) install the neat library simply run.
+```shell
 $ sudo make install
 ```
 Don't forget to run ldconfig after installing neat the first time.
 
-### Debug output :page_with_curl:
-Neat offers a flexible way to control debug output via environment variables. 
-
-| variable        | default           | supported values |
-| :-------------  |:-------------| :------------- |
-| `NEAT_LOG_LEVEL` | `NEAT_LOG_INFO` | `NEAT_LOG_OFF`, `NEAT_LOG_ERROR`, `NEAT_LOG_WARNING`, `NEAT_LOG_INFO`, `NEAT_LOG_DEBUG`
-| `NEAT_LOG_FILE`  | undefined (stderr)     | filename, e.g. "neat.log"
-
-### TODO
-- [ ] Give user control of how loop is run so that it for example can be integrated into other event loops.
-- [ ] Monitor more stuff, like routes?
-- [x] Implement some form of logging/verbose mode. This is something that we should all agree on.
-- [ ] Find a platform-independent alternative to ldns.
+## Read the docs :bulb:
+Have a look at our [documentation](doc/README.md)!
 
 ## Buildbots :fire:
-The [buildbots](http://buildbot.nplab.de:28010/waterfall) are triggered by every commit in every branch. 
+We are running [buildbots](http://buildbot.nplab.de:28010/waterfall) to support our continuous integration process.
 
 If you are only interested in a single branch, just add `?branch=BRANCHNAME` to the URL. http://buildbot.nplab.de:28010/waterfall?branch=master
 
-## NEAT DNS resolver
-
-NEAT contains an asynchronous multi-prefix DNS resolver. DNS requests for the
-given domain will be sent to four public DNS servers on every available
-interface (address). It is possible to limit query to only v4 or v6 addresses,
-and a v4 interface is only used to request A records while v6 is only used to
-request AAAA records.
-
-In case of DNS poisoning or similar, the resolved address is compared agains the
-well-known internal IPs (ULA or IANA A/B/C). An internal IP is flagged and it is
-(so far) up to the user of NEAT to know if it is safe or not to use this IP.
-
-The best way to look at how to use the resolver is to look at the example file,
-`neat_resolver_example.c`
-
-### TODO
-- [ ] Read DNS-servers from resolv.conf. This requires us to decide on a generic way
-  for specifying with interface/IP a server belongs to.
-- [ ] Make resolver work on other OS' than Linux.
-- [ ] Make it optional (as much as possible) if resolver should use stack or heap.
-- [ ] Design a better algorithm for choosing servers, prioritizing servers sent to
-  user.
-- [ ] Lots of other stuff that I can't think of now.
+## Links :link:
+* [www.neat-project.org](https://www.neat-project.org)
+* [twitter.com/H2020Neat](https://twitter.com/H2020Neat)
 
 ## Acknowledgement
-
 This work has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No. 644334 (NEAT). The views expressed are solely those of the author(s).

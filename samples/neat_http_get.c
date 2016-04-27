@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 
     neat_get_property(ctx, flow, &prop);
     prop |= NEAT_PROPERTY_OPTIONAL_SECURITY;
-    prop |= NEAT_PROPERTY_TCP_REQUIRED; /* FIXME: Remove this once HE works */
+    prop |= NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED;
     neat_set_property(ctx, flow, prop);
 
     ops.on_connected = on_connected;

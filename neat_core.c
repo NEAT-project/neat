@@ -974,11 +974,15 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #if defined(SCTP_SNDINFO)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
     struct sctp_sndinfo *sndinfo = NULL;
+    memset(&cmsgbuf, 0, sizeof(cmsgbuf));
 #elif defined (SCTP_SNDRCV)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
     struct sctp_sndrcvinfo *sndrcvinfo;
+    memset(&cmsgbuf, 0, sizeof(cmsgbuf));
 #endif
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+
 
     switch (flow->sockProtocol) {
     case IPPROTO_TCP:
@@ -1151,8 +1155,8 @@ static int
 neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 {
     int enable = 1;
-    socklen_t len;
-    int size;
+    socklen_t len = 0;
+    int size = 0;
 #ifdef __linux__
     char if_name[IF_NAMESIZE];
 #endif

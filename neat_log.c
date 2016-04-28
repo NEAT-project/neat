@@ -63,7 +63,7 @@ uint8_t neat_log_init() {
 }
 
 /*
- * Write logfile entry
+ * Write log entry
  */
 void neat_log(uint8_t level, const char* format, ...) {
 
@@ -96,7 +96,27 @@ void neat_log(uint8_t level, const char* format, ...) {
     va_start(argptr, format);
     vfprintf(neat_log_fd, format, argptr);
     va_end(argptr);
+
     fprintf(neat_log_fd, "\n"); // xxx:ugly solution...
+}
+
+/*
+ * Write log entry for usrsctp
+ */
+
+void neat_log_usrsctp(const char* format, ...) {
+
+    if (neat_log_fd == NULL) {
+        fprintf(stderr, "neat_log_fd is NULL - neat_log_init() required!\n");
+        return;
+    }
+
+    fprintf(neat_log_fd, "[DBG] ");
+
+    va_list argptr;
+    va_start(argptr, format);
+    vfprintf(neat_log_fd, format, argptr);
+    va_end(argptr);
 }
 
 /*
@@ -124,7 +144,13 @@ uint8_t neat_log_close() {
         return;
     }
 
+    void neat_log_usrsctp(const char* format, ...) {
+        return;
+    }
+
     uint8_t neat_log_close() {
         return RETVAL_SUCCESS;
     }
+
+
 #endif

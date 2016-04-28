@@ -80,16 +80,6 @@ void neat_handle_usrsctp_timeout(uv_timer_t *handle)
     usrsctp_handle_timers(10);
 }
 
-void
-neat_log_debug(const char *format, ...)
-{
-    va_list ap;
-
-    va_start(ap, format);
-    neat_log(NEAT_LOG_DEBUG, format, ap);
-    va_end(ap);
-}
-
 struct neat_ctx *neat_usrsctp_init_ctx(struct neat_ctx *ctx)
 {
     int ret;
@@ -173,6 +163,6 @@ struct neat_ctx *neat_usrsctp_init_ctx(struct neat_ctx *ctx)
             return NULL;
         }
     }
-    usrsctp_init(0, NULL, neat_log_debug);
+    usrsctp_init(0, NULL, neat_log_usrsctp);
     return ctx;
 }

@@ -142,6 +142,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     LIST_FOREACH(candidate, results, next_res) {
         //TODO: Potential place to filter based on policy
         struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) malloc(sizeof(struct he_cb_ctx));
+        memset(he_ctx, 0, sizeof(struct he_cb_ctx));
         assert(he_ctx !=NULL);
         he_ctx->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
         assert(he_ctx->handle != NULL);

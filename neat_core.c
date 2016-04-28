@@ -974,13 +974,15 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #if defined(SCTP_SNDINFO)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
     struct sctp_sndinfo *sndinfo = NULL;
+    memset(&cmsgbuf, 0, sizeof(cmsgbuf));
 #elif defined (SCTP_SNDRCV)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
     struct sctp_sndrcvinfo *sndrcvinfo;
+    memset(&cmsgbuf, 0, sizeof(cmsgbuf));
 #endif
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    memset(&cmsgbuf, 0, sizeof(cmsgbuf));
+
 
     switch (flow->sockProtocol) {
     case IPPROTO_TCP:

@@ -980,6 +980,8 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+    memset(&cmsgbuf, 0, sizeof(cmsgbuf));
+
     switch (flow->sockProtocol) {
     case IPPROTO_TCP:
         atomic = 0;
@@ -1151,8 +1153,8 @@ static int
 neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 {
     int enable = 1;
-    socklen_t len;
-    int size;
+    socklen_t len = 0;
+    int size = 0;
 #ifdef __linux__
     char if_name[IF_NAMESIZE];
 #endif

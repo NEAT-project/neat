@@ -121,8 +121,10 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
 
     if (code == NEAT_RESOLVER_TIMEOUT)  {
         io_error(resolver->nc, flow, NEAT_ERROR_IO);
+        return;
     } else if ( code == NEAT_RESOLVER_ERROR ) {
         io_error(resolver->nc, flow, NEAT_ERROR_IO);
+        return;
     }
 
     assert (results->lh_first);
@@ -139,20 +141,25 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     flow->hefirstConnect = 1;
     flow->heConnectAttemptCount = 0;
     struct neat_resolver_res *candidate;
+    /* REMOVE */
+    int candidate_count = 0;
     LIST_FOREACH(candidate, results, next_res) {
         //TODO: Potential place to filter based on policy
         struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) malloc(sizeof(struct he_cb_ctx));
         assert(he_ctx !=NULL);
         he_ctx->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
         assert(he_ctx->handle != NULL);
+
+        /* REMOVE */
+        candidate_count++;
+
         he_ctx->handle->data = (void *)he_ctx;
         he_ctx->nc = resolver->nc;
         he_ctx->candidate = candidate;
         he_ctx->flow = flow;
+        he_ctx->fd = -1;
 #ifdef USRSCTP_SUPPORT
         he_ctx->sock = NULL;
-#else
-        he_ctx->fd = -1;
 #endif
         /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
 #if 0
@@ -178,16 +185,26 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         callback_fx = (uv_poll_cb) (neat_flow *)resolver->userData2;
 
         if (flow->connectfx(he_ctx, callback_fx) == -1) {
+            free(he_ctx->handle);
+            free(he_ctx);
+            /* REMOVE */
+            printf("if (flow->connectfx(he_ctx, callback_fx) == -1)\n"); fflush(stdout);
             continue;
         } else {
+            /* REMOVE */
+            printf("if (flow->connectfx(he_ctx, callback_fx) != -1)\n"); fflush(stdout);
             flow->heConnectAttemptCount++;
         }
 
     }
 
+    /* REMOVE */
+    printf("Number of connection attempts: %d\n", candidate_count ); fflush(stdout);
+
     if (flow->heConnectAttemptCount == 0) {
         io_error(resolver->nc, flow, NEAT_ERROR_IO );
     }
+
 }
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx)

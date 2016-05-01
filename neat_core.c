@@ -270,6 +270,10 @@ static void free_cb(uv_handle_t *handle)
         free(msg->buffered);
         free(msg);
     }
+
+    /* REMOVE */
+    printf("Free handle for winning connection attempt\n"); fflush(stdout);
+
     free(flow->readBuffer);
     free(flow->handle);
     free(flow);
@@ -519,9 +523,9 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 static void
 he_connected_cb(uv_poll_t *handle, int status, int events)
 {
-    struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) handle->data;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+    struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) handle->data;
     neat_flow *flow = he_ctx->flow;
 
     //TODO: Final place to filter based on policy
@@ -547,6 +551,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->isSCTPExplicitEOR = he_ctx->isSCTPExplicitEOR;
         flow->firstWritePending = 1;
         flow->isPolling = 1;
+
+        /* REMOVE */
+        printf("Free he_ctx for winning connection attempt\n"); fflush(stdout);
 
         free(he_ctx);
 
@@ -588,6 +595,11 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, NULL);
         neat_ctx *ctx = he_ctx->nc;
+
+        /* REMOVE */
+        printf("Free he_ctx->handle and he_ctx for loosing connection attempt\n"); fflush(stdout);
+
+        free(he_ctx->handle);
         free(he_ctx);
         if (flow->heConnectAttemptCount == 1) {
             io_error(ctx, flow, NEAT_ERROR_IO );
@@ -1217,11 +1229,21 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
             break;
     }
     uv_poll_init(he_ctx->nc->loop, he_ctx->handle, he_ctx->fd); // makes fd nb as side effect
-    if ((he_ctx->fd == -1) ||
+
+   if ((he_ctx->fd == -1) ||
         (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
+
+        /* REMOVE */
+        printf("neat_connect_via_kernel: if ((he_ctx->fd == -1)\n"); fflush(stdout);
+
         return -1;
     }
+
     uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx);
+
+    /* REMOVE */
+    printf("uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx)\n"); fflush(stdout);
+
     return 0;
 }
 

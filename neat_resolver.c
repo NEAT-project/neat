@@ -238,6 +238,7 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
 
     if (resolver->family == AF_INET) {
         u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
+        memset(u.dst_addr4, 0, sizeof(struct sockaddr_in));
         u.dst_addr4->sin_family = AF_INET;
         u.dst_addr4->sin_port = resolver->dst_port;
 #ifdef HAVE_SIN_LEN
@@ -246,6 +247,7 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
         dst_addr_pton = &(u.dst_addr4->sin_addr);
     } else {
         u.dst_addr6 = (struct sockaddr_in6*) &dst_addr;
+        memset(u.dst_addr6, 0, sizeof(struct sockaddr_in6));
         u.dst_addr6->sin6_family = AF_INET6;
         u.dst_addr6->sin6_port = resolver->dst_port;
 #ifdef HAVE_SIN6_LEN

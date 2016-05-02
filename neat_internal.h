@@ -68,10 +68,9 @@ typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow
                                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                            const unsigned char *buffer, uint32_t amt);
-#if !defined(USRSCTP_SUPPORT)
 typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
-#else
-typedef struct socket * (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, struct socket *sock);
+#if defined(USRSCTP_SUPPORT)
+typedef struct socket * (*neat_accept_usrsctp_impl)(struct neat_ctx *ctx, struct neat_flow *flow, struct socket *sock);
 #endif
 typedef int (*neat_connect_impl)(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
@@ -97,9 +96,8 @@ struct neat_flow
 {
 #if defined(USRSCTP_SUPPORT)
     struct socket *sock;
-#else
-    int fd;
 #endif
+    int fd;
     struct neat_flow_operations *operations; // see ownedByCore flag
     const char *name;
     uint16_t port;
@@ -126,11 +124,6 @@ struct neat_flow
     size_t readBufferAllocation;  // size of buffered allocation
     int readBufferMsgComplete;    // it contains a complete user message
 
-#if defined(USRSCTP_SUPPORT)
-    unsigned char *readbuffer;
-    ssize_t readlen;
-#endif
-
     neat_read_impl readfx;
     neat_write_impl writefx;
     neat_accept_impl acceptfx;
@@ -142,8 +135,7 @@ struct neat_flow
 	uint8_t heConnectAttemptCount;
 
 #if defined(USRSCTP_SUPPORT)
-    neat_usrsctp_receive_cb usrsctp_receivefx;
-    neat_usrsctp_send_cb usrsctp_sendfx;
+    neat_accept_usrsctp_impl acceptusrsctpfx;
 #endif
 
     unsigned int hefirstConnect : 1;
@@ -216,9 +208,8 @@ struct he_cb_ctx {
     neat_flow *flow;
 #if defined(USRSCTP_SUPPORT)
     struct socket *sock;
-#else
-    int fd;
 #endif
+    int fd;
     size_t writeSize;
     size_t readSize;
     size_t writeLimit;

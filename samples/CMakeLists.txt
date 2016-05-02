@@ -9,6 +9,11 @@ LIST(APPEND neat_PROGRAMS
     neat_resolver_example.c
     neat_server.c
     client.c
+    server_daytime.c
+    server_chargen.c
+    server_discard.c
+    server_echo.c
+    tneat.c
     )
 
 LIST(APPEND neat_PROGRAMS_LIBS
@@ -19,17 +24,7 @@ LIST(APPEND neat_PROGRAMS_LIBS
 
 IF (USRSCTP_SUPPORT)
     add_definitions(-DUSRSCTP_SUPPORT)
-    LIST(APPEND neat_PROGRAMS neat_basic_usrsctp.c)
-    LIST(APPEND neat_PROGRAMS neat_usrsctp_server.c)
     LIST(APPEND neat_PROGRAMS_LIBS ${USRSCTP_LIB})
-ELSE()
-    LIST(APPEND neat_PROGRAMS
-        server_daytime.c
-        server_chargen.c
-        server_discard.c
-        server_echo.c
-        tneat.c
-    )
 ENDIF()
 
 # OS DEPENDENT

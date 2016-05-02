@@ -1260,7 +1260,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 
     socklen_t slen =
             (he_ctx->candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
-    char addrsrcbuf[slen];
+    char addrsrcbuf[INET6_ADDRSTRLEN];
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
 #if defined(USRSCTP_SUPPORT)
@@ -1273,9 +1273,10 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         return -1;
     }
 
+    inet_ntop(he_ctx->candidate->ai_family, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, INET6_ADDRSTRLEN);
+    neat_log(NEAT_LOG_INFO, "%s: Bind to %s", __func__, addrsrcbuf);
+
     /* Bind to address + interface (if Linux) */
-    neat_log(NEAT_LOG_INFO, "%s: Bind to %s", __func__,
-           inet_ntop(he_ctx->candidate->ai_family, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, slen));
     if (bind(he_ctx->fd, (struct sockaddr*) &(he_ctx->candidate->src_addr),
             he_ctx->candidate->src_addr_len)) {
         neat_log(NEAT_LOG_ERROR, "Failed to bind socket to IP. Error: %s", strerror(errno));

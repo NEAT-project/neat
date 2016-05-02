@@ -6,6 +6,10 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 
+#ifndef IPPROTO_SCTP
+#define IPPROTO_SCTP    132
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

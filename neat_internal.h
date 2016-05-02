@@ -213,7 +213,7 @@ struct he_cb_ctx {
     size_t writeSize;
     size_t readSize;
     size_t writeLimit;
-    int isSCTPExplicitEOR : 1;
+    unsigned int isSCTPExplicitEOR : 1;
 };
 
 //Intilize resolver. Sets up internal callbacks etc.

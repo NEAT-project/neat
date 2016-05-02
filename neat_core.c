@@ -1273,7 +1273,11 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         return -1;
     }
 
-    inet_ntop(he_ctx->candidate->ai_family, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, INET6_ADDRSTRLEN);
+    if (he_ctx->candidate->ai_family == AF_INET) {
+        inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, INET6_ADDRSTRLEN);
+    } else {
+        inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) &(he_ctx->candidate->src_addr))->sin6_addr), addrsrcbuf, INET6_ADDRSTRLEN);
+    }
     neat_log(NEAT_LOG_INFO, "%s: Bind to %s", __func__, addrsrcbuf);
 
     /* Bind to address + interface (if Linux) */

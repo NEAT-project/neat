@@ -4,7 +4,8 @@
 #include "../neat.h"
 
 static uint32_t config_rcv_buffer_size = 1024;
-static const char *request = "GET / HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
+static char request[512];
+static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 
 static neat_error_code on_error(struct neat_flow_operations *opCB)
 {
@@ -70,11 +71,18 @@ int main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    if (argc != 2) {
-        fprintf(stderr, "usage: neat_http_get HOST\n");
+    if (argc < 2 || argc > 3) {
+        fprintf(stderr, "usage: neat_http_get HOST [URI]\n");
         result = EXIT_FAILURE;
         goto cleanup;
     }
+
+    if (argc == 3) {
+        snprintf(request, sizeof(request), "GET %s %s", argv[2], request_tail);
+    } else {
+        snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
+    }
+    printf("requesting: %s\n", request);
 
     if ((ctx = neat_init_ctx()) == NULL) {
         fprintf(stderr, "could not initialize context\n");

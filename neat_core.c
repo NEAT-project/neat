@@ -1275,7 +1275,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 
     /* Bind to address + interface (if Linux) */
     neat_log(NEAT_LOG_INFO, "%s: Bind to %s", __func__,
-           inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, slen));
+           inet_ntop(he_ctx->candidate->ai_family, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, slen));
     if (bind(he_ctx->fd, (struct sockaddr*) &(he_ctx->candidate->src_addr),
             he_ctx->candidate->src_addr_len)) {
         neat_log(NEAT_LOG_ERROR, "Failed to bind socket to IP. Error: %s", strerror(errno));

@@ -19,6 +19,7 @@ LIST(APPEND neat_sources
     neat_log.c
     neat_stat.c
     neat_property_helpers.c
+    neat_pvd.c
     neat_resolver.c
     neat_resolver_conf.c
     neat_resolver_helpers.c

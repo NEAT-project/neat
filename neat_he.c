@@ -188,7 +188,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     uint8_t nr_of_stacks;
     uint8_t family;
     struct neat_he_resolver_data *resolver_data;
-    
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) &&
@@ -225,6 +225,10 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
 
     if (!ctx->resolver) {
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
+    }
+
+    if (!ctx->pvd) {
+        ctx->pvd = neat_pvd_init(ctx);
     }
 
     /* FIXME: derivation of the socket type is wrong.

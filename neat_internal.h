@@ -32,6 +32,7 @@
 
 struct neat_event_cb;
 struct neat_addr;
+struct neat_pvd;
 
 //TODO: One drawback with using LIST from queue.h, is that a callback can only
 //be member of one list. Decide if this is critical and improve if needed
@@ -54,6 +55,9 @@ struct neat_ctx {
     struct neat_pib pib;
     struct neat_cib cib;
     uv_timer_t addr_lifetime_handle;
+
+    // PvD
+    struct neat_pvd* pvd;
 
     // resolver
     NEAT_INTERNAL_CTX;
@@ -244,6 +248,9 @@ void neat_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
 
 void io_error(neat_ctx *ctx, neat_flow *flow,
               neat_error_code code);
+
+//Initialize PvD
+struct neat_pvd *neat_pvd_init(struct neat_ctx *nc);
 
 enum neat_events{
     //A new address has been added to an interface

@@ -869,6 +869,9 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf",
                                            accept_resolve_cb, NULL);
 
+    if (!ctx->pvd)
+        ctx->pvd = neat_pvd_init(ctx);
+
     ctx->resolver->userData1 = (void *)flow;
 
     neat_getaddrinfo(ctx->resolver, AF_INET, flow->name, flow->port,

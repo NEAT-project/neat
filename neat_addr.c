@@ -24,13 +24,14 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
             src_addr4 = &(nsrc_addr->u.v4.addr4);
             inet_ntop(AF_INET, &(src_addr4->sin_addr), addr_str,
                     INET_ADDRSTRLEN);
-            neat_log(NEAT_LOG_INFO, "\tIPv4: %s", addr_str);
+            neat_log(NEAT_LOG_INFO, "\tIPv4: %s/%u", addr_str, nsrc_addr->prefix_length);
         } else {
             src_addr6 = &(nsrc_addr->u.v6.addr6);
             inet_ntop(AF_INET6, &(src_addr6->sin6_addr), addr_str,
                     INET6_ADDRSTRLEN);
-            neat_log(NEAT_LOG_INFO, "\tIPv6: %s pref %u valid %u", addr_str,
-                    nsrc_addr->u.v6.ifa_pref, nsrc_addr->u.v6.ifa_valid);
+            neat_log(NEAT_LOG_INFO, "\tIPv6: %s/%u pref %u valid %u", addr_str,
+                    nsrc_addr->prefix_length, nsrc_addr->u.v6.ifa_pref,
+                    nsrc_addr->u.v6.ifa_valid);
         }
     }
 }
@@ -45,7 +46,7 @@ uint8_t neat_addr_cmp_ip6_addr(struct in6_addr *aAddr,
 //Add/remove/update a source address based on information received from OS
 void neat_addr_update_src_list(struct neat_ctx *nc,
         struct sockaddr_storage *src_addr, uint32_t if_idx,
-        uint8_t newaddr, uint32_t ifa_pref, uint32_t ifa_valid)
+        uint8_t newaddr, uint8_t pref_length, uint32_t ifa_pref, uint32_t ifa_valid)
 {
     struct sockaddr_in *src_addr4 = NULL, *org_addr4 = NULL;
     struct sockaddr_in6 *src_addr6 = NULL, *org_addr6 = NULL;
@@ -116,6 +117,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
 
     nsrc_addr->family = src_addr->ss_family;
     nsrc_addr->if_idx = if_idx;
+    nsrc_addr->prefix_length = pref_length;
 
     memcpy(&(nsrc_addr->u.generic.addr), src_addr, sizeof(*src_addr));
 

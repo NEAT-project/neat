@@ -37,12 +37,13 @@ struct neat_addr {
     uint8_t family;
     uint8_t __pad;
     uint16_t __pad2;
+    uint8_t prefix_length;
 };
 
 //Add/remove addresses from src. address list
 void neat_addr_update_src_list(struct neat_ctx *nc,
         struct sockaddr_storage *src_addr, uint32_t if_idx,
-        uint8_t newaddr, uint32_t ifa_pref, uint32_t ifa_valid);
+        uint8_t newaddr, uint8_t pref_length, uint32_t ifa_pref, uint32_t ifa_valid);
 
 //Utility function for comparing two v6 addresses
 uint8_t neat_addr_cmp_ip6_addr(struct in6_addr *aAddr,

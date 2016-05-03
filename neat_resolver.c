@@ -227,10 +227,6 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
     //There were no addresses available, so return error
     //TODO: Consider adding a different error
     if (!resolver->nc->src_addr_cnt) {
-
-        /* REMOVE */
-        printf("neat_resolver_literal_timeout_cb: if (!resolver->nc->src_addr_cnt)\n"); fflush(stdout);
-
         resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
         return;
     }
@@ -238,10 +234,6 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
     //Signal internal error
     if ((result_list =
                 calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
-
-        /* REMOVE */
-        printf("neat_resolver_literal_timeout_cb: if ((result_list =...\n"); fflush(stdout);
-
         resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
         return;
     }
@@ -279,16 +271,8 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
     }
 
     if (!num_resolved_addrs) {
-
-        /* REMOVE */
-        printf("neat_resolver_literal_timeout_cb: if (!num_resolved_addrs)...\n"); fflush(stdout);
-
         resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
     } else {
-
-        /* REMOVE */
-        printf("neat_resolver_literal_timeout_cb: if (!num_resolved_addrs)...else...\n"); fflush(stdout);
-
         resolver->handle_resolve(resolver, result_list, NEAT_RESOLVER_OK);
     }
 }

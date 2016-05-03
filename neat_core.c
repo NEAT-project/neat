@@ -97,7 +97,6 @@ void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
 void neat_stop_event_loop(struct neat_ctx *nc)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
     uv_stop(nc->loop);
 }
 
@@ -271,11 +270,18 @@ static void free_cb(uv_handle_t *handle)
         free(msg);
     }
 
-    /* REMOVE */
-    printf("Free handle for winning connection attempt\n"); fflush(stdout);
-
     free(flow->readBuffer);
     free(flow->handle);
+
+    // Make sure any still active HE connection attempts are
+    // properly terminated and pertaining memory released
+    while(!LIST_EMPTY(&(flow->he_cb_ctx_list))) {
+        struct he_cb_ctx *e = LIST_FIRST(&(flow->he_cb_ctx_list));
+        LIST_REMOVE(e, next_he_ctx);
+        free(e->handle);
+        free(e);
+    }
+
     free(flow);
 }
 
@@ -303,6 +309,7 @@ void neat_free_flow(neat_flow *flow)
 #else
     free(flow->readBuffer);
 #endif
+
     return;
 }
 
@@ -552,57 +559,27 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->firstWritePending = 1;
         flow->isPolling = 1;
 
-        /* REMOVE */
-        printf("Free he_ctx for winning connection attempt\n"); fflush(stdout);
-
+        LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);
-
-        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-#if 0
-        struct sockaddr_storage addr;
-        socklen_t addr_len = sizeof(addr);
-        getpeername(flow->fd, (struct sockaddr *)&addr, &addr_len);
-        char ip_address[INET_ADDRSTRLEN];
-        getnameinfo((struct sockaddr *)&addr,
-                    addr_len,
-                    ip_address,
-                    INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
-        printf("Winning connection attempt to %s with protocol %d\n", ip_address, flow->sockProtocol);
-#endif
 
         // TODO: Security layer.
 
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
 
-        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-#if 0
-        struct sockaddr_storage addr;
-        socklen_t addr_len = sizeof(addr);
-        getpeername(flow->fd, (struct sockaddr *)&addr, &addr_len);
-        char ip_address[INET_ADDRSTRLEN];
-        getnameinfo((struct sockaddr *)&addr,
-                    addr_len,
-                ip_address,
-                INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
-        printf("Loosing connection attempt to %s with protocol %d\n", ip_address, flow->sockProtocol);
-#endif
-        if ( status < 0 ) {
-            flow->heConnectAttemptCount--;
-        }
-
-        flow->closefx(he_ctx->nc, flow);
+        flow->close2fx(he_ctx->fd);
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, NULL);
-        neat_ctx *ctx = he_ctx->nc;
 
-        /* REMOVE */
-        printf("Free he_ctx->handle and he_ctx for loosing connection attempt\n"); fflush(stdout);
-
+        LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx->handle);
         free(he_ctx);
-        if (flow->heConnectAttemptCount == 1) {
-            io_error(ctx, flow, NEAT_ERROR_IO );
+
+        if (status < 0) {
+            flow->heConnectAttemptCount--;
+            if (flow->heConnectAttemptCount == 0) {
+                io_error(he_ctx->nc, flow, NEAT_ERROR_IO );
+            }
         }
     }
 }
@@ -1232,17 +1209,10 @@ neat_connect_via_kernel(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 
    if ((he_ctx->fd == -1) ||
         (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
-
-        /* REMOVE */
-        printf("neat_connect_via_kernel: if ((he_ctx->fd == -1)\n"); fflush(stdout);
-
         return -1;
     }
 
     uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx);
-
-    /* REMOVE */
-    printf("uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx)\n"); fflush(stdout);
 
     return 0;
 }
@@ -1255,6 +1225,16 @@ neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         // we might want a fx callback here to split between
         // kernel and userspace.. same for connect read and write
         close(flow->fd);
+    }
+    return 0;
+}
+
+static int
+neat_close_via_kernel_2(int fd)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    if (fd != -1) {
+        close(fd);
     }
     return 0;
 }
@@ -1550,11 +1530,13 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->handle = NULL;
     rv->writefx = neat_write_to_lower_layer;
     rv->readfx = neat_read_from_lower_layer;
+    LIST_INIT(&(rv->he_cb_ctx_list));
 #if !defined(USRSCTP_SUPPORT)
     rv->fd = -1;
     rv->acceptfx = neat_accept_via_kernel;
     rv->connectfx = neat_connect_via_kernel;
     rv->closefx = neat_close_via_kernel;
+    rv->close2fx = neat_close_via_kernel_2;
     rv->listenfx = neat_listen_via_kernel;
     rv->shutdownfx = neat_shutdown_via_kernel;
     TAILQ_INIT(&rv->bufferedMessages);

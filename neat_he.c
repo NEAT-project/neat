@@ -130,29 +130,18 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     assert (results->lh_first);
     assert (!flow->resolver_results);
 
-    /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-#if 0
-    pm_filter(results);
-#endif
     he_print_results(results);
-
 
     flow->resolver_results = results;
     flow->hefirstConnect = 1;
     flow->heConnectAttemptCount = 0;
     struct neat_resolver_res *candidate;
-    /* REMOVE */
-    int candidate_count = 0;
     LIST_FOREACH(candidate, results, next_res) {
         //TODO: Potential place to filter based on policy
         struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) malloc(sizeof(struct he_cb_ctx));
         assert(he_ctx !=NULL);
         he_ctx->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
         assert(he_ctx->handle != NULL);
-
-        /* REMOVE */
-        candidate_count++;
-
         he_ctx->handle->data = (void *)he_ctx;
         he_ctx->nc = resolver->nc;
         he_ctx->candidate = candidate;
@@ -161,25 +150,6 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
 #ifdef USRSCTP_SUPPORT
         he_ctx->sock = NULL;
 #endif
-        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-#if 0
-        char ip_address[INET_ADDRSTRLEN];
-        getnameinfo((struct sockaddr *)&(candidate->dst_addr),
-                    (socklen_t)sizeof(candidate->dst_addr),
-                    ip_address,
-                    INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
-        printf("Initiating connection attempt to %s with protocol %d\n", ip_address, candidate->ai_protocol);
-#endif
-
-        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-#if 0
-        char ip_address[INET_ADDRSTRLEN];
-        getnameinfo((struct sockaddr *)&(candidate->dst_addr),
-                    (socklen_t)sizeof(candidate->dst_addr),
-                    ip_address,
-                    INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
-        printf("Initiating connection attempt to %s with protocol %d\n", ip_address, candidate->ai_protocol);
-#endif
 
         uv_poll_cb callback_fx;
         callback_fx = (uv_poll_cb) (neat_flow *)resolver->userData2;
@@ -187,19 +157,13 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         if (flow->connectfx(he_ctx, callback_fx) == -1) {
             free(he_ctx->handle);
             free(he_ctx);
-            /* REMOVE */
-            printf("if (flow->connectfx(he_ctx, callback_fx) == -1)\n"); fflush(stdout);
             continue;
         } else {
-            /* REMOVE */
-            printf("if (flow->connectfx(he_ctx, callback_fx) != -1)\n"); fflush(stdout);
             flow->heConnectAttemptCount++;
+            LIST_INSERT_HEAD(&(flow->he_cb_ctx_list), he_ctx, next_he_ctx);
         }
 
     }
-
-    /* REMOVE */
-    printf("Number of connection attempts: %d\n", candidate_count ); fflush(stdout);
 
     if (flow->heConnectAttemptCount == 0) {
         io_error(resolver->nc, flow, NEAT_ERROR_IO );

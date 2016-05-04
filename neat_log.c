@@ -9,7 +9,7 @@
 
 #ifdef NEAT_LOG
 
-uint8_t neat_log_level = NEAT_LOG_INFO;
+uint8_t neat_log_level = NEAT_LOG_DEBUG;
 FILE *neat_log_fd = NULL;
 
 /*

@@ -14,6 +14,7 @@ LIST(APPEND neat_PROGRAMS
     server_discard.c
     server_echo.c
     tneat.c
+    selftest.c
     )
 
 LIST(APPEND neat_PROGRAMS_LIBS

@@ -14,7 +14,7 @@ client [OPTIONS] HOST PORT
 ```
 
 ```
-$ ./client www.neat-project.org 80 -P "NEAT_PROPERTY_IPV6_REQUIRED,NEAT_PROPERTY_SCTP_REQUIRED" -v 2
+$ ./client -P "NEAT_PROPERTY_IPV6_REQUIRED,NEAT_PROPERTY_SCTP_REQUIRED" -v 2 www.neat-project.org 80
 ```
 
 ## tneat
@@ -65,7 +65,7 @@ These servers are compatible with the `client` example and should show the basic
 * `server_echo` - sends back an identical copy of the data it received
 
 ```
-$ ./server_[chargen|daytime|discard|echo]
+server_[chargen|daytime|discard|echo]
 
 -P : neat property
 -v : log level (0 .. 2)

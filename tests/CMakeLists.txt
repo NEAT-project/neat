@@ -1,22 +1,14 @@
-# SAMPLES LIST
+# TESTS LIST
 #################################################
 LIST(APPEND neat_programs
     neat_basic.c
     neat_basic_sctp.c
     neat_http_get.c
     neat_resolver_example.c
-    neat_server.c
-    client.c
-    server_daytime.c
-    server_chargen.c
-    server_discard.c
-    server_echo.c
-    tneat.c
-    selftest.c
 )
 
 
-# BUILD EACH SAMPLE
+# BUILD EACH TEST
 #################################################
 FOREACH (source_file ${neat_programs})
     GET_FILENAME_COMPONENT(source_file_we ${source_file} NAME_WE)

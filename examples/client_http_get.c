@@ -3,6 +3,17 @@
 #include <string.h>
 #include "../neat.h"
 
+/**********************************************************************
+
+    HTTP-GET client in neat
+
+    client_http_get HOST [URI]
+
+    * connect to HOST and send GET request
+    * write response to stdout
+
+**********************************************************************/
+
 static uint32_t config_rcv_buffer_size = 1024;
 static char request[512];
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";

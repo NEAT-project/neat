@@ -7,45 +7,45 @@ SET(CMAKE_MACOSX_RPATH 1)
 
 # SOURCES + HEADERS
 #################################################
-LIST(APPEND neat_HEADERS
+LIST(APPEND neat_headers
     neat.h
     neat_queue.h
-    )
+)
 
-LIST(APPEND neat_SOURCES
-    neat_core.c
+LIST(APPEND neat_sources
     neat_addr.c
+    neat_core.c
     neat_he.c
+    neat_log.c
+    neat_property_helpers.c
     neat_resolver.c
     neat_resolver_conf.c
-    neat_property_helpers.c
-    neat_log.c
-    )
+)
 
 # OS DEPENDENT
 #################################################
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     ADD_DEFINITIONS("-D_DEFAULT_SOURCE")
-    LIST(APPEND neat_HEADERS neat_linux.h)
-    LIST(APPEND neat_SOURCES neat_linux.c)
+    LIST(APPEND neat_headers neat_linux.h)
+    LIST(APPEND neat_sources neat_linux.c)
     SET(LIB_DIR "/usr/local/lib")
     SET(HDR_DIR "/usr/local/include/neat")
 
 ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
-    LIST(APPEND neat_HEADERS neat_bsd.h)
-    LIST(APPEND neat_SOURCES neat_bsd.c)
+    LIST(APPEND neat_headers neat_bsd.h)
+    LIST(APPEND neat_sources neat_bsd.c)
     SET(LIB_DIR "/usr/local/lib")
     SET(HDR_DIR "/usr/local/include/neat")
     SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
-    SET(CMAKE_LIBRARY_PATH /usr/local/lib)
+    SET(CMAKE_LIBRARY_PATH "/usr/local/lib")
     INCLUDE_DIRECTORIES("/usr/local/include")
 
 ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
-    LIST(APPEND neat_HEADERS neat_bsd.h)
-    LIST(APPEND neat_SOURCES neat_bsd.c)
+    LIST(APPEND neat_headers neat_bsd.h)
+    LIST(APPEND neat_sources neat_bsd.c)
     SET(LIB_DIR "/usr/local/lib")
     SET(HDR_DIR "/usr/local/include/neat")
     SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include" "/usr/local/opt/openssl/include")
@@ -54,12 +54,12 @@ ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
-    LIST(APPEND neat_HEADERS neat_bsd.h)
-    LIST(APPEND neat_SOURCES neat_bsd.c)
+    LIST(APPEND neat_headers neat_bsd.h)
+    LIST(APPEND neat_sources neat_bsd.c)
     SET(LIB_DIR "/usr/local/lib")
     SET(HDR_DIR "/usr/local/include/neat")
-    SET(CMAKE_LIBRARY_PATH /usr/local/lib)
     SET(CMAKE_REQUIRED_INCLUDES "/usr/pkg/include" "/usr/include" "/usr/local/include")
+    SET(CMAKE_LIBRARY_PATH "/usr/local/lib")
     INCLUDE_DIRECTORIES("/usr/pkg/include" "/usr/local/include")
 
 ELSE()
@@ -98,22 +98,22 @@ ENDIF()
 # CHECK OPTIONS
 #################################################
 # Debug build type as default
-if (NOT CMAKE_BUILD_TYPE)
+IF (NOT CMAKE_BUILD_TYPE)
     message(STATUS "No build type selected, using DEBUG")
     set(CMAKE_BUILD_TYPE "DEBUG")
 endif()
 
-OPTION(USRSCTP_SUPPORT "Include usrsctp" 0)
+OPTION(USRSCTP_SUPPORT "Include usrsctp support" 0)
 IF (USRSCTP_SUPPORT)
     ADD_DEFINITIONS(-DUSRSCTP_SUPPORT)
     ADD_DEFINITIONS(-DINET)
     ADD_DEFINITIONS(-DINET6)
     ADD_DEFINITIONS(-DSCTP_DEBUG)
-    LIST(APPEND neat_HEADERS neat_usrsctp.h)
-    LIST(APPEND neat_SOURCES neat_usrsctp.c)
+    LIST(APPEND neat_headers neat_usrsctp.h)
+    LIST(APPEND neat_sources neat_usrsctp.c)
 
     FIND_LIBRARY(USRSCTP_LIB usrsctp)
-    LIST(APPEND neat_LIBS ${USRSCTP_LIB})
+    LIST(APPEND neat_libs ${USRSCTP_LIB})
     MESSAGE(STATUS "USRSCTP found: " ${USRSCTP_LIB})
 ENDIF()
 
@@ -164,29 +164,30 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -Wall -Wextra -Werror -Wn
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
 ENDIF()
 
 # LIBRARIES
 #################################################
-LIST(APPEND neat_LIBS
+LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}
     )
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    LIST(APPEND neat_LIBS ${MNL_LIB})
+    LIST(APPEND neat_libs ${MNL_LIB})
 ENDIF()
 
-ADD_LIBRARY(neat SHARED ${neat_SOURCES})
-ADD_LIBRARY(neat-static STATIC ${neat_SOURCES})
+ADD_LIBRARY(neat SHARED ${neat_sources})
+ADD_LIBRARY(neat-static STATIC ${neat_sources})
 
-TARGET_LINK_LIBRARIES (neat ${neat_LIBS})
+TARGET_LINK_LIBRARIES (neat ${neat_libs})
 
 INSTALL(TARGETS neat LIBRARY DESTINATION ${LIB_DIR})
-INSTALL(FILES ${neat_HEADERS} DESTINATION ${HDR_DIR})
+INSTALL(FILES ${neat_headers} DESTINATION ${HDR_DIR})
 
 
-# SAMPLES FOLDER
+# INCLUDE EXAMPLES AND TESTS FOLDER
 #################################################
-ADD_SUBDIRECTORY(samples)
+ADD_SUBDIRECTORY(examples)
+ADD_SUBDIRECTORY(tests)

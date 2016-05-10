@@ -5,10 +5,20 @@
 #include <sys/time.h>
 #include "../neat.h"
 
-/*
-    tneat
-    testing tool for neat
-*/
+/**********************************************************************
+
+    tneat - neat testing tool
+
+    tneat [OPTIONS] [HOST]
+    -l : message length in byte (client)
+    -n : number off messages to send (client)
+    -p : port
+    -P : neat properties
+    -R : receive buffer in byte (server)
+    -T : max runtime (client)
+    -v : log level (0 .. 2)
+
+**********************************************************************/
 
 /*
     default values

@@ -6,9 +6,21 @@
 #include "../neat.h"
 #include "../neat_internal.h"
 
-/*
-    Simple neat client
-*/
+/**********************************************************************
+
+    simple neat client
+
+    * connect to HOST and PORT
+    * read from stdin and send data to HOST
+    * write received data from peer to stdout
+
+    client [OPTIONS] HOST PORT
+    -P : neat properties
+    -R : receive buffer in byte
+    -S : send buffer in byte
+    -v : log level (0 .. 2)
+    
+**********************************************************************/
 
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;

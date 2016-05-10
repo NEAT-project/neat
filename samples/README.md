@@ -1,1 +1,0 @@
-# NEAT samples

@@ -4,6 +4,16 @@
 #include <unistd.h>
 #include "../neat.h"
 
+/**********************************************************************
+
+    discard server
+
+    server_discard [OPTIONS]
+
+    https://tools.ietf.org/html/rfc863
+
+**********************************************************************/
+
 static uint32_t config_buffer_size = 128;
 static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";

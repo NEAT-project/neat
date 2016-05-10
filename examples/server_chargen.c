@@ -4,6 +4,16 @@
 #include <unistd.h>
 #include "../neat.h"
 
+/**********************************************************************
+
+    chargen server
+
+    server_chargen [OPTIONS]
+
+    https://tools.ietf.org/html/rfc864
+
+**********************************************************************/
+
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 static uint16_t config_log_level = 1;
 static uint16_t chargen_offset = 0;

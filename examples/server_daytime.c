@@ -5,6 +5,16 @@
 #include <unistd.h>
 #include "../neat.h"
 
+/**********************************************************************
+
+    daytime server
+
+    server_daytime [OPTIONS]
+
+    https://tools.ietf.org/html/rfc867
+
+**********************************************************************/
+
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 static uint16_t config_log_level = 1;
 

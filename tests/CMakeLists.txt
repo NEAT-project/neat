@@ -1,8 +1,6 @@
 # TESTS LIST
 #################################################
 LIST(APPEND neat_programs
-    neat_basic.c
-    neat_basic_sctp.c
     neat_resolver_example.c
 )
 

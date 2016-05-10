@@ -1,8 +1,8 @@
 # NEAT samples
-* [Basic client]
-* [HTTP GET client]
-* [chargen/daytime/discard/echo servers](#return-codes)
-* [tneat](#debug-output)
+* [Basic client](#basic-client)
+* [HTTP GET client](#http-get-client)
+* [chargen/daytime/discard/echo servers](#chargendaytimediscardecho-servers)
+* [tneat](#tneat)
 
 
 ## Basic client

@@ -1,4 +1,4 @@
-# NEAT samples
+# NEAT examples
 * [Basic client](#basic-client)
 * [HTTP GET client](#http-get-client)
 * [chargen/daytime/discard/echo servers](#chargendaytimediscardecho-servers)

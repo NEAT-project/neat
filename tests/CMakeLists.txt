@@ -3,7 +3,6 @@
 LIST(APPEND neat_programs
     neat_basic.c
     neat_basic_sctp.c
-    neat_http_get.c
     neat_resolver_example.c
 )
 

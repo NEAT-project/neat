@@ -32,9 +32,10 @@ wants. A typical first step is to resolve a domain name.
 
 | OS        | command           |
 | :-------- |:-------------|
-| Ubuntu    | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` |
+| Ubuntu*   | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` |
 | FreeBSD   | `pkg install cmake ldns libuv`     |   
-| OS X      | `brew install libuv ldns`      |   
+| OS X      | `brew install libuv ldns`      | 
+\* Ubuntu 15.04 and higher
 
 ## Quickstart :rocket:
 ```shell

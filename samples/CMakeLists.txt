@@ -19,19 +19,11 @@ LIST(APPEND neat_PROGRAMS
 
 LIST(APPEND neat_PROGRAMS_LIBS
     neat
-    ${UV_LIB}
-    ${LDNS_LIB}
     )
 
 IF (USRSCTP_SUPPORT)
-    add_definitions(-DUSRSCTP_SUPPORT)
+    ADD_DEFINITIONS(-DUSRSCTP_SUPPORT)
     LIST(APPEND neat_PROGRAMS_LIBS ${USRSCTP_LIB})
-ENDIF()
-
-# OS DEPENDENT
-#################################################
-IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    LIST(APPEND neat_PROGRAMS_LIBS ${LDNS_LIB})
 ENDIF()
 
 # BUILD EACH SAMPLE

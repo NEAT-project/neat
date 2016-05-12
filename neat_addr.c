@@ -33,6 +33,15 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
                     nsrc_addr->prefix_length, nsrc_addr->u.v6.ifa_pref,
                     nsrc_addr->u.v6.ifa_valid);
         }
+
+        struct pvd* pvd;
+        struct pvd_info* pvd_info;
+        LIST_FOREACH(pvd, &(nsrc_addr->pvds), next_pvd) {
+            neat_log(NEAT_LOG_INFO, "\t\tPVD:");
+            LIST_FOREACH(pvd_info, &(pvd->infos), next_info) {
+                neat_log(NEAT_LOG_INFO, "\t\t\t%s => %s", pvd_info->key, pvd_info->value);
+            }
+        }
     }
 }
 

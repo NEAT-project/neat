@@ -10,6 +10,7 @@
 #endif
 
 #include "neat_queue.h"
+#include "neat_pvd.h"
 
 #define NEAT_UNLIMITED_LIFETIME 0xffffffff
 #define NEAT_ADDRESS_LIFETIME_TIMEOUT 1
@@ -38,6 +39,8 @@ struct neat_addr {
     uint8_t __pad;
     uint16_t __pad2;
     uint8_t prefix_length;
+
+    struct pvds pvds;
 };
 
 //Add/remove addresses from src. address list

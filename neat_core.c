@@ -324,6 +324,9 @@ void neat_free_flow(neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+    neat_remove_all_properties(flow);
+    free(flow->property_requests);
+
 #if defined(USRSCTP_SUPPORT)
     if (flow->sockProtocol == IPPROTO_SCTP) {
        usrsctp_free(flow);
@@ -1706,6 +1709,8 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->listenfx = neat_listen;
     rv->shutdownfx = neat_shutdown_via_kernel;
     TAILQ_INIT(&rv->bufferedMessages);
+    rv->property_requests = malloc(sizeof(rv->property_requests));
+    LIST_INIT(rv->property_requests);
 #if defined(USRSCTP_SUPPORT)
     rv->sock = NULL;
     rv->acceptusrsctpfx = neat_accept_via_usrsctp;

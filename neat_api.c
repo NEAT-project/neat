@@ -207,3 +207,7 @@ void neat_properties_init(neat_flow* flow) {
     neat_set_property_bool(flow, "retransmissions_required", 0);
     neat_set_property_bool(flow, "retransmissions_banned", 0);
 }
+
+void neat_properties_destroy(neat_flow* flow) {
+    neat_remove_all_properties(flow);
+}

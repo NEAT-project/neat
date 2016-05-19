@@ -180,4 +180,24 @@ void neat_properties_init(neat_flow* flow) {
     neat_set_property_int(flow, "flow_group", 0);
     neat_set_property_float(flow, "flow_priority", 0.5f);
     neat_set_property_float(flow, "dscp_value", 0.5f);
+
+    neat_set_property_bool(flow, "optional_sequrity", 0);
+    neat_set_property_bool(flow, "required_sequrity", 0);
+    neat_set_property_bool(flow, "message", 0);
+    neat_set_property_bool(flow, "ipv4_required", 0);
+    neat_set_property_bool(flow, "ipv4_banned", 0);
+    neat_set_property_bool(flow, "ipv6_required", 0);
+    neat_set_property_bool(flow, "ipv6_banned", 0);
+    neat_set_property_bool(flow, "sctp_required", 0);
+    neat_set_property_bool(flow, "sctp_banned", 0);
+    neat_set_property_bool(flow, "tcp_required", 0);
+    neat_set_property_bool(flow, "tcp_banned", 0);
+    neat_set_property_bool(flow, "udp_required", 0);
+    neat_set_property_bool(flow, "udp_banned", 0);
+    neat_set_property_bool(flow, "udplite_required", 0);
+    neat_set_property_bool(flow, "udplite_banned", 0);
+    neat_set_property_bool(flow, "congestion_control_required", 0);
+    neat_set_property_bool(flow, "congestion_control_banned", 0);
+    neat_set_property_bool(flow, "retransmissions_required", 0);
+    neat_set_property_bool(flow, "retransmissions_banned", 0);
 }

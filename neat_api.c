@@ -172,6 +172,8 @@ int neat_check_property(neat_flow* flow, char* property) {
 
 // Initialize the property set to the defaults
 void neat_properties_init(neat_flow* flow) {
+    LIST_INIT(flow->property_requests);
+
     neat_set_property_bool(flow, "seamless_handover", 0);
     neat_set_property_bool(flow, "optimise_continuous_connectivity", 0);
     neat_set_property_int(flow, "metadata_privacy", 0);

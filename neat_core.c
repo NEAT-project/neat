@@ -1726,7 +1726,7 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->shutdownfx = neat_shutdown_via_kernel;
     TAILQ_INIT(&rv->bufferedMessages);
     rv->property_requests = malloc(sizeof(rv->property_requests));
-    LIST_INIT(rv->property_requests);
+    neat_properties_init(rv);
 #if defined(USRSCTP_SUPPORT)
     rv->sock = NULL;
     rv->acceptusrsctpfx = neat_accept_via_usrsctp;

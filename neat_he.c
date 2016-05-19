@@ -187,22 +187,24 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     uint8_t family;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) &&
-        (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED))
+    if (neat_check_property(flow, "IPV4_REQUIRED") &&
+            neat_check_property(flow, "IPV4_BANNED")) {
         return NEAT_ERROR_UNABLE;
-    if ((flow->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) &&
-        (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED))
+    } else if (neat_check_property(flow, "IPV6_REQUIRED") &&
+            neat_check_property(flow, "IPV6_BANNED")) {
         return NEAT_ERROR_UNABLE;
-    if ((flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED) &&
-        (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED))
+    } else if (neat_check_property(flow, "IPV4_BANNED") &&
+            neat_check_property(flow, "IPV6_BANNED")) {
         return NEAT_ERROR_UNABLE;
-    if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) &&
-        (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED))
+    }
+
+    if (neat_check_property(flow, "IPV4_REQUIRED") &&
+            neat_check_property(flow, "IPV6_BANNED")) {
         family = AF_INET;
-    else if ((flow->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) &&
-             (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED))
+    } else if (neat_check_property(flow, "IPV6_REQUIRED") &&
+            neat_check_property(flow, "IPV4_BANNED")) {
         family = AF_INET6;
-    else
+    } else
         family = AF_UNSPEC; /* AF_INET and AF_INET6 */
 
     nr_of_protocols = neat_property_translate_protocols(flow->propertyMask,

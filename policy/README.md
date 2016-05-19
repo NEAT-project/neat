@@ -13,7 +13,7 @@ Each property is associated with a `level` or type which identifies the "importa
 + `<informational>` these are properties which have an informational nature. NEAT logic may choose to ignore these.
 
  
-<img src="./doc/properties.svg" width="220"/>
+<img src="https://rawgit.com/NEAT-project/neat/master/policy/doc/properties.svg" width="220"/>
 
 
 Two NEAT properties are considered 'equal' if their key and value attributes are identical, i.e., levels and scores are ignored when testing for equality. A comparison of two properties always yields a boolean result.
@@ -21,7 +21,7 @@ Two NEAT properties are considered 'equal' if their key and value attributes are
 
 In the course of a lookup in the PM, properties from various sources will be compared and their values may be *updated*. A property's value may *only* be updated by another property whose level is greater or equal than itself. A property may only be updated by another property with the same key. When a property is updated it inherits the level of the updating property as illustrated below:
 
-  <img src="./doc/properties_example.svg" width="380"/>
+  <img src="https://rawgit.com/NEAT-project/neat/master/policy/doc/properties_example.svg" width="380"/>
 
 As an example, if an immutable property is requested by an application and this property clashes with the corresponding property in a connection candidate the candidate must be discarded.
 
@@ -31,7 +31,10 @@ In addition, each property is associated with a numeric `score` denoting whether
 
 ### Property ranges
 
-In addition to single values (boolean, integer, float, ...) the value of a property may be specified as a numeric two-tuple to indicate a range range, e.g. `(5,30)` or `(100,inf)`. When a single value property is updated/compared to a property which includes a range, and the single value is within the given range, the range is replaced by the single value, and the properties are considered equal (e.g. the comparison returns true).
+In addition to single values (boolean, integer, float, ...) the value of a property may be specified as a numeric two-tuple to indicate a range, e.g. `(5,30)` or `(100,inf)`. 
+
+When comparing properties with range values, two properties are considered equal if the single value is within the range, or if the range of the property contains the entire range of the compared property. When a single value property is updated with a property which includes a range and the single value falls within the given range, the range is substituted by the single value. 
+
 
 ## NEAT Policies
 
@@ -65,22 +68,7 @@ The CIB is made up of three repositories
 + `connection` (C)
 + `remote` (R)
 
-
-
-TODO....
-
-A lookup for a *request* currently involves the following steps:
-
-1. Search the `remote` repository for specific DNS names or IP addresses. 
-2. If there is a match, obtain and match associated `connection` and `local` properties. If these searches fail, search and match only the `local` repository.
-
-
-The following candidate cases are possible with n,m >= 1:
-
-+ n remote, n connection, n local 
-+ n remote, m local
-+ m local
-
+TODO
 
 # Example
 

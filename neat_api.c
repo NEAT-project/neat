@@ -155,6 +155,10 @@ void neat_remove_all_properties(neat_flow* flow) {
         struct neat_prop_request* prop = LIST_FIRST(flow->property_requests); 
         LIST_REMOVE(prop, property_list);
         free(prop->property);
+
+        if (prop->type == TYPE_STRING)
+            free(prop->data.string_value);
+
         free(prop);
     }
 }

@@ -1,0 +1,25 @@
+
+
+{  
+  "name":"A",
+  "description":"bulk file transfer",
+  "priority":"0",
+  "match":{
+        "immutable":{},
+        "requested":{
+           "is_wired_interface":true,
+           "interface_speed_ge":1000
+        },
+        "informational":{}
+  },
+  "properties":{
+     "immutable":{
+         "MTU":"9600"
+      },
+      "requested":{
+        "TCP_CC":"LBE"
+      },
+      "informational":{}
+  }
+}
+

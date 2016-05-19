@@ -1,0 +1,9 @@
+{
+  "cib_source": "happy_eyeballs",
+  "type": "remote",
+  "id": "d1",
+  "informational": {
+    "remote_address": "23:::23:12",
+    "remote_port": "8081"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "cib_source":"happy_eyeballs",
+  "type":"connection",
+  "id":"D",
+  "timestamp":"1463573612",
+  "local":"s1",
+  "remote":"d2",
+  "informational": {
+    "protocol": "TCP"
+  },
+  "immutable": {
+    "MTU": "1100"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "cib_source": "ethtool",
+  "type": "local",
+  "id": "s2",
+  "informational": {
+    "interface": "en1",
+    "is_wired_interface": true,
+    "MTU": "1500",
+    "local_address": "10.10.1.1"
+  }
+}

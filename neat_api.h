@@ -23,9 +23,26 @@
  * TODO: naming
  */
 
+enum neat_value_type {
+    TYPE_BOOL = 0,
+    TYPE_INT,
+    TYPE_FLOAT,
+    TYPE_STRING,
+};
+
+typedef enum neat_value_type neat_value_type;
+
 // A list of properties as requested by the application
 struct neat_prop_request {
     char* property;
+
+    union {
+        int int_value;
+        float float_value;
+        char* string_value;
+    } data;
+
+    neat_value_type type;
 
     LIST_ENTRY(neat_prop_request) property_list;
 };

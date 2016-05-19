@@ -359,6 +359,11 @@ neat_error_code neat_set_property(neat_ctx *mgr, neat_flow *flow,
     return NEAT_OK;
 }
 
+int neat_get_protocol(neat_ctx* mgr, neat_flow* flow)
+{
+    return flow->sockProtocol;
+}
+
 neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
                                     struct neat_flow_operations *ops)
 {

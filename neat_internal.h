@@ -349,4 +349,6 @@ struct neat_resolver {
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);
 
+void neat_properties_init(neat_flow* flow);
+
 #endif

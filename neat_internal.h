@@ -154,6 +154,18 @@ struct neat_flow
 
 typedef struct neat_flow neat_flow;
 
+struct neat_path_stats {
+    void* ignored;
+};
+
+typedef struct neat_path_stats neat_path_stats;
+
+struct neat_interface_stats {
+    void* ignored;
+};
+
+typedef struct neat_interface_stats neat_interface_stats;
+
 //NEAT resolver public data structures/functions
 struct neat_resolver;
 struct neat_resolver_res;

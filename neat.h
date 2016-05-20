@@ -88,6 +88,8 @@ neat_error_code neat_change_timeout(struct neat_ctx *ctx, struct neat_flow *flow
                                     int seconds);
 neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow,
                                       const char *name);
+neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow,
+                                      int rate, int seconds);
 
 
 // do we also need a set property with a void * or an int (e.g. timeouts) or should

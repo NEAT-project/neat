@@ -4,6 +4,7 @@ import operator
 import os
 import unittest
 import copy
+import numbers
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
@@ -23,6 +24,10 @@ class NEATProperty(object):
 
     def __init__(self, prop, level=REQUESTED, score=0.0):
         self.key, self.value = prop
+        if isinstance(self.value, (tuple, list)):
+            self.value = tuple((float(i) for i in self.value))
+            if self.value[0] > self.value[1]:
+                raise IndexError("Invalid property range")
         self.level = level
         self.score = score
         # TODO experimental meta data
@@ -57,24 +62,58 @@ class NEATProperty(object):
             yield p
 
     def __eq__(self, other):
+        """Return true if a single value is in range, or if two ranges have an overlapping region."""
         assert isinstance(other, NEATProperty)
-        return (self.key, self.value) == (other.key, other.value)
+
+        if not isinstance(other.value, tuple) and not isinstance(self.value, tuple):
+            return (self.key, self.value) == (other.key, other.value)
+
+        if not (self.key == other.key):
+            logging.debug("Property key mismatch")
+            return False
+
+        return self._range_overlap(other.value)
 
     def __hash__(self):
         return hash(self.property)
 
+    def _range_overlap(self, other_range):
+        self_range = self.value
+
+        # create a tuple if one of the ranges is a single numerical value
+        if isinstance(other_range, numbers.Number):
+            other_range = other_range, other_range
+        if isinstance(self_range, numbers.Number):
+            self_range = self_range, self_range
+
+        # check if ranges have an overlapping region
+        overlap = other_range[0] <= self_range[1] and other_range[1] >= self_range[0]
+        if not overlap:
+            return False
+        else:
+            # return actual range
+            overlap_range = max(other_range[0], self_range[0]), min(other_range[1], self_range[1])
+            if overlap_range[0] == overlap_range[1]:
+                return overlap_range[0]
+            else:
+                return overlap_range
+
     def update(self, other):
         """ Update the current property value with a different one and update the score."""
+        assert isinstance(other, NEATProperty)
+
         if not other.key == self.key:
-            logging.debug("key mismatch: ignoring update call")
+            logging.debug("Property key mismatch")
             return
 
         self.evaluated = True
+
         if other.level >= self.level:
-            updated = not self.value == other.value
+            property_changed = not self == other
+
             self.value = other.value
             self.level = other.level
-            if updated:
+            if property_changed:
                 self.score += -(1.0 + self.level)
                 logging.debug("property %s updated to %s." % (self.key, self.value))
             else:
@@ -393,10 +432,11 @@ class PIB(list):
 
 
 class PropertyTests(unittest.TestCase):
+    # TODO
     def test_property_logic(self):
-        np2 = NEATProperty(('foo', 'bar2'), level=IMMUTABLE)
-        np1 = NEATProperty(('foo', 'bar1'), level=REQUESTED)
-        np0 = NEATProperty(('foo', 'bar0'), level=INFORMATIONAL)
+        np2 = NEATProperty(('foo', 'bar2'), level=NEATProperty.IMMUTABLE)
+        np1 = NEATProperty(('foo', 'bar1'), level=NEATProperty.REQUESTED)
+        np0 = NEATProperty(('foo', 'bar0'), level=NEATProperty.INFORMATIONAL)
 
         # self.assertEqual(numeral, result)
         # unittest.main()
@@ -404,6 +444,11 @@ class PropertyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     import code
+
+    npr1 = NEATProperty(('fu', (10, 20)))
+    npr2 = NEATProperty(('fu', (15, 30)))
+    npr3 = NEATProperty(('fu', 13))
+    npr2._range_overlap(npr1.value)
 
     np = NEATProperty(('foo', 'bar'))
     pd = PropertyDict()

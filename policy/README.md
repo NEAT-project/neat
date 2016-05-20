@@ -29,12 +29,11 @@ As an example, if an immutable property is requested by an application and this 
 
 In addition, each property is associated with a numeric `score` denoting whether, and how often, a property has been matched. Each time a property is updated its score is increased if its value matched the compared property, and decreased otherwise. The property score is used to determine the most suitable NEAT connection candidate for a given request (see below).
 
-### Property ranges
+### Numeric property ranges
 
-In addition to single values (boolean, integer, float, ...) the value of a property may be specified as a numeric two-tuple to indicate a range, e.g. `(5,30)` or `(100,inf)`. 
+In addition to single values (boolean, integer, float, ...) the value of a property may be specified as a numeric two-tuple to indicate a range, e.g. `(5,30.1)` or `(100,inf)`. 
 
-When comparing properties with range values, two properties are considered equal if the single value is within the range, or if the range of the property contains the entire range of the compared property. When a single value property is updated with a property which includes a range and the single value falls within the given range, the range is substituted by the single value. 
-
+When comparing properties with range values, two properties are considered equal if their ranges overlap (or if a single value falls within a range).
 
 ## NEAT Policies
 

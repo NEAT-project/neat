@@ -829,6 +829,12 @@ neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t
     return NEAT_ERROR_UNABLE;
 }
 
+neat_error_code
+neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
+{
+    return NEAT_ERROR_UNABLE;
+}
+
 static void
 accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {

@@ -43,13 +43,14 @@ char* compute_reverse_ip(struct neat_addr *src_addr) {
             sprintf(reverse_ip+string_offset, "%01x.", current_hex);
             string_offset = string_offset + 2;
         }
-        for (i = i; i >= 0; i--) {
+        while (i >= 0) {
             if (i % 2 == 0) {
                 current_hex = src_addr6.s6_addr[i/2] >> 4;
             } else {
                 current_hex = src_addr6.s6_addr[i/2] & 0x0f;
             }
             sprintf(reverse_ip + string_offset + 2*(addr_total_hex - 1 - i), "%01x.", current_hex);
+            i--;
         }
         sprintf(reverse_ip + string_offset + 2*addr_total_hex, "ip6.arpa.");
     } else if (family == AF_INET) {

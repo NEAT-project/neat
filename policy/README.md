@@ -1,6 +1,6 @@
 # Policy Manager
 
-**INITIAL ALPHA OVERVIEW**
+**INITIAL ALPHA**
 
 ## NEAT properties
 
@@ -74,37 +74,36 @@ TODO
 ## Setup
 Consider a host with three local interfaces `en0`, `en1`, `ra0`. Two of the interfaces, `en0`, `en1`, are wired while `ra0` is a 3G interface. The currently known network properties are stored in the following CIB entries:
 
-    A: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600], [remote_ip: 10.1.23.45], <transport|TCP>, [capacity|10G], <dns_name|backup.example.com>}
+    CIB A: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600], [remote_ip: 10.1.23.45], <transport|TCP>, [capacity|10G], <dns_name|backup.example.com>}
 
-    B: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500], <transport|TCP>, <transport|UDP>, [capacity|10G]}
+    CIB B: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500], <transport|TCP>, <transport|UDP>, [capacity|40G]}
 
-    C: {[local_ip: 10.10.2.2], [interface|ra0], [is_wired: False], [MTU|890], [remote_ip: 10.1.23.45] [capacity|60M]}
+    CIB C: {[local_ip: 10.10.2.2], [interface|ra0], [is_wired: False], [MTU|890], [remote_ip: 10.1.23.45] [capacity|60M]}
 
          
 An application would like to open a new TCP connection using NEAT to a destination host `d1` with the IP 10.1.23.45. Further the MTU should be 1500 bytes if possible. We denote this NEATRequest as follows: 
 
-    Request: {[remote_ip|10.1.23.45], (MTU|1500), (transport|TCP)}
+    REQUEST: {[remote_ip|10.1.23.45], (MTU|1500-inf), (transport|TCP)}
 
 Further assume a "bulk transfer" policy is configured on the host. This policy is triggered by a specific destination IP, which is known to be the address of backup NFS share:
 
-    Policy "Bulk transfer": {(dst_ip|10.1.23.45)} ==> {[capacity|10G], (MTU|9600)}
+    POLICY "Bulk transfer": {(dst_ip|10.1.23.45)} ==> {[capacity|10G-100G)], (MTU|9600)}
 
 Another configured policy is configured to enable TCP window scaling on 10G links, if possible:
 
-    Policy "TCP options": {(MTU|9600), (is_wired|true)} ==> {(TCP_window_scale|true)}
+    POLICY "TCP options": {(MTU|9600), (is_wired|true)} ==> {(TCP_window_scale|true)}
 
 ## Outcome
 
 The NEAT request yields three candidates after the CIB lookup:
 
-    Candidate 1: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600]+1, [remote_ip: 10.1.23.45]+1, (transport|TCP)+1, [capacity|10G], <dns_name|backup.example.com>}
+    CANDIDATE 1: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600]+1, [remote_ip: 10.1.23.45]+1, (transport|TCP)+1, [capacity|10G], <dns_name|backup.example.com>}
 
-    Candidate 2: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500]+1, (transport|TCP)+1, <transport|UDP>, [capacity|10G], [remote_ip: 10.1.23.24]}
+    CANDIDATE 2: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500]+1, (transport|TCP)+1, <transport|UDP>, [capacity|40G]+1, [remote_ip: 10.1.23.24]}
     
-    Candidate 3: {[local_ip: 10.10.2.2], [interface|ra0], [is_wired: False], [MTU|890]-1, [remote_ip: 10.1.23.45]+1, [capacity|60M], (transport|TCP)}
+    CANDIDATE 3: {[local_ip: 10.10.2.2], [interface|ra0], [is_wired: False], [MTU|890]-1, [remote_ip: 10.1.23.45]+1, [capacity|60M], (transport|TCP)}
     
 The scores of the CIB properties which match the request properties have been increased
-
 
 ---
 
@@ -120,7 +119,7 @@ and after the second policy:
 
 Next we examine Candidate 2. After the first policy the second candidate becomes:
 
-    Candidate 2: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500]+0, (transport|TCP)+1, <transport|UDP>, [capacity|10G]+1, [remote_ip: 10.1.23.24]}
+    Candidate 2: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500]+0, (transport|TCP)+1, <transport|UDP>, [capacity|40G]+1, [remote_ip: 10.1.23.24]}
 
 Note that the score of the MTU property was reduced, as it did not match the requested property of the "Bulk transfer" policy.
 

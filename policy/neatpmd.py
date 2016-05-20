@@ -40,20 +40,28 @@ if __name__ == "__main__":
 
     query.dump()
 
-    # lookup PIB
-    for candidate in query.candidates:
-        try:
-            pib.lookup(candidate, apply=True)
-        except NEATPropertyError:
-            candidate.invalid = True
-            i = query.candidates.index(candidate)
-            print('Candidate %d is invalidated due to policy' % i)
-    for candidate in query.candidates:
-        if candidate.invalid:
-            query.candidates.remove(candidate)
+    pib.lookup_all(query.candidates)
 
     code.interact(local=locals(), banner='PIB lookup done')
     query.dump()
+
+    # ----- example from README -----
+    request = NEATRequest()
+    request.properties.insert(NEATProperty(('remote_ip', '10.1.23.45'), level=NEATProperty.IMMUTABLE))
+    request.properties.insert(NEATProperty(('MTU', (1500, float('inf')))))
+    request.properties.insert(NEATProperty(('transport', 'TCP')))
+
+    request.properties
+
+    policy1 = NEATPolicy(name='Bulk transfer')
+    policy1.match.insert(NEATProperty(('remote_ip', '10.1.23.45')))
+    policy1.properties.insert(NEATProperty(('capacity', (10, 100))))
+    policy1.properties.insert(NEATProperty(('MTU', 9600)))
+
+    policy2 = NEATPolicy(name='TCP options')
+    policy2.match.insert(NEATProperty(('MTU', 9600)))
+    policy2.match.insert(NEATProperty(('is_wired', True)))
+    policy2.properties.insert(NEATProperty(('TCP_window_scale', True)))
 
     ###########
     nc = NEATCandidate(query)

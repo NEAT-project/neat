@@ -23,7 +23,7 @@ class NEATProperty(object):
     INFORMATIONAL = 0
 
     def __init__(self, prop, level=REQUESTED, score=0.0):
-        self.key, self.value = prop
+        self.key, self._value = prop
         if isinstance(self.value, (tuple, list)):
             self.value = tuple((float(i) for i in self.value))
             if self.value[0] > self.value[1]:
@@ -37,6 +37,20 @@ class NEATProperty(object):
         self.evaluated = False
         # attach more weight to property score
         self.weight = 1.0
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        old_value = self._value
+        self._value = value
+        if isinstance(old_value, (tuple, numbers.Number)) and isinstance(old_value, (tuple, numbers.Number)):
+            new_value = self._range_overlap(old_value)
+            if new_value:
+                self._value = new_value
+        print(self._value)
 
     @property
     def required(self):
@@ -130,7 +144,12 @@ class NEATProperty(object):
         return repr(self)
 
     def __repr__(self):
-        keyval_str = '%s|%s' % (self.key, self.value)
+        if isinstance(self.value, tuple):
+            val_str = '%s-%s' % self.value
+        else:
+            val_str = str(self._value)
+
+        keyval_str = '%s|%s' % (self.key, val_str)
         if self.score > 0.0:
             score_str = '%+.1f' % self.score
         else:
@@ -326,7 +345,7 @@ Propertylevel = namedtuple("PropertyType", "immutable requested informational")
 class NEATRequest(object):
     """NEAT query"""
 
-    def __init__(self, requested, immutable={}, informational={}):
+    def __init__(self, requested={}, immutable={}, informational={}):
         properties = PropertyDict()
         for i in immutable.items():
             properties.insert(NEATProperty(i, level=NEATProperty.IMMUTABLE))
@@ -402,6 +421,19 @@ class PIB(list):
     def lookup_candidates(self, candidates):
         # TODO
         pass
+
+    def lookup_all(self, candidates):
+        """ lookup all candidates in list """
+        for candidate in candidates:
+            try:
+                self.lookup(candidate, apply=True)
+            except NEATPropertyError:
+                candidate.invalid = True
+                i = candidates.index(candidate)
+                print('Candidate %d is invalidated due to policy' % i)
+        for candidate in candidates:
+            if candidate.invalid:
+                candidates.remove(candidate)
 
     def lookup(self, candidate: NEATCandidate, apply=False):
         """ Look through all installed policies to find the ones which match the properties of the given candidate.
@@ -492,4 +524,8 @@ if __name__ == "__main__":
 
     pib.lookup(nc, apply=False)
     # q.policies.append(p)
+
+
+
+
     code.interact(local=locals())

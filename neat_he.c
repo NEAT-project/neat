@@ -227,9 +227,8 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
     }
 
-    if (!ctx->pvd) {
+    if (!ctx->pvd)
         ctx->pvd = neat_pvd_init(ctx);
-    }
 
     /* FIXME: derivation of the socket type is wrong.
      * FIXME: Make use of the array of protocols

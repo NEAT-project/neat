@@ -40,6 +40,7 @@ struct neat_flow_operations
   neat_flow_operations_fx on_readable;
   neat_flow_operations_fx on_writable;
   neat_flow_operations_fx on_all_written;
+  neat_flow_operations_fx on_network_changed;
 
   struct neat_ctx *ctx;
   struct neat_flow *flow;

@@ -1751,6 +1751,15 @@ neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
 }
 
 neat_error_code
+neat_write_ex(struct neat_ctx *ctx, struct neat_flow *flow,
+              const unsigned char *buffer, uint32_t amt, int stream_id, int context, int pr_method, int pr_value,
+              const char* preferred_destination, int unordered,
+              float priority)
+{
+    return NEAT_ERROR_UNABLE;
+}
+
+neat_error_code
 neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
 {

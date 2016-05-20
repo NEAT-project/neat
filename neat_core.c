@@ -841,6 +841,12 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
     return NEAT_ERROR_UNABLE;
 }
 
+neat_error_code
+neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *name)
+{
+    return NEAT_ERROR_UNABLE;
+}
+
 static void
 accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {

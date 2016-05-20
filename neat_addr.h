@@ -39,8 +39,6 @@ struct neat_addr {
     uint8_t __pad;
     uint16_t __pad2;
     uint8_t prefix_length;
-
-    struct pvds pvds;
 };
 
 //Add/remove addresses from src. address list

@@ -76,7 +76,7 @@ char* compute_reverse_ip(struct neat_addr *src_addr) {
     return out;
 }
 
-void add_pvd_to_addr(struct neat_addr* src_addr, ldns_rr_list *pvd_txt_list) {
+void add_pvd_result(struct pvds* pvds, ldns_rr_list *pvd_txt_list) {
     int nb_txt = ldns_rr_list_rr_count(pvd_txt_list);
     struct pvd_infos pvd_infos;
     struct pvd_info* pvd_info;
@@ -121,7 +121,7 @@ void add_pvd_to_addr(struct neat_addr* src_addr, ldns_rr_list *pvd_txt_list) {
 
     if (nb_txt > 0) {
         pvd->infos = pvd_infos;
-        LIST_INSERT_HEAD(&(src_addr->pvds), pvd, next_pvd);
+        LIST_INSERT_HEAD(pvds, pvd, next_pvd);
     }
 }
 
@@ -151,12 +151,20 @@ static void neat_pvd_handle_newaddr(struct neat_ctx *nc,
     char* ptr_record;
     char* reverse_ip = compute_reverse_ip(src_addr);
     char* dns_record_str;
+    struct pvd_result* pvd_result;
+
+    if ((pvd_result = (struct pvd_result *) malloc(sizeof(struct pvd_result))) == NULL) {
+        neat_log(NEAT_LOG_ERROR,
+                "%s: can't allocate buffer");
+        return;
+    }
 
     if (strlen(reverse_ip) == 0) {
         return;
     }
 
-    LIST_INIT(&(src_addr->pvds));
+    LIST_INIT(&(pvd_result->pvds));
+    pvd_result->src_addr = src_addr;
 
     LIST_FOREACH(dns_server, &(nc->resolver->server_list), next_server) {
         // Avoid static servers
@@ -213,7 +221,7 @@ static void neat_pvd_handle_newaddr(struct neat_ctx *nc,
             ldns_rr_list_sort(pvd_txt_list);
 
             // Adding txt records as new pvd record to src_addr
-            add_pvd_to_addr(src_addr, pvd_txt_list);
+            add_pvd_result(&(pvd_result->pvds), pvd_txt_list);
             ldns_rr_list_deep_free(pvd_txt_list);
         }
 
@@ -221,6 +229,8 @@ static void neat_pvd_handle_newaddr(struct neat_ctx *nc,
         ldns_resolver_deep_free(resolver);
         ldns_rr_list_deep_free(pvd_ptr_list);
     }
+
+    LIST_INSERT_HEAD(&(nc->pvd->results), pvd_result, next_result);
 }
 
 struct neat_pvd *
@@ -234,6 +244,7 @@ neat_pvd_init(struct neat_ctx *nc)
 
     pvd->newaddr_cb.event_cb = neat_pvd_handle_newaddr;
     pvd->newaddr_cb.data = pvd;
+    LIST_INIT(&(pvd->results));
 
     if (neat_add_event_cb(nc, NEAT_NEWADDR, &(pvd->newaddr_cb))) {
         neat_log(NEAT_LOG_ERROR, "%s - Could not add one pvd callbacks", __func__);

@@ -12,11 +12,7 @@
 #include "neat_queue.h"
 
 struct neat_ctx;
-
-struct neat_pvd {
-    struct neat_ctx *nc;
-    struct neat_event_cb newaddr_cb;
-};
+struct neat_addr;
 
 struct pvd_infos;
 LIST_HEAD(pvd_infos, pvd_info);
@@ -36,6 +32,20 @@ struct pvd {
 struct pvds;
 LIST_HEAD(pvds, pvd);
 
+struct pvd_result {
+    struct neat_addr* src_addr;
+    struct pvds pvds;
+    LIST_ENTRY(pvd_result) next_result;
+};
+
+struct pvd_results;
+LIST_HEAD(pvd_results, pvd_result);
+
+struct neat_pvd {
+    struct neat_ctx *nc;
+    struct neat_event_cb newaddr_cb;
+    struct pvd_results results;
+};
 //Add/remove addresses from src. address list
 // void neat_addr_update_src_list(struct neat_ctx *nc,
 //         struct sockaddr_storage *src_addr, uint32_t if_idx,

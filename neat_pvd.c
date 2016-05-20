@@ -66,7 +66,7 @@ char* compute_reverse_ip(struct neat_addr *src_addr) {
         sprintf(reverse_ip + strlen(reverse_ip), "in-addr.arpa.");
     }
 
-    if ((out = (char *) malloc(sizeof(char) * strlen(reverse_ip))) == NULL) {
+    if ((out = (char *) malloc(sizeof(char) * (strlen(reverse_ip)+1))) == NULL) {
         neat_log(NEAT_LOG_ERROR,
                 "%s: can't allocate buffer");
         return NULL;
@@ -80,11 +80,13 @@ void add_pvd_to_addr(struct neat_addr* src_addr, ldns_rr_list *pvd_txt_list) {
     struct pvd_infos pvd_infos;
     struct pvd_info* pvd_info;
     char* txt_record;
+    char* dns_record_str;
     ldns_rr *rr;
     ldns_rdf *dns_record = NULL;
     struct pvd* pvd;
 
     if ((pvd = (struct pvd *) malloc(sizeof(struct pvd))) == NULL) {
+        free(pvd);
         neat_log(NEAT_LOG_ERROR,
                 "%s: can't allocate buffer");
         return;
@@ -94,13 +96,16 @@ void add_pvd_to_addr(struct neat_addr* src_addr, ldns_rr_list *pvd_txt_list) {
     for (int i = 0; i < nb_txt; i++) {
         rr = ldns_rr_list_rr(pvd_txt_list, i);
         dns_record = ldns_rr_set_rdf(rr, NULL, 0);
-        txt_record = strdup(ldns_rdf2str(dns_record));
+        dns_record_str = ldns_rdf2str(dns_record);
+        txt_record = strdup(dns_record_str);
 
         // Removing quotes if any
         if (txt_record[0] == '"' && txt_record[strlen(txt_record)-1] == '"') {
             txt_record[strlen(txt_record)-1] = 0;
             txt_record++;
         }
+
+        free(dns_record_str);
 
         if ((pvd_info = (struct pvd_info *) malloc(sizeof(struct pvd_info))) == NULL) {
             neat_log(NEAT_LOG_ERROR,
@@ -117,8 +122,6 @@ void add_pvd_to_addr(struct neat_addr* src_addr, ldns_rr_list *pvd_txt_list) {
         pvd->infos = pvd_infos;
         LIST_INSERT_HEAD(&(src_addr->pvds), pvd, next_pvd);
     }
-
-    ldns_rr_list_deep_free(pvd_txt_list);
 }
 
 static void neat_pvd_handle_newaddr(struct neat_ctx *nc,
@@ -146,6 +149,7 @@ static void neat_pvd_handle_newaddr(struct neat_ctx *nc,
     ldns_rdf *dns_record = NULL;
     char* ptr_record;
     char* reverse_ip = compute_reverse_ip(src_addr);
+    char* dns_record_str;
 
     if (strlen(reverse_ip) == 0) {
         return;
@@ -189,12 +193,17 @@ static void neat_pvd_handle_newaddr(struct neat_ctx *nc,
         for (i = 0; i < nb_ptr; i++) {
             rr = ldns_rr_list_rr(pvd_ptr_list, i);
             dns_record = ldns_rr_set_rdf(rr, NULL, 0);
-            ptr_record = strdup(ldns_rdf2str(dns_record));
+            dns_record_str = ldns_rdf2str(dns_record);
+            ptr_record = strdup(dns_record_str);
             ptr = ldns_dname_new_frm_str(ptr_record);
 
             // Performing DNS query to 'dns_addr' for TXT records of 'ptr'
             p = ldns_resolver_query(resolver, ptr, LDNS_RR_TYPE_TXT, LDNS_RR_CLASS_IN, LDNS_RD);
             ldns_rdf_deep_free(ptr);
+            free(dns_record_str);
+            free(ptr_record);
+            // ldns_rr_list_free(rr);
+            // ldns_rr_free(dns_record);
             if (!p)  {
                 continue;
             }
@@ -204,11 +213,12 @@ static void neat_pvd_handle_newaddr(struct neat_ctx *nc,
 
             // Adding txt records as new pvd record to src_addr
             add_pvd_to_addr(src_addr, pvd_txt_list);
+            ldns_rr_list_deep_free(pvd_txt_list);
         }
 
         ldns_rdf_deep_free(dns_src);
-        // ldns_rdf_deep_free(dns_record);
         ldns_resolver_deep_free(resolver);
+        ldns_rr_list_deep_free(pvd_ptr_list);
     }
 }
 

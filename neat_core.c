@@ -801,6 +801,18 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
     return neat_he_lookup(mgr, flow, he_connected_cb);
 }
 
+neat_error_code
+neat_open_localname(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port, const char *localname)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (flow->name) {
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    return NEAT_ERROR_UNABLE;
+}
+
 static void
 accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {

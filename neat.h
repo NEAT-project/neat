@@ -43,6 +43,7 @@ struct neat_flow_operations
   neat_flow_operations_fx on_network_changed;
   neat_flow_operations_fx on_aborted;
   neat_flow_operations_fx on_timeout;
+  neat_flow_operations_fx on_send_failure;
 
   struct neat_ctx *ctx;
   struct neat_flow *flow;

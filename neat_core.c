@@ -1798,3 +1798,28 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 #endif
     return rv;
 }
+
+// Set the slowdown (i.e. congestion event) callback handler
+neat_error_code neat_set_slowdown(neat_ctx *ctx, neat_flow *flow,
+                                    neat_cb_flow_slowdown_t cb)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    flow->cb_slowdown = cb;
+
+    return NEAT_OK;
+}
+
+// Notify application about congestion via callback
+// Set ecn to true if ECN signalled congestion.
+// Set rate to non-zero if wanting to signal a new *maximum* bitrate
+void neat_cc_congestion(neat_flow *flow, int ecn, uint32_t rate)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->cb_slowdown) {
+	return;
+    }
+
+    flow->cb_slowdown(flow, ecn, rate);
+}

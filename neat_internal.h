@@ -129,6 +129,9 @@ struct neat_flow
     // Flow properties as requested by the application
     struct neat_prop_request_list *property_requests;
 
+    // Callbacks
+    neat_cb_flow_slowdown_t cb_slowdown;
+
     neat_read_impl readfx;
     neat_write_impl writefx;
     neat_accept_impl acceptfx;

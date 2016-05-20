@@ -49,6 +49,10 @@ struct neat_flow_operations
   struct neat_flow *flow;
 };
 
+// Additional callbacks from D.1.2 sect. 3.2/3.3:
+// Not including ctx pointer, flow has one
+typedef void (*neat_cb_flow_slowdown_t)(struct neat_flow *flow, int ecn, uint32_t new_rate);
+
 struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
 void neat_free_flow(struct neat_flow *flow);
 

@@ -41,6 +41,7 @@ struct neat_flow_operations
   neat_flow_operations_fx on_writable;
   neat_flow_operations_fx on_all_written;
   neat_flow_operations_fx on_network_changed;
+  neat_flow_operations_fx on_aborted;
 
   struct neat_ctx *ctx;
   struct neat_flow *flow;
@@ -70,6 +71,7 @@ neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                             const char *name, uint16_t port);
 neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
+neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow);
 neat_error_code neat_change_timeout(struct neat_ctx *ctx, struct neat_flow *flow,
                                     int seconds);
 neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow,

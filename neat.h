@@ -70,6 +70,11 @@ neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
                            const unsigned char *buffer, uint32_t amt);
+neat_error_code neat_write_ex(struct neat_ctx *ctx, struct neat_flow *flow,
+                              const unsigned char *buffer, uint32_t amt,
+                              int stream_id, int context, int pr_method, int pr_value,
+                              const char* preferred_destination, int unordered,
+                              float priority);
 neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t *outMask);
 neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,

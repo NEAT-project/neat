@@ -18,6 +18,7 @@ char* compute_reverse_ip(struct neat_addr *src_addr) {
     uint8_t family = src_addr->family;
     char reverse_ip[80]; // maximum length for a reverse /128 IPv6
     int i;
+    char *out;
 
     if (family == AF_INET6) {
         // From fd17:625c:f037:2:a00:27ff:fe37:86b6/69 => _.pvd.8.0.7.3.0.f.c.5.2.6.7.1.d.f.ip6.arpa.
@@ -64,7 +65,11 @@ char* compute_reverse_ip(struct neat_addr *src_addr) {
         sprintf(reverse_ip + strlen(reverse_ip), "in-addr.arpa.");
     }
 
-    char *out = (char *) malloc(sizeof(char) * strlen(reverse_ip));
+    if ((out = (char *) malloc(sizeof(char) * strlen(reverse_ip))) == NULL) {
+        neat_log(NEAT_LOG_ERROR,
+                "%s: can't allocate buffer");
+        return NULL;
+    }
     strcpy(out, reverse_ip);
     return out;
 }
@@ -76,8 +81,13 @@ void add_pvd_to_addr(struct neat_addr* src_addr, ldns_rr_list *pvd_txt_list) {
     char* txt_record;
     ldns_rr *rr;
     ldns_rdf *dns_record = NULL;
+    struct pvd* pvd;
 
-    struct pvd* pvd = (struct pvd *) malloc(sizeof(struct pvd));
+    if ((pvd = (struct pvd *) malloc(sizeof(struct pvd))) == NULL) {
+        neat_log(NEAT_LOG_ERROR,
+                "%s: can't allocate buffer");
+        return;
+    }
     LIST_INIT(&pvd_infos);
 
     for (int i = 0; i < nb_txt; i++) {
@@ -91,7 +101,11 @@ void add_pvd_to_addr(struct neat_addr* src_addr, ldns_rr_list *pvd_txt_list) {
             txt_record++;
         }
 
-        pvd_info = (struct pvd_info *) malloc(sizeof(struct pvd_info));
+        if ((pvd_info = (struct pvd_info *) malloc(sizeof(struct pvd_info))) == NULL) {
+            neat_log(NEAT_LOG_ERROR,
+                    "%s: can't allocate buffer");
+            continue;
+        }
         pvd_info->key = strsep(&txt_record, "=");
         pvd_info->value = txt_record;
 

@@ -813,6 +813,22 @@ neat_open_localname(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t p
     return NEAT_ERROR_UNABLE;
 }
 
+neat_error_code
+neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port, const char* localname, int count)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (flow->name) {
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    if (count < 1) {
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    return NEAT_ERROR_UNABLE;
+}
+
 static void
 accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {

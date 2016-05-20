@@ -121,6 +121,7 @@ static void neat_bsd_get_addresses(struct neat_ctx *ctx)
                                   (struct sockaddr_storage *)ifa->ifa_addr,
                                   cached_ifindex,
                                   1,
+                                  0,
                                   preferred_lifetime,
                                   valid_lifetime);
     }
@@ -232,6 +233,7 @@ static void neat_bsd_route_recv(uv_udp_t *handle,
                               (struct sockaddr_storage *)rti_info[RTAX_IFA],
                               ifa->ifam_index,
                               ifa->ifam_type == RTM_NEWADDR ? 1 : 0,
+                              0,
                               preferred_lifetime,
                               valid_lifetime);
 }

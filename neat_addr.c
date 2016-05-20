@@ -15,6 +15,8 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
     char addr_str[INET6_ADDRSTRLEN];
     struct sockaddr_in *src_addr4;
     struct sockaddr_in6 *src_addr6;
+    struct pvd* pvd;
+    struct pvd_info* pvd_info;
 
     neat_log(NEAT_LOG_INFO, "Available src-addresses:");
     for (nsrc_addr = nc->src_addrs.lh_first; nsrc_addr != NULL;
@@ -34,8 +36,6 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
                     nsrc_addr->u.v6.ifa_valid);
         }
 
-        struct pvd* pvd;
-        struct pvd_info* pvd_info;
         LIST_FOREACH(pvd, &(nsrc_addr->pvds), next_pvd) {
             neat_log(NEAT_LOG_INFO, "\t\tPVD:");
             LIST_FOREACH(pvd_info, &(pvd->infos), next_info) {

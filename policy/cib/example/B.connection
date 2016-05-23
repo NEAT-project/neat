@@ -1,0 +1,15 @@
+{
+  "type": "local",
+  "id": "B",
+  "immutable": {
+    "local_ip": "192.168.1.2",
+    "interface": "en1",
+    "is_wired": true,
+    "MTU": 1500,
+    "capacity": 40
+  },
+  "informational": {
+    "transport_UDP": "true",
+    "transport_TCP": "true"
+  }
+}

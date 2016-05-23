@@ -1,0 +1,13 @@
+{
+  "type": "local",
+  "id": "C",
+  "immutable": {
+    "local_ip": "10.10.2.2",
+    "interface": "ra0",
+    "is_wired": false,
+    "MTU": 890,
+    "remote_ip": "10.1.23.45",
+    "capacity": 0.6
+  }
+}
+

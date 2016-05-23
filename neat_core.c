@@ -1830,27 +1830,128 @@ neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
     return NEAT_ERROR_UNABLE;
 }
 
-// Set the slowdown (i.e. congestion event) callback handler
-neat_error_code neat_set_slowdown(neat_ctx *ctx, neat_flow *flow,
-                                    neat_cb_flow_slowdown_t cb)
-{
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    flow->cb_slowdown = cb;
-
-    return NEAT_OK;
-}
-
 // Notify application about congestion via callback
 // Set ecn to true if ECN signalled congestion.
 // Set rate to non-zero if wanting to signal a new *maximum* bitrate
-void neat_cc_congestion(neat_flow *flow, int ecn, uint32_t rate)
+void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate)
 {
+    //READYCALLBACKSTRUCT expects this:
+    neat_error_code code = NEAT_ERROR_OK;
+    neat_ctx *ctx = flow->ctx;
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (!flow->cb_slowdown) {
+    if (!flow->operations ||!flow->operations->on_slowdown) {
 	return;
     }
 
-    flow->cb_slowdown(flow, ecn, rate);
+    READYCALLBACKSTRUCT;
+    flow->operations->on_slowdown(flow->operations, ecn, rate);
+}
+
+// Notify application about new max. bitrate
+// Set rate to the new advised maximum bitrate
+void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_error_code code = NEAT_ERROR_OK;
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_rate_hint) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_rate_hint(flow->operations, rate);
+}
+
+// Notify application about a failed send.
+// Set errorcode in cause, context to msg.-context-id from WRITE,
+// unsent_buffer points at the failed message. Context is optional,
+// set to -1 if not specified.
+void neat_notify_send_failure(neat_flow *flow, neat_error_code code,
+			      int context, const unsigned char *unsent_buffer)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_send_failure) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_send_failure(flow->operations, context, unsent_buffer);
+}
+
+// Notify application about timeout
+void neat_notify_timeout(neat_flow *flow)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_error_code code = NEAT_ERROR_OK;
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_timeout) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_timeout(flow->operations);
+}
+
+// Notify application about an aborted connection
+// TODO: this should perhaps return a status code?
+void neat_notify_aborted(neat_flow *flow)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_error_code code = NEAT_ERROR_OK;
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_aborted) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_aborted(flow->operations);
+}
+
+// Notify application a connection has closed
+void neat_notify_close(neat_flow *flow)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_error_code code = NEAT_ERROR_OK;
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_close) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_close(flow->operations);
+}
+
+// Notify application about network changes.
+// Code should identify what happened.
+void neat_notify_network_changed(neat_flow *flow, neat_error_code code)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_network_changed) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_network_changed(flow->operations);
 }

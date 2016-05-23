@@ -129,9 +129,6 @@ struct neat_flow
     // Flow properties as requested by the application
     struct neat_prop_request_list *property_requests;
 
-    // Callbacks
-    neat_cb_flow_slowdown_t cb_slowdown;
-
     neat_read_impl readfx;
     neat_write_impl writefx;
     neat_accept_impl acceptfx;
@@ -365,5 +362,16 @@ struct neat_resolver {
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);
 
 void neat_properties_init(neat_flow* flow);
+
+// Internal routines for hooking up lower-level services/modules with
+// API callbacks:
+void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate);
+void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate);
+void neat_notify_send_failure(neat_flow *flow, neat_error_code code,
+			      int context, const unsigned char *unsent_buffer);
+void neat_notify_timeout(neat_flow *flow);
+void neat_notify_aborted(neat_flow *flow);
+void neat_notify_close(neat_flow *flow);
+void neat_notify_network_changed(neat_flow *flow, neat_error_code code);
 
 #endif

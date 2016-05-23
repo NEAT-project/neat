@@ -30,6 +30,18 @@ typedef uint64_t neat_error_code;
 struct neat_flow_operations;
 typedef neat_error_code (*neat_flow_operations_fx)(struct neat_flow_operations *);
 
+// Additional callbacks from D.1.2 sect. 3.2/3.3:
+// Callback handler function prototypes
+// Not including ctx/flow pointers, flow_ops struct has those as well
+// as status code
+//(struct neat_flow_operations *ops, int ecn, uint32_t rate)
+typedef void (*neat_cb_flow_slowdown_t)(struct neat_flow_operations *, int, uint32_t);
+//(struct neat_flow_operations *flowops, uint32_t new_rate)
+typedef void (*neat_cb_flow_rate_hint_t)(struct neat_flow_operations *, uint32_t);
+//struct neat_flow_operations *flowops, int context, const unsigned char *unsent
+typedef void (*neat_cb_send_failure_t)(struct neat_flow_operations *, int, const unsigned char *);
+
+
 struct neat_flow_operations
 {
   void *userData;
@@ -43,7 +55,10 @@ struct neat_flow_operations
   neat_flow_operations_fx on_network_changed;
   neat_flow_operations_fx on_aborted;
   neat_flow_operations_fx on_timeout;
-  neat_flow_operations_fx on_send_failure;
+  neat_flow_operations_fx on_close;
+  neat_cb_send_failure_t on_send_failure;
+  neat_cb_flow_slowdown_t on_slowdown;
+  neat_cb_flow_rate_hint_t on_rate_hint;
 
   struct neat_ctx *ctx;
   struct neat_flow *flow;
@@ -61,10 +76,6 @@ struct neat_flow_security {
     const char** tls_versions; // list of tls versions available to use
     const char** ciphers; // list of ciphers available to use
 };
-
-// Additional callbacks from D.1.2 sect. 3.2/3.3:
-// Not including ctx pointer, flow has one
-typedef void (*neat_cb_flow_slowdown_t)(struct neat_flow *flow, int ecn, uint32_t new_rate);
 
 struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
 neat_error_code neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,

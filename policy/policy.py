@@ -15,6 +15,16 @@ class NEATPropertyError(Exception):
     pass
 
 
+def numeric(value):
+    try:
+        if isinstance(value, tuple):
+            return tuple(float(i) for i in value)
+        else:
+            return float(value)
+    except ValueError:
+        return value
+
+
 class NEATProperty(object):
     """Properties are (key,value) tuples"""
 
@@ -23,7 +33,8 @@ class NEATProperty(object):
     INFORMATIONAL = 0
 
     def __init__(self, prop, level=REQUESTED, score=0.0):
-        self.key, self._value = prop
+        self.key = prop[0]
+        self._value = prop[1]
         if isinstance(self.value, (tuple, list)):
             self.value = tuple((float(i) for i in self.value))
             if self.value[0] > self.value[1]:
@@ -46,11 +57,12 @@ class NEATProperty(object):
     def value(self, value):
         old_value = self._value
         self._value = value
+
         if isinstance(old_value, (tuple, numbers.Number)) and isinstance(old_value, (tuple, numbers.Number)):
+            # FIXME ensure that tuple values are numeric
             new_value = self._range_overlap(old_value)
             if new_value:
                 self._value = new_value
-        print(self._value)
 
     @property
     def required(self):
@@ -80,7 +92,8 @@ class NEATProperty(object):
         assert isinstance(other, NEATProperty)
 
         if not isinstance(other.value, tuple) and not isinstance(self.value, tuple):
-            return (self.key, self.value) == (other.key, other.value)
+            if (self.key, self.value) == (other.key, other.value):
+                return self.value
 
         if not (self.key == other.key):
             logging.debug("Property key mismatch")
@@ -89,10 +102,18 @@ class NEATProperty(object):
         return self._range_overlap(other.value)
 
     def __hash__(self):
-        return hash(self.property)
+        # define hash for set comparisons
+        return hash(self.key)
 
     def _range_overlap(self, other_range):
         self_range = self.value
+
+        if isinstance(self.value, tuple):
+            if not all(isinstance(i, numbers.Number) for i in self.value):
+                raise ValueError("ranges values %s are not numeric" % self.value)
+        else:
+            if not isinstance(self.value, numbers.Number):
+                raise ValueError("value %s is not numeric" % self.value)
 
         # create a tuple if one of the ranges is a single numerical value
         if isinstance(other_range, numbers.Number):
@@ -102,6 +123,7 @@ class NEATProperty(object):
 
         # check if ranges have an overlapping region
         overlap = other_range[0] <= self_range[1] and other_range[1] >= self_range[0]
+
         if not overlap:
             return False
         else:
@@ -122,21 +144,41 @@ class NEATProperty(object):
 
         self.evaluated = True
 
-        if other.level >= self.level:
-            property_changed = not self == other
+        value_differs = not self == other
 
+        # TODO simplify
+        if (other.level >= self.level) and not (
+                        other.level == NEATProperty.IMMUTABLE and self.level == NEATProperty.IMMUTABLE):
+
+            # new level is higher than current level
             self.value = other.value
             self.level = other.level
-            if property_changed:
-                self.score += -(1.0 + self.level)
+            if value_differs:
+                self.score += -1.0  # FIXME adjust scoring
+
                 logging.debug("property %s updated to %s." % (self.key, self.value))
             else:
-                self.score += +(1.0 + self.level)
+                self.score += +1.0 + 0 * self.level * self.weight  # FIXME adjust scoring
+                logging.debug("property %s is already %s" % (self.key, self.value))
+        elif other.level == NEATProperty.IMMUTABLE and self.level == NEATProperty.IMMUTABLE:
+            if value_differs:
+                self.score = -9999.0  # FIXME adjust scoring
+                logging.debug("property %s is _immutable_: won't update." % (self.key))
+                raise NEATPropertyError('Immutable property')
+            else:
+                self.score += +1.0  # FIXME adjust scoring
                 logging.debug("property %s is already %s" % (self.key, self.value))
         else:
-            self.score = -9999.0  # FIXME
-            logging.debug("property %s is _immutable_: won't update." % (self.key))
-            raise NEATPropertyError('Immutable property')
+            if value_differs:
+                # property cannot be fulfilled
+                self.score += -1.0  # FIXME adjust scoring
+                logging.debug("property %s cannot be fulfilled." % (self.key))
+            else:
+                # update value if numeric value ranges overlap
+
+                self.value = self == other  # comparison returns range intersection
+                self.score += +1.0  # FIXME adjust scoring
+                logging.debug("range updated for property %s." % (self.key))
 
         logging.debug("updated %s" % (self))
 
@@ -150,7 +192,7 @@ class NEATProperty(object):
             val_str = str(self._value)
 
         keyval_str = '%s|%s' % (self.key, val_str)
-        if self.score > 0.0:
+        if self.score != 0.0:
             score_str = '%+.1f' % self.score
         else:
             score_str = ''
@@ -169,7 +211,7 @@ class PropertyDict(dict):
     """Convenience class for storing NEATProperties."""
 
     def __init__(self, iterable={}):
-        self.update(iterable, level=NEATProperty.REQUESTED)
+        self.update(iterable, default_level=NEATProperty.REQUESTED)
 
     def __getitem__(self, item):
         if isinstance(item, NEATProperty):
@@ -178,10 +220,17 @@ class PropertyDict(dict):
             key = item
         return super().__getitem__(key)
 
-    def update(self, iterable, level=NEATProperty.REQUESTED):
+    def update(self, iterable, default_level=NEATProperty.REQUESTED):
+        """ update properties from:
+                a dict containing key:value pairs
+                an iterable containing neat property objects
+                an iterable containing (key, value, level) tuples
+
+        TODO
+        """
         if isinstance(iterable, dict):
             for k, v in iterable.items():
-                self.insert(NEATProperty((k, v), level=level))
+                self.insert(NEATProperty((k, v), level=default_level))
         else:
             for i in iterable:
                 if isinstance(i, NEATProperty):
@@ -194,9 +243,11 @@ class PropertyDict(dict):
                     self.insert(NEATProperty((k, v), level=level))
 
     def intersection(self, other):
-        """Return a new PropertyDict containing the intersection of two objects."""
+        """Return a new PropertyDict containing the intersection of two PropertyDict objects."""
         properties = PropertyDict()
-        properties.update({p.key: p.value for k, p in self.items() & other.items()})
+        for k, p in self.items() & other.items():
+            properties.insert(p)
+            # properties.update({p.key: p.value })
         return properties
 
     def insert(self, property):  # TODO
@@ -441,6 +492,7 @@ class PIB(list):
 
         assert isinstance(candidate, NEATCandidate)
         logging.info("matching policies for current candidate:")
+
         for p in self.policies:
             if p.compare(candidate.properties):
                 logging.info(p)

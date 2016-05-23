@@ -31,9 +31,9 @@ In addition, each property is associated with a numeric `score` denoting whether
 
 ### Numeric property ranges
 
-In addition to single values (boolean, integer, float, ...) the value of a property may be specified as a numeric two-tuple to indicate a range, e.g. `(5,30.1)` or `(100,inf)`. 
+In addition to single values (boolean, integer, float, ...) the value of a property may be specified as a numeric two-tuple to indicate a range, e.g. `(5,30.1)` or `(100,inf)`. Single numeric values are viewed as a range with a length of one.
 
-When comparing properties with range values, two properties are considered equal if their ranges overlap (or if a single value falls within a range).
+When comparing properties containing range values, two properties are considered "equal" if their ranges overlap. A property update is considered successful if the ranges overlap - the resulting updated property will contain the intersection of the two ranges.
 
 ## NEAT Policies
 
@@ -74,16 +74,16 @@ TODO
 ## Setup
 Consider a host with three local interfaces `en0`, `en1`, `ra0`. Two of the interfaces, `en0`, `en1`, are wired while `ra0` is a 3G interface. The currently known network properties are stored in the following CIB entries:
 
-    CIB A: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600], [remote_ip: 10.1.23.45], <transport|TCP>, [capacity|10G], <dns_name|backup.example.com>}
+    CIB A: {[local_ip|10.2.0.1], [interface|en0], [is_wired|True], [MTU|9600], [remote_ip|10.1.23.45], <transport_TCP|True>, [capacity|10G], <dns_name|backup.example.com>}
 
-    CIB B: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500], <transport|TCP>, <transport|UDP>, [capacity|40G]}
+    CIB B: {[local_ip|192.168.1.2], [interface|en1], [is_wired|True], [MTU|1500], <transport_TCP|True>, <transport_UDP|True>, [capacity|40G]}
 
-    CIB C: {[local_ip: 10.10.2.2], [interface|ra0], [is_wired: False], [MTU|890], [remote_ip: 10.1.23.45] [capacity|60M]}
+    CIB C: {[local_ip|10.10.2.2], [interface|ra0], [is_wired|False], [MTU|890], [remote_ip|10.1.23.45] [capacity|60M]}
 
          
 An application would like to open a new TCP connection using NEAT to a destination host `d1` with the IP 10.1.23.45. Further the MTU should be 1500 bytes if possible. We denote this NEATRequest as follows: 
 
-    REQUEST: {[remote_ip|10.1.23.45], (MTU|1500-inf), (transport|TCP)}
+    REQUEST: {[remote_ip|10.1.23.45], (MTU|1500-inf), (transport_TCP|True)}
 
 Further assume a "bulk transfer" policy is configured on the host. This policy is triggered by a specific destination IP, which is known to be the address of backup NFS share:
 
@@ -95,31 +95,34 @@ Another configured policy is configured to enable TCP window scaling on 10G link
 
 ## Outcome
 
+### After CIB lookup
 The NEAT request yields three candidates after the CIB lookup:
 
-    CANDIDATE 1: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600]+1, [remote_ip: 10.1.23.45]+1, (transport|TCP)+1, [capacity|10G], <dns_name|backup.example.com>}
+    CANDIDATE 1: {[local_ip|10.2.0.1], [interface|en0], [is_wired|True], [MTU|9600]+1, [remote_ip|10.1.23.45]+1, (transport_TCP|True)+1, [capacity|10G], <dns_name|backup.example.com>}
 
-    CANDIDATE 2: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500]+1, (transport|TCP)+1, <transport|UDP>, [capacity|40G]+1, [remote_ip: 10.1.23.24]}
+    CANDIDATE 2: {[local_ip|192.168.1.2], [interface|en1], [is_wired|True], [MTU|1500]+1, (transport_TCP|True)+1, <transport_UDP|True>, [capacity|40G], [remote_ip|10.1.23.24]}
     
-    CANDIDATE 3: {[local_ip: 10.10.2.2], [interface|ra0], [is_wired: False], [MTU|890]-1, [remote_ip: 10.1.23.45]+1, [capacity|60M], (transport|TCP)}
+    CANDIDATE 3: {[local_ip|10.10.2.2], [interface|ra0], [is_wired|False], [MTU|890]-1, [remote_ip|10.1.23.45]+1, [capacity|60M], (transport|TCP)}
     
 The scores of the CIB properties which match the request properties have been increased
 
 ---
 
+### After PIB lookup
+
 In the next step the policies are applied starting with the "Bulk transfer" policy which has the smallest number of match entries. Candidate 1 becomes:
 
-    Candidate 1: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600]+2, [remote_ip: 10.1.23.45]+1, (transport|TCP)+1, [capacity|10G]+1, <dns_name|backup.example.com>, [capacity|10G]}
+    Candidate 1: {[local_ip|10.2.0.1], [interface|en0], [is_wired|True], [MTU|9600]+2, [remote_ip|10.1.23.45]+1, (transport|TCP)+1, [capacity|10G]+1, <dns_name|backup.example.com>, [capacity|10G]}
 
 and after the second policy:
 
-    Candidate 1: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600]+2, [remote_ip: 10.1.23.45]+1, (transport|TCP)+1, [capacity|10G]+1, <dns_name|backup.example.com>, (TCP_window_scale|true)}
+    Candidate 1: {[local_ip|10.2.0.1], [interface|en0], [is_wired|True], [MTU|9600]+2, [remote_ip|10.1.23.45]+1, (transport|TCP)+1, [capacity|10G]+1, <dns_name|backup.example.com>, (TCP_window_scale|true)}
 
 ---
 
 Next we examine Candidate 2. After the first policy the second candidate becomes:
 
-    Candidate 2: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500]+0, (transport|TCP)+1, <transport|UDP>, [capacity|40G]+1, [remote_ip: 10.1.23.24]}
+    Candidate 2: {[local_ip|192.168.1.2], [interface|en1], [is_wired|True], [MTU|1500]+0, (transport|TCP)+1, <transport|UDP>, [capacity|40G]+1, [remote_ip|10.1.23.24]}
 
 Note that the score of the MTU property was reduced, as it did not match the requested property of the "Bulk transfer" policy.
 

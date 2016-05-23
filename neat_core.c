@@ -1814,6 +1814,16 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     return rv;
 }
 
+neat_error_code
+neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
+                               uint64_t flags, int capacity_profile,
+                               struct neat_flow_security *sec)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    return NEAT_ERROR_UNABLE;
+}
+
 // Set the slowdown (i.e. congestion event) callback handler
 neat_error_code neat_set_slowdown(neat_ctx *ctx, neat_flow *flow,
                                     neat_cb_flow_slowdown_t cb)

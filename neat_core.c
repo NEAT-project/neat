@@ -640,6 +640,17 @@ static void io_all_written(neat_ctx *ctx, neat_flow *flow)
     flow->operations->on_all_written(flow->operations);
 }
 
+static void io_timeout(neat_ctx *ctx, neat_flow *flow) {
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_timeout) {
+        return;
+    }
+    neat_error_code code = NEAT_OK;
+    READYCALLBACKSTRUCT;
+    flow->operations->on_timeout(flow->operations);
+}
+
 static void do_accept(neat_ctx *ctx, neat_flow *flow);
 static void uvpollable_cb(uv_poll_t *handle, int status, int events);
 static neat_error_code
@@ -744,6 +755,34 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
 
     if ((events & UV_READABLE) && flow->acceptPending) {
         do_accept(ctx, flow);
+        return;
+    }
+
+    // TODO: Are there cases when we should keep polling?
+    if (status < 0) {
+        neat_log(NEAT_LOG_DEBUG, "status: %d - events: %d", status, events);
+        neat_log(NEAT_LOG_DEBUG, "ERROR: %s", uv_strerror(status));
+
+        if (flow->sockProtocol == IPPROTO_TCP) {
+            int so_error = 0;
+            unsigned int len = sizeof(so_error);
+            if (getsockopt(flow->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
+                neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed: %s", strerror(errno));
+                io_error(ctx, flow, NEAT_ERROR_INTERNAL);
+                return;
+            }
+
+            neat_log(NEAT_LOG_DEBUG, "Socket layer errno: %d (%s)", so_error, strerror(so_error));
+
+            if (so_error == ETIMEDOUT) {
+                io_timeout(ctx, flow);
+                return;
+            }
+        }
+
+        neat_log(NEAT_LOG_ERROR, "Unspecified internal error when polling socket");
+        io_error(ctx, flow, NEAT_ERROR_INTERNAL);
+
         return;
     }
 
@@ -887,6 +926,37 @@ neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t
 neat_error_code
 neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (seconds < 0) {
+            neat_log(NEAT_LOG_WARNING,
+                    "Unable to change timeout: "
+                    "Negative timeout specified");
+
+            return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    if (flow->sockProtocol == IPPROTO_TCP) {
+        if (flow->fd == -1) {
+            neat_log(NEAT_LOG_WARNING,
+                    "Unable to change timeout for TCP socket: "
+                    "Invalid socket value");
+            return NEAT_ERROR_BAD_ARGUMENT;
+        }
+
+        unsigned int new_value = ((unsigned int)seconds) * 1000; // seconds -> ms
+        if (setsockopt(flow->fd, IPPROTO_TCP, TCP_USER_TIMEOUT,
+                    &new_value, sizeof(new_value)) < 0) {
+            neat_log(NEAT_LOG_ERROR,
+                    "Unable to change timeout for TCP socket: "
+                    "Call to setsockopt failed with errno=%d", errno);
+            return NEAT_ERROR_IO;
+        }
+
+        return NEAT_ERROR_OK;
+    }
+
+
     return NEAT_ERROR_UNABLE;
 }
 

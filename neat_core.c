@@ -487,6 +487,13 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_writable(flow->operations);
 }
 
+#ifdef USRSCTP_SUPPORT
+// Handle notifications about SCTP events
+static void handle_usrsctp_event(neat_flow *flow, union sctp_notification *notfn)
+{
+}
+#endif // USRSCTP_SUPPORT
+
 
 #define READ_OK 0
 #define READ_WITH_ERROR 1
@@ -572,6 +579,17 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         if (n < 0) {
             return READ_WITH_ERROR;
         }
+
+	if (flags & MSG_NOTIFICATION) {
+	    // Event notification
+	    neat_log(NEAT_LOG_INFO, "SCTP event notification");
+	    handle_usrsctp_event(flow, (union sctp_notification*)(flow->readBuffer
+								  + flow->readBufferSize));
+
+	    //We don't update readBufferSize, so buffer is implicitly "freed"
+	    return READ_OK;
+	}
+
         neat_log(NEAT_LOG_INFO, " %zd bytes received\n", n);
         flow->readBufferSize += n;
         if ((flags & MSG_EOR) || (n == 0)) {
@@ -1546,6 +1564,15 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
     socklen_t slen =
             (he_ctx->candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
     char addrsrcbuf[slen], addrdstbuf[slen];
+    struct sctp_event event;
+    uint16_t event_types[] = {SCTP_ASSOC_CHANGE,
+			      SCTP_PEER_ADDR_CHANGE,
+			      SCTP_REMOTE_ERROR,
+			      SCTP_SHUTDOWN_EVENT,
+			      SCTP_ADAPTATION_INDICATION,
+			      SCTP_PARTIAL_DELIVERY_EVENT,
+			      SCTP_SEND_FAILED_EVENT};
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     he_ctx->sock = usrsctp_socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, he_ctx->candidate->ai_protocol, NULL, NULL, 0, NULL);
@@ -1572,6 +1599,21 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
         if (usrsctp_setsockopt(he_ctx->sock, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
             he_ctx->isSCTPExplicitEOR = 1;
 #endif
+
+	// Subscribe to events needed for callbacks
+	memset(&event, 0, sizeof(event));
+	event.se_assoc_id = SCTP_FUTURE_ASSOC;
+	event.se_on = 1;
+
+	unsigned int i;
+	for (i = 0; i < (unsigned int)(sizeof(event_types)/sizeof(uint16_t)); i++) {
+	    event.se_type = event_types[i];
+	    if (usrsctp_setsockopt(he_ctx->sock, IPPROTO_SCTP, SCTP_EVENT, &event,
+				   sizeof(struct sctp_event)) < 0) {
+		neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to event type %u - %s",
+			 __func__, event_types[i], strerror(errno));
+	    }
+	}
 
         neat_log(NEAT_LOG_INFO, "%s: Connect from %s to %s", __func__,
            inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, slen),

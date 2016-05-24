@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     policy1 = NEATPolicy(name='Bulk transfer')
     policy1.match.insert(NEATProperty(('remote_ip', '10.1.23.45')))
-    policy1.properties.insert(NEATProperty(('capacity', (10, 100)), level=NEATProperty.IMMUTABLE))
+    policy1.properties.insert(NEATProperty(('capacity', (10000, 100000)), level=NEATProperty.IMMUTABLE))
     policy1.properties.insert(NEATProperty(('MTU', 9600)))
     pib.register(policy1)
 

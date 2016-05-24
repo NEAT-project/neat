@@ -495,18 +495,15 @@ class PIB(list):
         pass
 
     def lookup_all(self, candidates):
-        """ lookup all candidates in list """
+        """ Lookup all candidates in list. Remove invalid candidates """
         for candidate in candidates:
             try:
                 self.lookup(candidate, apply=True)
             except NEATPropertyError:
                 candidate.invalid = True
-                i = candidates.index(candidate)
-                print('Candidate %d is invalidated due to policy' % i)
+                print('Candidate %d is invalidated due to policy' % candidates.index(candidate))
 
-        for candidate in candidates:
-            if candidate.invalid:
-                candidates.remove(candidate)
+        candidates[:] = [c for c in candidates if not c.invalid]
 
     def lookup(self, candidate: NEATCandidate, apply=False):
         """ Look through all installed policies to find the ones which match the properties of the given candidate.

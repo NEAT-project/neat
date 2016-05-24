@@ -228,6 +228,7 @@ static void neat_pvd_handle_newaddr(struct neat_ctx *nc,
         ldns_resolver_deep_free(resolver);
         ldns_rr_list_deep_free(pvd_ptr_list);
     }
+    free(reverse_ip);
 
     LIST_INSERT_HEAD(&(nc->pvd->results), pvd_result, next_result);
 }

@@ -7,7 +7,7 @@
     "is_wired": false,
     "MTU": 890,
     "remote_ip": "10.1.23.45",
-    "capacity": 0.6
+    "capacity": 60
   }
 }
 

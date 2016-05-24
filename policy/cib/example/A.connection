@@ -8,7 +8,7 @@
     "MTU": 9600,
     "remote_ip": "10.1.23.45",
     "local_ip": "10.2.0.1",
-    "capacity": 10
+    "capacity": 10000
   },
   "informational": {
     "transport": "TCP",

@@ -1441,6 +1441,12 @@ neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         // we might want a fx callback here to split between
         // kernel and userspace.. same for connect read and write
         close(flow->fd);
+
+	// KAH: AFAIK the socket API provides no way of knowing any
+	// further status of the close op for TCP.
+	// taps-transports-usage does not specify CLOSE-EVENT.TCP,
+	// maybe it should be dropped from the implementation?
+	neat_notify_close(flow);
     }
     return 0;
 }

@@ -3,13 +3,12 @@
 import code
 
 from cib import CIB
-from policy import PIB, NEATCandidate, NEATProperty, NEATPolicy, NEATRequest, NEATPropertyError
+from policy import PIB, NEATProperty, NEATPolicy, NEATRequest
 
 POLICY_DIR = "pib/"
 
 if __name__ == "__main__":
-    cib = CIB()
-    cib.load_cib('cib/example/')
+    cib = CIB('cib/example/')
     pib = PIB()
 
     # ----- example from README.md -----
@@ -42,4 +41,5 @@ if __name__ == "__main__":
     print("PIB lookup:")
     pib.lookup_all(request.candidates)
     request.dump()
-    #code.interact(local=locals(), banner='PIB lookup done')
+
+    code.interact(local=locals(), banner='PIB lookup done')

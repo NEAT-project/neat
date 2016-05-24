@@ -551,10 +551,10 @@ if __name__ == "__main__":
              "requested": {"is_wired_interface": True, "interface_speed_ge": 1000},
              "informational": {}},
          "properties": {
-             "immutable": {"MTU": "9600"},
+             "immutable": {"MTU": 9600},
              "requested": {"TCP_CC": "LBE"},
              "informational": {}}}
-    C = {"name": "C", "description": "foo and bar", "priority": "0",
+    C = {"name": "C", "description": "foo and bar", "priority": 0,
          "match": {"requested": {'foo': 'bar'}},
          "properties": {"immutable": {'foo3': 'bar3'}}}
 

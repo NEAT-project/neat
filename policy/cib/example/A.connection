@@ -1,7 +1,7 @@
 {
   "type": "local",
   "id": "A",
-  "timestamp": "1463575518",
+  "timestamp": 1463575518,
   "immutable": {
     "interface": "en0",
     "is_wired": true,

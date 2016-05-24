@@ -22,7 +22,8 @@ class CIB(object):
     # We don't care about some of the CIB properties for matching. Define these special keys here
     meta_keys = {'id', 'type', 'remote', 'local', 'filename', 'cib_source', 'timestamp', 'connection'}
 
-    def __init__(self):
+    def __init__(self, cib_dir=None):
+
         # define three repository types for CIB sources
         self.local = {}
         self.connection = {}
@@ -30,6 +31,9 @@ class CIB(object):
 
         # concatenate all CIB repositories
         self.entries = ChainMap(self.remote, self.connection, self.local)
+
+        if cib_dir:
+            self.load_cib(cib_dir)
 
     def __getitem__(self, idx):
         """Return a new PropertyDict containing the properties associated with a CIB index"""

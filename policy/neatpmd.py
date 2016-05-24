@@ -12,8 +12,10 @@ if __name__ == "__main__":
     pib = PIB()
 
     # ----- example from README.md -----
+    property1 = NEATProperty(('remote_ip', '10.1.23.45'), level=NEATProperty.IMMUTABLE)
+
     request = NEATRequest()
-    request.properties.insert(NEATProperty(('remote_ip', '10.1.23.45'), level=NEATProperty.IMMUTABLE))
+    request.properties.insert(property1)
     request.properties.insert(NEATProperty(('MTU', (1500, float('inf')))))
     request.properties.insert(NEATProperty(('transport', 'TCP')))
 
@@ -33,7 +35,7 @@ if __name__ == "__main__":
 
     #code.interact(local=locals(), banner='start')
 
-    print("PIB lookup:")
+    print("CIB lookup:")
     cib.lookup(request)
     request.dump()
     #code.interact(local=locals(), banner='CIB lookup done')
@@ -42,4 +44,6 @@ if __name__ == "__main__":
     pib.lookup_all(request.candidates)
     request.dump()
 
+    print(request.candidates[0].properties.json(indent=2))
+    print(request.candidates[1].properties.json(indent=2))
     code.interact(local=locals(), banner='PIB lookup done')

@@ -7,7 +7,6 @@ from collections import ChainMap
 
 from policy import NEATPolicy, NEATRequest, NEATCandidate, NEATProperty, PropertyDict, NEATPropertyError, numeric
 
-
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
 LOCAL = 'local'
@@ -46,14 +45,13 @@ class CIB(object):
                     properties.insert(v)
 
         else:
+            # for connection type entries expand the associated local and remote entries
             local_id = entry.get('local')
             remote_id = entry.get('remote')
 
             new_entry = {}
 
-            # for connection type entries expand the associated local and remote entries
             # properties are overwritten in the following order: remote>connection>local
-
             new_entry.update({i.key: i for i in self.entries[local_id].values() if isinstance(i, NEATProperty)})
             new_entry.update({i.key: i for i in self.entries[idx].values() if isinstance(i, NEATProperty)})
             new_entry.update({i.key: i for i in self.entries[remote_id].values() if isinstance(i, NEATProperty)})
@@ -151,7 +149,7 @@ associated local and remote CIB entries.
         # TODO expand lookup to different cib types
 
         for idx in self.local.keys():
-            #import code; code.interact(local=locals())
+            # import code; code.interact(local=locals())
             matched_properties = self[idx].intersection(query.properties)
             candidate = NEATCandidate(self[idx])
             skip_candidate = False
@@ -167,6 +165,10 @@ associated local and remote CIB entries.
             candidates.append(candidate)
         candidates.sort(key=operator.attrgetter('score'), reverse=True)
         query.candidates = candidates[0:candidate_num]
+
+    def dump(self):
+        for k in self.entries.keys():
+            print('%s: %s' % (k, self[k]))
 
     def __repr__(self):
         return 'CIB<%d>' % (len(self.local) + len(self.connection) + len(self.remote))

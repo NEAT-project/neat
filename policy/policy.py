@@ -5,6 +5,7 @@ import os
 import unittest
 import copy
 import numbers
+import math
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
@@ -32,7 +33,7 @@ class NEATProperty(object):
     REQUESTED = 1
     INFORMATIONAL = 0
 
-    def __init__(self, prop, level=REQUESTED, score=0.0):
+    def __init__(self, prop, level=REQUESTED, score=float('NaN')):
         self.key = prop[0]
         self._value = prop[1]
         if isinstance(self.value, (tuple, list)):
@@ -40,6 +41,8 @@ class NEATProperty(object):
             if self.value[0] > self.value[1]:
                 raise IndexError("Invalid property range")
         self.level = level
+
+        # a score value of NaN indicates that the property has not been evaluated
         self.score = score
         # TODO experimental meta data
         # specify relationship type between key and value, e.g., using some comparison operator
@@ -82,6 +85,10 @@ class NEATProperty(object):
 
     def items(self):
         return self.property
+
+    def dict(self):
+        """Return a dict for JSON export"""
+        return {self.key: {'value': self.value, 'level': self.level, 'score': self.score}}
 
     def __iter__(self):
         for p in self.property:
@@ -144,6 +151,9 @@ class NEATProperty(object):
 
         self.evaluated = True
 
+        if math.isnan(self.score):
+            self.score = 0.0
+
         value_differs = not self == other
 
         # TODO simplify
@@ -192,7 +202,7 @@ class NEATProperty(object):
             val_str = str(self._value)
 
         keyval_str = '%s|%s' % (self.key, val_str)
-        if self.score != 0.0:
+        if not math.isnan(self.score):
             score_str = '%+.1f' % self.score
         else:
             score_str = ''
@@ -264,6 +274,14 @@ class PropertyDict(dict):
             self[property.key].update(property)
         else:
             self.__setitem__(property.key, property)
+
+    @property
+    def list(self):
+        """ Return a list containing all properties"""
+        return [i.dict() for i in self.values()]
+
+    def json(self, indent=None):
+        return json.dumps(self.list, sort_keys=True, indent=indent)
 
     def __repr__(self):
         return '{' + ', '.join([str(i) for i in self.values()]) + '}'
@@ -383,9 +401,11 @@ class NEATCandidate(object):
             a.update(p.optional)
         return a
 
+    def dump(self):
+        print('PROPERTIES: ' + str(self.properties) + ', POLICIES: ' + str(self.policies))
+
     def __repr__(self):
-        # return "<%s>" % ",".join([a+': '+repr(getattr(self,a)) for a in dir(self) if not a.startswith('__')])
-        return 'properties: ' + str(self.properties) + ', applied policies: ' + str(self.policies)
+        return str(self.properties)
 
 
 from collections import namedtuple
@@ -419,10 +439,11 @@ class NEATRequest(object):
 
     def dump(self):
         print(self.properties)
-        print('=== candidates ===')
-        for c in self.candidates:
-            print(c)
-        print('=== candidates ===')
+        print('===== candidates =====')
+        for i, c in enumerate(self.candidates):
+            print('[%d]' % i, end='')
+            c.dump()
+        print('===== candidates =====')
 
 
 class PIB(list):
@@ -508,6 +529,9 @@ class PIB(list):
             s += str(p) + '\n'
         s += "===== PIB END ====="
         print(s)
+
+    def __repr__(self):
+        return 'PIB<%d>' % len(self)
 
     @property
     def matches(self):

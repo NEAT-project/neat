@@ -488,9 +488,25 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
 }
 
 #ifdef USRSCTP_SUPPORT
+// Handle SCTP association change events
+// includes shutdown complete, etc.
+static void handle_uscrsctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
+{
+    switch (sac->sac_state) {
+    case SCTP_SHUTDOWN_COMP:
+	neat_notify_close(flow);
+	break;
+    }
+}
+
 // Handle notifications about SCTP events
 static void handle_usrsctp_event(neat_flow *flow, union sctp_notification *notfn)
 {
+    switch (notfn->sn_header.sn_type) {
+    case SCTP_ASSOC_CHANGE:
+	handle_uscrsctp_assoc_change(flow, &notfn->sn_assoc_change);
+	break;
+    }
 }
 #endif // USRSCTP_SUPPORT
 

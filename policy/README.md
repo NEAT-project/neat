@@ -4,14 +4,15 @@
 
 ## NEAT properties
 
-NEAT properties are `key|value` tuples describing attributes used within the NEAT Policy Manager. Properties can function as a constraint, e.g., in a policy, or as a statement, e.g., in the CIB.
+NEAT properties are essentially `key|value` tuples describing attributes used within the NEAT Policy Manager. Properties can function as a constraint, e.g., in a policy, or as a statement, e.g., in the CIB.
 
 Each property is associated with a `level` or type which identifies the "importance" of the property. Specifically the level indicates if the property may be modified by the Policy Manager logic. Currently three property levels are defined in order of decreasing precedence:
 
-+ `[immutable]` these are mandatory properties whose value cannot be changed.
-+ `(requested)` these are optional properties whose value may be overwritten. A mismatch of such an requested attribute will reduce the `score` of the property (see below).
-+ `<informational>` these are properties which have an informational nature. NEAT logic may choose to ignore these.
++ `[immutable]` (level 2) these are mandatory properties whose value cannot be changed.
++ `(requested)` (level 1)these are optional properties whose value may be overwritten. A mismatch of such an requested attribute will reduce the `score` of the property (see below).
++ `<informational>` (level 0) these are properties which have an informational nature. NEAT logic may choose to ignore these.
 
+In the following we indicate the level by the bracket types as above.
  
 <img src="https://rawgit.com/NEAT-project/neat/master/policy/doc/properties.svg" width="220"/>
 
@@ -71,4 +72,4 @@ TODO
 
 # Example
  
-For an example see the [Jupyter notebook](doc/neat_policy_example.ipynb) in the `doc` directory.
+For a walkthrough example see the [Jupyter notebook](neat_policy_example.ipynb).

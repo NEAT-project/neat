@@ -167,7 +167,9 @@ associated local and remote CIB entries.
         query.candidates = candidates[0:candidate_num]
 
     def dump(self):
-        for k in self.entries.keys():
+        keys = list(self.entries.keys())
+        keys.sort()
+        for k in keys:
             print('%s: %s' % (k, self[k]))
 
     def __repr__(self):

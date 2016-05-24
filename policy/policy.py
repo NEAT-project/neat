@@ -503,6 +503,7 @@ class PIB(list):
                 candidate.invalid = True
                 i = candidates.index(candidate)
                 print('Candidate %d is invalidated due to policy' % i)
+
         for candidate in candidates:
             if candidate.invalid:
                 candidates.remove(candidate)
@@ -553,55 +554,8 @@ class PropertyTests(unittest.TestCase):
 if __name__ == "__main__":
     import code
 
-    npr1 = NEATProperty(('fu', (10, 20)))
-    npr2 = NEATProperty(('fu', (15, 30)))
-    npr3 = NEATProperty(('fu', 13))
-    npr2._range_overlap(npr1.value)
-
     np = NEATProperty(('foo', 'bar'))
     pd = PropertyDict()
     pd.insert(np)
-
-    nc = NEATCandidate()
-    nc.add(np)
-    nc.add(NEATProperty(('foo2', 'bar2')))
-
-    # p = NEATPolicy({"name":"TCP","match":{"TCP":True},"optional":{"TCP_type":"cubic"},"required":{"wired_interface":True}})
-
-
-    A = {"name": "A", "description": "bulk file transfer", "priority": "0",
-         "match": {
-             "immutable": {},
-             "requested": {"is_wired_interface": True, "interface_speed_ge": 1000},
-             "informational": {}},
-         "properties": {
-             "immutable": {"MTU": 9600},
-             "requested": {"TCP_CC": "LBE"},
-             "informational": {}}}
-    C = {"name": "C", "description": "foo and bar", "priority": 0,
-         "match": {"requested": {'foo': 'bar'}},
-         "properties": {"immutable": {'foo3': 'bar3'}}}
-
-    p1 = NEATPolicy(A)
-    p2 = NEATPolicy(C)
-
-    #    if p2.compare(nc.properties):
-    #        p2.apply(nc.properties)
-
-    query_requested = {"TCP": True, "address": "10.10.1.1"}
-    query_immutable = {"MTU": 9600, "is_wired_interface": True}
-
-    q = NEATRequest(query_requested, query_immutable)
-
-    pib = PIB()
-    pib.load_policies()
-    pib.register(p1)
-    pib.register(p2)
-
-    pib.lookup(nc, apply=False)
-    # q.policies.append(p)
-
-
-
 
     code.interact(local=locals())

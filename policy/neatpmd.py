@@ -17,7 +17,7 @@ if __name__ == "__main__":
     request = NEATRequest()
     request.properties.insert(property1)
     request.properties.insert(NEATProperty(('MTU', (1500, float('inf')))))
-    request.properties.insert(NEATProperty(('transport', 'TCP')))
+    request.properties.insert(NEATProperty(('transport_TCP', True)))
 
     request.properties
 
@@ -44,6 +44,6 @@ if __name__ == "__main__":
     pib.lookup_all(request.candidates)
     request.dump()
 
-    print(request.candidates[0].properties.json(indent=2))
-    print(request.candidates[1].properties.json(indent=2))
+    for candidate in request.candidates:
+        print(candidate.properties.json())
     code.interact(local=locals(), banner='PIB lookup done')

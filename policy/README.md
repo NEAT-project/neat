@@ -40,8 +40,8 @@ When comparing properties containing range values, two properties are considered
 
 Policies are based around NEAT properties. Each policy contains the following entities:
 
-+ `match`: contains an object describing the properties which should trigger the policy. An empty match field will match *all* properties of a candidate. Match field properties are matched only against properties whose precedence is equal or higher than their own. 
-+ `properties`: contains an object which lists a set of new properties which should be applied to the connection (if possible given the property precedences).
++ `match`: object containing the set of properties which should trigger the policy. A policy is triggered if *all* of these properties are matched. An empty match field will match *all* properties of a candidate. Match field properties are matched only against properties whose precedence is equal or higher than their own. 
++ `properties`: object containing a set of properties which should be applied to the connection candidate (if feasible given the property precedences).
 
 ### NEAT Candidates
 

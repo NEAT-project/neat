@@ -275,6 +275,7 @@ class PropertyDict(dict):
         else:
             self.__setitem__(property.key, property)
 
+    from operator import itemgetter
     @property
     def list(self):
         """ Return a list containing all properties"""

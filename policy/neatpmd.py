@@ -12,7 +12,7 @@ if __name__ == "__main__":
     pib = PIB()
 
     # ----- example from README.md -----
-    property1 = NEATProperty(('remote_ip', '10.1.23.45'), level=NEATProperty.IMMUTABLE)
+    property1 = NEATProperty(('remote_ip', '10.1.23.45'), precedence=NEATProperty.IMMUTABLE)
 
     request = NEATRequest()
     request.properties.insert(property1)
@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     policy1 = NEATPolicy(name='Bulk transfer')
     policy1.match.insert(NEATProperty(('remote_ip', '10.1.23.45')))
-    policy1.properties.insert(NEATProperty(('capacity', (10000, 100000)), level=NEATProperty.IMMUTABLE))
+    policy1.properties.insert(NEATProperty(('capacity', (10000, 100000)), precedence=NEATProperty.IMMUTABLE))
     policy1.properties.insert(NEATProperty(('MTU', 9600)))
     pib.register(policy1)
 

@@ -86,11 +86,11 @@ class CIB(object):
 
                 # convert JSON properties to NEATProperties
                 for key, value in p.pop('informational', {}).items():
-                    p[key] = NEATProperty((key, value), level=NEATProperty.INFORMATIONAL)
+                    p[key] = NEATProperty((key, value), precedence=NEATProperty.INFORMATIONAL)
                 for key, value in p.pop('requested', {}).items():
-                    p[key] = NEATProperty((key, value), level=NEATProperty.REQUESTED)
+                    p[key] = NEATProperty((key, value), precedence=NEATProperty.REQUESTED)
                 for key, value in p.pop('immutable', {}).items():
-                    p[key] = NEATProperty((key, value), level=NEATProperty.IMMUTABLE)
+                    p[key] = NEATProperty((key, value), precedence=NEATProperty.IMMUTABLE)
 
                 self.register(p)
 
@@ -105,7 +105,7 @@ class CIB(object):
         # cib_properties = PropertyDict()
         # TODO for now we assume that all CIB properties are informational
         # FIXME
-        # cib_properties.update(cib_source, level=NEATProperty.INFORMATIONAL)
+        # cib_properties.update(cib_source, precedence=NEATProperty.INFORMATIONAL)
 
         # e.g. self.local['d1'] = {...}
         getattr(self, current_type)[current_idx] = cib_source

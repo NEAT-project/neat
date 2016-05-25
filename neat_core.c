@@ -14,6 +14,8 @@
 
 #ifdef __linux__
     #include <net/if.h>
+    #include <sys/socket.h>
+    #include <linux/sctp.h>
 #endif
 
 #include "neat.h"
@@ -46,6 +48,9 @@ static int neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
 static int neat_close_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow);
 static int neat_shutdown_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow);
 static void handle_upcall(struct socket *s, void *arg, int flags);
+static void neat_sctp_init_events(struct socket *sock);
+#else
+static void neat_sctp_init_events(int sock);
 #endif
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
@@ -487,11 +492,13 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_writable(flow->operations);
 }
 
-#ifdef USRSCTP_SUPPORT
+#ifdef IPPROTO_SCTP //USRSCTP_SUPPORT
 // Handle SCTP association change events
 // includes shutdown complete, etc.
-static void handle_uscrsctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
+static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
     switch (sac->sac_state) {
     case SCTP_SHUTDOWN_COMP:
 	neat_notify_close(flow);
@@ -500,15 +507,20 @@ static void handle_uscrsctp_assoc_change(neat_flow *flow, struct sctp_assoc_chan
 }
 
 // Handle notifications about SCTP events
-static void handle_usrsctp_event(neat_flow *flow, union sctp_notification *notfn)
+static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
     switch (notfn->sn_header.sn_type) {
     case SCTP_ASSOC_CHANGE:
-	handle_uscrsctp_assoc_change(flow, &notfn->sn_assoc_change);
+	handle_sctp_assoc_change(flow, &notfn->sn_assoc_change);
 	break;
+    default:
+	neat_log(NEAT_LOG_WARNING, "Got unhandled SCTP event type %d",
+		 notfn->sn_header.sn_type);
     }
 }
-#endif // USRSCTP_SUPPORT
+#endif //IPPROTO_SCTP //USRSCTP_SUPPORT
 
 
 #define READ_OK 0
@@ -573,20 +585,15 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         if ((n = recvmsg(flow->fd, &msghdr, 0)) < 0) {
             return READ_WITH_ERROR;
         }
-        flow->readBufferSize += n;
-        if ((msghdr.msg_flags & MSG_EOR) || (n == 0)) {
-            flow->readBufferMsgComplete = 1;
-        }
-        if (!flow->readBufferMsgComplete) {
-            return READ_WITH_ERROR;
-        }
-#else
+
+	int flags = msghdr.msg_flags; // For notification handling
+#else // !defined(USRSCTP_SUPPORT)
         len = sizeof(struct sockaddr);
         memset((void *)&addr, 0, sizeof(struct sockaddr_in));
 #ifdef HAVE_SIN_LEN
-	    addr.sin_len = sizeof(struct sockaddr_in);
+	addr.sin_len = sizeof(struct sockaddr_in);
 #endif
-	    addr.sin_family = AF_INET;
+	addr.sin_family = AF_INET;
 
         n = usrsctp_recvv(flow->sock, flow->readBuffer + flow->readBufferSize,
                                flow->readBufferAllocation - flow->readBufferSize,
@@ -595,17 +602,36 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         if (n < 0) {
             return READ_WITH_ERROR;
         }
-
+#endif // else !defined(USRSCTP_SUPPORT)
+        // Same handling for both kernel and userspace SCTP
 	if (flags & MSG_NOTIFICATION) {
 	    // Event notification
 	    neat_log(NEAT_LOG_INFO, "SCTP event notification");
-	    handle_usrsctp_event(flow, (union sctp_notification*)(flow->readBuffer
+
+	    if (!(flags & MSG_EOR)) {
+		neat_log(NEAT_LOG_WARNING, "buffer overrun reading SCTP notification");
+		// TODO: handle this properly
+		return READ_WITH_ERROR;
+	    }
+	    handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer
 								  + flow->readBufferSize));
+
 
 	    //We don't update readBufferSize, so buffer is implicitly "freed"
 	    return READ_OK;
 	}
 
+// TODO KAH: the code below seems to do the same thing in both cases!
+// Should refactor it into one code path.
+#if !defined(USRSCTP_SUPPORT)
+        flow->readBufferSize += n;
+        if ((msghdr.msg_flags & MSG_EOR) || (n == 0)) {
+            flow->readBufferMsgComplete = 1;
+        }
+        if (!flow->readBufferMsgComplete) {
+            return READ_WITH_ERROR;
+        }
+#else // !defined(USRSCTP_SUPPORT)
         neat_log(NEAT_LOG_INFO, " %zd bytes received\n", n);
         flow->readBufferSize += n;
         if ((flags & MSG_EOR) || (n == 0)) {
@@ -620,9 +646,9 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         if (n == 0) {
             return READ_WITH_ZERO;
         }
-#endif
+#endif // else !defined(USRSCTP_SUPPORT)
     }
-#endif
+#endif // defined(IPPROTO_SCTP)
     READYCALLBACKSTRUCT;
     flow->operations->on_readable(flow->operations);
     return READ_OK;
@@ -1572,8 +1598,12 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         if (setsockopt(he_ctx->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
             he_ctx->isSCTPExplicitEOR = 1;
 #endif
-            break;
+#ifndef USRSCTP_SUPPORT
+	    // Subscribe to events needed for callbacks
+	    neat_sctp_init_events(he_ctx->fd);
 #endif
+            break;
+#endif // IPPROTO_SCTP
         default:
             break;
     }
@@ -1701,6 +1731,60 @@ neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     }
 }
 
+#if defined(USRSCTP_SUPPORT) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+// Set up SCTP event subscriptions using RFC6458 API
+// (does not work with Linux kernel SCTP)
+static void neat_sctp_init_events(struct socket *sock)
+{
+    struct sctp_event event;
+    unsigned int i;
+    uint16_t event_types[] = {SCTP_ASSOC_CHANGE,
+			      SCTP_PEER_ADDR_CHANGE,
+			      SCTP_REMOTE_ERROR,
+			      SCTP_SHUTDOWN_EVENT,
+			      SCTP_ADAPTATION_INDICATION,
+			      SCTP_PARTIAL_DELIVERY_EVENT,
+			      SCTP_SEND_FAILED_EVENT};
+
+    memset(&event, 0, sizeof(event));
+    event.se_assoc_id = SCTP_FUTURE_ASSOC;
+    event.se_on = 1;
+
+    for (i = 0; i < (unsigned int)(sizeof(event_types)/sizeof(uint16_t)); i++) {
+	event.se_type = event_types[i];
+	if (usrsctp_setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &event,
+			       sizeof(struct sctp_event)) < 0) {
+	    neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to event type %u - %s",
+		     __func__, event_types[i], strerror(errno));
+	}
+    }
+}
+#else
+// TODO: might want to exclude Windows from this branch
+
+// Set up SCTP event subscriptions using deprecated API
+// (for compatibility with Linux kernel SCTP)
+static void neat_sctp_init_events(int sock)
+{
+    struct sctp_event_subscribe event;
+
+    memset(&event, 0, sizeof(event));
+    event.sctp_association_event = 1;
+    event.sctp_address_event = 1;
+    event.sctp_send_failure_event = 1;
+    event.sctp_peer_error_event = 1;
+    event.sctp_shutdown_event = 1;
+    event.sctp_partial_delivery_event = 1;
+    event.sctp_adaptation_layer_event = 1;
+
+    if (setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &event,
+		   sizeof(struct sctp_event_subscribe)) < 0) {
+	neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to SCTP events - %s",
+		 __func__, strerror(errno));
+    }
+}
+#endif //defined(USRSCTP_SUPPORT) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+
 #ifdef USRSCTP_SUPPORT
 static struct socket *
 neat_accept_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow, struct socket *sock)
@@ -1728,14 +1812,6 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
     socklen_t slen =
             (he_ctx->candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
     char addrsrcbuf[slen], addrdstbuf[slen];
-    struct sctp_event event;
-    uint16_t event_types[] = {SCTP_ASSOC_CHANGE,
-			      SCTP_PEER_ADDR_CHANGE,
-			      SCTP_REMOTE_ERROR,
-			      SCTP_SHUTDOWN_EVENT,
-			      SCTP_ADAPTATION_INDICATION,
-			      SCTP_PARTIAL_DELIVERY_EVENT,
-			      SCTP_SEND_FAILED_EVENT};
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -1764,20 +1840,8 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
             he_ctx->isSCTPExplicitEOR = 1;
 #endif
 
-	// Subscribe to events needed for callbacks
-	memset(&event, 0, sizeof(event));
-	event.se_assoc_id = SCTP_FUTURE_ASSOC;
-	event.se_on = 1;
-
-	unsigned int i;
-	for (i = 0; i < (unsigned int)(sizeof(event_types)/sizeof(uint16_t)); i++) {
-	    event.se_type = event_types[i];
-	    if (usrsctp_setsockopt(he_ctx->sock, IPPROTO_SCTP, SCTP_EVENT, &event,
-				   sizeof(struct sctp_event)) < 0) {
-		neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to event type %u - %s",
-			 __func__, event_types[i], strerror(errno));
-	    }
-	}
+	// Subscribe to SCTP events
+	neat_sctp_init_events(he_ctx->sock);
 
         neat_log(NEAT_LOG_INFO, "%s: Connect from %s to %s", __func__,
            inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, slen),

@@ -1731,11 +1731,15 @@ neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     }
 }
 
-#if defined(USRSCTP_SUPPORT) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-// Set up SCTP event subscriptions using RFC6458 API
-// (does not work with Linux kernel SCTP)
+#if defined(USRSCTP_SUPPORT)
 static void neat_sctp_init_events(struct socket *sock)
+#else
+static void neat_sctp_init_events(int sock)
+#endif
+#if defined(USRSCTP_SUPPORT) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 {
+    // Set up SCTP event subscriptions using RFC6458 API
+    // (does not work with Linux kernel SCTP)
     struct sctp_event event;
     unsigned int i;
     uint16_t event_types[] = {SCTP_ASSOC_CHANGE,
@@ -1752,8 +1756,12 @@ static void neat_sctp_init_events(struct socket *sock)
 
     for (i = 0; i < (unsigned int)(sizeof(event_types)/sizeof(uint16_t)); i++) {
 	event.se_type = event_types[i];
-	if (usrsctp_setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &event,
-			       sizeof(struct sctp_event)) < 0) {
+#if defined(USRSCTP_SUPPORT)
+	if (usrsctp_setsockopt(
+#else
+	if (setsockopt(
+#endif
+		sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(struct sctp_event)) < 0) {
 	    neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to event type %u - %s",
 		     __func__, event_types[i], strerror(errno));
 	}
@@ -1764,7 +1772,6 @@ static void neat_sctp_init_events(struct socket *sock)
 
 // Set up SCTP event subscriptions using deprecated API
 // (for compatibility with Linux kernel SCTP)
-static void neat_sctp_init_events(int sock)
 {
     struct sctp_event_subscribe event;
 

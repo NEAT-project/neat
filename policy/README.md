@@ -6,21 +6,21 @@
 
 NEAT properties are essentially `key|value` tuples describing attributes used within the NEAT Policy Manager. Properties can function as a constraint, e.g., in a policy, or as a statement, e.g., in the CIB.
 
-Each property is associated with a `level` or type which identifies the "importance" of the property. Specifically the level indicates if the property may be modified by the Policy Manager logic. Currently three property levels are defined in order of decreasing precedence:
+Each property is associated with a `precedence` or type which identifies the "importance" of the property. Specifically the precedence indicates if the property may be modified by the Policy Manager logic. Currently three property precedence levels are defined in order of decreasing priority:
 
-+ `[immutable]` (level 2) these are mandatory properties whose value cannot be changed.
-+ `(requested)` (level 1)these are optional properties whose value may be overwritten. A mismatch of such an requested attribute will reduce the `score` of the property (see below).
-+ `<informational>` (level 0) these are properties which have an informational nature. NEAT logic may choose to ignore these.
++ `[immutable]` (precedence 2) these are mandatory properties whose value cannot be changed.
++ `(requested)` (precedence 1)these are optional properties whose value may be overwritten. A mismatch of such an requested attribute will reduce the `score` of the property (see below).
++ `<informational>` (precedence 0) these are properties which have an informational nature. NEAT logic may choose to ignore these.
 
-In the following we indicate the level by the bracket types as above.
+In the following we indicate a property's precedence by the bracket types shown above.
  
 <img src="https://rawgit.com/NEAT-project/neat/master/policy/doc/properties.svg" width="220"/>
 
 
-Two NEAT properties are considered 'equal' if their key and value attributes are identical, i.e., levels and scores are ignored when testing for equality. A comparison of two properties always yields a boolean result.
+Two NEAT properties are considered 'equal' if their key and value attributes are identical, i.e., precedences and scores are ignored when testing for equality. A comparison of two properties always yields a boolean result.
 
 
-In the course of a lookup in the PM, properties from various sources will be compared and their values may be *updated*. A property's value may *only* be updated by another property whose level is greater or equal than itself. A property may only be updated by another property with the same key. When a property is updated it inherits the level of the updating property as illustrated below:
+In the course of a lookup in the PM, properties from various sources will be compared and their values may be *updated*. A property's value may *only* be updated by another property whose precedence is greater or equal than itself. A property may only be updated by another property with the same key. When a property is updated it inherits the precedence of the updating property as illustrated below:
 
   <img src="https://rawgit.com/NEAT-project/neat/master/policy/doc/properties_example.svg" width="380"/>
 
@@ -40,8 +40,8 @@ When comparing properties containing range values, two properties are considered
 
 Policies are based around NEAT properties. Each policy contains the following entities:
 
-+ `match`: contains an object describing the properties which should trigger the policy. An empty match field will match *all* properties of a candidate. Match field properties are matched only against properties whose level is equal or higher than their own. 
-+ `properties`: contains an object which lists a set of new properties which should be applied to the connection (if possible given the property levels).
++ `match`: contains an object describing the properties which should trigger the policy. An empty match field will match *all* properties of a candidate. Match field properties are matched only against properties whose precedence is equal or higher than their own. 
++ `properties`: contains an object which lists a set of new properties which should be applied to the connection (if possible given the property precedences).
 
 ### NEAT Candidates
 

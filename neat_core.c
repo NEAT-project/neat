@@ -968,15 +968,69 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
         }
 
         return NEAT_ERROR_OK;
+#ifdef USRSCTP_SUPPORT
+    } else if (flow->sockProtocol == IPPROTO_SCTP) {
+        unsigned int new_value = ((unsigned int)seconds) * 1000 / 4; // seconds -> ms
+        usrsctp_sysctl_set_sctp_heartbeat_interval_default((uint32_t)new_value);
+        usrsctp_sysctl_set_sctp_assoc_rtx_max_default(4);
+        return NEAT_ERROR_OK;
+#endif
     }
 
 
     return NEAT_ERROR_UNABLE;
 }
 
+#ifdef USRSCTP_SUPPORT
+static void
+set_primary_dest_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
+{
+    neat_flow *flow = (neat_flow *)resolver->userData1;
+    struct neat_ctx *ctx = flow->ctx;
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (code != NEAT_RESOLVER_OK) {
+        io_error(ctx, flow, code);
+        return;
+    }
+
+    assert(results->lh_first);
+
+    struct sctp_setprim addr;
+    addr.ssp_addr = results->lh_first->dst_addr;
+
+    if (usrsctp_setsockopt(flow->sock, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr)) < 0) {
+        neat_log(NEAT_LOG_DEBUG, "Call to usrsctp_setsockopt failed");
+        return;
+    }
+
+    /*
+    char dest_addr[INET6_ADDRSTRLEN];
+    inet_ntop(results->lh_first->ai_family,
+            (const void*)&(results->lh_first->dst_addr),
+            dest_addr,
+            INET6_ADDRSTRLEN);
+
+    neat_log(NEAT_LOG_DEBUG, "Updated primary destination address to: %s", dest_addr);
+    */
+}
+#endif
+
 neat_error_code
 neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *name)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+#ifdef USRSCTP_SUPPORT
+    if (flow->sockProtocol == IPPROTO_SCTP) {
+        int protocols[] = {IPPROTO_SCTP};
+
+        ctx->resolver->handle_resolve = set_primary_dest_resolve_cb;
+        neat_getaddrinfo(ctx->resolver, AF_UNSPEC, name, flow->port,
+                protocols, sizeof(*protocols)/sizeof(protocols[0]));
+
+        return NEAT_ERROR_OK;
+    }
+#endif
     return NEAT_ERROR_UNABLE;
 }
 
@@ -1059,6 +1113,10 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     if (!ctx->resolver)
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf",
                                            accept_resolve_cb, NULL);
+    else if (ctx->resolver->handle_resolve != accept_resolve_cb)
+        // TODO: Race condition if this is updated before the callback for
+        // set_primary_addr is called
+        ctx->resolver->handle_resolve = accept_resolve_cb;
 
     ctx->resolver->userData1 = (void *)flow;
 

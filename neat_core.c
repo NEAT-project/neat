@@ -950,9 +950,23 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
             return NEAT_ERROR_BAD_ARGUMENT;
         }
 
-        unsigned int new_value = ((unsigned int)seconds) * 1000; // seconds -> ms
-        if (setsockopt(flow->fd, IPPROTO_TCP, TCP_USER_TIMEOUT,
-                    &new_value, sizeof(new_value)) < 0) {
+        unsigned int new_value =
+#if defined(__FreeBSD__) || defined(__NetBSD__)
+            ((unsigned int)seconds);
+#else
+            ((unsigned int)seconds) * 1000; // seconds -> ms
+#endif
+
+        int rc = setsockopt(flow->fd, IPPROTO_TCP,
+#if defined(__FreeBSD__) || defined(__NetBSD__)
+                TCP_SNDUTO_TIMEOUT,
+#else
+                TCP_USER_TIMEOUT,
+#endif
+                &new_value,
+                sizeof(new_value));
+
+        if (rc < 0) {
             neat_log(NEAT_LOG_ERROR,
                     "Unable to change timeout for TCP socket: "
                     "Call to setsockopt failed with errno=%d", errno);

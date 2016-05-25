@@ -960,6 +960,8 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+    // TCP User Timeout isn't supported by these platforms:
+#if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
     if (seconds < 0) {
             neat_log(NEAT_LOG_WARNING,
                     "Unable to change timeout: "
@@ -985,6 +987,8 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 
         int rc = setsockopt(flow->fd, IPPROTO_TCP,
 #if defined(__FreeBSD__) || defined(__NetBSD__)
+	    // KAH: turns out this was implemented on a feature
+	    // branch, and sadly not merged to mainline
                 TCP_SNDUTO_TIMEOUT,
 #else
                 TCP_USER_TIMEOUT,
@@ -1008,6 +1012,7 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
         return NEAT_ERROR_OK;
 #endif
     }
+#endif // !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
 
 
     return NEAT_ERROR_UNABLE;

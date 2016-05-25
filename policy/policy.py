@@ -393,7 +393,7 @@ class NEATCandidate(object):
 
     @property
     def score(self):
-        return sum(i.score for i in self.properties.values())
+        return sum(i.score for i in self.properties.values() if not math.isnan(i.score))
 
     @property
     def policy_properties(self):

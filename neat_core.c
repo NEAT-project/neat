@@ -16,7 +16,6 @@
     #include <net/if.h>
 #ifndef USRSCTP_SUPPORT
     #include <sys/socket.h>
-    #include <linux/sctp.h>
 #endif // USRSCTP_SUPPORT
 #endif // __linux__
 

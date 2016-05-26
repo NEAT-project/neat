@@ -361,8 +361,6 @@ struct neat_resolver {
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);
 
-void neat_properties_init(neat_flow* flow);
-
 // Internal routines for hooking up lower-level services/modules with
 // API callbacks:
 void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate);

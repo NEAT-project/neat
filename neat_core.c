@@ -1001,13 +1001,35 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
         }
 
         return NEAT_ERROR_OK;
-#ifdef USRSCTP_SUPPORT
     } else if (flow->sockProtocol == IPPROTO_SCTP) {
+#ifdef USRSCTP_SUPPORT
         unsigned int new_value = ((unsigned int)seconds) * 1000 / 4; // seconds -> ms
         usrsctp_sysctl_set_sctp_heartbeat_interval_default((uint32_t)new_value);
         usrsctp_sysctl_set_sctp_assoc_rtx_max_default(4);
-        return NEAT_ERROR_OK;
+#else
+        struct sctp_paddrparams params;
+        unsigned int optsize = sizeof(params);
+        int rc = getsockopt(flow->fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, &optsize);
+        if (rc < 0) {
+            neat_log(NEAT_LOG_ERROR,
+                    "Unable to change timeout for TCP socket: "
+                    "Call to getsockopt failed with errno=%d", errno);
+            return NEAT_ERROR_IO;
+        }
+
+        params.spp_hbinterval = (unsigned int)seconds * 1000 / 4;
+        params.spp_flags |= SPP_HB_ENABLE;
+        params.spp_pathmaxrxt = 4;
+
+        rc = setsockopt(flow->fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params));
+        if (rc < 0) {
+            neat_log(NEAT_LOG_ERROR,
+                    "Unable to change timeout for TCP socket: "
+                    "Call to setsockopt failed with errno=%d", errno);
+            return NEAT_ERROR_IO;
+        }
 #endif
+        return NEAT_ERROR_OK;
     }
 #endif // !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
 

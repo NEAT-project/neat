@@ -2,7 +2,6 @@
 #################################################
 LIST(APPEND neat_programs
     neat_resolver_example.c
-    neat_property_api_test.c
 )
 
 

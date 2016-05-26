@@ -20,7 +20,6 @@
     #define NEAT_INTERNAL_USRSCTP
 #endif
 
-#include "neat_api.h"
 #include "neat_log.h"
 
 #define NEAT_INTERNAL_CTX \
@@ -125,9 +124,6 @@ struct neat_flow
     size_t readBufferSize;        // amount of received data
     size_t readBufferAllocation;  // size of buffered allocation
     int readBufferMsgComplete;    // it contains a complete user message
-
-    // Flow properties as requested by the application
-    struct neat_prop_request_list *property_requests;
 
     neat_read_impl readfx;
     neat_write_impl writefx;

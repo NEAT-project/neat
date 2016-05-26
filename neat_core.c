@@ -33,6 +33,9 @@
 #endif
 #ifdef __linux__
     #include "neat_linux_internal.h"
+#if !defined(HAVE_NETINET_SCTP_H)
+    #include <linux/sctp.h>
+#endif
 #endif
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
     #include "neat_bsd_internal.h"

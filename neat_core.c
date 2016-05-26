@@ -799,7 +799,11 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
         neat_log(NEAT_LOG_DEBUG, "status: %d - events: %d", status, events);
         neat_log(NEAT_LOG_DEBUG, "ERROR: %s", uv_strerror(status));
 
+#ifndef USRSCTP_SUPPORT
+        if (flow->sockProtocol == IPPROTO_TCP || flow->sockProtocol == IPPROTO_SCTP) {
+#else
         if (flow->sockProtocol == IPPROTO_TCP) {
+#endif
             int so_error = 0;
             unsigned int len = sizeof(so_error);
             if (getsockopt(flow->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {

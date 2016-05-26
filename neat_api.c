@@ -155,10 +155,6 @@ void neat_remove_all_properties(neat_flow* flow) {
         struct neat_prop_request* prop = LIST_FIRST(flow->property_requests); 
         LIST_REMOVE(prop, property_list);
         free(prop->property);
-
-        if (prop->type == TYPE_STRING)
-            free(prop->data.string_value);
-
         free(prop);
     }
 }
@@ -176,8 +172,6 @@ int neat_check_property(neat_flow* flow, char* property) {
 
 // Initialize the property set to the defaults
 void neat_properties_init(neat_flow* flow) {
-    LIST_INIT(flow->property_requests);
-
     neat_set_property_bool(flow, "seamless_handover", 0);
     neat_set_property_bool(flow, "optimise_continuous_connectivity", 0);
     neat_set_property_int(flow, "metadata_privacy", 0);
@@ -206,8 +200,4 @@ void neat_properties_init(neat_flow* flow) {
     neat_set_property_bool(flow, "congestion_control_banned", 0);
     neat_set_property_bool(flow, "retransmissions_required", 0);
     neat_set_property_bool(flow, "retransmissions_banned", 0);
-}
-
-void neat_properties_destroy(neat_flow* flow) {
-    neat_remove_all_properties(flow);
 }

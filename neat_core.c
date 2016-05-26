@@ -1746,10 +1746,10 @@ static void neat_sctp_init_events(struct socket *sock)
 #else
 static void neat_sctp_init_events(int sock)
 #endif
-#if defined(USRSCTP_SUPPORT) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+#if defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
 {
     // Set up SCTP event subscriptions using RFC6458 API
-    // (does not work with Linux kernel SCTP)
+    // (does not work with Linux/OSX/NetBSD kernel SCTP)
     struct sctp_event event;
     unsigned int i;
     uint16_t event_types[] = {SCTP_ASSOC_CHANGE,
@@ -1779,6 +1779,8 @@ static void neat_sctp_init_events(int sock)
 }
 #else
 // TODO: might want to exclude Windows from this branch
+// (assuming it would be built with USRSCTP on, but if it isn't then
+// this won't compile)
 
 // Set up SCTP event subscriptions using deprecated API
 // (for compatibility with Linux kernel SCTP)
@@ -1800,7 +1802,7 @@ static void neat_sctp_init_events(int sock)
 		 __func__, strerror(errno));
     }
 }
-#endif //defined(USRSCTP_SUPPORT) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+#endif //defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
 
 #ifdef USRSCTP_SUPPORT
 static struct socket *

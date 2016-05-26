@@ -14,9 +14,11 @@
 
 #ifdef __linux__
     #include <net/if.h>
+#ifndef USRSCTP_SUPPORT
     #include <sys/socket.h>
     #include <linux/sctp.h>
-#endif
+#endif // USRSCTP_SUPPORT
+#endif // __linux__
 
 #include "neat.h"
 #include "neat_internal.h"

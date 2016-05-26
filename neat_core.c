@@ -493,7 +493,7 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_writable(flow->operations);
 }
 
-#ifdef IPPROTO_SCTP //USRSCTP_SUPPORT
+#ifdef IPPROTO_SCTP
 // Handle SCTP association change events
 // includes shutdown complete, etc.
 static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
@@ -503,6 +503,11 @@ static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *
     switch (sac->sac_state) {
     case SCTP_SHUTDOWN_COMP:
 	neat_notify_close(flow);
+	break;
+    case SCTP_COMM_LOST:
+	// Draft specifies to return cause code, D1.2 doesn't - we
+	// follow D1.2
+	neat_notify_aborted(flow);
 	break;
     }
 }
@@ -521,7 +526,7 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 		 notfn->sn_header.sn_type);
     }
 }
-#endif //IPPROTO_SCTP //USRSCTP_SUPPORT
+#endif //IPPROTO_SCTP
 
 
 #define READ_OK 0

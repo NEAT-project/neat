@@ -490,7 +490,7 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_writable(flow->operations);
 }
 
-#ifdef IPPROTO_SCTP //USRSCTP_SUPPORT
+#ifdef IPPROTO_SCTP
 // Handle SCTP association change events
 // includes shutdown complete, etc.
 static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
@@ -500,6 +500,11 @@ static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *
     switch (sac->sac_state) {
     case SCTP_SHUTDOWN_COMP:
 	neat_notify_close(flow);
+	break;
+    case SCTP_COMM_LOST:
+	// Draft specifies to return cause code, D1.2 doesn't - we
+	// follow D1.2
+	neat_notify_aborted(flow);
 	break;
     }
 }
@@ -518,7 +523,7 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 		 notfn->sn_header.sn_type);
     }
 }
-#endif //IPPROTO_SCTP //USRSCTP_SUPPORT
+#endif //IPPROTO_SCTP
 
 
 #define READ_OK 0
@@ -1765,10 +1770,10 @@ static void neat_sctp_init_events(struct socket *sock)
 #else
 static void neat_sctp_init_events(int sock)
 #endif
-#if defined(USRSCTP_SUPPORT) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+#if defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
 {
     // Set up SCTP event subscriptions using RFC6458 API
-    // (does not work with Linux kernel SCTP)
+    // (does not work with Linux/OSX/NetBSD kernel SCTP)
     struct sctp_event event;
     unsigned int i;
     uint16_t event_types[] = {SCTP_ASSOC_CHANGE,
@@ -1798,6 +1803,8 @@ static void neat_sctp_init_events(int sock)
 }
 #else
 // TODO: might want to exclude Windows from this branch
+// (assuming it would be built with USRSCTP on, but if it isn't then
+// this won't compile)
 
 // Set up SCTP event subscriptions using deprecated API
 // (for compatibility with Linux kernel SCTP)
@@ -1819,7 +1826,7 @@ static void neat_sctp_init_events(int sock)
 		 __func__, strerror(errno));
     }
 }
-#endif //defined(USRSCTP_SUPPORT) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+#endif //defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
 
 #ifdef USRSCTP_SUPPORT
 static struct socket *

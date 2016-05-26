@@ -73,6 +73,21 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
 }
 
 /*
+    Abort handler
+*/
+static neat_error_code on_abort(struct neat_flow_operations *opCB)
+{
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __func__);
+    }
+
+    fprintf(stderr, "The flow was aborted!\n");
+
+    exit(EXIT_FAILURE);
+}
+
+
+/*
     Read data from neat
 */
 static neat_error_code on_readable(struct neat_flow_operations *opCB)
@@ -389,6 +404,7 @@ int main(int argc, char *argv[])
     ops.on_connected = on_connected;
     ops.on_error = on_error;
     ops.on_close = on_close;
+    ops.on_aborted = on_abort;
 
     if (neat_set_operations(ctx, flow, &ops)) {
         fprintf(stderr, "%s - error: neat_set_operations\n", __func__);

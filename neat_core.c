@@ -1070,7 +1070,7 @@ set_primary_dest_resolve_cb(struct neat_resolver *resolver, struct neat_resolver
         neat_log(NEAT_LOG_DEBUG, "Call to usrsctp_setsockopt failed");
         return;
     }
-#elif defined(HAVE_NETINET_SCTP_H)
+#elif defined(HAVE_NETINET_SCTP_H) && defined(__linux__)
     struct sctp_prim addr;
     struct sctp_assocparams assocparams;
     unsigned int optlen = sizeof(assocparams);

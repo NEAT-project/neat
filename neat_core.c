@@ -508,6 +508,10 @@ static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *
 	// Draft specifies to return cause code, D1.2 doesn't - we
 	// follow D1.2
 	neat_notify_aborted(flow);
+	// Fallthrough:
+    case SCTP_COMM_UP: // Fallthrough:
+    case SCTP_RESTART:
+	neat_notify_network_changed(flow, sac->sac_state);
 	break;
     }
 }

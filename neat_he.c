@@ -167,6 +167,9 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     if (flow->heConnectAttemptCount == 0) {
         io_error(resolver->nc, flow, NEAT_ERROR_IO );
     }
+
+    //REMOVE
+    neat_log(NEAT_LOG_DEBUG, "Number of HE connection attempts: %u", flow->heConnectAttemptCount);
 }
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx)

@@ -284,12 +284,17 @@ static void free_cb(uv_handle_t *handle)
 
     // Make sure any still active HE connection attempts are
     // properly terminated and pertaining memory released
+    int count = 0;
     while(!LIST_EMPTY(&(flow->he_cb_ctx_list))) {
+        count++;
         struct he_cb_ctx *e = LIST_FIRST(&(flow->he_cb_ctx_list));
         LIST_REMOVE(e, next_he_ctx);
         free(e->handle);
         free(e);
     }
+
+    //REMOVE
+    neat_log(NEAT_LOG_DEBUG, "Released %d HE contexts", count);
 
     free(flow->readBuffer);
     free(flow->handle);
@@ -658,6 +663,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);
 
+        //REMOVE
+        neat_log(NEAT_LOG_DEBUG, "Released HE context" );
+
         // TODO: Security layer.
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
@@ -668,6 +676,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);
+
+        //REMOVE
+        neat_log(NEAT_LOG_DEBUG, "Released HE context" );
 
         if (status < 0) {
             flow->heConnectAttemptCount--;

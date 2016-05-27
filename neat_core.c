@@ -390,6 +390,17 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
     return NEAT_OK;
 }
 
+/* Ask for statistics about the current flows */
+neat_error_code neat_get_stats(neat_ctx *mgr, char *stats, uint32_t *stats_len)
+{
+      neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+	/* TODO: Fetch statistics from the relevant parts of the system */
+	/* Use jansson to build the JSON string to pass to the application */
+
+      return NEAT_OK;
+}
+
 #define READYCALLBACKSTRUCT \
     flow->operations->status = code;\
     flow->operations->ctx = ctx;\

@@ -1054,7 +1054,6 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
     return NEAT_ERROR_UNABLE;
 }
 
-#ifdef USRSCTP_SUPPORT
 static void
 set_primary_dest_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {
@@ -1069,6 +1068,7 @@ set_primary_dest_resolve_cb(struct neat_resolver *resolver, struct neat_resolver
 
     assert(results->lh_first);
 
+#ifdef USRSCTP_SUPPORT
     struct sctp_setprim addr;
     addr.ssp_addr = results->lh_first->dst_addr;
 
@@ -1076,24 +1076,51 @@ set_primary_dest_resolve_cb(struct neat_resolver *resolver, struct neat_resolver
         neat_log(NEAT_LOG_DEBUG, "Call to usrsctp_setsockopt failed");
         return;
     }
+#elif defined(HAVE_NETINET_SCTP_H)
+    struct sctp_prim addr;
+    struct sctp_assocparams assocparams;
+    unsigned int optlen = sizeof(assocparams);
+    // addr.ssp_addr = results->lh_first->dst_addr;
+    int rc = getsockopt(flow->fd, IPPROTO_SCTP, SCTP_ASSOCINFO, &assocparams, &optlen);
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed");
+        return;
+    }
 
-    /*
+    neat_log(NEAT_LOG_DEBUG, "assoc: %d", assocparams.sasoc_assoc_id);
+
+    addr.ssp_assoc_id = assocparams.sasoc_assoc_id;
+    addr.ssp_addr = results->lh_first->dst_addr;
+
+    rc = setsockopt(flow->fd, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr));
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "Call to setsockopt failed");
+        return;
+    }
+#endif
+
     char dest_addr[INET6_ADDRSTRLEN];
     inet_ntop(results->lh_first->ai_family,
             (const void*)&(results->lh_first->dst_addr),
             dest_addr,
             INET6_ADDRSTRLEN);
 
+    struct sockaddr_storage* sockaddr = &results->lh_first->dst_addr;
+
+    if (results->lh_first->ai_family == AF_INET) {
+        inet_ntop(AF_INET, &(((struct sockaddr_in *) (sockaddr))->sin_addr), dest_addr, INET6_ADDRSTRLEN);
+    } else {
+        inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) (sockaddr))->sin6_addr), dest_addr, INET6_ADDRSTRLEN);
+    }
+
     neat_log(NEAT_LOG_DEBUG, "Updated primary destination address to: %s", dest_addr);
-    */
 }
-#endif
 
 neat_error_code
 neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *name)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-#ifdef USRSCTP_SUPPORT
+
     if (flow->sockProtocol == IPPROTO_SCTP) {
         int protocols[] = {IPPROTO_SCTP};
 
@@ -1103,7 +1130,7 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
 
         return NEAT_ERROR_OK;
     }
-#endif
+
     return NEAT_ERROR_UNABLE;
 }
 

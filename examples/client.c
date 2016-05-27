@@ -86,6 +86,22 @@ static neat_error_code on_abort(struct neat_flow_operations *opCB)
     exit(EXIT_FAILURE);
 }
 
+/*
+    Network change handler
+*/
+static neat_error_code on_network_changed(struct neat_flow_operations *opCB)
+{
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __func__);
+    }
+
+    if (config_log_level >= 1) {
+	fprintf(stderr, "Something happened in the network: %d\n", (int)opCB->status);
+    }
+
+    return NEAT_OK;
+}
+
 
 /*
     Read data from neat
@@ -405,6 +421,7 @@ int main(int argc, char *argv[])
     ops.on_error = on_error;
     ops.on_close = on_close;
     ops.on_aborted = on_abort;
+    ops.on_network_changed = on_network_changed;
 
     if (neat_set_operations(ctx, flow, &ops)) {
         fprintf(stderr, "%s - error: neat_set_operations\n", __func__);

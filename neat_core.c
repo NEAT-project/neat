@@ -33,7 +33,7 @@
 #endif
 #ifdef __linux__
     #include "neat_linux_internal.h"
-#if !defined(HAVE_NETINET_SCTP_H)
+#if !defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
     #include <linux/sctp.h>
 #endif
 #endif

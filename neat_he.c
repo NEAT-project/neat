@@ -119,8 +119,16 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code == NEAT_RESOLVER_TIMEOUT)  {
+
+        // REMOVE
+        neat_log(NEAT_LOG_DEBUG, "he_resolve_cb: NEAT_RESOLVER_TIMEOUT");
+
         io_error(resolver->nc, flow, NEAT_ERROR_IO);
     } else if ( code == NEAT_RESOLVER_ERROR ) {
+
+        // REMOVE
+        neat_log(NEAT_LOG_DEBUG, "he_resolve_cb: All connetion attempts failed");
+
         io_error(resolver->nc, flow, NEAT_ERROR_IO);
     }
 
@@ -165,6 +173,10 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     }
 
     if (flow->heConnectAttemptCount == 0) {
+
+        // REMOVE
+        neat_log(NEAT_LOG_DEBUG, "All connetion attempts failed");
+
         io_error(resolver->nc, flow, NEAT_ERROR_IO );
     }
 

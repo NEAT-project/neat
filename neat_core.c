@@ -391,7 +391,7 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
 }
 
 /* Ask for statistics about the current flows */
-neat_error_code neat_get_stats(neat_ctx *mgr, const char *stats)
+neat_error_code neat_get_stats(neat_ctx *mgr, char *stats, uint32_t *stats_len)
   {
       neat_log(NEAT_LOG_DEBUG, "%s", __func__);
   

@@ -1358,7 +1358,6 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     if ((he_ctx->fd == -1) ||
         (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
         neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d", __func__, he_ctx->fd);
-        uv_poll_stop(he_ctx->nc->loop);
         return -1;
     }
     uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx);

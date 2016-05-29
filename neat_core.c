@@ -638,9 +638,17 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     neat_flow *flow = he_ctx->flow;
+
+    //REMOVE
+    neat_log(NEAT_LOG_DEBUG, "%s: First connect: %u, Status = %d", __func__, flow->hefirstConnect, status);
+
     //TODO: Final place to filter based on policy
     //TODO: This one uses the first result, so is wrong
     if (flow->hefirstConnect && (status == 0)) {
+
+        //REMOVE
+        neat_log(NEAT_LOG_DEBUG, "%s: First connect. Socket %d", __func__, he_ctx->fd);
+
         flow->hefirstConnect = 0;
         flow->family = he_ctx->candidate->ai_family;
         flow->sockType = he_ctx->candidate->ai_socktype;
@@ -669,6 +677,10 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         // TODO: Security layer.
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
+
+        //REMOVE
+        neat_log(NEAT_LOG_DEBUG, "%s: NOT first connect. Socket %d", __func__, he_ctx->fd);
+
         neat_log(NEAT_LOG_DEBUG, "%s: Close socket %d", __func__, flow->fd);
         flow->close2fx(he_ctx->fd);
         uv_poll_stop(handle);

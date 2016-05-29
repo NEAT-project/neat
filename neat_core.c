@@ -640,14 +640,14 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     neat_flow *flow = he_ctx->flow;
 
     //REMOVE
-    neat_log(NEAT_LOG_DEBUG, "%s: First connect: %u, Status = %d", __func__, flow->hefirstConnect, status);
+    neat_log(NEAT_LOG_DEBUG, "%s: hefirstConnect = %d, Status = %d", __func__, flow->hefirstConnect, status);
 
     //TODO: Final place to filter based on policy
     //TODO: This one uses the first result, so is wrong
     if (flow->hefirstConnect && (status == 0)) {
 
         //REMOVE
-        neat_log(NEAT_LOG_DEBUG, "%s: First connect. Socket %d", __func__, he_ctx->fd);
+        neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket %d", __func__, he_ctx->fd);
 
         flow->hefirstConnect = 0;
         flow->family = he_ctx->candidate->ai_family;
@@ -690,7 +690,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         free(he_ctx);
 
         //REMOVE
-        neat_log(NEAT_LOG_DEBUG, "Released HE context" );
+        neat_log(NEAT_LOG_DEBUG, "%s: Released HE context", __func__);
 
         if (status < 0) {
             flow->heConnectAttemptCount--;

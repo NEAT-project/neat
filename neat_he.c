@@ -112,6 +112,12 @@ pm_filter(struct neat_resolver_results *results)
 }
 #endif
 
+static void free_he_handle_cb(uv_handle_t *handle)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    free(handle);
+}
+
 static void
 he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {
@@ -161,7 +167,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         callback_fx = resolver->userData2;
         if (flow->connectfx(he_ctx, callback_fx) == -1) {
             neat_log(NEAT_LOG_DEBUG, "%s: Connect failed", __func__);
-            free(he_ctx->handle);
+            uv_close((uv_handle_t *)(he_ctx->handle), free_he_handle_cb);
             free(he_ctx);
             continue;
         } else {

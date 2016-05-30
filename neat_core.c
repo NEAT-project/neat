@@ -293,9 +293,6 @@ static void free_cb(uv_handle_t *handle)
         free(e);
     }
 
-    //REMOVE
-    neat_log(NEAT_LOG_DEBUG, "Released %d HE contexts", count);
-
     free(flow->readBuffer);
     free(flow->handle);
     free(flow);
@@ -639,16 +636,11 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
     neat_flow *flow = he_ctx->flow;
 
-    //REMOVE
-    neat_log(NEAT_LOG_DEBUG, "%s: hefirstConnect = %d, Status = %d", __func__, flow->hefirstConnect, status);
-
     //TODO: Final place to filter based on policy
     //TODO: This one uses the first result, so is wrong
     if (flow->hefirstConnect && (status == 0)) {
 
-        //REMOVE
         neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket %d", __func__, he_ctx->fd);
-
         flow->hefirstConnect = 0;
         flow->family = he_ctx->candidate->ai_family;
         flow->sockType = he_ctx->candidate->ai_socktype;
@@ -671,26 +663,17 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);
 
-        //REMOVE
-        neat_log(NEAT_LOG_DEBUG, "Released HE context" );
-
         // TODO: Security layer.
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
 
-        //REMOVE
         neat_log(NEAT_LOG_DEBUG, "%s: NOT first connect. Socket %d", __func__, he_ctx->fd);
-
-        neat_log(NEAT_LOG_DEBUG, "%s: Close socket %d", __func__, flow->fd);
         flow->close2fx(he_ctx->fd);
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);
 
         LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);
-
-        //REMOVE
-        neat_log(NEAT_LOG_DEBUG, "%s: Released HE context", __func__);
 
         if (status < 0) {
             flow->heConnectAttemptCount--;
@@ -1358,7 +1341,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     if ((he_ctx->fd == -1) ||
         (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
         neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d", __func__, he_ctx->fd);
-        return -1;
+        return -2;
     }
     uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx);
 #if defined(USRSCTP_SUPPORT)

@@ -125,16 +125,8 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code == NEAT_RESOLVER_TIMEOUT)  {
-
-        // REMOVE
-        neat_log(NEAT_LOG_DEBUG, "he_resolve_cb: NEAT_RESOLVER_TIMEOUT");
-
         io_error(resolver->nc, flow, NEAT_ERROR_IO);
     } else if ( code == NEAT_RESOLVER_ERROR ) {
-
-        // REMOVE
-        neat_log(NEAT_LOG_DEBUG, "he_resolve_cb: All connetion attempts failed");
-
         io_error(resolver->nc, flow, NEAT_ERROR_IO);
     }
 
@@ -165,13 +157,18 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
 
         uv_poll_cb callback_fx;
         callback_fx = resolver->userData2;
-        if (flow->connectfx(he_ctx, callback_fx) == -1) {
-            neat_log(NEAT_LOG_DEBUG, "%s: Connect failed", __func__);
+        int ret = flow->connectfx(he_ctx, callback_fx);
+        if (ret == -1) {
+            neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
+            free(he_ctx->handle);
+            free(he_ctx);
+        } else if (ret == -2) {
+            neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
             uv_close((uv_handle_t *)(he_ctx->handle), free_he_handle_cb);
             free(he_ctx);
             continue;
         } else {
-            neat_log(NEAT_LOG_DEBUG, "%s: Connect successful", __func__);
+            neat_log(NEAT_LOG_DEBUG, "%s: Connect successful, ret = %d", __func__, ret);
             flow->heConnectAttemptCount++;
             LIST_INSERT_HEAD(&(flow->he_cb_ctx_list), he_ctx, next_he_ctx);
         }
@@ -179,15 +176,8 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     }
 
     if (flow->heConnectAttemptCount == 0) {
-
-        // REMOVE
-        neat_log(NEAT_LOG_DEBUG, "All connetion attempts failed");
-
         io_error(resolver->nc, flow, NEAT_ERROR_IO );
     }
-
-    //REMOVE
-    neat_log(NEAT_LOG_DEBUG, "Number of HE connection attempts: %u", flow->heConnectAttemptCount);
 }
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx)

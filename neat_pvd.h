@@ -41,6 +41,13 @@ struct pvd_result {
 struct pvd_results;
 LIST_HEAD(pvd_results, pvd_result);
 
+struct pvd_dns_query {
+    uv_loop_t* loop;
+    struct neat_addr *src_addr;
+    struct sockaddr_storage *dns_addr;
+    struct pvd_result *pvd_result;
+};
+
 struct neat_pvd {
     struct neat_ctx *nc;
     struct neat_event_cb newaddr_cb;

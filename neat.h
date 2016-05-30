@@ -52,7 +52,7 @@ neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow
                                     struct neat_flow_operations *ops);
 
 neat_error_code neat_get_stats(struct neat_ctx *ctx, char *stats,
-				uint32_t *stats_len);
+			       uint32_t *stats_len);
 
 neat_error_code neat_open(struct neat_ctx *ctx, struct neat_flow *flow,
                           const char *name, uint16_t port);

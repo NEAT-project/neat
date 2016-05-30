@@ -396,6 +396,11 @@ neat_error_code neat_get_stats(neat_ctx *mgr, char *stats, uint32_t *stats_len)
       neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
 	/* TODO: Fetch statistics from the relevant parts of the system */
+	// Start with fetching some aggregate flow statistics
+	// Number of open flows
+	// total bytes sent / received
+	// Add per-flow statistics icluding protocols and IFs
+
 	/* Use jansson to build the JSON string to pass to the application */
 
       return NEAT_OK;

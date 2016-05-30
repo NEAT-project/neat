@@ -550,9 +550,39 @@ static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *
 	// Fallthrough:
     case SCTP_COMM_UP: // Fallthrough:
     case SCTP_RESTART:
+	// TODO: might want to "translate" the state codes to a NEAT code.
 	neat_notify_network_changed(flow, sac->sac_state);
 	break;
     }
+}
+
+// Handle SCTP send failed event
+// One is generated per failed message
+// Only FreeBSD and USRSCTP support the new RFC6458 API,
+// hence the ifdefs
+#if defined(__FreeBSD__) || defined (USRSCTP_SUPPORT)
+static void handle_sctp_send_failed(neat_flow *flow, struct sctp_send_failed_event *ssfe)
+#else
+static void handle_sctp_send_failed(neat_flow *flow, struct sctp_send_failed *ssf)
+#endif
+{
+    uint32_t error, context;
+    uint8_t *unsent_msg;
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+#if defined(__FreeBSD__) || defined (USRSCTP_SUPPORT)
+    error = ssfe->ssfe_error;
+    unsent_msg = ssfe->ssfe_data;
+    context = ssfe->ssfe_info.snd_context;
+#else
+    error = ssf->ssf_error;
+    unsent_msg = ssf->ssf_data;
+    context = ssf->ssf_info.sinfo_context;
+#endif
+
+    // TODO: context no. needs to be implemneted in the write functions!
+
+    neat_notify_send_failure(flow, sctp_to_neat_code(error), context, unsent_msg);
 }
 
 // Handle notifications about SCTP events

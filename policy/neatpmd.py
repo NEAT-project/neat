@@ -3,60 +3,47 @@
 import code
 
 from cib import CIB
-from policy import PIB, NEATCandidate, NEATProperty, NEATPolicy, NEATRequest, NEATPropertyError
+from policy import PIB, NEATProperty, NEATPolicy, NEATRequest
 
 POLICY_DIR = "pib/"
 
 if __name__ == "__main__":
+    cib = CIB('cib/example/')
     pib = PIB()
-    pib.load_policies()
 
-    cib = CIB()
-    cib.load_cib()
+    # ----- example from README.md -----
+    property1 = NEATProperty(('remote_ip', '10.1.23.45'), precedence=NEATProperty.IMMUTABLE)
 
-    print(pib)
-    print(cib)
+    request = NEATRequest()
+    request.properties.insert(property1)
+    request.properties.insert(NEATProperty(('MTU', (1500, float('inf')))))
+    request.properties.insert(NEATProperty(('transport_TCP', True)))
 
-    C = {"name": "C", "description": "foo and bar", "priority": "0",
-         "match": {"requested": {'foo': 'bar'}},
-         "properties": {"immutable": {'foo3': 'bar3'}}}
+    request.properties
 
-    p = NEATPolicy(name="dynamic")
-    p.match.update({"is_wired_interface": True}.items())
-    p.properties.update([("TCP_CC", "cubic", NEATProperty.IMMUTABLE), ("MTU", "9600")])
+    policy1 = NEATPolicy(name='Bulk transfer')
+    policy1.match.insert(NEATProperty(('remote_ip', '10.1.23.45')))
+    policy1.properties.insert(NEATProperty(('capacity', (10000, 100000)), precedence=NEATProperty.IMMUTABLE))
+    policy1.properties.insert(NEATProperty(('MTU', 9600)))
+    pib.register(policy1)
 
-    pib.register(p)
+    policy2 = NEATPolicy(name='TCP options')
+    policy2.match.insert(NEATProperty(('MTU', 9600)))
+    policy2.match.insert(NEATProperty(('is_wired', True)))
+    policy2.properties.insert(NEATProperty(('TCP_window_scale', True)))
+    pib.register(policy2)
 
-    query = NEATRequest(requested={'remote_address': '23:::23:12', 'foo': 'bar'},
-                        immutable={'MTU': 9600, "is_wired_interface": True},
-                        informational={'low_latency': True})
+    #code.interact(local=locals(), banner='start')
 
-    # lookup CIB
-    code.interact(local=locals())
-    cib.lookup(query)
-    code.interact(local=locals(), banner='CIB lookup done')
+    print("CIB lookup:")
+    cib.lookup(request)
+    request.dump()
+    #code.interact(local=locals(), banner='CIB lookup done')
 
-    nc = query.candidates[0]
+    print("PIB lookup:")
+    pib.lookup_all(request.candidates)
+    request.dump()
 
-    query.dump()
-
-    # lookup PIB
-    for candidate in query.candidates:
-        try:
-            pib.lookup(candidate, apply=True)
-        except NEATPropertyError:
-            candidate.invalid = True
-            i = query.candidates.index(candidate)
-            print('Candidate %d is invalidated due to policy' % i)
-    for candidate in query.candidates:
-        if candidate.invalid:
-            query.candidates.remove(candidate)
-
+    for candidate in request.candidates:
+        print(candidate.properties.json())
     code.interact(local=locals(), banner='PIB lookup done')
-    query.dump()
-
-    ###########
-    nc = NEATCandidate(query)
-    # for i in query.items():
-    #    nc.properties.add(NEATProperty(i))
-    c = cib.entries['s3']

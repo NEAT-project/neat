@@ -79,6 +79,7 @@ typedef struct socket * (*neat_accept_usrsctp_impl)(struct neat_ctx *ctx, struct
 typedef int (*neat_connect_impl)(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
+typedef int (*neat_close2_impl)(int fd);
 typedef int (*neat_shutdown_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 #if defined(USRSCTP_SUPPORT)
 typedef int (*neat_usrsctp_receive_cb)(struct socket *sock, union sctp_sockstore addr, void *data,
@@ -133,6 +134,7 @@ struct neat_flow
     neat_accept_impl acceptfx;
     neat_connect_impl connectfx;
     neat_close_impl closefx;
+    neat_close2_impl close2fx;
     neat_listen_impl listenfx;
     neat_shutdown_impl shutdownfx;
 
@@ -150,6 +152,9 @@ struct neat_flow
     unsigned int everConnected : 1;
     unsigned int isDraining : 1;
     unsigned int isSCTPExplicitEOR : 1;
+
+    //List with all non-freed HE contexts.
+    LIST_HEAD(he_cb_ctxs, he_cb_ctx) he_cb_ctx_list;
 };
 
 typedef struct neat_flow neat_flow;
@@ -218,6 +223,8 @@ struct he_cb_ctx {
     size_t readSize;
     size_t writeLimit;
     unsigned int isSCTPExplicitEOR : 1;
+
+    LIST_ENTRY(he_cb_ctx) next_he_ctx;
 };
 
 //Intilize resolver. Sets up internal callbacks etc.

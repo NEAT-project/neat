@@ -39,6 +39,7 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
 static neat_error_code neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 static int neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow);
 static int neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow);
+static int neat_close_via_kernel_2(int fd);
 #if defined(USRSCTP_SUPPORT)
 static int neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx);
 static int neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow);
@@ -258,6 +259,8 @@ void neat_run_event_cb(struct neat_ctx *nc, uint8_t event_type,
         cb_itr->event_cb(nc, cb_itr->data, data);
 }
 
+static void free_he_handle_cb(uv_handle_t *handle);
+
 static void free_cb(uv_handle_t *handle)
 {
     neat_flow *flow = handle->data;
@@ -278,6 +281,18 @@ static void free_cb(uv_handle_t *handle)
         free(msg->buffered);
         free(msg);
     }
+
+    // Make sure any still active HE connection attempts are
+    // properly terminated and pertaining memory released
+    int count = 0;
+    while(!LIST_EMPTY(&(flow->he_cb_ctx_list))) {
+        count++;
+        struct he_cb_ctx *e = LIST_FIRST(&(flow->he_cb_ctx_list));
+        LIST_REMOVE(e, next_he_ctx);
+        free(e->handle);
+        free(e);
+    }
+
     free(flow->readBuffer);
     free(flow->handle);
     free(flow);
@@ -317,6 +332,13 @@ static int neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
     }
 #endif
     neat_close_via_kernel(flow->ctx, flow);
+    return 0;
+}
+
+static int neat_close_socket_2(int fd)
+{
+    /* TODO: Needs fix to work with usrsctp? */
+    neat_close_via_kernel_2(fd);
     return 0;
 }
 
@@ -600,6 +622,12 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     }
 }
 
+static void free_he_handle_cb(uv_handle_t *handle)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    free(handle);
+}
+
 static void
 he_connected_cb(uv_poll_t *handle, int status, int events)
 {
@@ -607,9 +635,12 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     neat_flow *flow = he_ctx->flow;
+
     //TODO: Final place to filter based on policy
     //TODO: This one uses the first result, so is wrong
     if (flow->hefirstConnect && (status == 0)) {
+
+        neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket %d", __func__, he_ctx->fd);
         flow->hefirstConnect = 0;
         flow->family = he_ctx->candidate->ai_family;
         flow->sockType = he_ctx->candidate->ai_socktype;
@@ -629,48 +660,26 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->firstWritePending = 1;
         flow->isPolling = 1;
 
+        LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);
-
-        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-#if 0
-        struct sockaddr_storage addr;
-        socklen_t addr_len = sizeof(addr);
-        getpeername(flow->fd, (struct sockaddr *)&addr, &addr_len);
-        char ip_address[INET_ADDRSTRLEN];
-        getnameinfo((struct sockaddr *)&addr,
-                    addr_len,
-                    ip_address,
-                    INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
-        printf("Winning connection attempt to %s with protocol %d\n", ip_address, flow->sockProtocol);
-#endif
 
         // TODO: Security layer.
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
 
-        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-#if 0
-        struct sockaddr_storage addr;
-        socklen_t addr_len = sizeof(addr);
-        getpeername(flow->fd, (struct sockaddr *)&addr, &addr_len);
-        char ip_address[INET_ADDRSTRLEN];
-        getnameinfo((struct sockaddr *)&addr,
-                    addr_len,
-                ip_address,
-                INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
-        printf("Loosing connection attempt to %s with protocol %d\n", ip_address, flow->sockProtocol);
-#endif
-        if ( status < 0 ) {
-            flow->heConnectAttemptCount--;
-        }
-        neat_log(NEAT_LOG_DEBUG, "%s: Close socket %d", __func__, flow->fd);
-        flow->closefx(he_ctx->nc, flow);
+        neat_log(NEAT_LOG_DEBUG, "%s: NOT first connect. Socket %d", __func__, he_ctx->fd);
+        flow->close2fx(he_ctx->fd);
         uv_poll_stop(handle);
-        uv_close((uv_handle_t*)handle, NULL);
-        neat_ctx *ctx = he_ctx->nc;
+        uv_close((uv_handle_t*)handle, free_he_handle_cb);
+
+        LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);
-        if (flow->heConnectAttemptCount == 1) {
-            io_error(ctx, flow, NEAT_ERROR_IO );
+
+        if (status < 0) {
+            flow->heConnectAttemptCount--;
+            if (flow->heConnectAttemptCount == 0) {
+                io_error(he_ctx->nc, flow, NEAT_ERROR_IO );
+            }
         }
     }
 }
@@ -1335,7 +1344,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     if ((he_ctx->fd == -1) ||
         (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
         neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d", __func__, he_ctx->fd);
-        return -1;
+        return -2;
     }
     uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx);
 #if defined(USRSCTP_SUPPORT)
@@ -1353,6 +1362,17 @@ neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         // we might want a fx callback here to split between
         // kernel and userspace.. same for connect read and write
         close(flow->fd);
+    }
+    return 0;
+}
+
+static int
+neat_close_via_kernel_2(int fd)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    if (fd != -1) {
+        neat_log(NEAT_LOG_DEBUG, "%s: Close fd %d", __func__, fd);
+        close(fd);
     }
     return 0;
 }
@@ -1702,10 +1722,12 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->handle = NULL;
     rv->writefx = neat_write_to_lower_layer;
     rv->readfx = neat_read_from_lower_layer;
+    LIST_INIT(&(rv->he_cb_ctx_list));
     rv->fd = -1;
     rv->acceptfx = neat_accept_via_kernel;
     rv->connectfx = neat_connect;
     rv->closefx = neat_close_socket;
+    rv->close2fx = neat_close_socket_2;
     rv->listenfx = neat_listen;
     rv->shutdownfx = neat_shutdown_via_kernel;
     TAILQ_INIT(&rv->bufferedMessages);

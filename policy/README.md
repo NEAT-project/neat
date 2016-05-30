@@ -1,25 +1,26 @@
 # Policy Manager
 
-**INITIAL ALPHA OVERVIEW**
+**INITIAL ALPHA**
 
 ## NEAT properties
 
-NEAT properties are `key|value` tuples describing attributes used within the NEAT Policy Manager. Properties can function as a constraint, e.g., in a policy, or as a statement, e.g., in the CIB.œ
+NEAT properties are essentially `key|value` tuples describing attributes used within the NEAT Policy Manager. Properties can function as a constraint, e.g., in a policy, or as a statement, e.g., in the CIB.
 
-Each property is associated with a `level` or type which identifies the "importance" of the property. Specifically the level indicates if the property may be modified by the Policy Manager logic. Currently three property levels are defined in order of decreasing precedence:
+Each property is associated with a `precedence` or type which identifies the "importance" of the property. Specifically the precedence indicates if the property may be modified by the Policy Manager logic. Currently three property precedence levels are defined in order of decreasing priority:
 
-+ `[immutable]` these are mandatory properties whose value cannot be changed.
-+ `(requested)` these are optional properties whose value may be overwritten. A mismatch of such an requested attribute will reduce the `score` of the property (see below).
-+ `<informational>` these are properties which have an informational nature. NEAT logic may choose to ignore these.
++ `[immutable]` (precedence 2) these are mandatory properties whose value cannot be changed.
++ `(requested)` (precedence 1)these are optional properties whose value may be overwritten. A mismatch of such an requested attribute will reduce the `score` of the property (see below).
++ `<informational>` (precedence 0) these are properties which have an informational nature. NEAT logic may choose to ignore these.
 
+In the following we indicate a property's precedence by the bracket types shown above.
  
 <img src="https://rawgit.com/NEAT-project/neat/master/policy/doc/properties.svg" width="220"/>
 
 
-Two NEAT properties are considered 'equal' if their key and value attributes are identical, i.e., levels and scores are ignored when testing for equality. A comparison of two properties always yields a boolean result.
+Two NEAT properties are considered 'equal' if their key and value attributes are identical, i.e., precedences and scores are ignored when testing for equality. A comparison of two properties always yields a boolean result.
 
 
-In the course of a lookup in the PM, properties from various sources will be compared and their values may be *updated*. A property's value may *only* be updated by another property whose level is greater or equal than itself. A property may only be updated by another property with the same key. When a property is updated it inherits the level of the updating property as illustrated below:
+In the course of a lookup in the PM, properties from various sources will be compared and their values may be *updated*. A property's value may *only* be updated by another property whose precedence is greater or equal than itself. A property may only be updated by another property with the same key. When a property is updated it inherits the precedence of the updating property as illustrated below:
 
   <img src="https://rawgit.com/NEAT-project/neat/master/policy/doc/properties_example.svg" width="380"/>
 
@@ -29,19 +30,18 @@ As an example, if an immutable property is requested by an application and this 
 
 In addition, each property is associated with a numeric `score` denoting whether, and how often, a property has been matched. Each time a property is updated its score is increased if its value matched the compared property, and decreased otherwise. The property score is used to determine the most suitable NEAT connection candidate for a given request (see below).
 
-### Property ranges
+### Numeric property ranges
 
-In addition to single values (boolean, integer, float, ...) the value of a property may be specified as a numeric two-tuple to indicate a range, e.g. `(5,30)` or `(100,inf)`. 
+In addition to single values (boolean, integer, float, ...) the value of a property may be specified as a numeric two-tuple to indicate a range, e.g. `(5,30.1)` or `(100,inf)`. Single numeric values are viewed as a range with a length of one.
 
-When comparing properties with range values, two properties are considered equal if the single value is within the range, or if the range of the property contains the entire range of the compared property. When a single value property is updated with a property which includes a range and the single value falls within the given range, the range is substituted by the single value. 
-
+When comparing properties containing range values, two properties are considered "equal" if their ranges overlap. A property update is considered successful if the ranges overlap - the resulting updated property will contain the intersection of the two ranges.
 
 ## NEAT Policies
 
 Policies are based around NEAT properties. Each policy contains the following entities:
 
-+ `match`: contains an object describing the properties which should trigger the policy. An empty match field will match *all* properties of a candidate. Match field properties are matched only against properties whose level is equal or higher than their own. 
-+ `properties`: contains an object which lists a set of new properties which should be applied to the connection (if possible given the property levels).
++ `match`: object containing the set of properties which should trigger the policy. A policy is triggered if *all* of these properties are matched. An empty match field will match *all* properties of a candidate. Match field properties are matched only against properties whose precedence is equal or higher than their own. 
++ `properties`: object containing a set of properties which should be applied to the connection candidate (if feasible given the property precedences).
 
 ### NEAT Candidates
 
@@ -71,66 +71,5 @@ The CIB is made up of three repositories
 TODO
 
 # Example
-
-## Setup
-Consider a host with three local interfaces `en0`, `en1`, `ra0`. Two of the interfaces, `en0`, `en1`, are wired while `ra0` is a 3G interface. The currently known network properties are stored in the following CIB entries:
-
-    A: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600], [remote_ip: 10.1.23.45], <transport|TCP>, [capacity|10G], <dns_name|backup.example.com>}
-
-    B: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500], <transport|TCP>, <transport|UDP>, [capacity|10G]}
-
-    C: {[local_ip: 10.10.2.2], [interface|ra0], [is_wired: False], [MTU|890], [remote_ip: 10.1.23.45] [capacity|60M]}
-
-         
-An application would like to open a new TCP connection using NEAT to a destination host `d1` with the IP 10.1.23.45. Further the MTU should be 1500 bytes if possible. We denote this NEATRequest as follows: 
-
-    Request: {[remote_ip|10.1.23.45], (MTU|1500), (transport|TCP)}
-
-Further assume a "bulk transfer" policy is configured on the host. This policy is triggered by a specific destination IP, which is known to be the address of backup NFS share:
-
-    Policy "Bulk transfer": {(dst_ip|10.1.23.45)} ==> {[capacity|10G], (MTU|9600)}
-
-Another configured policy is configured to enable TCP window scaling on 10G links, if possible:
-
-    Policy "TCP options": {(MTU|9600), (is_wired|true)} ==> {(TCP_window_scale|true)}
-
-## Outcome
-
-The NEAT request yields three candidates after the CIB lookup:
-
-    Candidate 1: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600]+1, [remote_ip: 10.1.23.45]+1, (transport|TCP)+1, [capacity|10G], <dns_name|backup.example.com>}
-
-    Candidate 2: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500]+1, (transport|TCP)+1, <transport|UDP>, [capacity|10G], [remote_ip: 10.1.23.24]}
-    
-    Candidate 3: {[local_ip: 10.10.2.2], [interface|ra0], [is_wired: False], [MTU|890]-1, [remote_ip: 10.1.23.45]+1, [capacity|60M], (transport|TCP)}
-    
-The scores of the CIB properties which match the request properties have been increased
-
-
----
-
-In the next step the policies are applied starting with the "Bulk transfer" policy which has the smallest number of match entries. Candidate 1 becomes:
-
-    Candidate 1: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600]+2, [remote_ip: 10.1.23.45]+1, (transport|TCP)+1, [capacity|10G]+1, <dns_name|backup.example.com>, [capacity|10G]}
-
-and after the second policy:
-
-    Candidate 1: {[local_ip: 10.2.0.1], [interface|en0], [is_wired: True], [MTU|9600]+2, [remote_ip: 10.1.23.45]+1, (transport|TCP)+1, [capacity|10G]+1, <dns_name|backup.example.com>, (TCP_window_scale|true)}
-
----
-
-Next we examine Candidate 2. After the first policy the second candidate becomes:
-
-    Candidate 2: {[local_ip: 192.168.1.2], [interface|en1], [is_wired: True], [MTU|1500]+0, (transport|TCP)+1, <transport|UDP>, [capacity|10G]+1, [remote_ip: 10.1.23.24]}
-
-Note that the score of the MTU property was reduced, as it did not match the requested property of the "Bulk transfer" policy.
-
-The "TCP options" policy is not applied as the candidate does not match the policy's MTU property.
-
----
-
-The third candidate is invalidated because the "Bulk transfer" policy contains an immutable property requiring a capacity of 10G, which candidate 3 cannot fulfil.
-
----
-
-The two candidates are passed on to the NEAT logic  
+ 
+For a walkthrough example see the [Jupyter notebook](neat_policy_example.ipynb).

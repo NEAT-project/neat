@@ -112,12 +112,17 @@ pm_filter(struct neat_resolver_results *results)
 }
 #endif
 
+static void free_he_handle_cb(uv_handle_t *handle)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    free(handle);
+}
+
 static void
 he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
     neat_flow *flow = (neat_flow *)resolver->userData1;
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code == NEAT_RESOLVER_TIMEOUT)  {
         io_error(resolver->nc, flow, NEAT_ERROR_IO);
@@ -128,12 +133,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     assert (results->lh_first);
     assert (!flow->resolver_results);
 
-    /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-#if 0
-    pm_filter(results);
-#endif
     he_print_results(results);
-
 
     flow->resolver_results = results;
     flow->hefirstConnect = 1;
@@ -154,26 +154,25 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         he_ctx->sock = NULL;
 #endif
         he_ctx->fd = -1;
-        /* TODO: Used by Karl-Johan Grinnemo during test. Remove in final version. */
-#if 0
-        char ip_address[INET_ADDRSTRLEN];
-        getnameinfo((struct sockaddr *)&(candidate->dst_addr),
-                    (socklen_t)sizeof(candidate->dst_addr),
-                    ip_address,
-                    INET_ADDRSTRLEN, 0, 0, NI_NUMERICHOST);
-        printf("Initiating connection attempt to %s with protocol %d\n", ip_address, candidate->ai_protocol);
-#endif
 
         uv_poll_cb callback_fx;
         callback_fx = resolver->userData2;
-        if (flow->connectfx(he_ctx, callback_fx) == -1) {
-            neat_log(NEAT_LOG_DEBUG, "%s: Connect failed", __func__);
+       int ret = flow->connectfx(he_ctx, callback_fx);
+        if (ret == -1) {
+            neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
+            free(he_ctx->handle);
+            free(he_ctx);
+	    continue;
+        } else if (ret == -2) {
+            neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
+            uv_close((uv_handle_t *)(he_ctx->handle), free_he_handle_cb);
+            free(he_ctx);
             continue;
         } else {
-            neat_log(NEAT_LOG_DEBUG, "%s: Connect successful", __func__);
+            neat_log(NEAT_LOG_DEBUG, "%s: Connect successful, ret = %d", __func__, ret);
             flow->heConnectAttemptCount++;
+            LIST_INSERT_HEAD(&(flow->he_cb_ctx_list), he_ctx, next_he_ctx);
         }
-
     }
 
     if (flow->heConnectAttemptCount == 0) {

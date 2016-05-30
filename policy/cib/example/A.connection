@@ -1,0 +1,17 @@
+{
+  "type": "local",
+  "id": "A",
+  "timestamp": 1463575518,
+  "immutable": {
+    "interface": "en0",
+    "is_wired": true,
+    "MTU": 9600,
+    "remote_ip": "10.1.23.45",
+    "local_ip": "10.2.0.1",
+    "capacity": 10000
+  },
+  "informational": {
+    "transport": "TCP",
+    "dns_name": "backup.example.com"
+  }
+}

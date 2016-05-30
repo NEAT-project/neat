@@ -50,6 +50,7 @@ void neat_free_flow(struct neat_flow *flow);
 
 neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
                                     struct neat_flow_operations *ops);
+
 neat_error_code neat_open(struct neat_ctx *ctx, struct neat_flow *flow,
                           const char *name, uint16_t port);
 neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,

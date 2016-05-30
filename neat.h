@@ -155,6 +155,7 @@ neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *fl
 #define NEAT_ERROR_SECURITY (6)
 #define NEAT_ERROR_UNABLE (7)
 #define NEAT_ERROR_MESSAGE_TOO_BIG (8)
+#define NEAT_ERROR_REMOTE (9)
 
 // cleanup extern "C"
 #ifdef __cplusplus

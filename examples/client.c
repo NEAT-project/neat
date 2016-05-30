@@ -195,6 +195,24 @@ void tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer
         ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
         neat_shutdown(ctx, flow);
+    } else if (strncmp(buffer->base, "close\n", buffer_filled) == 0) {
+	if (config_log_level >= 1) {
+            fprintf(stderr, "%s - tty_read - CLOSE\n", __func__);
+        }
+        uv_read_stop(stream);
+        ops.on_writable = NULL;
+        neat_set_operations(ctx, flow, &ops);
+        neat_close(ctx, flow);
+	buffer_filled = UV_EOF;
+    } else if (strncmp(buffer->base, "abort\n", buffer_filled) == 0) {
+	if (config_log_level >= 1) {
+            fprintf(stderr, "%s - tty_read - ABORT\n", __func__);
+        }
+        uv_read_stop(stream);
+        ops.on_writable = NULL;
+        neat_set_operations(ctx, flow, &ops);
+        neat_abort(ctx, flow);
+	buffer_filled = UV_EOF;
     }
 
     // all fine

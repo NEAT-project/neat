@@ -893,7 +893,7 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
         neat_log(NEAT_LOG_DEBUG, "status: %d - events: %d", status, events);
         neat_log(NEAT_LOG_DEBUG, "ERROR: %s", uv_strerror(status));
 
-#ifndef USRSCTP_SUPPORT
+#if !defined(USRSCTP_SUPPORT) && defined(IPPROTO_SCTP)
         if (flow->sockProtocol == IPPROTO_TCP || flow->sockProtocol == IPPROTO_SCTP) {
 #else
         if (flow->sockProtocol == IPPROTO_TCP) {
@@ -1209,6 +1209,7 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+#if defined(IPPROTO_SCTP)
     if (flow->sockProtocol == IPPROTO_SCTP) {
         int protocols[] = {IPPROTO_SCTP};
 
@@ -1218,6 +1219,7 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
 
         return NEAT_ERROR_OK;
     }
+#endif // defined(IPPROTO_SCTP)
 
     return NEAT_ERROR_UNABLE;
 }
@@ -1929,11 +1931,11 @@ static void neat_sctp_init_events(int sock)
 	}
     }
 }
-#else
+#else // defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
 // TODO: might want to exclude Windows from this branch
-// (assuming it would be built with USRSCTP on, but if it isn't then
-// this won't compile)
+// Not sure if the ifdef below is safe on Windows:
 
+#if defined(IPPROTO_SCTP)
 // Set up SCTP event subscriptions using deprecated API
 // (for compatibility with Linux kernel SCTP)
 {
@@ -1954,7 +1956,12 @@ static void neat_sctp_init_events(int sock)
 		 __func__, strerror(errno));
     }
 }
-#endif //defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
+#else // defined(IPPROTO_SCTP)
+{
+    // SCTP not supported in any way; do nothing.
+}
+#endif // else defined(IPPROTO_SCTP)
+#endif //else defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
 
 #ifdef USRSCTP_SUPPORT
 static struct socket *

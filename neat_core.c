@@ -284,7 +284,9 @@ static void free_cb(uv_handle_t *handle)
 
     // Make sure any still active HE connection attempts are
     // properly terminated and pertaining memory released
+    int count = 0;
     while(!LIST_EMPTY(&(flow->he_cb_ctx_list))) {
+        count++;
         struct he_cb_ctx *e = LIST_FIRST(&(flow->he_cb_ctx_list));
         LIST_REMOVE(e, next_he_ctx);
         free(e->handle);
@@ -633,9 +635,12 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     neat_flow *flow = he_ctx->flow;
+
     //TODO: Final place to filter based on policy
     //TODO: This one uses the first result, so is wrong
     if (flow->hefirstConnect && (status == 0)) {
+
+        neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket %d", __func__, he_ctx->fd);
         flow->hefirstConnect = 0;
         flow->family = he_ctx->candidate->ai_family;
         flow->sockType = he_ctx->candidate->ai_socktype;
@@ -661,7 +666,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         // TODO: Security layer.
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
-        neat_log(NEAT_LOG_DEBUG, "%s: Close socket %d", __func__, flow->fd);
+
+        neat_log(NEAT_LOG_DEBUG, "%s: NOT first connect. Socket %d", __func__, he_ctx->fd);
         flow->close2fx(he_ctx->fd);
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);
@@ -1335,7 +1341,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     if ((he_ctx->fd == -1) ||
         (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
         neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d", __func__, he_ctx->fd);
-        return -1;
+        return -2;
     }
     uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx);
 #if defined(USRSCTP_SUPPORT)

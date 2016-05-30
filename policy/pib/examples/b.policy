@@ -1,0 +1,14 @@
+{  
+  "name":"B",
+  "description":"video conferencing",
+  "priority":"1",
+  "match":{},
+  "properties":{
+    "requested":{
+      "TCP_CC":"cubic"
+    },
+    "immutable":{
+      "latency_lt":"100"
+    }
+  }
+}

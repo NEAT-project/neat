@@ -1,0 +1,9 @@
+{
+  "cib_source":"happy_eyeballs",
+  "type":"connection",
+  "id":"F",
+  "timestamp":"13452564",
+  "local":"s3",
+  "remote":"d3",
+  "protocol":"TCP"
+}

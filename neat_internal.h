@@ -30,6 +30,14 @@
 
 #define NEAT_MAX_NUM_PROTO 4
 
+#if defined(USRSCTP_SUPPORT) || defined(HAVE_NETINET_SCTP_H)
+#define SCTP_SUPPORTED
+#else
+#if defined(__linux__) // Need a further test for Linux SCTP support
+#define SCTP_SUPPORTED
+#endif // __linux__
+#endif
+
 struct neat_event_cb;
 struct neat_addr;
 

@@ -493,7 +493,7 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_writable(flow->operations);
 }
 
-#ifdef IPPROTO_SCTP
+#ifdef SCTP_SUPPORTED
 
 // Translate SCTP cause codes (RFC4960 sect.3.3.10)
 // into NEAT error codes
@@ -624,7 +624,7 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 		 notfn->sn_header.sn_type);
     }
 }
-#endif //IPPROTO_SCTP
+#endif // SCTP_SUPPORTED
 
 
 #define READ_OK 0
@@ -634,7 +634,7 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 static int io_readable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
-#if defined(IPPROTO_SCTP)
+#if defined(SCTP_SUPPORTED)
     ssize_t n, spaceFree;
     ssize_t spaceNeeded, spaceThreshold;
 #if !defined(USRSCTP_SUPPORT)
@@ -647,14 +647,14 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     struct sctp_recvv_rn rn;
     socklen_t infolen = sizeof(struct sctp_recvv_rn);
     int flags = 0;
-#endif
-#endif
+#endif // else !defined(USRSCTP_SUPPORT)
+#endif // defined(SCTP_SUPPORTED)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations || !flow->operations->on_readable) {
         return READ_WITH_ERROR;
     }
-#if defined(IPPROTO_SCTP)
+#if defined(SCTP_SUPPORTED)
     if ((flow->sockProtocol == IPPROTO_SCTP) &&
         (!flow->readBufferMsgComplete)) {
         spaceFree = flow->readBufferAllocation - flow->readBufferSize;
@@ -752,7 +752,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         }
 #endif // else !defined(USRSCTP_SUPPORT)
     }
-#endif // defined(IPPROTO_SCTP)
+#endif // defined(SCTP_SUPPORTED)
     READYCALLBACKSTRUCT;
     flow->operations->on_readable(flow->operations);
     return READ_OK;
@@ -1932,10 +1932,8 @@ static void neat_sctp_init_events(int sock)
     }
 }
 #else // defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
-// TODO: might want to exclude Windows from this branch
-// Not sure if the ifdef below is safe on Windows:
 
-#if defined(IPPROTO_SCTP)
+#if defined(SCTP_SUPPORTED)
 // Set up SCTP event subscriptions using deprecated API
 // (for compatibility with Linux kernel SCTP)
 {
@@ -1956,11 +1954,11 @@ static void neat_sctp_init_events(int sock)
 		 __func__, strerror(errno));
     }
 }
-#else // defined(IPPROTO_SCTP)
+#else // defined(SCTP_SUPPORTED)
 {
     // SCTP not supported in any way; do nothing.
 }
-#endif // else defined(IPPROTO_SCTP)
+#endif // else defined(SCTP_SUPPORTED)
 #endif //else defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
 
 #ifdef USRSCTP_SUPPORT

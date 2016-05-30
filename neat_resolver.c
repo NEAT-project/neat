@@ -639,6 +639,8 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
         struct neat_resolver_src_dst_addr *pair,
         const struct sockaddr_storage *server_addr)
 {
+    neat_log(NEAT_LOG_INFO, "neat_resolver_create_pair - pair* 1 %p", pair);
+
     struct sockaddr_in *dst_addr4, *server_addr4;
     struct sockaddr_in6 *dst_addr6, *server_addr6;
     uint8_t family = pair->src_addr->family;
@@ -706,6 +708,8 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
                 strlen(if_name)) < 0) {
         /*neat_log(NEAT_LOG_ERROR, "%s - Could not bind socket to interface %s\n",
         __func__, if_name); */
+
+        neat_log(NEAT_LOG_INFO, "neat_resolver_create_pair - pair* 2 %p", pair);
         return RETVAL_IGNORE;
     }
 #endif
@@ -741,12 +745,21 @@ static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
 
         resolver_pair->resolver = resolver;
         resolver_pair->src_addr = src_addr;
+        struct neat_resolver_src_dst_addr *resolver_pair_backup = resolver_pair;
 
+        neat_log(NEAT_LOG_INFO, "neat_resolver_create_pairs pair* 1 %p", resolver_pair);
         if (neat_resolver_create_pair(resolver->nc, resolver_pair,
                     &(server_itr->server_addr)) == RETVAL_FAILURE) {
             neat_log(NEAT_LOG_ERROR, "%s - Failed to create resolver pair", __func__);
             neat_resolver_mark_pair_del(resolver_pair);
             continue;
+        }
+
+        neat_log(NEAT_LOG_INFO, "neat_resolver_create_pairs pair* 2 %p", resolver_pair); // just here, resolver_pair is (sometimes!!) changed
+
+        if (resolver_pair != resolver_pair_backup) {
+            neat_log(NEAT_LOG_ERROR, "!!!!!!!!!!! ============================ CHANGE ====      %p != %p", resolver_pair, resolver_pair_backup);
+            return 2;
         }
 
         if (neat_resolver_send_query(resolver_pair)) {

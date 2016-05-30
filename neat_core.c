@@ -1746,3 +1746,21 @@ neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
     return NEAT_OK;
 }
 
+// ABORT, D1.2 sect. 3.2.4
+neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow)
+{
+    struct linger ling;
+
+    ling.l_onoff = 1;
+    ling.l_linger = 0;
+
+#if !defined(USRSCTP_SUPPORT)
+    setsockopt(flow->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(struct linger));
+#else
+    usrsctp_setsockopt(flow->sock, SOL_SOCKET, SO_LINGER, &ling, sizeof(struct linger));
+#endif
+
+    neat_close(ctx, flow);
+
+    return NEAT_OK;
+}

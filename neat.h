@@ -65,6 +65,7 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                             const char *name, uint16_t port);
 neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
 neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow);
+neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow);
 
 
 // do we also need a set property with a void * or an int (e.g. timeouts) or should

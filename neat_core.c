@@ -594,6 +594,31 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
     case SCTP_ASSOC_CHANGE:
 	handle_sctp_assoc_change(flow, &notfn->sn_assoc_change);
 	break;
+#if defined(__FreeBSD__) || defined (USRSCTP_SUPPORT)
+    // RFC6458 API is not defined on other platforms
+    case SCTP_SEND_FAILED_EVENT:
+	handle_sctp_send_failed(flow, &notfn->sn_send_failed_event);
+	break;
+#else
+    case SCTP_SEND_FAILED:
+	handle_sctp_send_failed(flow, &notfn->sn_send_failed);
+	break;
+#endif // else defined(__FreeBSD__) || defined (USRSCTP_SUPPORT)
+    case SCTP_PEER_ADDR_CHANGE:
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP peer address change event\n");
+	break;
+    case SCTP_REMOTE_ERROR:
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP remote error event\n");
+	break;
+    case SCTP_SHUTDOWN_EVENT:
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP shutdown event\n");
+	break;
+    case SCTP_ADAPTATION_INDICATION:
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP adaption indication event\n");
+	break;
+    case SCTP_PARTIAL_DELIVERY_EVENT:
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP partial delivery event\n");
+	break;
     default:
 	neat_log(NEAT_LOG_WARNING, "Got unhandled SCTP event type %d",
 		 notfn->sn_header.sn_type);

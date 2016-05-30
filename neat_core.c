@@ -496,6 +496,45 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
 }
 
 #ifdef IPPROTO_SCTP
+
+// Translate SCTP cause codes (RFC4960 sect.3.3.10)
+// into NEAT error codes
+static neat_error_code sctp_to_neat_code(uint16_t sctp_code)
+{
+    neat_error_code outcode;
+
+    // TODO: this translation table is not very good,
+    // should probably improve on it, add more NEAT codes
+    switch (sctp_code) {
+    case SCTP_CAUSE_INVALID_STREAM:
+    case SCTP_CAUSE_UNRESOLVABLE_ADDR:
+    case SCTP_CAUSE_UNRECOG_CHUNK:
+    case SCTP_CAUSE_INVALID_PARAM:
+    case SCTP_CAUSE_UNRECOG_PARAM:
+    case SCTP_CAUSE_NO_USER_DATA:
+    case SCTP_CAUSE_MISSING_PARAM:
+    case SCTP_CAUSE_STALE_COOKIE:
+	outcode = NEAT_ERROR_BAD_ARGUMENT;
+	break;
+    case SCTP_CAUSE_OUT_OF_RESC:
+	outcode = NEAT_ERROR_IO;
+	break;
+    case SCTP_CAUSE_COOKIE_IN_SHUTDOWN:
+    case SCTP_CAUSE_PROTOCOL_VIOLATION:
+    case SCTP_CAUSE_RESTART_W_NEWADDR:
+	outcode = NEAT_ERROR_INTERNAL;
+	break;
+    case SCTP_CAUSE_USER_INITIATED_ABT:
+	outcode = NEAT_ERROR_REMOTE;
+	break;
+    default:
+	outcode = NEAT_ERROR_INTERNAL;
+    }
+
+    return outcode;
+}
+
+
 // Handle SCTP association change events
 // includes shutdown complete, etc.
 static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)

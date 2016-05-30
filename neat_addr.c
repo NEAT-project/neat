@@ -37,6 +37,9 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
                     nsrc_addr->u.v6.ifa_valid);
         }
 
+        if (!nc->pvd)
+            return;
+
         LIST_FOREACH(pvd_result, &(nc->pvd->results), next_result) {
             if (pvd_result->src_addr != nsrc_addr) {
                 continue;

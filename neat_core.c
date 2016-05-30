@@ -2384,3 +2384,39 @@ void neat_notify_network_changed(neat_flow *flow, neat_error_code code)
     READYCALLBACKSTRUCT;
     flow->operations->on_network_changed(flow->operations);
 }
+
+// CLOSE, D1.2 sect. 3.2.4
+neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
+{
+    // KAH: free_cb actually does the closefx() call
+
+    // This code is copied from neat_free_flow
+    // TODO consider a refactor...
+    if (flow->isPolling)
+        uv_poll_stop(flow->handle);
+
+    if ((flow->handle != NULL) &&
+        (flow->handle->type != UV_UNKNOWN_HANDLE))
+        uv_close((uv_handle_t *)(flow->handle), free_cb);
+
+    return NEAT_OK;
+}
+
+// ABORT, D1.2 sect. 3.2.4
+neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow)
+{
+    struct linger ling;
+
+    ling.l_onoff = 1;
+    ling.l_linger = 0;
+
+#if !defined(USRSCTP_SUPPORT)
+    setsockopt(flow->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(struct linger));
+#else
+    usrsctp_setsockopt(flow->sock, SOL_SOCKET, SO_LINGER, &ling, sizeof(struct linger));
+#endif
+
+    neat_close(ctx, flow);
+
+    return NEAT_OK;
+}

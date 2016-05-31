@@ -9,6 +9,7 @@
     "capacity": 40000
   },
   "informational": {
+    "interface_latency": 35,
     "transport_UDP": true,
     "transport_TCP": true
   }

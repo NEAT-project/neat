@@ -23,6 +23,7 @@
 #include "neat_addr.h"
 #include "neat_queue.h"
 #include "neat_property_helpers.h"
+#include "neat_stat.h"
 
 #if defined(USRSCTP_SUPPORT)
     #include "neat_usrsctp_internal.h"
@@ -393,9 +394,11 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
 }
 
 /* Ask for statistics about the current flows */
-neat_error_code neat_get_stats(neat_ctx *mgr, char *stats, uint32_t *stats_len)
+neat_error_code neat_get_stats(neat_ctx *mgr, char *json_stats, uint32_t *stats_len)
 {
       neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+      neat_stats_build_json(json_stats, stats_len);
 
 	/* TODO: Fetch statistics from the relevant parts of the system */
 	// Start with fetching some aggregate flow statistics

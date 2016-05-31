@@ -1052,15 +1052,15 @@ neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (flow->name) {
-        return NEAT_ERROR_BAD_ARGUMENT;
-    }
-
     if (count < 1) {
         return NEAT_ERROR_BAD_ARGUMENT;
+    } else if (count > 1) {
+	// TODO: multi-streaming is not yet available from the SCTP
+	// layer.
+	return NEAT_ERROR_UNABLE;
     }
 
-    return NEAT_ERROR_UNABLE;
+    return neat_open_localname(mgr, flow, name, port, localname);
 }
 
 neat_error_code

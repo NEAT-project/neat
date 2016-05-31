@@ -1044,6 +1044,9 @@ neat_open_localname(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t p
         return NEAT_ERROR_BAD_ARGUMENT;
     }
 
+    if (localname == NULL)
+	return neat_open(mgr, flow, name, port);
+
     return NEAT_ERROR_UNABLE;
 }
 

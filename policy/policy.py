@@ -86,9 +86,10 @@ class NEATProperty(object):
     def items(self):
         return self.property
 
-    def dict(self):
+    def dict(self, with_score=True):
         """Return a dict for JSON export"""
-        return {self.key: {'value': self.value, 'precedence': self.precedence, 'score': self.score}}
+        json_dict = {self.key: dict(value=self.value, precedence=self.precedence, score=self.score)}
+        return json_dict
 
     def __iter__(self):
         for p in self.property:
@@ -278,13 +279,14 @@ class PropertyDict(dict):
     from operator import itemgetter
     @property
     def list(self):
-        """ Return a list containing all properties"""
+        """ Return a list containing all property objects"""
         property_list = [i.dict() for i in self.values()]
         # TODO sort by score
         return property_list
 
-    def json(self, indent=None):
-        return json.dumps(self.list, sort_keys=True, indent=indent)
+    def json(self, indent=None, with_score=True):
+        plist = [i for i in self.list]
+        return json.dumps(plist, sort_keys=True, indent=indent)
 
     def __repr__(self):
         return '{' + ', '.join([str(i) for i in self.values()]) + '}'
@@ -496,16 +498,51 @@ class PIB(list):
         """ Lookup all candidates in list. Remove invalid candidates """
         for candidate in candidates:
             try:
-                self.lookup(candidate, apply=True)
+                #self.lookup(candidate, apply=True)
+                applied_policies = self._lookup(candidate.properties, apply=True)
+                candidate.policies.update(applied_policies)
             except NEATPropertyError:
                 candidate.invalid = True
                 print('Candidate %d is invalidated due to policy' % candidates.index(candidate))
 
         candidates[:] = [c for c in candidates if not c.invalid]
 
-    def lookup(self, candidate: NEATCandidate, apply=False):
+    def _lookup(self, properties, apply=False, remove_matched=False):
         """ Look through all installed policies to find the ones which match the properties of the given candidate.
-        If apply is set to True append the matched policy properties.  """
+        If apply is set to True append the matched policy properties.
+        If remove_matched is True, remove the policy match properties from the candidate.
+
+        returns the matched policies
+        """
+
+        assert isinstance(properties, PropertyDict)
+        logging.debug("matching policies for current candidate:")
+
+        applied_policies = []
+        for p in self.policies:
+            if p.compare(properties):
+                logging.info(p)
+                # FIXME remove match fields when using PIB for applying profiles
+                if remove_matched and apply:
+                    # import code
+                    # code.interact(local=locals(), banner='here')
+                    logging.info("applying profile %s" % p.idx)
+
+                    for key in p.match:
+                        del properties[key]
+                        logging.debug("removed match %s" % key)
+                if apply:
+                    p.apply(properties)
+                    applied_policies.append(p.idx)
+                else:
+                    print(p.idx)
+        return applied_policies
+
+    def lookup(self, candidate: NEATCandidate, apply=False, remove_matched=False):
+        """ Look through all installed policies to find the ones which match the properties of the given candidate.
+        If apply is set to True append the matched policy properties.
+        If remove_matched is True, remove the policy match properties from the candidate.
+        """
 
         assert isinstance(candidate, NEATCandidate)
         logging.info("matching policies for current candidate:")
@@ -513,6 +550,10 @@ class PIB(list):
         for p in self.policies:
             if p.compare(candidate.properties):
                 logging.info(p)
+                # FIXME remove match fields when using PIB for applying profiles
+                if remove_matched and apply:
+                    for m in p.match:
+                        del candidate.properties[m.key]
                 if apply:
                     p.apply(candidate.properties)
                     candidate.policies.add(p.idx)

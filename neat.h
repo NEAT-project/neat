@@ -109,6 +109,7 @@ neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                             const char *name, uint16_t port);
 neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
+neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow);
 neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow);
 neat_error_code neat_change_timeout(struct neat_ctx *ctx, struct neat_flow *flow,
                                     int seconds);
@@ -116,7 +117,6 @@ neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *fl
                                       const char *name);
 neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow,
                                       int rate, int seconds);
-
 
 // do we also need a set property with a void * or an int (e.g. timeouts) or should
 // we create higher level named functions for such things?

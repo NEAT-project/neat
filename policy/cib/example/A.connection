@@ -2,16 +2,14 @@
   "type": "local",
   "id": "A",
   "timestamp": 1463575518,
-  "immutable": {
-    "interface": "en0",
-    "is_wired": true,
-    "MTU": 9600,
-    "remote_ip": "10.1.23.45",
-    "local_ip": "10.2.0.1",
-    "capacity": 10000
-  },
-  "informational": {
-    "transport": "TCP",
-    "dns_name": "backup.example.com"
+  "properties":{
+      "interface": {"value": "en0", "precedence":2},
+      "is_wired": {"value": true, "precedence":2},
+      "MTU": {"value": 9600, "precedence":2},
+      "remote_ip": {"value": "10.1.23.45", "precedence":2},
+      "local_ip": {"value": "10.2.0.1", "precedence":2},
+      "capacity": {"value": 10000, "precedence":2},
+      "transport": {"value": "TCP", "precedence":0},
+      "dns_name": {"value": "backup.example.com", "precedence":0}
   }
 }

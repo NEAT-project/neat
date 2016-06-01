@@ -80,19 +80,17 @@ def process_request(json_str):
     pib.lookup_all(request.candidates)
 
     request.candidates.sort(key=attrgetter('score'), reverse=True)
-
-    cand_json = [candidate.properties.json() for candidate in request.candidates]
-    import code
-    code.interact(local=locals(), banner='here')
+    candidates_json = [candidate.properties.json() for candidate in request.candidates]
 
     print("===== CANDIDATES =====")
-    print(cand_json)
-    api_writer(cand_json)
+    print(candidates_json)
+    api_writer(candidates_json)
 
 
 def api_reader():
     """Read requests from NEAT logic over a named pipe"""
 
+    print("Waiting for JSON input in pipe %s..." % FIFO_IN)
     with open(FIFO_IN) as fifo:
         while True:
             line = fifo.readline()

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <uv.h>
+#include <jansson.h>
 
 #include "neat.h"
 #include "neat_queue.h"
@@ -112,6 +113,8 @@ struct neat_flow
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
     uv_poll_t *handle;
+
+    json_t *req_properties;
 
     size_t writeLimit;  // maximum to write if the socket supports partial writes
     size_t writeSize;   // send buffer size

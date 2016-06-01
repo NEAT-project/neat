@@ -187,25 +187,26 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     uint8_t family;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) &&
-        (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED))
-        return NEAT_ERROR_UNABLE;
-    if ((flow->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) &&
-        (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED))
-        return NEAT_ERROR_UNABLE;
-    if ((flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED) &&
-        (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED))
-        return NEAT_ERROR_UNABLE;
-    if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) &&
-        (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED))
-        family = AF_INET;
-    else if ((flow->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) &&
-             (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED))
-        family = AF_INET6;
-    else
+    /* if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) && */
+    /*     (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED)) */
+    /*     return NEAT_ERROR_UNABLE; */
+    /* if ((flow->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) && */
+    /*     (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED)) */
+    /*     return NEAT_ERROR_UNABLE; */
+    /* if ((flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED) && */
+    /*     (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED)) */
+    /*     return NEAT_ERROR_UNABLE; */
+    /* if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) && */
+    /*     (flow->propertyMask & NEAT_PROPERTY_IPV6_BANNED)) */
+    /*     family = AF_INET; */
+    /* else if ((flow->propertyMask & NEAT_PROPERTY_IPV6_REQUIRED) && */
+    /*          (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED)) */
+    /*     family = AF_INET6; */
+    /* else */
+    // KAH: no property for IP family specified?
         family = AF_UNSPEC; /* AF_INET and AF_INET6 */
 
-    nr_of_protocols = neat_property_translate_protocols(flow->propertyMask,
+    nr_of_protocols = neat_property_translate_protocols(flow->req_properties,
             protocols);
     if (nr_of_protocols == 0)
         return NEAT_ERROR_UNABLE;

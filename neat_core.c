@@ -353,6 +353,9 @@ void neat_free_flow(neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+    if (flow->req_properties)
+	json_decref(flow->req_properties);
+
 #if defined(USRSCTP_SUPPORT)
     if (flow->sockProtocol == IPPROTO_SCTP) {
        usrsctp_free(flow);
@@ -376,12 +379,40 @@ neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,
     return NEAT_OK;
 }
 
+neat_error_code neat_set_property_json(neat_ctx *mgr, neat_flow *flow,
+				  char *property_set)
+//                                  uint64_t inMask)
+{
+    json_error_t err;
+    json_t* json;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    json = json_loads(property_set, 0, &err);
+    if (!json) {
+        neat_log(NEAT_LOG_ERROR, "Invalid JSON input at line %d col %d: %s\n",
+		 err.line, err.column, err.text);
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    if(!json_is_array(json))
+    {
+	neat_log(NEAT_LOG_ERROR, "Properties not specified as JSON array\n");
+	json_decref(json);
+	return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    // TODO: needs to be validated further somehow
+    // Perhaps PM does that for us?
+
+    flow->req_properties = json;
+
+    return NEAT_OK;
+}
+
 neat_error_code neat_set_property(neat_ctx *mgr, neat_flow *flow,
                                   uint64_t inMask)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    flow->propertyMask = inMask;
     return NEAT_OK;
 }
 
@@ -954,7 +985,9 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     neat_flow *newFlow = neat_new_flow(ctx);
     newFlow->name = strdup (flow->name);
     newFlow->port = flow->port;
-    newFlow->propertyMask = flow->propertyMask;
+    //newFlow->propertyMask = flow->propertyMask;
+    newFlow->req_properties = flow->req_properties;
+    json_incref(flow->req_properties);
     newFlow->propertyAttempt = flow->propertyAttempt;
     newFlow->propertyUsed = flow->propertyUsed;
     newFlow->everConnected = 1;
@@ -1258,7 +1291,11 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     uint8_t nr_of_protocols;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    nr_of_protocols = neat_property_translate_protocols(flow->propertyMask, protocols);
+    //FIXME: replace with candidate list
+    //nr_of_protocols =
+    //neat_property_translate_protocols(flow->propertyMask,
+    //protocols);
+    nr_of_protocols = neat_property_translate_protocols(flow->req_properties, protocols);
 
     if (nr_of_protocols == 0)
         return NEAT_ERROR_UNABLE;

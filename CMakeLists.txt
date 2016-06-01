@@ -139,6 +139,14 @@ IF (NOT HAVE_SYS_LDNS_H OR NOT LDNS_LIB)
     MESSAGE(FATAL_ERROR "ldns/ldns.h not found - libdns installed?")
 ENDIF()
 
+CHECK_INCLUDE_FILE(jansson.h HAVE_SYS_JANSSON_H)
+FIND_LIBRARY(JANSSON_LIB jansson)
+MESSAGE(STATUS "JANSSON found: " ${JANSSON_LIB})
+IF (NOT HAVE_SYS_JANSSON_H OR NOT JANSSON_LIB)
+    MESSAGE(FATAL_ERROR "jansson.h not found - libjansson installed?")
+ENDIF()
+
+
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     FIND_LIBRARY(MNL_LIB mnl)
     CHECK_INCLUDE_FILE(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
@@ -173,6 +181,7 @@ ENDIF()
 LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}
+    ${JANSSON_LIB}
     )
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")

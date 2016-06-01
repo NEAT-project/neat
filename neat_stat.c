@@ -37,8 +37,6 @@ void neat_stats_build_json(char **json_stats){
   *json_stats = json_dumps(root, 0);
 
   json_decref(root);
-  json_decref(flow1);
-  json_decref(flow2);
   
   return;
 } 

@@ -77,6 +77,7 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
 void print_neat_stats()
 {
    neat_error_code error;
+
    char* stats = NULL;
    error = neat_get_stats(&stats);
    if(error != NEAT_OK){

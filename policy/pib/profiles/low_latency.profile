@@ -1,16 +1,19 @@
 {
   "name": "Low latency",
   "match": {
-    "requested": {
-      "low_latency": true
+    "low_latency": {
+      "precedence": 1,
+      "value": true
     }
   },
   "properties": {
-    "immutable": {
-      "interface_latency": [0,50]
+    "interface_latency": {
+      "precedence": 2,
+      "value": [0,40]
     },
-    "requested": {
-      "is_wired": true
+    "is_wired": {
+      "precedence": 1,
+      "value": true
     }
   }
 }

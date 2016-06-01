@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
 
+import atexit
 import code
+import logging
+import os
+import stat
+import time
+
+from operator import attrgetter
 
 from cib import CIB
 from policy import PIB, NEATProperty, NEATPolicy, NEATRequest
 
-POLICY_DIR = "pib/"
 
-if __name__ == "__main__":
+FIFO_IN = 'pm_json.in'
+FIFO_OUT = 'pm_json.out'
+
+
+def example():
     cib = CIB('cib/example/')
     pib = PIB()
 
@@ -33,12 +43,12 @@ if __name__ == "__main__":
     policy2.properties.insert(NEATProperty(('TCP_window_scale', True)))
     pib.register(policy2)
 
-    #code.interact(local=locals(), banner='start')
+    # code.interact(local=locals(), banner='start')
 
     print("CIB lookup:")
     cib.lookup(request)
     request.dump()
-    #code.interact(local=locals(), banner='CIB lookup done')
+    # code.interact(local=locals(), banner='CIB lookup done')
 
     print("PIB lookup:")
     pib.lookup_all(request.candidates)
@@ -47,3 +57,86 @@ if __name__ == "__main__":
     for candidate in request.candidates:
         print(candidate.properties.json())
     code.interact(local=locals(), banner='PIB lookup done')
+
+
+@atexit.register
+def fifo_cleanup():
+    try:
+        pass
+        # os.unlink(FIFO_IN)
+        # os.unlink(FIFO_OUT)
+    except Exception as e:
+        pass
+
+
+def process_request(json_str):
+    logging.debug(json_str)
+    request = NEATRequest()
+    request.properties.insert_json(json_str)
+    print('received NEAT request: %s' % str(request.properties))
+
+    profiles._lookup(request.properties, remove_matched=True, apply=True)
+    cib.lookup(request)
+    pib.lookup_all(request.candidates)
+
+    request.candidates.sort(key=attrgetter('score'), reverse=True)
+
+    cand_json = [candidate.properties.json() for candidate in request.candidates]
+    import code
+    code.interact(local=locals(), banner='here')
+
+    print("===== CANDIDATES =====")
+    print(cand_json)
+    api_writer(cand_json)
+
+
+def api_reader():
+    """Read requests from NEAT logic over a named pipe"""
+
+    with open(FIFO_IN) as fifo:
+        while True:
+            line = fifo.readline()
+            if not line:
+                # FIXME use callback
+                time.sleep(0.1)
+                continue
+            requests = line.splitlines()
+            for r in requests:
+                process_request(r)
+
+
+def api_writer(out_str):
+    with open(FIFO_OUT, 'w') as fifo:
+        fifo.writelines(out_str)
+
+
+def create_pipes():
+    try:
+        mode = os.stat(FIFO_IN).st_mode
+        if not stat.S_ISFIFO(mode):
+            print('File %s already exists and is not a named pipe!' % FIFO_IN)
+            exit(1)
+    except FileNotFoundError:
+        os.mkfifo(FIFO_IN)
+        logging.info('Creating named pipe %s' % FIFO_IN)
+
+    try:
+        mode = os.stat(FIFO_OUT).st_mode
+        if not stat.S_ISFIFO(mode):
+            print('File %s already exists and is not a named pipe!' % FIFO_OUT)
+            exit(1)
+    except FileNotFoundError:
+        os.mkfifo(FIFO_OUT)
+        logging.info('Creating named pipe %s' % FIFO_OUT)
+
+
+if __name__ == "__main__":
+    create_pipes()
+
+    cib = CIB('cib/example/')
+    profiles = PIB('pib/profiles/')
+    pib = PIB('pib/examples/')
+
+    api_reader()
+    # test_request = '{"MTU": {"value": [1500, Infinity]}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10.1.23.45"}, "transport_TCP": {"value": true}}'
+    # process_request(test_request)

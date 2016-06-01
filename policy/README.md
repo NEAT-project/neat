@@ -28,7 +28,7 @@ As an example, if an immutable property is requested by an application and this 
 
 
 
-In addition, each property is associated with a numeric `score` denoting whether, and how often, a property has been matched. Each time a property is updated its score is increased if its value matched the compared property, and decreased otherwise. The property score is used to determine the most suitable NEAT connection candidate for a given request (see below).
+In addition, each property is associated with a numeric `score` denoting whether, and how often, a property has been matched. Each time a property is updated its score is increased if its value matched the compared property, and decreased otherwise. The property score is used to determine the most suitable NEAT connection `candidate` for a given request (see below).
 
 ### Numeric property ranges
 
@@ -45,18 +45,19 @@ Policies are based around NEAT properties. Each policy contains the following en
 
 ### NEAT Candidates
 
-`NEATCandidate` objects are used to represent a  candidate connections which will be passed to the NEAT logic. 
+`NEATCandidate` objects are used to represent a candidate connections which are be passed to the NEAT logic. Each candidate is comprised of a number of properties aggregated from the candidate request, the CIB, and PIB (see below). Each property is associated with a score, indicating if the corresponding value was fulfilled during the lookups. An undefined score (NaN) indicates that the PM did not have sufficient information to evaluate the property. If a candidate includes`immutable` properties with undefined scores the NEAT logic is responsible to ensure that these are can be fulfilled (An example of such a property would be security)
 
+After each call the PM returns a ranked list of candidates. 
+ 
 ## NEAT Requests
 
 A *NEAT Request* is an object containing a set of `NEATProperties` requested for a connection by an NEAT enabled application. In addition, the object includes a list of connection `candidates` (`NEATCandidate`) whose properties match a subset of the requested properties. The candidate list is populated during the CIB lookup phase and is ranked according to the associated property scores.
 
 Each NEAT request is processed in two steps:
 
-1. **Profile Lookup**: the request properties are compared to all profile entries in the PIB. Whenever a profile match property/keyword is matched, it is replaced by the associated profile properties.
+1. **Profile Lookup**: the request properties are compared to all profile entries in the PIB. Whenever a profile entry is matched, the corresponding match property in the request is replaced by the associated profile properties.
  
 2. **CIB Lookup**: the request properties are compared against each entry in the CIB. The properties of a candidate are the union of the request and CIB entry property sets. Specifically, the properties are obtained by overlaying the request properties with the properties of a single CIB entry and updating the *intersection* of the two property sets with corresponding the values from the CIB entry properties.
-
 The *N* entries with the larges aggregate score are appended to the candidate list.
 
 3. **PIB Lookup**: For each candidate the PM iterates through all PIB policies and compares the match properties with the candidates properties. A policy is said to *match* a candidate whenever *all* of its match properties are found in the candidate properties. PIB entries are matched with a *shortest match first* strategy, i.e., policies with the smallest number of `match` properties are applied first. Subsequent, policies will *overwrite* any perviously applied policy properties. Conflicting policies must be identified by the NEAT logic.

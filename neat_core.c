@@ -393,20 +393,14 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
     return NEAT_OK;
 }
 
-/* Ask for statistics about the current flows */
-neat_error_code neat_get_stats(neat_ctx *mgr, char *json_stats, uint32_t *stats_len)
+/* Return statistics about the current flows/neat system */
+neat_error_code neat_get_stats(char **json_stats)
 {
       neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-      neat_stats_build_json(json_stats, stats_len);
-
-	/* TODO: Fetch statistics from the relevant parts of the system */
-	// Start with fetching some aggregate flow statistics
-	// Number of open flows
-	// total bytes sent / received
-	// Add per-flow statistics icluding protocols and IFs
-
-	/* Use jansson to build the JSON string to pass to the application */
+      neat_stats_build_json(json_stats);
+      //printf("json %s,: %s\n", __func__, *json_stats);
+      //puts(json_stats);
 
       return NEAT_OK;
 }

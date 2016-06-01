@@ -5,7 +5,7 @@
 #include <string.h>
 #include <jansson.h>
 
-void neat_stats_build_json(char *json_stats, uint32_t *stats_len);
+void neat_stats_build_json(char **json_stats);
 
 // Struct for collecting global statistics
 struct neat_stat{

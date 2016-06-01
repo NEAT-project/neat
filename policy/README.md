@@ -74,4 +74,23 @@ TODO
 
 # Example
  
-For a walkthrough example see the [Jupyter notebook](neat_policy_example.ipynb).
+For a detailed walkthrough example see the [**Policy Manager Jupyter notebook**](neat_policy_example.ipynb).
+
+
+To run the policy manager with the included sample policies run:
+
+    $ ./neatpmd.py
+
+The PM will create two named pipes (if these don’t already exist) called `pm_json.in` and `pm_json.out` and wait for input. Next, a JSON string containing the requested properties can be passed to the input pipe:
+
+    $ JSON=='{"MTU": {"value": [1500, Infinity]}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10.1.23.45"}, "transport_TCP": {"value": true}}'   
+    $ echo $JSON >> pm_json.in
+
+
+The PM will output a JSON string containing the connection candidates (two of them for the given example) into the out pipe. 
+
+```
+$ cat < pm_json.out
+[{"MTU": {"precedence": 2, "score": 2.0, "value": 9600}, "TCP_window_scale": {"precedence": 1, "score": NaN, "value": true}, "capacity": {"precedence": 2, "score": 1.0, "value": 10000}, "dns_name": {"precedence": 0, "score": NaN, "value": "backup.example.com"}, "interface": {"precedence": 2, "score": NaN, "value": "en0"}, "interface_latency": {"precedence": 2, "score": NaN, "value": [0.0, 40.0]}, "is_wired": {"precedence": 2, "score": 1.0, "value": true}, "local_ip": {"precedence": 2, "score": NaN, "value": "10.2.0.1"}, "remote_ip": {"precedence": 2, "score": 1.0, "value": "10.1.23.45"}, "transport": {"precedence": 0, "score": NaN, "value": "TCP"}, "transport_TCP": {"precedence": 1, "score": NaN, "value": true}}, {"MTU": {"precedence": 2, "score": 0.0, "value": 1500}, "TCP_window_scale": {"precedence": 1, "score": NaN, "value": true}, "capacity": {"precedence": 2, "score": 1.0, "value": 40000}, "interface": {"precedence": 2, "score": NaN, "value": "en1"}, "interface_latency": {"precedence": 2, "score": 1.0, "value": 35}, "is_wired": {"precedence": 2, "score": 1.0, "value": true}, "local_ip": {"precedence": 2, "score": NaN, "value": "192.168.1.2"}, "remote_ip": {"precedence": 2, "score": NaN, "value": "10.1.23.45"}, "transport_TCP": {"precedence": 1, "score": 1.0, "value": true}, "transport_UDP": {"precedence": 0, "score": NaN, "value": true}}]
+```
+

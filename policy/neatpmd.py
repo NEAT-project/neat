@@ -80,7 +80,7 @@ def process_request(json_str):
     pib.lookup_all(request.candidates)
 
     request.candidates.sort(key=attrgetter('score'), reverse=True)
-    candidates_json = [candidate.properties.json() for candidate in request.candidates]
+    candidates_json = '[' + ', '.join([candidate.properties.json() for candidate in request.candidates]) + ']'
 
     print("===== CANDIDATES =====")
     print(candidates_json)
@@ -105,7 +105,7 @@ def api_reader():
 
 def api_writer(out_str):
     with open(FIFO_OUT, 'w') as fifo:
-        fifo.writelines(out_str)
+        fifo.write(out_str)
 
 
 def create_pipes():

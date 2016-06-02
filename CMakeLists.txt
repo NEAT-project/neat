@@ -148,14 +148,19 @@ ENDIF()
 
 CHECK_INCLUDE_FILE(netinet/sctp.h HAVE_NETINET_SCTP_H)
 IF (HAVE_NETINET_SCTP_H)
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
+  CHECK_STRUCT_HAS_MEMBER("struct sctp_event_subscribe" sctp_association_event netinet/sctp.h HAVE_SCTP_EVENT_SUBSCRIBE)
+  CHECK_STRUCT_HAS_MEMBER("struct sctp_send_failed_event" ssfe_error netinet/sctp.h HAVE_SCTP_SEND_FAILED_EVENT)
 ENDIF()
 
 IF (USRSCTP_SUPPORT)
     CHECK_INCLUDE_FILE(usrsctp.h HAVE_USRSCTP_H)
     IF (NOT HAVE_USRSCTP_H)
-        MESSAGE(FATAL_ERROR "usrsctp.h not found - usrsctp installed?")
+      MESSAGE(FATAL_ERROR "usrsctp.h not found - usrsctp installed?")
     ENDIF()
+    CHECK_STRUCT_HAS_MEMBER("struct sctp_event_subscribe" sctp_association_event usrsctp.h HAVE_SCTP_EVENT_SUBSCRIBE)
+    CHECK_STRUCT_HAS_MEMBER("struct sctp_send_failed_event" ssfe_error usrsctp.h HAVE_SCTP_SEND_FAILED_EVENT)
+
 ENDIF()
 
 # COMPILER FLAGS

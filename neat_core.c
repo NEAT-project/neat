@@ -492,7 +492,7 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_writable(flow->operations);
 }
 
-#ifdef SCTP_SUPPORTED
+#if defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
 
 // Translate SCTP cause codes (RFC4960 sect.3.3.10)
 // into NEAT error codes
@@ -557,9 +557,9 @@ static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *
 
 // Handle SCTP send failed event
 // One is generated per failed message
-// Only FreeBSD and USRSCTP support the new RFC6458 API,
+// Only FreeBSD and USRSCTP support the new RFC6458 API so far,
 // hence the ifdefs
-#if defined(__FreeBSD__) || defined (USRSCTP_SUPPORT)
+#ifdef HAVE_SCTP_SEND_FAILED_EVENT
 static void handle_sctp_send_failed(neat_flow *flow, struct sctp_send_failed_event *ssfe)
 #else
 static void handle_sctp_send_failed(neat_flow *flow, struct sctp_send_failed *ssf)
@@ -569,7 +569,7 @@ static void handle_sctp_send_failed(neat_flow *flow, struct sctp_send_failed *ss
     uint8_t *unsent_msg;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-#if defined(__FreeBSD__) || defined (USRSCTP_SUPPORT)
+#ifdef HAVE_SCTP_SEND_FAILED_EVENT
     error = ssfe->ssfe_error;
     unsent_msg = ssfe->ssfe_data;
     context = ssfe->ssfe_info.snd_context;
@@ -593,8 +593,8 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
     case SCTP_ASSOC_CHANGE:
 	handle_sctp_assoc_change(flow, &notfn->sn_assoc_change);
 	break;
-#if defined(__FreeBSD__) || defined (USRSCTP_SUPPORT)
-    // RFC6458 API is not defined on other platforms
+#ifdef HAVE_SCTP_SEND_FAILED_EVENT
+    // RFC6458 API is not defined on all platforms
     case SCTP_SEND_FAILED_EVENT:
 	handle_sctp_send_failed(flow, &notfn->sn_send_failed_event);
 	break;
@@ -602,7 +602,7 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
     case SCTP_SEND_FAILED:
 	handle_sctp_send_failed(flow, &notfn->sn_send_failed);
 	break;
-#endif // else defined(__FreeBSD__) || defined (USRSCTP_SUPPORT)
+#endif // else HAVE_SCTP_SEND_FAILED_EVENT
     case SCTP_PEER_ADDR_CHANGE:
 	neat_log(NEAT_LOG_DEBUG, "Got SCTP peer address change event\n");
 	break;
@@ -623,7 +623,7 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 		 notfn->sn_header.sn_type);
     }
 }
-#endif // SCTP_SUPPORTED
+#endif // defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
 
 
 #define READ_OK 0
@@ -633,7 +633,7 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 static int io_readable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
-#if defined(SCTP_SUPPORTED)
+#if defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
     ssize_t n, spaceFree;
     ssize_t spaceNeeded, spaceThreshold;
 #if !defined(USRSCTP_SUPPORT)
@@ -647,13 +647,13 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     socklen_t infolen = sizeof(struct sctp_recvv_rn);
     int flags = 0;
 #endif // else !defined(USRSCTP_SUPPORT)
-#endif // defined(SCTP_SUPPORTED)
+#endif // defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations || !flow->operations->on_readable) {
         return READ_WITH_ERROR;
     }
-#if defined(SCTP_SUPPORTED)
+#if defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
     if ((flow->sockProtocol == IPPROTO_SCTP) &&
         (!flow->readBufferMsgComplete)) {
         spaceFree = flow->readBufferAllocation - flow->readBufferSize;
@@ -751,7 +751,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         }
 #endif // else !defined(USRSCTP_SUPPORT)
     }
-#endif // defined(SCTP_SUPPORTED)
+#endif // defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
     READYCALLBACKSTRUCT;
     flow->operations->on_readable(flow->operations);
     return READ_OK;
@@ -1113,6 +1113,7 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 
         return NEAT_ERROR_OK;
     } else if (flow->sockProtocol == IPPROTO_SCTP) {
+#if defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
 #ifdef USRSCTP_SUPPORT
         unsigned int new_value = ((unsigned int)seconds) * 1000 / 4; // seconds -> ms
         usrsctp_sysctl_set_sctp_heartbeat_interval_default((uint32_t)new_value);
@@ -1139,7 +1140,8 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
                     "Call to setsockopt failed with errno=%d", errno);
             return NEAT_ERROR_IO;
         }
-#endif
+#endif // else  USRSCTP_SUPPORT
+#endif // defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
         return NEAT_ERROR_OK;
     }
 #endif // !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
@@ -1906,10 +1908,10 @@ static void neat_sctp_init_events(struct socket *sock)
 #else
 static void neat_sctp_init_events(int sock)
 #endif
-#if defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
+#if defined(SCTP_EVENT)
 {
     // Set up SCTP event subscriptions using RFC6458 API
-    // (does not work with Linux/OSX/NetBSD kernel SCTP)
+    // (does not work with current Linux kernel SCTP)
     struct sctp_event event;
     unsigned int i;
     uint16_t event_types[] = {SCTP_ASSOC_CHANGE,
@@ -1937,9 +1939,9 @@ static void neat_sctp_init_events(int sock)
 	}
     }
 }
-#else // defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
+#else // defined(SCTP_EVENT)
 
-#if defined(SCTP_SUPPORTED)
+#ifdef HAVE_SCTP_EVENT_SUBSCRIBE
 // Set up SCTP event subscriptions using deprecated API
 // (for compatibility with Linux kernel SCTP)
 {
@@ -1960,12 +1962,12 @@ static void neat_sctp_init_events(int sock)
 		 __func__, strerror(errno));
     }
 }
-#else // defined(SCTP_SUPPORTED)
+#else // HAVE_SCTP_EVENT_SUBSCRIBE
 {
     // SCTP not supported in any way; do nothing.
 }
-#endif // else defined(SCTP_SUPPORTED)
-#endif //else defined(USRSCTP_SUPPORT) || defined(__FreeBSD__)
+#endif // else HAVE_SCTP_EVENT_SUBSCRIBE
+#endif //else defined(SCTP_EVENT)
 
 #ifdef USRSCTP_SUPPORT
 static struct socket *

@@ -18,6 +18,7 @@
     -P : neat properties
     -R : receive buffer in byte
     -S : send buffer in byte
+    -J : print json stats for each byte sent 
     -v : log level (0 .. 2)
     
 **********************************************************************/
@@ -58,7 +59,7 @@ static void print_usage()
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- S \tsend buffer in byte (%d)\n", config_snd_buffer_size);
-    printf("\t- J \tprint json stats for each byte sent (off)\n");
+    printf("\t- J \tprint json stats for each byte sent\n");
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
 }
 

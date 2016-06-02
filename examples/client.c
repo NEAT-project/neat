@@ -439,7 +439,7 @@ int main(int argc, char *argv[])
     ops.on_error = on_error;
     ops.on_close = on_close;
     ops.on_aborted = on_abort;
-    ops.on_network_changed = on_network_changed;
+    ops.on_network_status_changed = on_network_changed;
 
     if (neat_set_operations(ctx, flow, &ops)) {
         fprintf(stderr, "%s - error: neat_set_operations\n", __func__);

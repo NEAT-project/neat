@@ -52,7 +52,7 @@ struct neat_flow_operations
   neat_flow_operations_fx on_readable;
   neat_flow_operations_fx on_writable;
   neat_flow_operations_fx on_all_written;
-  neat_flow_operations_fx on_network_changed;
+  neat_flow_operations_fx on_network_status_changed;
   neat_flow_operations_fx on_aborted;
   neat_flow_operations_fx on_timeout;
   neat_flow_operations_fx on_close;

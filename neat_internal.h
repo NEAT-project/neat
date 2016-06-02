@@ -374,6 +374,6 @@ void neat_notify_send_failure(neat_flow *flow, neat_error_code code,
 void neat_notify_timeout(neat_flow *flow);
 void neat_notify_aborted(neat_flow *flow);
 void neat_notify_close(neat_flow *flow);
-void neat_notify_network_changed(neat_flow *flow, neat_error_code code);
+void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code);
 
 #endif

@@ -550,7 +550,7 @@ static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *
     case SCTP_COMM_UP: // Fallthrough:
     case SCTP_RESTART:
 	// TODO: might want to "translate" the state codes to a NEAT code.
-	neat_notify_network_changed(flow, sac->sac_state);
+	neat_notify_network_status_changed(flow, sac->sac_state);
 	break;
     }
 }
@@ -2381,19 +2381,19 @@ void neat_notify_close(neat_flow *flow)
 
 // Notify application about network changes.
 // Code should identify what happened.
-void neat_notify_network_changed(neat_flow *flow, neat_error_code code)
+void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code)
 {
     //READYCALLBACKSTRUCT expects this:
     neat_ctx *ctx = flow->ctx;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (!flow->operations || !flow->operations->on_network_changed) {
+    if (!flow->operations || !flow->operations->on_network_status_changed) {
 	return;
     }
 
     READYCALLBACKSTRUCT;
-    flow->operations->on_network_changed(flow->operations);
+    flow->operations->on_network_status_changed(flow->operations);
 }
 
 // CLOSE, D1.2 sect. 3.2.4

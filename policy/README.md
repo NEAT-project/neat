@@ -55,7 +55,7 @@ A *NEAT Request* is an object containing a set of `NEATProperties` requested for
 
 Each NEAT request is processed in two steps:
 
-1. **Profile Lookup**: the request properties are compared to all profile entries in the PIB. Whenever a profile entry is matched, the corresponding match property in the request is replaced by the associated profile properties.
+1. **Profile Lookup**: the request properties are compared to all profile entries in the PIB. Whenever a profile entry is matched, the corresponding match property in the request is *replaced* with the associated profile properties. Profiles are specified using the same format as policies.
  
 2. **CIB Lookup**: the request properties are compared against each entry in the CIB. The properties of a candidate are the union of the request and CIB entry property sets. Specifically, the properties are obtained by overlaying the request properties with the properties of a single CIB entry and updating the *intersection* of the two property sets with corresponding the values from the CIB entry properties.
 The *N* entries with the larges aggregate score are appended to the candidate list.

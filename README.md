@@ -29,10 +29,11 @@ wants. A typical first step is to resolve a domain name.
 * `libuv`
 * `ldns`
 * `libmnl (linux only)`
+* `libsctp-dev (linux only, for kernel SCTP support)`
 
 | OS        | command           |
 | :-------- |:-------------|
-| Ubuntu*   | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev` |
+| Ubuntu*   | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev libsctp-dev` |
 | FreeBSD   | `pkg install cmake ldns libuv`     |   
 | OS X      | `brew install libuv ldns`      | 
 \* Ubuntu 15.04 and higher

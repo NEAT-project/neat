@@ -503,25 +503,25 @@ static neat_error_code sctp_to_neat_code(uint16_t sctp_code)
     // TODO: this translation table is not very good,
     // should probably improve on it, add more NEAT codes
     switch (sctp_code) {
-    case SCTP_CAUSE_INVALID_STREAM:
-    case SCTP_CAUSE_UNRESOLVABLE_ADDR:
-    case SCTP_CAUSE_UNRECOG_CHUNK:
-    case SCTP_CAUSE_INVALID_PARAM:
-    case SCTP_CAUSE_UNRECOG_PARAM:
-    case SCTP_CAUSE_NO_USER_DATA:
-    case SCTP_CAUSE_MISSING_PARAM:
-    case SCTP_CAUSE_STALE_COOKIE:
+    case NEAT_SCTP_CAUSE_INVALID_STREAM:
+    case NEAT_SCTP_CAUSE_UNRESOLVABLE_ADDR:
+    case NEAT_SCTP_CAUSE_UNRECOG_CHUNK:
+    case NEAT_SCTP_CAUSE_INVALID_PARAM:
+    case NEAT_SCTP_CAUSE_UNRECOG_PARAM:
+    case NEAT_SCTP_CAUSE_NO_USER_DATA:
+    case NEAT_SCTP_CAUSE_MISSING_PARAM:
+    case NEAT_SCTP_CAUSE_STALE_COOKIE:
 	outcode = NEAT_ERROR_BAD_ARGUMENT;
 	break;
-    case SCTP_CAUSE_OUT_OF_RESC:
+    case NEAT_SCTP_CAUSE_OUT_OF_RESC:
 	outcode = NEAT_ERROR_IO;
 	break;
-    case SCTP_CAUSE_COOKIE_IN_SHUTDOWN:
-    case SCTP_CAUSE_PROTOCOL_VIOLATION:
-    case SCTP_CAUSE_RESTART_W_NEWADDR:
+    case NEAT_SCTP_CAUSE_COOKIE_IN_SHUTDOWN:
+    case NEAT_SCTP_CAUSE_PROTOCOL_VIOLATION:
+    case NEAT_SCTP_CAUSE_RESTART_W_NEWADDR:
 	outcode = NEAT_ERROR_INTERNAL;
 	break;
-    case SCTP_CAUSE_USER_INITIATED_ABT:
+    case NEAT_SCTP_CAUSE_USER_INITIATED_ABT:
 	outcode = NEAT_ERROR_REMOTE;
 	break;
     default:

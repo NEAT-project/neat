@@ -75,12 +75,12 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
     exit(EXIT_FAILURE);
 }
 
-void print_neat_stats()
+void print_neat_stats(neat_flow *flow)
 {
    neat_error_code error;
 
    char* stats = NULL;
-   error = neat_get_stats(&stats);
+   error = neat_get_stats(flow, &stats);
    if(error != NEAT_OK){
       printf("NEAT ERROR: %i\n", (int)error);
       return;
@@ -159,7 +159,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     }
 
     if(config_json_stats){
-       print_neat_stats();
+       print_neat_stats(opCB->flow);
     } 
 
     if (config_log_level >= 1) {

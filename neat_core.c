@@ -394,11 +394,11 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
 }
 
 /* Return statistics about the current flows/neat system */
-neat_error_code neat_get_stats(char **json_stats)
+neat_error_code neat_get_stats(neat_flow *flow, char **json_stats)
 {
       neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-      neat_stats_build_json(json_stats);
+      neat_stats_build_json(flow, json_stats);
       //printf("json %s,: %s\n", __func__, *json_stats);
       //puts(json_stats);
 

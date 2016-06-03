@@ -492,8 +492,6 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_writable(flow->operations);
 }
 
-#if defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
-
 // Translate SCTP cause codes (RFC4960 sect.3.3.10)
 // into NEAT error codes
 static neat_error_code sctp_to_neat_code(uint16_t sctp_code)
@@ -531,6 +529,7 @@ static neat_error_code sctp_to_neat_code(uint16_t sctp_code)
     return outcode;
 }
 
+#if defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
 
 // Handle SCTP association change events
 // includes shutdown complete, etc.

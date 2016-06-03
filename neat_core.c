@@ -393,14 +393,14 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
     return NEAT_OK;
 }
 
-/* Return statistics about the current flows/neat system */
+/* Return statistics about the flow in JSON format 
+   NB - the memory allocated for the return string must be freed 
+   by the caller */
 neat_error_code neat_get_stats(neat_flow *flow, char **json_stats)
 {
       neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
       neat_stats_build_json(flow, json_stats);
-      //printf("json %s,: %s\n", __func__, *json_stats);
-      //puts(json_stats);
 
       return NEAT_OK;
 }

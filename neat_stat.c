@@ -9,9 +9,11 @@
 #include "neat_stat.h"
 
 
-/* Traverse the relevant susystems of NEAT and gather the stats
+/* Traverse the relevant subsystems of NEAT and gather the stats
    then format the stats as a json string to return */	
-void neat_stats_build_json(neat_flow *flow, char **json_stats){
+void neat_stats_build_json(neat_flow *flow, char **json_stats)
+{
+	neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
 	json_t *root = json_object();
 
@@ -20,7 +22,6 @@ void neat_stats_build_json(neat_flow *flow, char **json_stats){
 	json_object_set_new( root, "sock_protocol", json_integer( flow->sockProtocol ));
 	json_object_set_new( root, "port", json_integer( flow->port ));
 	
-
 	/* TODO: fetch OS-specific stats from the respective stacks used for connecting */
 
 	/* Callers must remember to free the output */

@@ -1087,20 +1087,10 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
         }
 
         unsigned int new_value =
-#if defined(__FreeBSD__) || defined(__NetBSD__)
-            ((unsigned int)seconds);
-#else
             ((unsigned int)seconds) * 1000; // seconds -> ms
-#endif
 
         int rc = setsockopt(flow->fd, IPPROTO_TCP,
-#if defined(__FreeBSD__) || defined(__NetBSD__)
-	    // KAH: turns out this was implemented on a feature
-	    // branch, and sadly not merged to mainline
-                TCP_SNDUTO_TIMEOUT,
-#else
                 TCP_USER_TIMEOUT,
-#endif
                 &new_value,
                 sizeof(new_value));
 

@@ -652,7 +652,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     if (!flow->operations || !flow->operations->on_readable) {
         return READ_WITH_ERROR;
     }
-#if defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
+#if defined(IPPROTO_SCTP) && defined(MSG_NOTIFICATION)
     if ((flow->sockProtocol == IPPROTO_SCTP) &&
         (!flow->readBufferMsgComplete)) {
         spaceFree = flow->readBufferAllocation - flow->readBufferSize;
@@ -750,7 +750,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         }
 #endif // else !defined(USRSCTP_SUPPORT)
     }
-#endif // defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
+#endif // defined(IPPROTO_SCTP) && defined(MSG_NOTIFICATION)
     READYCALLBACKSTRUCT;
     flow->operations->on_readable(flow->operations);
     return READ_OK;

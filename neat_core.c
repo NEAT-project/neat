@@ -1067,7 +1067,9 @@ neat_error_code
 neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 {
     unsigned int timeout_msec;
+#if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
     int rc;
+#endif
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 

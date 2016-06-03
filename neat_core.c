@@ -1066,10 +1066,11 @@ neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t
 neat_error_code
 neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 {
+    unsigned int timeout_msec;
+    int rc;
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    // TCP User Timeout isn't supported by these platforms:
-#if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
     if (seconds < 0) {
             neat_log(NEAT_LOG_WARNING,
                     "Unable to change timeout: "
@@ -1078,6 +1079,10 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
             return NEAT_ERROR_BAD_ARGUMENT;
     }
 
+    timeout_msec = ((unsigned int)seconds) * 1000;
+
+    // TCP User Timeout isn't supported by these platforms:
+#if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
     if (flow->sockProtocol == IPPROTO_TCP) {
         if (flow->fd == -1) {
             neat_log(NEAT_LOG_WARNING,
@@ -1086,13 +1091,11 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
             return NEAT_ERROR_BAD_ARGUMENT;
         }
 
-        unsigned int new_value =
-            ((unsigned int)seconds) * 1000; // seconds -> ms
-
-        int rc = setsockopt(flow->fd, IPPROTO_TCP,
-                TCP_USER_TIMEOUT,
-                &new_value,
-                sizeof(new_value));
+        rc = setsockopt(flow->fd,
+                        IPPROTO_TCP,
+                        TCP_USER_TIMEOUT,
+                        &timeout_msec,
+                        sizeof(timeout_msec));
 
         if (rc < 0) {
             neat_log(NEAT_LOG_ERROR,
@@ -1129,7 +1132,6 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
         return NEAT_ERROR_UNABLE;
     }
 #endif // !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
-
 
     return NEAT_ERROR_UNABLE;
 }

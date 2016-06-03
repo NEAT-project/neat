@@ -1066,8 +1066,8 @@ neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t
 neat_error_code
 neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 {
-    unsigned int timeout_msec;
 #if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
+    unsigned int timeout_msec;
     int rc;
 #endif
 
@@ -1081,10 +1081,10 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
             return NEAT_ERROR_BAD_ARGUMENT;
     }
 
-    timeout_msec = ((unsigned int)seconds) * 1000;
-
     // TCP User Timeout isn't supported by these platforms:
 #if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
+    timeout_msec = ((unsigned int)seconds) * 1000;
+
     if (flow->sockProtocol == IPPROTO_TCP) {
         if (flow->fd == -1) {
             neat_log(NEAT_LOG_WARNING,

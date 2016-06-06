@@ -39,7 +39,7 @@
 * [on_readable()](callb.on_readable.md)
 * [on_writable()](callb.on_writable.md)
 * [on_all_written()](callb.on_all_written.md)
-* [on_network_changed()](callb.on_network_changed.md)
+* [on_network_status_changed()](callb.on_network_changed.md)
 * [on_aborted()](callb.on_aborted.md)
 * [on_timeout()](callb.on_timeout.md)
 * [on_close()](callb.on_close.md)

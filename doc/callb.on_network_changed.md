@@ -1,4 +1,4 @@
-## on_network_changed;
+## on_network_status_changed;
 
 Inform application that something has happened in the
 network. Includes flow endpoints going up (will also trigger

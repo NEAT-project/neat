@@ -110,6 +110,7 @@ struct neat_ctx *neat_init_ctx()
         return NULL;
     }
     nc->loop = malloc(sizeof(uv_loop_t));
+    nc->pvd = NULL;
 
     if (nc->loop == NULL) {
         free(nc);

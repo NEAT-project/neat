@@ -2,7 +2,6 @@
 #################################################
 LIST(APPEND neat_programs
     client.c
-    client_timeout_test.c
     client_http_get.c
     server_chargen.c
     server_daytime.c

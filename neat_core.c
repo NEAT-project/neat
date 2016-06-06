@@ -219,6 +219,9 @@ void neat_free_ctx(struct neat_ctx *nc)
     if (nc->event_cbs)
         free(nc->event_cbs);
 
+    if (nc->pvd)
+        free(nc->pvd);
+
     free(nc->loop);
 
     while (!LIST_EMPTY(&nc->flows)) {

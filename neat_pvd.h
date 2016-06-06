@@ -8,6 +8,7 @@
     #include <inaddr.h>
     #include <in6addr.h>
 #endif
+#include <ldns/ldns.h>
 
 #include "neat_queue.h"
 
@@ -46,6 +47,16 @@ struct pvd_dns_query {
     struct neat_addr *src_addr;
     struct sockaddr_storage *dns_addr;
     struct pvd_result *pvd_result;
+};
+
+struct pvd_async_query {
+    void *data;
+    ldns_buffer *dns_snd_buf;
+    uv_buf_t *dns_uv_snd_buf;
+    uv_udp_send_t *dns_snd_handle;
+    uv_udp_t *resolve_handle;
+    struct sockaddr_in *dst_addr4;
+    struct sockaddr_in6 *dst_addr6;
 };
 
 struct neat_pvd {

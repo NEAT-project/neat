@@ -1047,22 +1047,6 @@ neat_open_localname(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t p
 }
 
 neat_error_code
-neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port, const char* localname, int count)
-{
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    if (count < 1) {
-        return NEAT_ERROR_BAD_ARGUMENT;
-    } else if (count > 1) {
-	// TODO: multi-streaming is not yet available from the SCTP
-	// layer.
-	return NEAT_ERROR_UNABLE;
-    }
-
-    return neat_open_localname(mgr, flow, name, port, localname);
-}
-
-neat_error_code
 neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 {
 #if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))

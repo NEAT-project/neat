@@ -86,9 +86,10 @@ class NEATProperty(object):
     def items(self):
         return self.property
 
-    def dict(self):
+    def dict(self, with_score=True):
         """Return a dict for JSON export"""
-        return {self.key: {'value': self.value, 'precedence': self.precedence, 'score': self.score}}
+        json_dict = {self.key: dict(value=self.value, precedence=self.precedence, score=self.score)}
+        return json_dict
 
     def __iter__(self):
         for p in self.property:
@@ -174,7 +175,8 @@ class NEATProperty(object):
             if value_differs:
                 self.score = -9999.0  # FIXME adjust scoring
                 logging.debug("property %s is _immutable_: won't update." % (self.key))
-                raise NEATPropertyError('Immutable property')
+                e = NEATPropertyError('immutable property: %s vs %s' % (self, other), dict(property=[self, other]))
+                raise e
             else:
                 self.score += +1.0  # FIXME adjust scoring
                 logging.debug("property %s is already %s" % (self.key, self.value))
@@ -260,31 +262,68 @@ class PropertyDict(dict):
             # properties.update({p.key: p.value })
         return properties
 
-    def insert(self, property):  # TODO
+    def insert(self, *properties):
         """
         Insert a new NEATProperty tuple into the dict or update an existing one.
 
         :rtype: None
         """
-        if not isinstance(property, NEATProperty):
-            logging.warning("only NEATProperty objects may be inserted to PropertyDict.")
+        for property in properties:
+            if not isinstance(property, NEATProperty):
+                logging.warning("only NEATProperty objects may be inserted to PropertyDict.")
+                return
+
+            if property.key in self.keys():
+                self[property.key].update(property)
+            else:
+                self.__setitem__(property.key, property)
+
+    def insert_dict(self, json_dict={}):
+        """ Import a dictionary containing properties
+
+        example insert_dict({'foo':{'value':'bar', 'precedence':0}})
+        """
+        for key, attr in json_dict.items():
+            try:
+                neat_property = NEATProperty((key, attr['value']),
+                                             precedence=attr.get('precedence', NEATProperty.REQUESTED),
+                                             score=attr.get('score', math.nan))
+            except KeyError as e:
+                raise NEATPropertyError('property import failed') from e
+
+            self.insert(neat_property)
+
+    def insert_json(self, json_str='{}'):
+        """ Import a list of JSON encoded properties"""
+        try:
+            request_properties = json.loads(json_str)
+        except json.decoder.JSONDecodeError:
+            logging.error('invalid JSON string')
             return
+        self.insert_dict(request_properties)
 
-        if property.key in self.keys():
-            self[property.key].update(property)
-        else:
-            self.__setitem__(property.key, property)
+    @property
+    def dict(self):
+        """ Return a dictionary containing all NEAT property attributes"""
+        property_dict = dict()
+        for p in self.values():
+            property_dict.update(p.dict())
+        return property_dict
 
-    from operator import itemgetter
     @property
     def list(self):
-        """ Return a list containing all properties"""
+        """ Return a sorted list containing all property objects"""
         property_list = [i.dict() for i in self.values()]
         # TODO sort by score
         return property_list
 
-    def json(self, indent=None):
-        return json.dumps(self.list, sort_keys=True, indent=indent)
+    def json_old(self, indent=None, with_score=True):
+        """deprecated"""
+        plist = [i for i in self.list]
+        return json.dumps(plist, sort_keys=True, indent=indent)
+
+    def json(self, indent=None, with_score=True):
+        return json.dumps(self.dict, sort_keys=True, indent=indent)
 
     def __repr__(self):
         return '{' + ', '.join([str(i) for i in self.values()]) + '}'
@@ -293,34 +332,23 @@ class PropertyDict(dict):
 class NEATPolicy(object):
     """NEAT policy representation"""
 
-    def __init__(self, policy_json={}, name='NA'):
+    def __init__(self, policy_dict={}, name='NA'):
         # set default values
         self.idx = id(self)
-        self.name = name
-        for k, v in policy_json.items():
+        self.name = policy_dict.get('name', name)
+        for k, v in policy_dict.items():
             if isinstance(v, str):
                 setattr(self, k, v)
 
-        self.priority = int(policy_json.get('priority', 0))  # TODO not sure if we need priorities
+        self.priority = int(policy_dict.get('priority', 0))  # TODO not sure if we need priorities
 
         self.match = PropertyDict()
+        match = policy_dict.get('match', {})
+        self.match.insert_dict(match)
+
         self.properties = PropertyDict()
-
-        match = policy_json.get('match', {})
-        for k, v in match.get('informational', {}).items():
-            self.match[k] = NEATProperty((k, v), precedence=NEATProperty.INFORMATIONAL)
-        for k, v in match.get('requested', {}).items():
-            self.match[k] = NEATProperty((k, v), precedence=NEATProperty.REQUESTED)
-        for k, v in match.get('immutable', {}).items():
-            self.match[k] = NEATProperty((k, v), precedence=NEATProperty.IMMUTABLE)
-
-        properties = policy_json.get('properties', {})
-        for k, v in properties.get('informational', {}).items():
-            self.properties[k] = NEATProperty((k, v), precedence=NEATProperty.INFORMATIONAL)
-        for k, v in properties.get('requested', {}).items():
-            self.properties[k] = NEATProperty((k, v), precedence=NEATProperty.REQUESTED)
-        for k, v in properties.get('immutable', {}).items():
-            self.properties[k] = NEATProperty((k, v), precedence=NEATProperty.IMMUTABLE)
+        properties = policy_dict.get('properties', {})
+        self.properties.insert_dict(properties)
 
     def match_len(self):
         """Use the number of match elements to sort the entries in the PIB.
@@ -337,8 +365,6 @@ class NEATPolicy(object):
         # always return True if the match field is empty (wildcard)
         if not self.match:
             return True
-
-        # import code; code.interact(local=locals()) # XXX
 
         # find intersection
         matching_props = self.match.items() & properties.items()
@@ -414,23 +440,16 @@ class NEATCandidate(object):
 class NEATRequest(object):
     """NEAT query"""
 
-    def __init__(self, requested={}, immutable={}, informational={}):
-        properties = PropertyDict()
-        for i in immutable.items():
-            properties.insert(NEATProperty(i, precedence=NEATProperty.IMMUTABLE))
-        for i in requested.items():
-            properties.insert(NEATProperty(i, precedence=NEATProperty.REQUESTED))
-        for i in informational.items():
-            properties.insert(NEATProperty(i, precedence=NEATProperty.INFORMATIONAL))
-
+    def __init__(self, *properties):
         # super(NEATRequest, self).__init__(properties)
-        self.properties = properties
+        self.properties = PropertyDict()
+
+        for p in properties:
+            self.properties.insert(p)
 
         # Each NEATRequest contains a list of NEATCandidate objects
         self.candidates = []
         self.cib = None
-
-        # code.interact(local=locals())
 
     def __repr__(self):
         return '<NEATRequest: %d candidates, %d properties>' % (len(self.candidates), len(self.properties))
@@ -445,15 +464,18 @@ class NEATRequest(object):
 
 
 class PIB(list):
-    def __init__(self):
+    def __init__(self, policy_dir=None):
         super().__init__()
         self.policies = self
         self.index = {}
 
+        if policy_dir:
+            self.load_policies(policy_dir)
+
     def load_policies(self, policy_dir=POLICY_DIR):
         """Load all policies in policy directory."""
         for filename in os.listdir(policy_dir):
-            if filename.endswith(".policy"):
+            if filename.endswith(('.policy', '.profile')):
                 print('loading policy %s' % filename)
                 p = self.load_policy(policy_dir + filename)
                 self.register(p)
@@ -462,7 +484,7 @@ class PIB(list):
         """Read and decode a .policy JSON file and return a NEATPolicy object."""
         try:
             policy_file = open(filename, 'r')
-            policy = json.load(policy_file)
+            policy_dict = json.load(policy_file)
         except OSError as e:
             logging.error('Policy ' + filename + ' not found.')
             return
@@ -470,7 +492,7 @@ class PIB(list):
             logging.error('Error parsing policy file ' + filename)
             print(e)
             return
-        p = NEATPolicy(policy)
+        p = NEATPolicy(policy_dict)
         return p
 
     def register(self, policy):
@@ -496,28 +518,39 @@ class PIB(list):
         """ Lookup all candidates in list. Remove invalid candidates """
         for candidate in candidates:
             try:
-                self.lookup(candidate, apply=True)
-            except NEATPropertyError:
+                applied_policies = self._lookup(candidate.properties, apply=True)
+                candidate.policies.update(applied_policies)
+            except NEATPropertyError as e:
                 candidate.invalid = True
-                print('Candidate %d is invalidated due to policy' % candidates.index(candidate))
+                print('Candidate %d is invalidated due to policy.' % (candidates.index(candidate)))
+                logging.debug('invalidated due to: %s' % e.args[0])
 
         candidates[:] = [c for c in candidates if not c.invalid]
 
-    def lookup(self, candidate: NEATCandidate, apply=False):
+    def _lookup(self, properties, apply=False, remove_matched=False):
         """ Look through all installed policies to find the ones which match the properties of the given candidate.
-        If apply is set to True append the matched policy properties.  """
+        If apply is True, append the matched policy properties.
+        If remove_matched is True, remove the policy match properties from the candidate.
 
-        assert isinstance(candidate, NEATCandidate)
-        logging.info("matching policies for current candidate:")
+        Returns all matched policies.
+        """
 
+        assert isinstance(properties, PropertyDict)
+        logging.debug("matching policies for current candidate:")
+
+        applied_policies = []
         for p in self.policies:
-            if p.compare(candidate.properties):
-                logging.info(p)
+            if p.compare(properties):
+                if remove_matched and apply:
+                    logging.info("applying profile %s" % p.idx)
+                    for key in p.match:
+                        del properties[key]
                 if apply:
-                    p.apply(candidate.properties)
-                    candidate.policies.add(p.idx)
+                    p.apply(properties)
+                    applied_policies.append(p.idx)
                 else:
                     print(p.idx)
+        return applied_policies
 
     def dump(self):
         s = "===== PIB START =====\n"

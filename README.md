@@ -28,14 +28,15 @@ wants. A typical first step is to resolve a domain name.
 * `cmake`
 * `libuv`
 * `ldns`
+* `ljansson`
 * `libmnl (linux only)`
 * `libsctp-dev (linux only, for kernel SCTP support)`
 
 | OS        | command           |
 | :-------- |:-------------|
-| Ubuntu*   | `apt-get install cmake libuv1-dev libldns-dev libmnl-dev libsctp-dev` |
-| FreeBSD   | `pkg install cmake ldns libuv`     |   
-| OS X      | `brew install libuv ldns`      | 
+| Ubuntu*   | `apt-get install cmake libuv1-dev libldns-dev libjansson-dev libmnl-dev libsctp-dev` |
+| FreeBSD   | `pkg install cmake libuv ldns jansson`     |   
+| OS X      | `brew install cmake libuv ldns jansson`      | 
 \* Ubuntu 15.04 and higher
 
 ## Quickstart :rocket:

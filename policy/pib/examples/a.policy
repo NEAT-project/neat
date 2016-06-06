@@ -1,25 +1,21 @@
-
-
-{  
-  "name":"A",
-  "description":"bulk file transfer",
-  "priority":"0",
+{
+  "name":"Bulk transfer",
+  "description":"bulk file transfer policy",
   "match":{
-        "immutable":{},
-        "requested":{
-           "is_wired_interface":true,
-           "interface_speed_ge":1000
-        },
-        "informational":{}
-  },
+            "remote_ip": {
+              "precedence": 1,
+              "value": "10.1.23.45"
+            }
+          },
   "properties":{
-     "immutable":{
-         "MTU":"9600"
-      },
-      "requested":{
-        "TCP_CC":"LBE"
-      },
-      "informational":{}
-  }
+            "MTU": {
+               "precedence": 1,
+               "value": 9600
+                 },
+                 "capacity": {
+                   "precedence": 2,
+                   "value": [10000,100000]
+                 }
+                }
 }
 

@@ -149,7 +149,6 @@ associated local and remote CIB entries.
         # TODO expand lookup to different cib types
 
         for idx in self.local.keys():
-            # import code; code.interact(local=locals())
             matched_properties = self[idx].intersection(query.properties)
             candidate = NEATCandidate(self[idx])
             skip_candidate = False

@@ -87,9 +87,6 @@ neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow
 
 neat_error_code neat_open(struct neat_ctx *ctx, struct neat_flow *flow,
                           const char *name, uint16_t port);
-neat_error_code neat_open_localname(struct neat_ctx *mgr, struct neat_flow *flow,
-                                    const char *name, uint16_t port,
-                                    const char *localname);
 neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow,

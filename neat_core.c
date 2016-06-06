@@ -1032,21 +1032,6 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
 }
 
 neat_error_code
-neat_open_localname(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port, const char *localname)
-{
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    if (flow->name) {
-        return NEAT_ERROR_BAD_ARGUMENT;
-    }
-
-    if (localname == NULL)
-	return neat_open(mgr, flow, name, port);
-
-    return NEAT_ERROR_UNABLE;
-}
-
-neat_error_code
 neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 {
 #if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))

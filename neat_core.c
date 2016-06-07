@@ -1173,11 +1173,22 @@ set_primary_dest_resolve_cb(struct neat_resolver *resolver, struct neat_resolver
 neat_error_code
 neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *name)
 {
+    int8_t literal;
+    uint8_t family = AF_UNSPEC;
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
 #if defined(IPPROTO_SCTP)
     if (flow->sockProtocol == IPPROTO_SCTP) {
         int protocols[] = {IPPROTO_SCTP};
+
+	literal = neat_resolver_check_for_literal(&family, name);
+
+	if (literal != 1) {
+	    neat_log(NEAT_LOG_ERROR, "%s: provided name '%s' is not an address literal.\n",
+		     __func__, name);
+	    return NEAT_ERROR_BAD_ARGUMENT;
+	}
 
         ctx->resolver->handle_resolve = set_primary_dest_resolve_cb;
         neat_getaddrinfo(ctx->resolver, AF_UNSPEC, name, flow->port,

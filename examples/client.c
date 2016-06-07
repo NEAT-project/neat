@@ -19,12 +19,14 @@
     -R : receive buffer in byte
     -S : send buffer in byte
     -v : log level (0 .. 2)
+    -A : set primary destination address
     
 **********************************************************************/
 
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
+static char *config_primary_dest_addr = NULL;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
 struct std_buffer {
@@ -58,6 +60,7 @@ static void print_usage()
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- S \tsend buffer in byte (%d)\n", config_snd_buffer_size);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
+    printf("\t- A \tprimary dest. addr. (auto)\n");
 }
 
 /*
@@ -191,6 +194,8 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
 
 static neat_error_code on_connected(struct neat_flow_operations *opCB)
 {
+    int rc;
+
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -200,6 +205,17 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
 
     ops.on_readable = on_readable;
     neat_set_operations(ctx, flow, &ops);
+
+    if (config_primary_dest_addr != NULL) {
+	rc = neat_set_primary_dest(ctx, flow, config_primary_dest_addr);
+	if (rc) {
+	    fprintf(stderr, "Failed to set primary dest. addr.: %u\n", rc);
+	} else {
+	    if (config_log_level > 1)
+		fprintf(stderr, "Primary dest. addr. set to: '%s'.\n",
+			config_primary_dest_addr);
+	}
+    }
 
     return NEAT_OK;
 }
@@ -296,7 +312,7 @@ int main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:R:S:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:R:S:v:A:")) != -1) {
         switch(arg) {
         case 'P':
             arg_property = optarg;
@@ -320,6 +336,13 @@ int main(int argc, char *argv[])
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - log level: %d\n", __func__, config_log_level);
+            }
+            break;
+	case 'A':
+	    config_primary_dest_addr = optarg;
+	    if (config_log_level >= 1) {
+                fprintf(stderr, "%s - option - primary dest. address: %s\n", __func__,
+			config_primary_dest_addr);
             }
             break;
         default:

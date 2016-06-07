@@ -88,8 +88,6 @@ void neat_log(uint8_t level, const char* format, ...) {
     time_diff = (tv_now.tv_usec + 1000000 * tv_now.tv_sec) - (tv_init.tv_usec + 1000000 * tv_init.tv_sec);
     tv_diff.tv_sec = time_diff / 1000000;
     tv_diff.tv_usec = time_diff % 1000000;
-
-
     fprintf(neat_log_fd, "[%f]", (double)(tv_diff.tv_sec + (double)tv_diff.tv_usec/1000000.0));
 
     switch (level) {

@@ -632,9 +632,11 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 static int io_readable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
-#if defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
+#if defined(IPPROTO_SCTP)
     ssize_t n, spaceFree;
     ssize_t spaceNeeded, spaceThreshold;
+    //Not used when notifications aren't available:
+    int flags __attribute__((unused));
 #if !defined(USRSCTP_SUPPORT)
     struct msghdr msghdr;
     struct iovec iov;
@@ -644,15 +646,14 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     unsigned int infotype;
     struct sctp_recvv_rn rn;
     socklen_t infolen = sizeof(struct sctp_recvv_rn);
-    int flags = 0;
 #endif // else !defined(USRSCTP_SUPPORT)
-#endif // defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
+#endif // defined(IPPROTO_SCTP)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations || !flow->operations->on_readable) {
         return READ_WITH_ERROR;
     }
-#if defined(IPPROTO_SCTP) && defined(MSG_NOTIFICATION)
+#if defined(IPPROTO_SCTP)
     if ((flow->sockProtocol == IPPROTO_SCTP) &&
         (!flow->readBufferMsgComplete)) {
         spaceFree = flow->readBufferAllocation - flow->readBufferSize;
@@ -688,7 +689,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             return READ_WITH_ERROR;
         }
 
-	int flags = msghdr.msg_flags; // For notification handling
+	flags = msghdr.msg_flags; // For notification handling
 #else // !defined(USRSCTP_SUPPORT)
         len = sizeof(struct sockaddr);
         memset((void *)&addr, 0, sizeof(struct sockaddr_in));
@@ -706,6 +707,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         }
 #endif // else !defined(USRSCTP_SUPPORT)
         // Same handling for both kernel and userspace SCTP
+#if defined(MSG_NOTIFICATION)
 	if (flags & MSG_NOTIFICATION) {
 	    // Event notification
 	    neat_log(NEAT_LOG_INFO, "SCTP event notification");
@@ -722,6 +724,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 	    //We don't update readBufferSize, so buffer is implicitly "freed"
 	    return READ_OK;
 	}
+#endif //defined(MSG_NOTIFICATION)
 
 // TODO KAH: the code below seems to do the same thing in both cases!
 // Should refactor it into one code path.
@@ -750,7 +753,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         }
 #endif // else !defined(USRSCTP_SUPPORT)
     }
-#endif // defined(IPPROTO_SCTP) && defined(MSG_NOTIFICATION)
+#endif // defined(IPPROTO_SCTP)
     READYCALLBACKSTRUCT;
     flow->operations->on_readable(flow->operations);
     return READ_OK;

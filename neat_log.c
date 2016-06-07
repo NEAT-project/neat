@@ -1,15 +1,18 @@
 #include <stdint.h>
+
+#include "neat_core.h"
+
+#ifdef NEAT_LOG
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "neat_log.h"
-#include "neat_core.h"
-
-#ifdef NEAT_LOG
 
 uint8_t neat_log_level = NEAT_LOG_DEBUG;
+clock_t time_init;
 FILE *neat_log_fd = NULL;
 
 /*
@@ -22,6 +25,8 @@ uint8_t neat_log_init() {
 
     env_log_level = getenv("NEAT_LOG_LEVEL");
     env_log_file = getenv("NEAT_LOG_FILE");
+    time_init = clock();
+
 
     // use stderr as default output until init finished...
     neat_log_fd = stderr;
@@ -76,6 +81,8 @@ void neat_log(uint8_t level, const char* format, ...) {
         fprintf(stderr, "neat_log_fd is NULL - neat_log_init() required!\n");
         return;
     }
+
+    fprintf(neat_log_fd, "[%f]", (double)(clock() - time_init) / CLOCKS_PER_SEC);
 
     switch (level) {
         case NEAT_LOG_ERROR:

@@ -1173,8 +1173,10 @@ set_primary_dest_resolve_cb(struct neat_resolver *resolver, struct neat_resolver
 neat_error_code
 neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *name)
 {
+#if defined(IPPROTO_SCTP)
     int8_t literal;
     uint8_t family = AF_UNSPEC;
+#endif
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 

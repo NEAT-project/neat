@@ -1,15 +1,18 @@
 #include <stdint.h>
+
+#include "neat_core.h"
+
+#ifdef NEAT_LOG
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "neat_log.h"
-#include "neat_core.h"
-
-#ifdef NEAT_LOG
 
 uint8_t neat_log_level = NEAT_LOG_DEBUG;
+struct timeval tv_init;
 FILE *neat_log_fd = NULL;
 
 /*
@@ -22,6 +25,8 @@ uint8_t neat_log_init() {
 
     env_log_level = getenv("NEAT_LOG_LEVEL");
     env_log_file = getenv("NEAT_LOG_FILE");
+    gettimeofday(&tv_init, NULL);
+
 
     // use stderr as default output until init finished...
     neat_log_fd = stderr;
@@ -67,6 +72,8 @@ uint8_t neat_log_init() {
  */
 void neat_log(uint8_t level, const char* format, ...) {
 
+    struct timeval tv_now, tv_diff;
+    int32_t time_diff;
     // skip unwanted loglevels
     if (neat_log_level < level) {
         return;
@@ -76,6 +83,12 @@ void neat_log(uint8_t level, const char* format, ...) {
         fprintf(stderr, "neat_log_fd is NULL - neat_log_init() required!\n");
         return;
     }
+
+    gettimeofday(&tv_now, NULL);
+    time_diff = (tv_now.tv_usec + 1000000 * tv_now.tv_sec) - (tv_init.tv_usec + 1000000 * tv_init.tv_sec);
+    tv_diff.tv_sec = time_diff / 1000000;
+    tv_diff.tv_usec = time_diff % 1000000;
+    fprintf(neat_log_fd, "[%f]", (double)(tv_diff.tv_sec + (double)tv_diff.tv_usec/1000000.0));
 
     switch (level) {
         case NEAT_LOG_ERROR:

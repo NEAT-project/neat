@@ -640,7 +640,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     //TODO: This one uses the first result, so is wrong
     if (flow->hefirstConnect && (status == 0)) {
 
-        neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket %d", __func__, he_ctx->fd);
+        neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket fd %d", __func__, he_ctx->fd);
         flow->hefirstConnect = 0;
         flow->family = he_ctx->candidate->ai_family;
         flow->sockType = he_ctx->candidate->ai_socktype;
@@ -667,7 +667,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
 
-        neat_log(NEAT_LOG_DEBUG, "%s: NOT first connect. Socket %d", __func__, he_ctx->fd);
+        neat_log(NEAT_LOG_DEBUG, "%s: NOT first connect. Socket fd %d", __func__, he_ctx->fd);
         flow->close2fx(he_ctx->fd);
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);
@@ -1287,12 +1287,12 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     } else {
         inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) &(he_ctx->candidate->src_addr))->sin6_addr), addrsrcbuf, INET6_ADDRSTRLEN);
     }
-    neat_log(NEAT_LOG_INFO, "%s: Bind to %s", __func__, addrsrcbuf);
+    neat_log(NEAT_LOG_INFO, "%s: Bind fd %d to %s", __func__, he_ctx->fd, addrsrcbuf);
 
     /* Bind to address + interface (if Linux) */
     if (bind(he_ctx->fd, (struct sockaddr*) &(he_ctx->candidate->src_addr),
             he_ctx->candidate->src_addr_len)) {
-        neat_log(NEAT_LOG_ERROR, "Failed to bind socket to IP. Error: %s", strerror(errno));
+        neat_log(NEAT_LOG_ERROR, "Failed to bind fd %d socket to IP. Error: %s", he_ctx->fd, strerror(errno));
         return -1;
     }
 
@@ -1301,7 +1301,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         if (setsockopt(he_ctx->fd, SOL_SOCKET, SO_BINDTODEVICE, if_name,
                 strlen(if_name)) < 0) {
             //Not a critical error
-            neat_log(NEAT_LOG_WARNING, "Could not bind socket to interface %s", if_name);
+            neat_log(NEAT_LOG_WARNING, "Could not bind fd %d socket to interface %s", he_ctx->fd, if_name);
         }
     }
 #endif

@@ -14,7 +14,10 @@
 
 #ifdef __linux__
     #include <net/if.h>
-#endif
+#ifndef USRSCTP_SUPPORT
+    #include <sys/socket.h>
+#endif // USRSCTP_SUPPORT
+#endif // __linux__
 
 #include "neat.h"
 #include "neat_internal.h"
@@ -47,6 +50,9 @@ static int neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
 static int neat_close_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow);
 static int neat_shutdown_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow);
 static void handle_upcall(struct socket *s, void *arg, int flags);
+static void neat_sctp_init_events(struct socket *sock);
+#else
+static void neat_sctp_init_events(int sock);
 #endif
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
@@ -379,6 +385,27 @@ neat_error_code neat_set_property(neat_ctx *mgr, neat_flow *flow,
     return NEAT_OK;
 }
 
+int neat_get_protocol(neat_ctx* mgr, neat_flow* flow)
+{
+    return flow->sockProtocol;
+}
+
+void neat_interface_statistics(neat_ctx* mgr, neat_flow* flow,
+                         neat_interface_stats* stats)
+{
+    // TODO: Define contents of neat_interface_stats struct
+    // TODO: Add data collection in the core code
+    // TODO: fill the struct or memcpy it
+}
+
+void neat_path_statistics(neat_ctx* mgr, neat_flow* flow,
+                         neat_path_stats* stats)
+{
+    // TODO: Define contents of neat_interface_stats struct
+    // TODO: Add data collection in the core code
+    // TODO: fill the struct or memcpy it
+}
+
 neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
                                     struct neat_flow_operations *ops)
 {
@@ -478,6 +505,138 @@ static void io_writable(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_writable(flow->operations);
 }
 
+// Translate SCTP cause codes (RFC4960 sect.3.3.10)
+// into NEAT error codes
+static neat_error_code sctp_to_neat_code(uint16_t sctp_code)
+{
+    neat_error_code outcode;
+
+    // TODO: this translation table is not very good,
+    // should probably improve on it, add more NEAT codes
+    switch (sctp_code) {
+    case NEAT_SCTP_CAUSE_INVALID_STREAM:
+    case NEAT_SCTP_CAUSE_UNRESOLVABLE_ADDR:
+    case NEAT_SCTP_CAUSE_UNRECOG_CHUNK:
+    case NEAT_SCTP_CAUSE_INVALID_PARAM:
+    case NEAT_SCTP_CAUSE_UNRECOG_PARAM:
+    case NEAT_SCTP_CAUSE_NO_USER_DATA:
+    case NEAT_SCTP_CAUSE_MISSING_PARAM:
+    case NEAT_SCTP_CAUSE_STALE_COOKIE:
+	outcode = NEAT_ERROR_BAD_ARGUMENT;
+	break;
+    case NEAT_SCTP_CAUSE_OUT_OF_RESC:
+	outcode = NEAT_ERROR_IO;
+	break;
+    case NEAT_SCTP_CAUSE_COOKIE_IN_SHUTDOWN:
+    case NEAT_SCTP_CAUSE_PROTOCOL_VIOLATION:
+    case NEAT_SCTP_CAUSE_RESTART_W_NEWADDR:
+	outcode = NEAT_ERROR_INTERNAL;
+	break;
+    case NEAT_SCTP_CAUSE_USER_INITIATED_ABT:
+	outcode = NEAT_ERROR_REMOTE;
+	break;
+    default:
+	outcode = NEAT_ERROR_INTERNAL;
+    }
+
+    return outcode;
+}
+
+#if defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
+
+// Handle SCTP association change events
+// includes shutdown complete, etc.
+static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    switch (sac->sac_state) {
+    case SCTP_SHUTDOWN_COMP:
+	neat_notify_close(flow);
+	break;
+    case SCTP_COMM_LOST:
+	// Draft specifies to return cause code, D1.2 doesn't - we
+	// follow D1.2
+	neat_notify_aborted(flow);
+	// Fallthrough:
+    case SCTP_COMM_UP: // Fallthrough:
+    case SCTP_RESTART:
+	// TODO: might want to "translate" the state codes to a NEAT code.
+	neat_notify_network_status_changed(flow, sac->sac_state);
+	break;
+    }
+}
+
+// Handle SCTP send failed event
+// One is generated per failed message
+// Only FreeBSD and USRSCTP support the new RFC6458 API so far,
+// hence the ifdefs
+#ifdef HAVE_SCTP_SEND_FAILED_EVENT
+static void handle_sctp_send_failed(neat_flow *flow, struct sctp_send_failed_event *ssfe)
+#else
+static void handle_sctp_send_failed(neat_flow *flow, struct sctp_send_failed *ssf)
+#endif
+{
+    uint32_t error, context;
+    uint8_t *unsent_msg;
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+#ifdef HAVE_SCTP_SEND_FAILED_EVENT
+    error = ssfe->ssfe_error;
+    unsent_msg = ssfe->ssfe_data;
+    context = ssfe->ssfe_info.snd_context;
+#else
+    error = ssf->ssf_error;
+    unsent_msg = ssf->ssf_data;
+    context = ssf->ssf_info.sinfo_context;
+#endif
+
+    // TODO: context no. needs to be implemneted in the write functions!
+
+    neat_notify_send_failure(flow, sctp_to_neat_code(error), context, unsent_msg);
+}
+
+// Handle notifications about SCTP events
+static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    switch (notfn->sn_header.sn_type) {
+    case SCTP_ASSOC_CHANGE:
+	handle_sctp_assoc_change(flow, &notfn->sn_assoc_change);
+	break;
+#ifdef HAVE_SCTP_SEND_FAILED_EVENT
+    // RFC6458 API is not defined on all platforms
+    case SCTP_SEND_FAILED_EVENT:
+	handle_sctp_send_failed(flow, &notfn->sn_send_failed_event);
+	break;
+#else
+    case SCTP_SEND_FAILED:
+	handle_sctp_send_failed(flow, &notfn->sn_send_failed);
+	break;
+#endif // else HAVE_SCTP_SEND_FAILED_EVENT
+    case SCTP_PEER_ADDR_CHANGE:
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP peer address change event\n");
+	break;
+    case SCTP_REMOTE_ERROR:
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP remote error event\n");
+	break;
+    case SCTP_SHUTDOWN_EVENT:
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP shutdown event\n");
+	break;
+    case SCTP_ADAPTATION_INDICATION:
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP adaption indication event\n");
+	break;
+    case SCTP_PARTIAL_DELIVERY_EVENT:
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP partial delivery event\n");
+	break;
+    default:
+	neat_log(NEAT_LOG_WARNING, "Got unhandled SCTP event type %d",
+		 notfn->sn_header.sn_type);
+    }
+}
+#endif // defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
+
 
 #define READ_OK 0
 #define READ_WITH_ERROR 1
@@ -489,6 +648,8 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 #if defined(IPPROTO_SCTP)
     ssize_t n, spaceFree;
     ssize_t spaceNeeded, spaceThreshold;
+    //Not used when notifications aren't available:
+    int flags __attribute__((unused));
 #if !defined(USRSCTP_SUPPORT)
     struct msghdr msghdr;
     struct iovec iov;
@@ -498,9 +659,8 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     unsigned int infotype;
     struct sctp_recvv_rn rn;
     socklen_t infolen = sizeof(struct sctp_recvv_rn);
-    int flags = 0;
-#endif
-#endif
+#endif // else !defined(USRSCTP_SUPPORT)
+#endif // defined(IPPROTO_SCTP)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations || !flow->operations->on_readable) {
@@ -541,20 +701,15 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         if ((n = recvmsg(flow->fd, &msghdr, 0)) < 0) {
             return READ_WITH_ERROR;
         }
-        flow->readBufferSize += n;
-        if ((msghdr.msg_flags & MSG_EOR) || (n == 0)) {
-            flow->readBufferMsgComplete = 1;
-        }
-        if (!flow->readBufferMsgComplete) {
-            return READ_WITH_ERROR;
-        }
-#else
+
+	flags = msghdr.msg_flags; // For notification handling
+#else // !defined(USRSCTP_SUPPORT)
         len = sizeof(struct sockaddr);
         memset((void *)&addr, 0, sizeof(struct sockaddr_in));
 #ifdef HAVE_SIN_LEN
-	    addr.sin_len = sizeof(struct sockaddr_in);
+	addr.sin_len = sizeof(struct sockaddr_in);
 #endif
-	    addr.sin_family = AF_INET;
+	addr.sin_family = AF_INET;
 
         n = usrsctp_recvv(flow->sock, flow->readBuffer + flow->readBufferSize,
                                flow->readBufferAllocation - flow->readBufferSize,
@@ -563,6 +718,38 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         if (n < 0) {
             return READ_WITH_ERROR;
         }
+#endif // else !defined(USRSCTP_SUPPORT)
+        // Same handling for both kernel and userspace SCTP
+#if defined(MSG_NOTIFICATION)
+	if (flags & MSG_NOTIFICATION) {
+	    // Event notification
+	    neat_log(NEAT_LOG_INFO, "SCTP event notification");
+
+	    if (!(flags & MSG_EOR)) {
+		neat_log(NEAT_LOG_WARNING, "buffer overrun reading SCTP notification");
+		// TODO: handle this properly
+		return READ_WITH_ERROR;
+	    }
+	    handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer
+								  + flow->readBufferSize));
+
+
+	    //We don't update readBufferSize, so buffer is implicitly "freed"
+	    return READ_OK;
+	}
+#endif //defined(MSG_NOTIFICATION)
+
+// TODO KAH: the code below seems to do the same thing in both cases!
+// Should refactor it into one code path.
+#if !defined(USRSCTP_SUPPORT)
+        flow->readBufferSize += n;
+        if ((msghdr.msg_flags & MSG_EOR) || (n == 0)) {
+            flow->readBufferMsgComplete = 1;
+        }
+        if (!flow->readBufferMsgComplete) {
+            return READ_WITH_ERROR;
+        }
+#else // !defined(USRSCTP_SUPPORT)
         neat_log(NEAT_LOG_INFO, " %zd bytes received\n", n);
         flow->readBufferSize += n;
         if ((flags & MSG_EOR) || (n == 0)) {
@@ -577,9 +764,9 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         if (n == 0) {
             return READ_WITH_ZERO;
         }
-#endif
+#endif // else !defined(USRSCTP_SUPPORT)
     }
-#endif
+#endif // defined(IPPROTO_SCTP)
     READYCALLBACKSTRUCT;
     flow->operations->on_readable(flow->operations);
     return READ_OK;
@@ -595,6 +782,17 @@ static void io_all_written(neat_ctx *ctx, neat_flow *flow)
     neat_error_code code = NEAT_OK;
     READYCALLBACKSTRUCT;
     flow->operations->on_all_written(flow->operations);
+}
+
+static void io_timeout(neat_ctx *ctx, neat_flow *flow) {
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_timeout) {
+        return;
+    }
+    neat_error_code code = NEAT_OK;
+    READYCALLBACKSTRUCT;
+    flow->operations->on_timeout(flow->operations);
 }
 
 static void do_accept(neat_ctx *ctx, neat_flow *flow);
@@ -653,7 +851,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     //TODO: This one uses the first result, so is wrong
     if (flow->hefirstConnect && (status == 0)) {
 
-        neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket %d", __func__, he_ctx->fd);
+        neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket fd %d", __func__, he_ctx->fd);
         flow->hefirstConnect = 0;
         flow->family = he_ctx->candidate->ai_family;
         flow->sockType = he_ctx->candidate->ai_socktype;
@@ -680,7 +878,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else {
 
-        neat_log(NEAT_LOG_DEBUG, "%s: NOT first connect. Socket %d", __func__, he_ctx->fd);
+        neat_log(NEAT_LOG_DEBUG, "%s: NOT first connect. Socket fd %d", __func__, he_ctx->fd);
         flow->close2fx(he_ctx->fd);
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);
@@ -705,6 +903,38 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
 
     if ((events & UV_READABLE) && flow->acceptPending) {
         do_accept(ctx, flow);
+        return;
+    }
+
+    // TODO: Are there cases when we should keep polling?
+    if (status < 0) {
+        neat_log(NEAT_LOG_DEBUG, "status: %d - events: %d", status, events);
+        neat_log(NEAT_LOG_DEBUG, "ERROR: %s", uv_strerror(status));
+
+#if !defined(USRSCTP_SUPPORT) && defined(IPPROTO_SCTP)
+        if (flow->sockProtocol == IPPROTO_TCP || flow->sockProtocol == IPPROTO_SCTP) {
+#else
+        if (flow->sockProtocol == IPPROTO_TCP) {
+#endif
+            int so_error = 0;
+            unsigned int len = sizeof(so_error);
+            if (getsockopt(flow->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
+                neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed: %s", strerror(errno));
+                io_error(ctx, flow, NEAT_ERROR_INTERNAL);
+                return;
+            }
+
+            neat_log(NEAT_LOG_DEBUG, "Socket layer errno: %d (%s)", so_error, strerror(so_error));
+
+            if (so_error == ETIMEDOUT) {
+                io_timeout(ctx, flow);
+                return;
+            }
+        }
+
+        neat_log(NEAT_LOG_ERROR, "Unspecified internal error when polling socket");
+        io_error(ctx, flow, NEAT_ERROR_INTERNAL);
+
         return;
     }
 
@@ -817,6 +1047,181 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
     return neat_he_lookup(mgr, flow, he_connected_cb);
 }
 
+neat_error_code
+neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
+{
+#if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
+    unsigned int timeout_msec;
+    int rc;
+#endif
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (seconds < 0) {
+            neat_log(NEAT_LOG_WARNING,
+                    "Unable to change timeout: "
+                    "Negative timeout specified");
+
+            return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    // TCP User Timeout isn't supported by these platforms:
+#if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
+    timeout_msec = ((unsigned int)seconds) * 1000;
+
+    if (flow->sockProtocol == IPPROTO_TCP) {
+        if (flow->fd == -1) {
+            neat_log(NEAT_LOG_WARNING,
+                    "Unable to change timeout for TCP socket: "
+                    "Invalid socket value");
+            return NEAT_ERROR_BAD_ARGUMENT;
+        }
+
+        rc = setsockopt(flow->fd,
+                        IPPROTO_TCP,
+                        TCP_USER_TIMEOUT,
+                        &timeout_msec,
+                        sizeof(timeout_msec));
+
+        if (rc < 0) {
+            neat_log(NEAT_LOG_ERROR,
+                    "Unable to change timeout for TCP socket: "
+                    "Call to setsockopt failed with errno=%d", errno);
+            return NEAT_ERROR_IO;
+        }
+
+        return NEAT_ERROR_OK;
+    } else if (flow->sockProtocol == IPPROTO_SCTP) {
+#if 0
+        struct sctp_paddrparams params;
+        unsigned int optsize = sizeof(params);
+        int rc = getsockopt(flow->fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, &optsize);
+        if (rc < 0) {
+            neat_log(NEAT_LOG_ERROR,
+                    "Unable to change timeout for SCTP socket: "
+                    "Call to getsockopt failed with errno=%d", errno);
+            return NEAT_ERROR_IO;
+        }
+
+        params.spp_hbinterval = (unsigned int)seconds * 1000 / 4;
+        params.spp_flags |= SPP_HB_ENABLE;
+        params.spp_pathmaxrxt = 4;
+
+        rc = setsockopt(flow->fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params));
+        if (rc < 0) {
+            neat_log(NEAT_LOG_ERROR,
+                    "Unable to change timeout for SCTP socket: "
+                    "Call to setsockopt failed with errno=%d", errno);
+            return NEAT_ERROR_IO;
+        }
+#endif // if 0
+        return NEAT_ERROR_UNABLE;
+    }
+#endif // !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
+
+    return NEAT_ERROR_UNABLE;
+}
+
+static void
+set_primary_dest_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
+{
+    int rc;
+    neat_flow *flow = (neat_flow *)resolver->userData1;
+    struct neat_ctx *ctx = flow->ctx;
+    char dest_addr[NI_MAXHOST];
+
+#ifdef USRSCTP_SUPPORT
+    struct sctp_setprim addr;
+#elif defined(HAVE_NETINET_SCTP_H) && defined(__linux__)
+    struct sctp_prim addr;
+    struct sctp_assocparams assocparams;
+    unsigned int optlen = sizeof(assocparams);
+#endif
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (code != NEAT_RESOLVER_OK) {
+        io_error(ctx, flow, code);
+        return;
+    }
+
+    assert(results->lh_first);
+
+#ifdef USRSCTP_SUPPORT
+    addr.ssp_addr = results->lh_first->dst_addr;
+
+    if (usrsctp_setsockopt(flow->sock, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr)) < 0) {
+        neat_log(NEAT_LOG_DEBUG, "Call to usrsctp_setsockopt failed");
+        return;
+    }
+#elif defined(HAVE_NETINET_SCTP_H) && defined(__linux__)
+    rc = getsockopt(flow->fd, IPPROTO_SCTP, SCTP_ASSOCINFO, &assocparams, &optlen);
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed");
+        return;
+    }
+
+    neat_log(NEAT_LOG_DEBUG, "assoc: %d", assocparams.sasoc_assoc_id);
+
+    addr.ssp_assoc_id = assocparams.sasoc_assoc_id;
+    addr.ssp_addr = results->lh_first->dst_addr;
+
+    rc = setsockopt(flow->fd, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr));
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "Call to setsockopt failed");
+        return;
+    }
+#endif
+    rc = getnameinfo((struct sockaddr *)&results->lh_first->dst_addr, 
+                     results->lh_first->dst_addr_len, 
+                     dest_addr, sizeof(dest_addr), NULL, 0, 0);
+
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "getnameinfo failed for primary destination address");
+    } else {
+        neat_log(NEAT_LOG_DEBUG, "Updated primary destination address to: %s", dest_addr);
+    }
+}
+
+neat_error_code
+neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *name)
+{
+#if defined(IPPROTO_SCTP)
+    int8_t literal;
+    uint8_t family = AF_UNSPEC;
+#endif
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+#if defined(IPPROTO_SCTP)
+    if (flow->sockProtocol == IPPROTO_SCTP) {
+        int protocols[] = {IPPROTO_SCTP};
+
+	literal = neat_resolver_check_for_literal(&family, name);
+
+	if (literal != 1) {
+	    neat_log(NEAT_LOG_ERROR, "%s: provided name '%s' is not an address literal.\n",
+		     __func__, name);
+	    return NEAT_ERROR_BAD_ARGUMENT;
+	}
+
+        ctx->resolver->handle_resolve = set_primary_dest_resolve_cb;
+        neat_getaddrinfo(ctx->resolver, AF_UNSPEC, name, flow->port,
+                protocols, sizeof(*protocols)/sizeof(protocols[0]));
+
+        return NEAT_ERROR_OK;
+    }
+#endif // defined(IPPROTO_SCTP)
+
+    return NEAT_ERROR_UNABLE;
+}
+
+neat_error_code
+neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow, int rate, int seconds)
+{
+    return NEAT_ERROR_UNABLE;
+}
+
 static void
 accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
 {
@@ -890,6 +1295,10 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     if (!ctx->resolver)
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf",
                                            accept_resolve_cb, NULL);
+    else if (ctx->resolver->handle_resolve != accept_resolve_cb)
+        // TODO: Race condition if this is updated before the callback for
+        // set_primary_addr is called
+        ctx->resolver->handle_resolve = accept_resolve_cb;
 
     ctx->resolver->userData1 = (void *)flow;
 
@@ -1300,12 +1709,12 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     } else {
         inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) &(he_ctx->candidate->src_addr))->sin6_addr), addrsrcbuf, INET6_ADDRSTRLEN);
     }
-    neat_log(NEAT_LOG_INFO, "%s: Bind to %s", __func__, addrsrcbuf);
+    neat_log(NEAT_LOG_INFO, "%s: Bind fd %d to %s", __func__, he_ctx->fd, addrsrcbuf);
 
     /* Bind to address + interface (if Linux) */
     if (bind(he_ctx->fd, (struct sockaddr*) &(he_ctx->candidate->src_addr),
             he_ctx->candidate->src_addr_len)) {
-        neat_log(NEAT_LOG_ERROR, "Failed to bind socket to IP. Error: %s", strerror(errno));
+        neat_log(NEAT_LOG_ERROR, "Failed to bind fd %d socket to IP. Error: %s", he_ctx->fd, strerror(errno));
         return -1;
     }
 
@@ -1314,7 +1723,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         if (setsockopt(he_ctx->fd, SOL_SOCKET, SO_BINDTODEVICE, if_name,
                 strlen(if_name)) < 0) {
             //Not a critical error
-            neat_log(NEAT_LOG_WARNING, "Could not bind socket to interface %s", if_name);
+            neat_log(NEAT_LOG_WARNING, "Could not bind fd %d socket to interface %s", he_ctx->fd, if_name);
         }
     }
 #endif
@@ -1345,8 +1754,12 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         if (setsockopt(he_ctx->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
             he_ctx->isSCTPExplicitEOR = 1;
 #endif
-            break;
+#ifndef USRSCTP_SUPPORT
+	    // Subscribe to events needed for callbacks
+	    neat_sctp_init_events(he_ctx->fd);
 #endif
+            break;
+#endif // IPPROTO_SCTP
         default:
             break;
     }
@@ -1372,6 +1785,12 @@ neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         // we might want a fx callback here to split between
         // kernel and userspace.. same for connect read and write
         close(flow->fd);
+
+	// KAH: AFAIK the socket API provides no way of knowing any
+	// further status of the close op for TCP.
+	// taps-transports-usage does not specify CLOSE-EVENT.TCP,
+	// maybe it should be dropped from the implementation?
+	neat_notify_close(flow);
     }
     return 0;
 }
@@ -1468,6 +1887,72 @@ neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     }
 }
 
+#if defined(USRSCTP_SUPPORT)
+static void neat_sctp_init_events(struct socket *sock)
+#else
+static void neat_sctp_init_events(int sock)
+#endif
+#if defined(SCTP_EVENT)
+{
+    // Set up SCTP event subscriptions using RFC6458 API
+    // (does not work with current Linux kernel SCTP)
+    struct sctp_event event;
+    unsigned int i;
+    uint16_t event_types[] = {SCTP_ASSOC_CHANGE,
+			      SCTP_PEER_ADDR_CHANGE,
+			      SCTP_REMOTE_ERROR,
+			      SCTP_SHUTDOWN_EVENT,
+			      SCTP_ADAPTATION_INDICATION,
+			      SCTP_PARTIAL_DELIVERY_EVENT,
+			      SCTP_SEND_FAILED_EVENT};
+
+    memset(&event, 0, sizeof(event));
+    event.se_assoc_id = SCTP_FUTURE_ASSOC;
+    event.se_on = 1;
+
+    for (i = 0; i < (unsigned int)(sizeof(event_types)/sizeof(uint16_t)); i++) {
+	event.se_type = event_types[i];
+#if defined(USRSCTP_SUPPORT)
+	if (usrsctp_setsockopt(
+#else
+	if (setsockopt(
+#endif
+		sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(struct sctp_event)) < 0) {
+	    neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to event type %u - %s",
+		     __func__, event_types[i], strerror(errno));
+	}
+    }
+}
+#else // defined(SCTP_EVENT)
+
+#ifdef HAVE_SCTP_EVENT_SUBSCRIBE
+// Set up SCTP event subscriptions using deprecated API
+// (for compatibility with Linux kernel SCTP)
+{
+    struct sctp_event_subscribe event;
+
+    memset(&event, 0, sizeof(event));
+    event.sctp_association_event = 1;
+    event.sctp_address_event = 1;
+    event.sctp_send_failure_event = 1;
+    event.sctp_peer_error_event = 1;
+    event.sctp_shutdown_event = 1;
+    event.sctp_partial_delivery_event = 1;
+    event.sctp_adaptation_layer_event = 1;
+
+    if (setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &event,
+		   sizeof(struct sctp_event_subscribe)) < 0) {
+	neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to SCTP events - %s",
+		 __func__, strerror(errno));
+    }
+}
+#else // HAVE_SCTP_EVENT_SUBSCRIBE
+{
+    // SCTP not supported in any way; do nothing.
+}
+#endif // else HAVE_SCTP_EVENT_SUBSCRIBE
+#endif //else defined(SCTP_EVENT)
+
 #ifdef USRSCTP_SUPPORT
 static struct socket *
 neat_accept_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow, struct socket *sock)
@@ -1495,6 +1980,7 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
     socklen_t slen =
             (he_ctx->candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
     char addrsrcbuf[slen], addrdstbuf[slen];
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     he_ctx->sock = usrsctp_socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, he_ctx->candidate->ai_protocol, NULL, NULL, 0, NULL);
@@ -1521,6 +2007,9 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
         if (usrsctp_setsockopt(he_ctx->sock, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
             he_ctx->isSCTPExplicitEOR = 1;
 #endif
+
+	// Subscribe to SCTP events
+	neat_sctp_init_events(he_ctx->sock);
 
         neat_log(NEAT_LOG_INFO, "%s: Connect from %s to %s", __func__,
            inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, slen),
@@ -1700,6 +2189,15 @@ neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
 }
 
 neat_error_code
+neat_write_ex(struct neat_ctx *ctx, struct neat_flow *flow,
+              const unsigned char *buffer, uint32_t amt, int stream_id, int context, int pr_method, int pr_value,
+              const char* preferred_destination, int unordered,
+              float priority)
+{
+    return NEAT_ERROR_UNABLE;
+}
+
+neat_error_code
 neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
 {
@@ -1746,4 +2244,176 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->acceptusrsctpfx = neat_accept_via_usrsctp;
 #endif
     return rv;
+}
+
+neat_error_code
+neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
+                               uint64_t flags, int capacity_profile,
+                               struct neat_flow_security *sec)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    return NEAT_ERROR_UNABLE;
+}
+
+// Notify application about congestion via callback
+// Set ecn to true if ECN signalled congestion.
+// Set rate to non-zero if wanting to signal a new *maximum* bitrate
+void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_error_code code = NEAT_ERROR_OK;
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations ||!flow->operations->on_slowdown) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_slowdown(flow->operations, ecn, rate);
+}
+
+// Notify application about new max. bitrate
+// Set rate to the new advised maximum bitrate
+void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_error_code code = NEAT_ERROR_OK;
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_rate_hint) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_rate_hint(flow->operations, rate);
+}
+
+// Notify application about a failed send.
+// Set errorcode in cause, context to msg.-context-id from WRITE,
+// unsent_buffer points at the failed message. Context is optional,
+// set to -1 if not specified.
+void neat_notify_send_failure(neat_flow *flow, neat_error_code code,
+			      int context, const unsigned char *unsent_buffer)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_send_failure) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_send_failure(flow->operations, context, unsent_buffer);
+}
+
+// Notify application about timeout
+void neat_notify_timeout(neat_flow *flow)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_error_code code = NEAT_ERROR_OK;
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_timeout) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_timeout(flow->operations);
+}
+
+// Notify application about an aborted connection
+// TODO: this should perhaps return a status code?
+void neat_notify_aborted(neat_flow *flow)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_error_code code = NEAT_ERROR_OK;
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_aborted) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_aborted(flow->operations);
+}
+
+// Notify application a connection has closed
+void neat_notify_close(neat_flow *flow)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_error_code code = NEAT_ERROR_OK;
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_close) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_close(flow->operations);
+}
+
+// Notify application about network changes.
+// Code should identify what happened.
+void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code)
+{
+    //READYCALLBACKSTRUCT expects this:
+    neat_ctx *ctx = flow->ctx;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (!flow->operations || !flow->operations->on_network_status_changed) {
+	return;
+    }
+
+    READYCALLBACKSTRUCT;
+    flow->operations->on_network_status_changed(flow->operations);
+}
+
+// CLOSE, D1.2 sect. 3.2.4
+neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
+{
+    // KAH: free_cb actually does the closefx() call
+
+    // This code is copied from neat_free_flow
+    // TODO consider a refactor...
+    if (flow->isPolling)
+        uv_poll_stop(flow->handle);
+
+    if ((flow->handle != NULL) &&
+        (flow->handle->type != UV_UNKNOWN_HANDLE))
+        uv_close((uv_handle_t *)(flow->handle), free_cb);
+
+    return NEAT_OK;
+}
+
+// ABORT, D1.2 sect. 3.2.4
+neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow)
+{
+    struct linger ling;
+
+    ling.l_onoff = 1;
+    ling.l_linger = 0;
+
+#if !defined(USRSCTP_SUPPORT)
+    setsockopt(flow->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(struct linger));
+#else
+    usrsctp_setsockopt(flow->sock, SOL_SOCKET, SO_LINGER, &ling, sizeof(struct linger));
+#endif
+
+    neat_close(ctx, flow);
+
+    return NEAT_OK;
 }

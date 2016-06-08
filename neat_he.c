@@ -169,7 +169,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
             free(he_ctx);
             continue;
         } else {
-            neat_log(NEAT_LOG_DEBUG, "%s: Connect successful, ret = %d", __func__, ret);
+            neat_log(NEAT_LOG_DEBUG, "%s: Connect successful for fd %d, ret = %d", __func__, he_ctx->fd, ret);
             flow->heConnectAttemptCount++;
             LIST_INSERT_HEAD(&(flow->he_cb_ctx_list), he_ctx, next_he_ctx);
         }

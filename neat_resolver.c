@@ -801,7 +801,7 @@ static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
 
 //Check if node is an IP literal or not. Returns -1 on failure, 0 if not
 //literal, 1 if literal
-static int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node)
+int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node)
 {
     struct in6_addr dummy_addr;
     int32_t v4_literal = 0, v6_literal = 0;

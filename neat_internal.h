@@ -155,6 +155,18 @@ struct neat_flow
 
 typedef struct neat_flow neat_flow;
 
+struct neat_path_stats {
+    void* ignored;
+};
+
+typedef struct neat_path_stats neat_path_stats;
+
+struct neat_interface_stats {
+    void* ignored;
+};
+
+typedef struct neat_interface_stats neat_interface_stats;
+
 //NEAT resolver public data structures/functions
 struct neat_resolver;
 struct neat_resolver_res;
@@ -243,6 +255,9 @@ void neat_resolver_free_results(struct neat_resolver_results *results);
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         const char *node, uint16_t port, int ai_protocol[],
         uint8_t proto_count);
+//Check if node is an IP literal or not. Returns -1 on failure, 0 if not
+//literal, 1 if literal
+int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node);
 
 //Update timeouts (in ms) for DNS resolving. T1 is total timeout, T2 is how long
 //to wait after first reply from DNS server. Initial values are 30s and 1s.
@@ -344,5 +359,16 @@ struct neat_resolver {
 };
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);
+
+// Internal routines for hooking up lower-level services/modules with
+// API callbacks:
+void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate);
+void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate);
+void neat_notify_send_failure(neat_flow *flow, neat_error_code code,
+			      int context, const unsigned char *unsent_buffer);
+void neat_notify_timeout(neat_flow *flow);
+void neat_notify_aborted(neat_flow *flow);
+void neat_notify_close(neat_flow *flow);
+void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code);
 
 #endif

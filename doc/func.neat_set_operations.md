@@ -12,3 +12,10 @@ Set the NEAT operation callbacks.
 * on_readable
 * on_writable
 * on_all_written
+* on_network_changed()
+* on_aborted()
+* on_timeout()
+* on_close()
+* on_send_failure()
+* on_slowdown()
+* on_rate_hint()

@@ -17,12 +17,20 @@
 * [neat_free_flow()](func.neat_free_flow.md)
 * [neat_set_operations()](func.neat_set_operations.md)
 * [neat_open()](func.neat_open.md)
+* [neat_open_localname()](func.neat_open.md)
+* [neat_open_multistream()](func.neat_open.md)
 * [neat_read()](func.neat_read.md)
 * [neat_write()](func.neat_write.md)
+* [neat_write_ex()](func.neat_write.md)
 * [neat_get_property()](func.neat_get_property.md)
 * [neat_set_property()](func.neat_set_property.md)
 * [neat_accept()](func.neat_accept.md)
 * [neat_shutdown()](func.neat_shutdown.md)
+* [neat_close()](func.neat_close.md)
+* [neat_abort()](func.neat_abort.md)
+* [neat_change_timeout()](func.neat_change_timeout.md)
+* [neat_set_primary_dest()](func.neat_set_primary_dest.md)
+* [neat_request_capacity()](func.neat_request_capacity.md)
 
 
 ## Callbacks
@@ -31,6 +39,13 @@
 * [on_readable()](callb.on_readable.md)
 * [on_writable()](callb.on_writable.md)
 * [on_all_written()](callb.on_all_written.md)
+* [on_network_status_changed()](callb.on_network_changed.md)
+* [on_aborted()](callb.on_aborted.md)
+* [on_timeout()](callb.on_timeout.md)
+* [on_close()](callb.on_close.md)
+* [on_send_failure()](callb.on_send_failure.md)
+* [on_slowdown()](callb.on_slowdown.md)
+* [on_rate_hint()](callb.on_rate_hint.md)
 
 
 #### Sample callback flow
@@ -68,6 +83,7 @@
 * NEAT_ERROR_SECURITY
 * NEAT_ERROR_UNABLE
 * NEAT_ERROR_MESSAGE_TOO_BIG
+* NEAT_ERROR_REMOTE
 
 ## Debug output
 Neat offers a flexible way to control debug output via environment variables.

@@ -1096,6 +1096,33 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
     flow->name = strdup(name);
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
+    flow->streamCount = 1;
+
+    return neat_he_lookup(mgr, flow, he_connected_cb);
+}
+
+neat_error_code
+neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port, int count)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (flow->name) {
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    if (count < 0) {
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    if ((flow->propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) == 0) {
+        neat_log(NEAT_LOG_ERROR, "Multistreaming is only supported by SCTP");
+        return NEAT_ERROR_UNABLE;
+    }
+
+    flow->name = strdup(name);
+    flow->port = port;
+    flow->propertyAttempt = flow->propertyMask;
+    flow->streamCount = (uint32_t)count;
 
     return neat_he_lookup(mgr, flow, he_connected_cb);
 }
@@ -1813,6 +1840,21 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         default:
             break;
     }
+
+#ifdef IPPROTO_SCTP
+    if (he_ctx->candidate->ai_protocol == IPPROTO_SCTP) {
+        // TODO: Do we need to explicitly allow multiple incoming streams?
+        struct sctp_initmsg init;
+        memset(&init, 0, sizeof(init));
+        init.sinit_num_ostreams = he_ctx->flow->streamCount;
+        init.sinit_max_instreams = he_ctx->flow->streamCount; // TODO: May depend on policy
+        if (setsockopt(he_ctx->fd, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(struct sctp_initmsg)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "Unable to set outbound stream count");
+            return -1;
+        }
+    }
+#endif
+
     uv_poll_init(he_ctx->nc->loop, he_ctx->handle, he_ctx->fd); // makes fd nb as side effect
     if ((he_ctx->fd == -1) ||
         (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {

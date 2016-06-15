@@ -152,6 +152,15 @@ neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *fl
 #define NEAT_ERROR_MESSAGE_TOO_BIG (8)
 #define NEAT_ERROR_REMOTE (9)
 
+typedef enum {
+    NEAT_STACK_UDP = 1,
+    NEAT_STACK_UDPLITE = 2,
+    NEAT_STACK_TCP = 3,
+    NEAT_STACK_SCTP = 4,
+} neat_protocol_stack_type;
+
+#define NEAT_STACK_MAX_NUM 4
+
 // cleanup extern "C"
 #ifdef __cplusplus
 }

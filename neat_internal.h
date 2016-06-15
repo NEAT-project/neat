@@ -21,7 +21,6 @@
 #endif
 
 #include "neat_log.h"
-#include "neat_stat.h"
 
 #define NEAT_INTERNAL_CTX \
     void (*cleanup)(struct neat_ctx *nc); \

@@ -13,9 +13,9 @@
    then format the stats as a json string to return */	
 void neat_stats_build_json(neat_flow *flow, char **json_stats)
 {
-	neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
 	json_t *root = json_object();
+
+	neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
 	json_object_set_new( root, "remote_host", json_string( flow->name ));
 	json_object_set_new( root, "sock_type", json_integer( flow->sockType ));

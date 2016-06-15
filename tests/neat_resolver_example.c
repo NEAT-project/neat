@@ -32,25 +32,25 @@ static void resolver_handle(struct neat_resolver *resolver,
         getnameinfo((struct sockaddr *)&result->dst_addr, result->dst_addr_len,
                     dst_str, sizeof(dst_str), NULL, 0,
                     NI_NUMERICHOST);
-        switch (result->ai_protocol) {
-        case IPPROTO_UDP:
+        switch (result->ai_stack) {
+        case NEAT_STACK_UDP:
             fprintf(stderr, "UDP/");
             break;
-        case IPPROTO_TCP:
+        case NEAT_STACK_TCP:
             fprintf(stderr, "TCP/");
             break;
 #ifdef IPPROTO_SCTP
-        case IPPROTO_SCTP:
+        case NEAT_STACK_SCTP:
             fprintf(stderr, "SCTP/");
             break;
 #endif
 #ifdef IPPROTO_UDPLITE
-        case IPPROTO_UDPLITE:
+        case NEAT_STACK_UDPLITE:
             fprintf(stderr, "UDP-LITE/");
             break;
 #endif
         default:
-            fprintf(stderr, "proto%d/", result->ai_protocol);
+            fprintf(stderr, "stack%d/", result->ai_stack);
             break;
         }
         switch (result->ai_family) {
@@ -94,9 +94,9 @@ static void resolver_cleanup(struct neat_resolver *resolver)
 }
 
 static uint8_t test_resolver(struct neat_ctx *nc, struct neat_resolver *resolver,
-        uint8_t family, int protocol[], uint8_t proto_count, char *node, uint16_t port)
+        uint8_t family, neat_protocol_stack_type stack[], uint8_t stack_count, char *node, uint16_t port)
 {
-    if (neat_getaddrinfo(resolver, family, node, port, protocol, proto_count))
+    if (neat_getaddrinfo(resolver, family, node, port, stack, stack_count))
         return 1;
 
     neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 {
     struct neat_ctx *nc = neat_init_ctx();
     struct neat_resolver *resolver;
-    int32_t test_proto[NEAT_MAX_NUM_PROTO];
+    neat_protocol_stack_type test_stack[NEAT_STACK_MAX_NUM];
     uint8_t n;
 
     resolver = nc ? neat_resolver_init(nc, "/etc/resolv.conf", resolver_handle,
@@ -116,62 +116,62 @@ int main(int argc, char *argv[])
     if (nc == NULL || resolver == NULL)
         exit(EXIT_FAILURE);
 
-    memset(test_proto, 0, NEAT_MAX_NUM_PROTO * sizeof(int32_t));
+    memset(test_stack, 0, NEAT_STACK_MAX_NUM * sizeof(neat_protocol_stack_type));
 
     //this is set in he_lookup in the other example code
     nc->resolver = resolver;
 
     neat_resolver_update_timeouts(resolver, 5000, 500);
     n = 0;
-    test_proto[n++] = IPPROTO_UDP;
-    test_proto[n++] = IPPROTO_TCP;
+    test_stack[n++] = NEAT_STACK_UDP;
+    test_stack[n++] = NEAT_STACK_TCP;
 #ifdef IPPROTO_SCTP
-    test_proto[n++] = IPPROTO_SCTP;
+    test_stack[n++] = NEAT_STACK_SCTP;
 #endif
 #ifdef IPPROTO_UDPLITE
-    test_proto[n++] = IPPROTO_UDPLITE;
+    test_stack[n++] = NEAT_STACK_UDPLITE;
 #endif
-    test_resolver(nc, resolver, AF_INET, test_proto, n, "www.google.com", 80);
+    test_resolver(nc, resolver, AF_INET, test_stack, n, "www.google.com", 80);
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_INET6, test_proto, n, "www.google.com", 80);
+    test_resolver(nc, resolver, AF_INET6, test_stack, n, "www.google.com", 80);
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_INET, test_proto, n, "www.facebook.com", 80);
+    test_resolver(nc, resolver, AF_INET, test_stack, n, "www.facebook.com", 80);
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_INET6, test_proto, n, "www.facebook.com", 80);
+    test_resolver(nc, resolver, AF_INET6, test_stack, n, "www.facebook.com", 80);
     neat_resolver_reset(resolver);
 
-    test_proto[0] = IPPROTO_TCP;
-    test_resolver(nc, resolver, AF_INET, test_proto, 1, "bsd10.fh-muenster.de", 80);
+    test_stack[0] = NEAT_STACK_TCP;
+    test_resolver(nc, resolver, AF_INET, test_stack, 1, "bsd10.fh-muenster.de", 80);
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_INET6, test_proto, 1, "bsd10.fh-muenster.de", 80);
+    test_resolver(nc, resolver, AF_INET6, test_stack, 1, "bsd10.fh-muenster.de", 80);
     neat_resolver_reset(resolver);
 
 #ifdef IPPROTO_SCTP
-    test_proto[0] = IPPROTO_SCTP;
-    test_resolver(nc, resolver, AF_INET, test_proto, 1, "bsd10.fh-muenster.de", 80);
+    test_stack[0] = NEAT_STACK_SCTP;
+    test_resolver(nc, resolver, AF_INET, test_stack, 1, "bsd10.fh-muenster.de", 80);
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_INET6, test_proto, 1, "bsd10.fh-muenster.de", 80);
+    test_resolver(nc, resolver, AF_INET6, test_stack, 1, "bsd10.fh-muenster.de", 80);
     neat_resolver_reset(resolver);
 #endif
 
-    test_proto[0] = IPPROTO_UDP;
-    test_resolver(nc, resolver, AF_INET, test_proto, 1, "bsd10.fh-muenster.de", 80);
+    test_stack[0] = NEAT_STACK_UDP;
+    test_resolver(nc, resolver, AF_INET, test_stack, 1, "bsd10.fh-muenster.de", 80);
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_INET6, test_proto, 1, "bsd10.fh-muenster.de", 80);
+    test_resolver(nc, resolver, AF_INET6, test_stack, 1, "bsd10.fh-muenster.de", 80);
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_UNSPEC, test_proto, 1, "bsd10.fh-muenster.de", 80);
+    test_resolver(nc, resolver, AF_UNSPEC, test_stack, 1, "bsd10.fh-muenster.de", 80);
 
     n = 0;
-    test_proto[n++] = IPPROTO_TCP;
+    test_stack[n++] = NEAT_STACK_TCP;
 #ifdef IPPROTO_SCTP
-    test_proto[n++] = IPPROTO_SCTP;
+    test_stack[n++] = NEAT_STACK_SCTP;
 #endif
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_INET, test_proto, n, "bsd10.fh-muenster.de", 80);
+    test_resolver(nc, resolver, AF_INET, test_stack, n, "bsd10.fh-muenster.de", 80);
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_INET6, test_proto, n, "bsd10.fh-muenster.de", 80);
+    test_resolver(nc, resolver, AF_INET6, test_stack, n, "bsd10.fh-muenster.de", 80);
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_UNSPEC, test_proto, n, "bsd10.fh-muenster.de", 80);
+    test_resolver(nc, resolver, AF_UNSPEC, test_stack, n, "bsd10.fh-muenster.de", 80);
 
     neat_free_ctx(nc);
     exit(EXIT_SUCCESS);

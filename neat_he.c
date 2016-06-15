@@ -22,25 +22,25 @@ static void he_print_results(struct neat_resolver_results *results)
     neat_log(NEAT_LOG_INFO, "Happy-Eyeballs results:");
 
     LIST_FOREACH(result, results, next_res) {
-        switch (result->ai_protocol) {
-            case IPPROTO_UDP:
+        switch (result->ai_stack) {
+            case NEAT_STACK_UDP:
                 snprintf(proto, 16, "UDP");
                 break;
-            case IPPROTO_TCP:
+            case NEAT_STACK_TCP:
                 snprintf(proto, 16, "TCP");
                 break;
 #ifdef IPPROTO_SCTP
-            case IPPROTO_SCTP:
+            case NEAT_STACK_SCTP:
                 snprintf(proto, 16, "SCTP");
                 break;
 #endif
 #ifdef IPPROTO_UDPLITE
-            case IPPROTO_UDPLITE:
+            case NEAT_STACK_UDPLITE:
                 snprintf(proto, 16, "UDPLite");
                 break;
 #endif
             default:
-                snprintf(proto, 16, "proto%d", result->ai_protocol);
+                snprintf(proto, 16, "stack%d", result->ai_stack);
                 break;
         }
         switch (result->ai_family) {
@@ -80,8 +80,8 @@ pm_filter(struct neat_resolver_results *results)
 
         struct neat_resolver_res *tmp_itr1 = res_itr1;
         res_itr1 = res_itr1->next_res.le_next;
-        if (((tmp_itr1->ai_protocol != IPPROTO_TCP) &&
-            (tmp_itr1->ai_protocol != IPPROTO_SCTP)) ||
+        if (((tmp_itr1->ai_stack != NEAT_STACK_TCP) &&
+            (tmp_itr1->ai_stack != NEAT_STACK_SCTP)) ||
             (tmp_itr1->ai_family != AF_INET)) {
 
             LIST_REMOVE(tmp_itr1, next_res);
@@ -93,7 +93,7 @@ pm_filter(struct neat_resolver_results *results)
             while (res_itr2 != tmp_itr1) {
                 struct neat_resolver_res *tmp_itr2 = res_itr2;
                 res_itr2 = res_itr2->next_res.le_next;
-                if ((tmp_itr1->ai_protocol == tmp_itr2->ai_protocol) &&
+                if ((tmp_itr1->ai_stack == tmp_itr2->ai_stack) &&
                     (memcmp(&tmp_itr1->dst_addr,
                             &tmp_itr2->dst_addr,
                             sizeof(struct sockaddr_storage)) == 0)) {
@@ -182,8 +182,8 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx)
 {
-    int protocols[NEAT_MAX_NUM_PROTO]; /* We only support SCTP, TCP, UDP, and UDPLite */
-    uint8_t nr_of_protocols;
+    neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM]; /* We only support SCTP, TCP, UDP, and UDPLite */
+    uint8_t nr_of_stacks;
     uint8_t family;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -205,9 +205,9 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     else
         family = AF_UNSPEC; /* AF_INET and AF_INET6 */
 
-    nr_of_protocols = neat_property_translate_protocols(flow->propertyMask,
-            protocols);
-    if (nr_of_protocols == 0)
+    nr_of_stacks = neat_property_translate_protocols(flow->propertyMask,
+            stacks);
+    if (nr_of_stacks == 0)
         return NEAT_ERROR_UNABLE;
 
     if (!ctx->resolver) {
@@ -221,7 +221,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
      * FIXME: Make use of the array of protocols
      */
     neat_getaddrinfo(ctx->resolver, family, flow->name, flow->port,
-            protocols, nr_of_protocols);
+            stacks, nr_of_stacks);
 
     return NEAT_OK;
 }

@@ -390,22 +390,6 @@ int neat_get_protocol(neat_ctx* mgr, neat_flow* flow)
     return flow->sockProtocol;
 }
 
-void neat_interface_statistics(neat_ctx* mgr, neat_flow* flow,
-                         neat_interface_stats* stats)
-{
-    // TODO: Define contents of neat_interface_stats struct
-    // TODO: Add data collection in the core code
-    // TODO: fill the struct or memcpy it
-}
-
-void neat_path_statistics(neat_ctx* mgr, neat_flow* flow,
-                         neat_path_stats* stats)
-{
-    // TODO: Define contents of neat_interface_stats struct
-    // TODO: Add data collection in the core code
-    // TODO: fill the struct or memcpy it
-}
-
 neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
                                     struct neat_flow_operations *ops)
 {

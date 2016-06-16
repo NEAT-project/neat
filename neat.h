@@ -155,11 +155,11 @@ neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *fl
 typedef enum {
     NEAT_STACK_UDP = 1,
 #ifdef IPPROTO_UDPLITE
-    NEAT_STACK_UDPLITE = 2,
+    NEAT_STACK_UDPLITE,
 #endif
-    NEAT_STACK_TCP = 3,
+    NEAT_STACK_TCP,
 #ifdef IPPROTO_SCTP
-    NEAT_STACK_SCTP = 4,
+    NEAT_STACK_SCTP,
 #endif
 } neat_protocol_stack_type;
 

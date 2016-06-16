@@ -331,7 +331,7 @@ void usrsctp_free(neat_flow *flow)
 
 static int neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
 {
-#if defined(USRSCTP_SUPPORT)
+#if defined(USRSCTP_SUPPORT) && defined(IPPROTO_SCTP)
     if (flow->sockStack == NEAT_STACK_SCTP) {
         neat_close_via_usrsctp(flow->ctx, flow);
         return 0;
@@ -352,7 +352,7 @@ void neat_free_flow(neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-#if defined(USRSCTP_SUPPORT)
+#if defined(USRSCTP_SUPPORT) && defined(IPPROTO_SCTP)
     if (flow->sockStack == NEAT_STACK_SCTP) {
        usrsctp_free(flow);
         return;
@@ -411,7 +411,7 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     flow->operations = ops;
-#if defined(USRSCTP_SUPPORT)
+#if defined(USRSCTP_SUPPORT) && defined(IPPROTO_SCTP)
     if (flow->sockStack == NEAT_STACK_SCTP)
         return NEAT_OK;
 #endif
@@ -1078,7 +1078,9 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
         }
 
         return NEAT_ERROR_OK;
-    } else if (flow->sockStack == NEAT_STACK_SCTP) {
+    }
+#if defined(IPPROTO_SCTP)
+    else if (flow->sockStack == NEAT_STACK_SCTP) {
 #if 0
         struct sctp_paddrparams params;
         unsigned int optsize = sizeof(params);
@@ -1104,6 +1106,7 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 #endif // if 0
         return NEAT_ERROR_UNABLE;
     }
+#endif
 #endif // !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
 
     return NEAT_ERROR_UNABLE;
@@ -1616,7 +1619,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     } else {
         flow->isDraining = 1;
     }
-#if defined(USRSCTP_SUPPORT)
+#if defined(USRSCTP_SUPPORT) && defined(IPPROTO_SCTP)
     if (flow->sockStack == NEAT_STACK_SCTP)
         return NEAT_OK;
 #endif
@@ -1700,7 +1703,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     char addrsrcbuf[INET6_ADDRSTRLEN];
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-#if defined(USRSCTP_SUPPORT)
+#if defined(USRSCTP_SUPPORT) && defined(IPPROTO_SCTP)
     if (he_ctx->candidate->ai_stack == NEAT_STACK_SCTP) {
         neat_connect_via_usrsctp(he_ctx);
     } else {
@@ -1817,7 +1820,7 @@ neat_listen(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-#if defined(USRSCTP_SUPPORT)
+#if defined(USRSCTP_SUPPORT) && defined(IPPROTO_SCTP)
     if (flow->sockStack == NEAT_STACK_SCTP) {
         neat_listen_via_usrsctp(ctx, flow);
         return 0;
@@ -2138,7 +2141,7 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
 
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
-    if (!(flow->sock = usrsctp_socket(flow->family, flow->sockType, neat_stack_to_protocol(flow->sockProtocol), NULL, NULL, 0, NULL))) {
+    if (!(flow->sock = usrsctp_socket(flow->family, flow->sockType, neat_stack_to_protocol(flow->sockStack), NULL, NULL, 0, NULL))) {
         neat_log(NEAT_LOG_ERROR, "%s: user_socket failed - %s", __func__, strerror(errno));
         return -1;
     }
@@ -2216,7 +2219,7 @@ neat_error_code
 neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-#if defined(USRSCTP_SUPPORT)
+#if defined(USRSCTP_SUPPORT) && defined(IPPROTO_SCTP)
     if (flow->sockStack == NEAT_STACK_SCTP)
         return neat_shutdown_via_usrsctp(ctx, flow);
 #endif

@@ -18,6 +18,7 @@
     -P : neat properties
     -R : receive buffer in byte
     -S : send buffer in byte
+    -J : print json stats for each time data is sent 
     -v : log level (0 .. 2)
     -A : set primary destination address
     
@@ -26,6 +27,7 @@
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
+static uint16_t config_json_stats = 0;
 static char *config_primary_dest_addr = NULL;
 static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
@@ -59,6 +61,7 @@ static void print_usage()
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- S \tsend buffer in byte (%d)\n", config_snd_buffer_size);
+    printf("\t- J \tprint json stats for each time data is sent\n");
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
     printf("\t- A \tprimary dest. addr. (auto)\n");
 }
@@ -71,8 +74,25 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
+  /* Placeholder until neat_error handling is implemented*/
+    return 1;
+}
 
-    exit(EXIT_FAILURE);
+void print_neat_stats(neat_flow *flow)
+{
+   neat_error_code error;
+
+   char* stats = NULL;
+   error = neat_get_stats(flow, &stats);
+   if(error != NEAT_OK){
+      printf("NEAT ERROR: %i\n", (int)error);
+      return;
+   } else {
+     if(stats != NULL) 
+        printf("json %s\n", stats);
+   }
+  /* Need to free the string allocated by jansson */
+  free(stats);
 }
 
 /*
@@ -170,6 +190,10 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
         return on_error(opCB);
     }
+
+    if(config_json_stats){
+       print_neat_stats(opCB->flow);
+    } 
 
     if (config_log_level >= 1) {
         fprintf(stderr, "%s - sent %d bytes\n", __func__, stdin_buffer.buffer_filled);
@@ -299,6 +323,7 @@ void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
     buffer->base = malloc(config_rcv_buffer_size);
 }
 
+
 int main(int argc, char *argv[])
 {
     uint64_t prop;
@@ -312,7 +337,7 @@ int main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:R:S:v:A:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:R:S:Jv:A:")) != -1) {
         switch(arg) {
         case 'P':
             arg_property = optarg;
@@ -332,6 +357,13 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "%s - option - send buffer size: %d\n", __func__, config_snd_buffer_size);
             }
             break;
+        case 'J':
+ 	   config_json_stats = 1;
+            if (config_log_level >= 1) {
+                fprintf(stderr, "%s - option - json stats on send enabled\n", __func__);
+            }
+            break;
+
         case 'v':
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {

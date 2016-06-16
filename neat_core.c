@@ -26,6 +26,7 @@
 #include "neat_addr.h"
 #include "neat_queue.h"
 #include "neat_property_helpers.h"
+#include "neat_stat.h"
 
 #if defined(USRSCTP_SUPPORT)
     #include "neat_usrsctp_internal.h"
@@ -389,22 +390,6 @@ int neat_get_protocol(neat_ctx* mgr, neat_flow* flow)
     return flow->sockProtocol;
 }
 
-void neat_interface_statistics(neat_ctx* mgr, neat_flow* flow,
-                         neat_interface_stats* stats)
-{
-    // TODO: Define contents of neat_interface_stats struct
-    // TODO: Add data collection in the core code
-    // TODO: fill the struct or memcpy it
-}
-
-void neat_path_statistics(neat_ctx* mgr, neat_flow* flow,
-                         neat_path_stats* stats)
-{
-    // TODO: Define contents of neat_interface_stats struct
-    // TODO: Add data collection in the core code
-    // TODO: fill the struct or memcpy it
-}
-
 neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
                                     struct neat_flow_operations *ops)
 {
@@ -417,6 +402,18 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
 #endif
     updatePollHandle(mgr, flow, flow->handle);
     return NEAT_OK;
+}
+
+/* Return statistics about the flow in JSON format 
+   NB - the memory allocated for the return string must be freed 
+   by the caller */
+neat_error_code neat_get_stats(neat_flow *flow, char **json_stats)
+{
+      neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+      neat_stats_build_json(flow, json_stats);
+
+      return NEAT_OK;
 }
 
 #define READYCALLBACKSTRUCT \

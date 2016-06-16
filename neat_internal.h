@@ -67,7 +67,7 @@ typedef struct neat_ctx neat_ctx;
 typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
-                                           const unsigned char *buffer, uint32_t amt);
+                                           const unsigned char *buffer, uint32_t amt, int stream_id);
 typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
 #if defined(USRSCTP_SUPPORT)
 typedef struct socket * (*neat_accept_usrsctp_impl)(struct neat_ctx *ctx, struct neat_flow *flow, struct socket *sock);
@@ -108,6 +108,7 @@ struct neat_flow
     uint8_t family;
     int sockType;
     int sockProtocol;
+    uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
@@ -116,7 +117,8 @@ struct neat_flow
     size_t writeLimit;  // maximum to write if the socket supports partial writes
     size_t writeSize;   // send buffer size
     // The memory buffer for writing.
-    struct neat_message_queue_head bufferedMessages;
+    struct neat_message_queue_head *bufferedMessages;
+    size_t buffer_count;
 
     size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.
@@ -146,7 +148,7 @@ struct neat_flow
     unsigned int isPolling : 1;
     unsigned int ownedByCore : 1;
     unsigned int everConnected : 1;
-    unsigned int isDraining : 1;
+    unsigned int* isDraining; // TODO: Rework this to become a bitmap?
     unsigned int isSCTPExplicitEOR : 1;
 
     //List with all non-freed HE contexts.
@@ -264,7 +266,7 @@ int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node);
 void neat_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
         uint16_t t2);
 
-void io_error(neat_ctx *ctx, neat_flow *flow,
+void io_error(neat_ctx *ctx, neat_flow *flow, int stream,
               neat_error_code code);
 
 enum neat_events{

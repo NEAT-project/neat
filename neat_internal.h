@@ -118,6 +118,7 @@ struct neat_flow
     int sockType;
     uint16_t stream_count;
     int sockStack;
+    uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer

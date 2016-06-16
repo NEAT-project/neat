@@ -1045,6 +1045,12 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
 
     switch (newFlow->sockStack) {
     case NEAT_STACK_SCTP:
+        newFlow->stream_count = 1;
+        if (allocate_send_buffers(newFlow) != NEAT_OK) {
+            io_error(ctx, newFlow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+            return;
+        }
+
 #if defined(USRSCTP_SUPPORT)
         newFlow->sock = newFlow->acceptusrsctpfx(ctx, newFlow, flow->sock);
         if (!newFlow->sock) {

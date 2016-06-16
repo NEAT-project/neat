@@ -314,13 +314,7 @@ void usrsctp_free(neat_flow *flow)
     if (flow->ownedByCore) {
         free(flow->operations);
     }
-    struct neat_buffered_message *msg, *next_msg;
-    TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
-        TAILQ_REMOVE(&flow->bufferedMessages, msg, message_next);
-        free(msg->buffered);
-        free(msg);
-    }
-    free(flow->readBuffer);
+    free_send_buffers(flow->ctx, flow);
     free(flow->handle);
     free(flow);
 }
@@ -2166,19 +2160,23 @@ static void handle_upcall(struct socket *sock, void *arg, int flags)
             flow->firstWritePending = 0;
             io_connected(ctx, flow, NEAT_OK);
         }
-        if (events & SCTP_EVENT_WRITE && flow->isDraining) {
-            neat_error_code code = neat_write_flush(ctx, flow);
-            if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
-                io_error(ctx, flow, code);
-                return;
+
+        for (unsigned int stream = 0; stream < flow->stream_count; ++stream) {
+            if (events & SCTP_EVENT_WRITE && flow->isDraining[stream]) {
+                neat_error_code code = neat_write_flush(ctx, flow, stream);
+                if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
+                    io_error(ctx, flow, stream, code);
+                    return;
+                }
+                if (!flow->isDraining[stream]) {
+                    io_all_written(ctx, flow, stream);
+                }
             }
-            if (!flow->isDraining) {
-                io_all_written(ctx, flow);
+            if (events & SCTP_EVENT_WRITE) {
+                io_writable(ctx, flow, stream, NEAT_OK);
             }
         }
-        if (events & SCTP_EVENT_WRITE) {
-            io_writable(ctx, flow, NEAT_OK);
-        }
+
         if (events & SCTP_EVENT_READ) {
             neat_error_code code;
 

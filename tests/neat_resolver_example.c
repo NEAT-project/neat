@@ -42,6 +42,9 @@ static void resolver_handle(struct neat_resolver *resolver,
         case NEAT_STACK_SCTP:
             fprintf(stderr, "SCTP/");
             break;
+        case NEAT_STACK_SCTP_UDP:
+            fprintf(stderr, "SCTP/UDP/");
+            break;
         case NEAT_STACK_UDPLITE:
             fprintf(stderr, "UDP-LITE/");
             break;
@@ -123,6 +126,7 @@ int main(int argc, char *argv[])
     test_stack[n++] = NEAT_STACK_TCP;
 #ifdef IPPROTO_SCTP
     test_stack[n++] = NEAT_STACK_SCTP;
+    test_stack[n++] = NEAT_STACK_SCTP_UDP;
 #endif
 #ifdef IPPROTO_UDPLITE
     test_stack[n++] = NEAT_STACK_UDPLITE;
@@ -144,9 +148,10 @@ int main(int argc, char *argv[])
 
 #ifdef IPPROTO_SCTP
     test_stack[0] = NEAT_STACK_SCTP;
-    test_resolver(nc, resolver, AF_INET, test_stack, 1, "bsd10.fh-muenster.de", 80);
+    test_stack[1] = NEAT_STACK_SCTP_UDP;
+    test_resolver(nc, resolver, AF_INET, test_stack, 2, "bsd10.fh-muenster.de", 80);
     neat_resolver_reset(resolver);
-    test_resolver(nc, resolver, AF_INET6, test_stack, 1, "bsd10.fh-muenster.de", 80);
+    test_resolver(nc, resolver, AF_INET6, test_stack, 2, "bsd10.fh-muenster.de", 80);
     neat_resolver_reset(resolver);
 #endif
 
@@ -161,6 +166,7 @@ int main(int argc, char *argv[])
     test_stack[n++] = NEAT_STACK_TCP;
 #ifdef IPPROTO_SCTP
     test_stack[n++] = NEAT_STACK_SCTP;
+    test_stack[n++] = NEAT_STACK_SCTP_UDP;
 #endif
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET, test_stack, n, "bsd10.fh-muenster.de", 80);

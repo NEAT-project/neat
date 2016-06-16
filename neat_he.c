@@ -32,6 +32,9 @@ static void he_print_results(struct neat_resolver_results *results)
             case NEAT_STACK_SCTP:
                 snprintf(proto, 16, "SCTP");
                 break;
+            case NEAT_STACK_SCTP_UDP:
+                snprintf(proto, 16, "SCTP/UDP");
+                break;
             case NEAT_STACK_UDPLITE:
                 snprintf(proto, 16, "UDPLite");
                 break;
@@ -76,8 +79,8 @@ pm_filter(struct neat_resolver_results *results)
 
         struct neat_resolver_res *tmp_itr1 = res_itr1;
         res_itr1 = res_itr1->next_res.le_next;
-        if (((tmp_itr1->ai_stack != NEAT_STACK_TCP) &&
-            (tmp_itr1->ai_stack != NEAT_STACK_SCTP)) ||
+        if (((neat_stack_first_proto(tmp_itr1->ai_stack) != NEAT_STACK_TCP) &&
+            (neat_stack_first_proto(tmp_itr1->ai_stack) != NEAT_STACK_SCTP)) ||
             (tmp_itr1->ai_family != AF_INET)) {
 
             LIST_REMOVE(tmp_itr1, next_res);

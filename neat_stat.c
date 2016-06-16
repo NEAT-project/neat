@@ -10,7 +10,7 @@
 
 
 /* Traverse the relevant subsystems of NEAT and gather the stats
-   then format the stats as a json string to return */	
+   then format the stats as a json string to return */
 void neat_stats_build_json(neat_flow *flow, char **json_stats)
 {
 	json_t *json_root;
@@ -21,9 +21,9 @@ void neat_stats_build_json(neat_flow *flow, char **json_stats)
 
 	json_object_set_new( json_root, "remote_host", json_string( flow->name ));
 	json_object_set_new( json_root, "sock_type", json_integer( flow->sockType ));
-	json_object_set_new( json_root, "sock_protocol", json_integer( flow->sockProtocol ));
+	json_object_set_new( json_root, "sock_protocol", json_integer( neat_stack_to_protocol(flow->sockStack) ));
 	json_object_set_new( json_root, "port", json_integer( flow->port ));
-	
+
 	/* TODO: fetch OS-specific stats from the respective stacks used for connecting */
 
 	/* Callers must remember to free the output */
@@ -32,7 +32,7 @@ void neat_stats_build_json(neat_flow *flow, char **json_stats)
 	json_decref(json_root);
 
 	return;
-} 
+}
 
 
 

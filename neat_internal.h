@@ -96,9 +96,12 @@ typedef enum {
     NEAT_STACK_UDPLITE,
     NEAT_STACK_TCP,
     NEAT_STACK_SCTP,
+    NEAT_STACK_SCTP_UDP
 } neat_protocol_stack_type;
 
-#define NEAT_STACK_MAX_NUM 4
+#define NEAT_STACK_MAX_NUM             5
+#define SCTP_UDP_TUNNELING_PORT        9899
+#define SCTP_REMOTE_UDP_ENCAPS_PORT    0x00000024
 
 TAILQ_HEAD(neat_message_queue_head, neat_buffered_message);
 
@@ -379,5 +382,8 @@ void neat_notify_timeout(neat_flow *flow);
 void neat_notify_aborted(neat_flow *flow);
 void neat_notify_close(neat_flow *flow);
 void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code);
+
+int neat_stack_first_proto(neat_protocol_stack_type stack);
+int neat_stack_to_protocol(neat_protocol_stack_type stack);
 
 #endif

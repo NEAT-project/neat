@@ -38,8 +38,10 @@ uint8_t neat_property_translate_protocols(uint64_t propertyMask,
         if (((propertyMask & NEAT_PROPERTY_TCP_REQUIRED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_UDP_REQUIRED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_UDPLITE_REQUIRED) == 0) &&
-            ((propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_BANNED) == 0))
+            ((propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_BANNED) == 0)) {
             stacks[nr_of_stacks++] = NEAT_STACK_SCTP;
+            stacks[nr_of_stacks++] = NEAT_STACK_SCTP_UDP;
+        }
         return nr_of_stacks;
     }
     if (propertyMask & NEAT_PROPERTY_TCP_REQUIRED) {
@@ -73,8 +75,10 @@ uint8_t neat_property_translate_protocols(uint64_t propertyMask,
 
     /* Finally the more complex part */
     if (propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED) {
-        if ((propertyMask & NEAT_PROPERTY_SCTP_BANNED) == 0)
+        if ((propertyMask & NEAT_PROPERTY_SCTP_BANNED) == 0) {
             stacks[nr_of_stacks++] = NEAT_STACK_SCTP;
+            stacks[nr_of_stacks++] = NEAT_STACK_SCTP_UDP;
+        }
         if (((propertyMask & NEAT_PROPERTY_MESSAGE) == 0) &&
             ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_BANNED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_TCP_BANNED) == 0))
@@ -87,8 +91,10 @@ uint8_t neat_property_translate_protocols(uint64_t propertyMask,
                 stacks[nr_of_stacks++] = NEAT_STACK_UDPLITE;
         }
     } else {
-        if ((propertyMask & NEAT_PROPERTY_SCTP_BANNED) == 0)
+        if ((propertyMask & NEAT_PROPERTY_SCTP_BANNED) == 0) {
             stacks[nr_of_stacks++] = NEAT_STACK_SCTP;
+            stacks[nr_of_stacks++] = NEAT_STACK_SCTP_UDP;
+        }
         if (((propertyMask & NEAT_PROPERTY_MESSAGE) == 0) &&
             ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_BANNED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_TCP_BANNED) == 0))

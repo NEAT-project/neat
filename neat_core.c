@@ -1684,6 +1684,8 @@ static int neat_stack_to_protocol(neat_protocol_stack_type stack)
         case NEAT_STACK_SCTP:
             return IPPROTO_SCTP;
 #endif
+        default:
+            return 0;
     }
     return 0;
 }

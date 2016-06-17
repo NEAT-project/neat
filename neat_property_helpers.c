@@ -62,14 +62,12 @@ uint8_t neat_property_translate_protocols(uint64_t propertyMask,
         return nr_of_stacks;
     }
     if (propertyMask & NEAT_PROPERTY_UDPLITE_REQUIRED) {
-#ifdef IPPROTO_UDPLITE
         if (((propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_TCP_REQUIRED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_UDP_REQUIRED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED) == 0) &&
             ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED) == 0))
             stacks[nr_of_stacks++] = NEAT_STACK_UDPLITE;
-#endif
         return nr_of_stacks;
     }
 
@@ -85,10 +83,8 @@ uint8_t neat_property_translate_protocols(uint64_t propertyMask,
         if ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED) == 0) {
             if ((propertyMask & NEAT_PROPERTY_UDP_BANNED) == 0)
                 stacks[nr_of_stacks++] = NEAT_STACK_UDP;
-#ifdef IPPROTO_UDPLITE
             if ((propertyMask & NEAT_PROPERTY_UDPLITE_BANNED) == 0)
                 stacks[nr_of_stacks++] = NEAT_STACK_UDPLITE;
-#endif
         }
     } else {
         if ((propertyMask & NEAT_PROPERTY_SCTP_BANNED) == 0)
@@ -100,10 +96,8 @@ uint8_t neat_property_translate_protocols(uint64_t propertyMask,
         if ((propertyMask & NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED) == 0) {
             if ((propertyMask & NEAT_PROPERTY_UDP_BANNED) == 0)
                 stacks[nr_of_stacks++] = NEAT_STACK_UDP;
-#ifdef IPPROTO_UDPLITE
             if ((propertyMask & NEAT_PROPERTY_UDPLITE_BANNED) == 0)
                 stacks[nr_of_stacks++] = NEAT_STACK_UDPLITE;
-#endif
         }
     }
 

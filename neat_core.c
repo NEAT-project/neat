@@ -1303,7 +1303,6 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
     TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
         do {
             iov.iov_base = msg->buffered + msg->bufferedOffset;
-#if defined(IPPROTO_SCTP)
             if ((flow->sockStack == NEAT_STACK_SCTP) &&
                 (flow->isSCTPExplicitEOR) &&
                 (flow->writeLimit > 0) &&
@@ -1312,9 +1311,6 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
             } else {
                 len = msg->bufferedSize;
             }
-#else
-            len = msg->bufferedSize;
-#endif
             iov.iov_len = len;
             msghdr.msg_name = NULL;
             msghdr.msg_namelen = 0;
@@ -1478,7 +1474,6 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     case NEAT_STACK_TCP:
         atomic = 0;
         break;
-#ifdef IPPROTO_SCTP
     case NEAT_STACK_SCTP:
         if (flow->isSCTPExplicitEOR) {
             atomic = 0;
@@ -1486,7 +1481,6 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             atomic = 1;
         }
         break;
-#endif
     case NEAT_STACK_UDP:
     case NEAT_STACK_UDPLITE:
         atomic = 1;
@@ -1504,7 +1498,6 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     }
     if (TAILQ_EMPTY(&flow->bufferedMessages) && code == NEAT_OK && amt > 0) {
         iov.iov_base = (void *)buffer;
-#if defined(IPPROTO_SCTP)
         if ((flow->sockStack == NEAT_STACK_SCTP) &&
             (flow->isSCTPExplicitEOR) &&
             (flow->writeLimit > 0) &&
@@ -1513,9 +1506,6 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         } else {
             len = amt;
         }
-#else
-        len = amt;
-#endif
         iov.iov_len = len;
         msghdr.msg_name = NULL;
         msghdr.msg_namelen = 0;

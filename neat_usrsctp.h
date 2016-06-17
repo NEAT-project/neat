@@ -1,7 +1,6 @@
 #ifndef NEAT_USRSCTP_H
 #define NEAT_USRSCTP_H
 
-#include "neat.h"
 
 #define MAXLEN_MBUF_CHAIN 32
 // Usrsctp internal information related to SCTP and UDP sockets

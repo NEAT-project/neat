@@ -184,9 +184,7 @@ static uint8_t neat_resolver_fill_results(
         //Code can't get here without having passed through sanitizing function
         switch (result->ai_stack) {
         case NEAT_STACK_UDP:
-#ifdef IPPROTO_UDPLITE
         case NEAT_STACK_UDPLITE:
-#endif
             result->ai_socktype = SOCK_DGRAM;
             break;
         default:

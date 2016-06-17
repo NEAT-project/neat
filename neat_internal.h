@@ -91,6 +91,15 @@ struct neat_buffered_message {
     TAILQ_ENTRY(neat_buffered_message) message_next;
 };
 
+typedef enum {
+    NEAT_STACK_UDP = 1,
+    NEAT_STACK_UDPLITE,
+    NEAT_STACK_TCP,
+    NEAT_STACK_SCTP,
+} neat_protocol_stack_type;
+
+#define NEAT_STACK_MAX_NUM 4
+
 TAILQ_HEAD(neat_message_queue_head, neat_buffered_message);
 
 struct neat_flow

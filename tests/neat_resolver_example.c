@@ -39,16 +39,12 @@ static void resolver_handle(struct neat_resolver *resolver,
         case NEAT_STACK_TCP:
             fprintf(stderr, "TCP/");
             break;
-#ifdef IPPROTO_SCTP
         case NEAT_STACK_SCTP:
             fprintf(stderr, "SCTP/");
             break;
-#endif
-#ifdef IPPROTO_UDPLITE
         case NEAT_STACK_UDPLITE:
             fprintf(stderr, "UDP-LITE/");
             break;
-#endif
         default:
             fprintf(stderr, "stack%d/", result->ai_stack);
             break;

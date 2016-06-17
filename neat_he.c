@@ -29,16 +29,12 @@ static void he_print_results(struct neat_resolver_results *results)
             case NEAT_STACK_TCP:
                 snprintf(proto, 16, "TCP");
                 break;
-#ifdef IPPROTO_SCTP
             case NEAT_STACK_SCTP:
                 snprintf(proto, 16, "SCTP");
                 break;
-#endif
-#ifdef IPPROTO_UDPLITE
             case NEAT_STACK_UDPLITE:
                 snprintf(proto, 16, "UDPLite");
                 break;
-#endif
             default:
                 snprintf(proto, 16, "stack%d", result->ai_stack);
                 break;

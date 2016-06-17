@@ -91,6 +91,15 @@ struct neat_buffered_message {
     TAILQ_ENTRY(neat_buffered_message) message_next;
 };
 
+typedef enum {
+    NEAT_STACK_UDP = 1,
+    NEAT_STACK_UDPLITE,
+    NEAT_STACK_TCP,
+    NEAT_STACK_SCTP,
+} neat_protocol_stack_type;
+
+#define NEAT_STACK_MAX_NUM 4
+
 TAILQ_HEAD(neat_message_queue_head, neat_buffered_message);
 
 struct neat_flow
@@ -107,7 +116,7 @@ struct neat_flow
     uint64_t propertyUsed;
     uint8_t family;
     int sockType;
-    int sockProtocol;
+    int sockStack;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
@@ -207,7 +216,7 @@ struct neat_resolver_server {
 struct neat_resolver_res {
     int32_t ai_family;
     int32_t ai_socktype;
-    int32_t ai_protocol;
+    int32_t ai_stack;
     uint32_t if_idx;
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len;
@@ -253,8 +262,8 @@ void neat_resolver_free_results(struct neat_resolver_results *results);
 //Start to resolve a domain name (or literal). Accepts a list of protocols, will
 //set socktype based on protocol
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-        const char *node, uint16_t port, int ai_protocol[],
-        uint8_t proto_count);
+        const char *node, uint16_t port, neat_protocol_stack_type ai_stack[],
+        uint8_t stack_count);
 //Check if node is an IP literal or not. Returns -1 on failure, 0 if not
 //literal, 1 if literal
 int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node);
@@ -311,7 +320,7 @@ struct neat_resolver {
 
     //These values are just passed on to neat_resolver_res
     //TODO: Remove this, will be set on result
-    int ai_protocol[NEAT_MAX_NUM_PROTO];
+    neat_protocol_stack_type ai_stack[NEAT_STACK_MAX_NUM];
     //DNS timeout before any domain has been resolved
     uint16_t dns_t1;
     //DNS timeout after at least one domain has been resolved

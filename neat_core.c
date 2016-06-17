@@ -1648,7 +1648,6 @@ static int neat_stack_to_protocol(neat_protocol_stack_type stack)
         default:
             return 0;
     }
-    return 0;
 }
 
 static int
@@ -1656,7 +1655,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 {
     int enable = 1;
     socklen_t len = 0;
-    int size = 0;
+    int size = 0, protocol;
 #ifdef __linux__
     char if_name[IF_NAMESIZE];
 #endif
@@ -1671,7 +1670,12 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         neat_connect_via_usrsctp(he_ctx);
     } else {
 #endif
-    if ((he_ctx->fd = socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, neat_stack_to_protocol(he_ctx->candidate->ai_stack))) < 0) {
+    protocol = neat_stack_to_protocol(he_ctx->candidate->ai_stack);
+    if (protocol == 0) {
+        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->candidate->ai_stack);
+        return -1;
+    }
+    if ((he_ctx->fd = socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, protocol)) < 0) {
         neat_log(NEAT_LOG_ERROR, "Failed to create he socket");
         return -1;
     }
@@ -1796,12 +1800,17 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     int enable = 1;
     socklen_t len;
-    int size;
+    int size, protocol;
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if ((flow->fd = socket(flow->family, flow->sockType, neat_stack_to_protocol(flow->sockStack))) < 0) {
+    protocol = neat_stack_to_protocol(flow->sockStack);
+    if (protocol == 0) {
+        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", flow->sockStack);
+        return -1;
+    }
+    if ((flow->fd = socket(flow->family, flow->sockType, protocol)) < 0) {
         neat_log(NEAT_LOG_ERROR, "%s: opening listening socket failed - %s", __func__, strerror(errno));
         return -1;
     }
@@ -1940,14 +1949,20 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
 {
     int enable = 1;
     socklen_t len;
-    int size;
+    int size, protocol;
     socklen_t slen =
             (he_ctx->candidate->ai_family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
     char addrsrcbuf[slen], addrdstbuf[slen];
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    he_ctx->sock = usrsctp_socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, neat_stack_to_protocol(he_ctx->candidate->ai_stack), NULL, NULL, 0, NULL);
+    protocol = neat_stack_to_protocol(he_ctx->candidate->ai_stack);
+    if (protocol == 0) {
+        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->candidate->ai_stack);
+        return -1;
+    }
+
+    he_ctx->sock = usrsctp_socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, protocol, NULL, NULL, 0, NULL);
     if (he_ctx->sock) {
         usrsctp_set_non_blocking(he_ctx->sock, 1);
         len = (socklen_t)sizeof(int);
@@ -2091,12 +2106,19 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     int enable = 1;
     socklen_t len;
-    int size;
+    int size, protocol;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     socklen_t slen =
         (flow->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
-    if (!(flow->sock = usrsctp_socket(flow->family, flow->sockType, neat_stack_to_protocol(flow->sockStack), NULL, NULL, 0, NULL))) {
+
+    protocol = neat_stack_to_protocol(flow->sockStack);
+    if (protocol == 0) {
+        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", flow->sockStack);
+        return -1;
+    }
+
+    if (!(flow->sock = usrsctp_socket(flow->family, flow->sockType, protocol, NULL, NULL, 0, NULL))) {
         neat_log(NEAT_LOG_ERROR, "%s: user_socket failed - %s", __func__, strerror(errno));
         return -1;
     }

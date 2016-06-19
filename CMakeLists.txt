@@ -21,6 +21,7 @@ LIST(APPEND neat_sources
     neat_property_helpers.c
     neat_resolver.c
     neat_resolver_conf.c
+    neat_pmi.c
 )
 
 # OS DEPENDENT

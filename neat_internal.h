@@ -7,6 +7,7 @@
 
 #include "neat.h"
 #include "neat_queue.h"
+#include "neat_pmi.h"
 #ifdef __linux__
     #include "neat_linux.h"
 #endif
@@ -55,6 +56,8 @@ struct neat_ctx {
     struct neat_pib pib;
     struct neat_cib cib;
     uv_timer_t addr_lifetime_handle;
+
+    struct neat_pmi_ctx pmi_ctx;
 
     // resolver
     NEAT_INTERNAL_CTX;

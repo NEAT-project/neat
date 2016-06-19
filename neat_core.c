@@ -85,6 +85,7 @@ struct neat_ctx *neat_init_ctx()
                    1000 * NEAT_ADDRESS_LIFETIME_TIMEOUT,
                    1000 * NEAT_ADDRESS_LIFETIME_TIMEOUT);
 
+    neat_pmi_init(nc);
 #if defined(USRSCTP_SUPPORT)
     neat_usrsctp_init_ctx(nc);
 #endif
@@ -146,6 +147,7 @@ static void neat_core_cleanup(struct neat_ctx *nc)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+    neat_pmi_shutdown(nc);
     //We need to gracefully clean-up loop resources
     neat_close_loop(nc);
     neat_addr_free_src_list(nc);
@@ -395,9 +397,9 @@ neat_error_code neat_set_property_json(neat_ctx *mgr, neat_flow *flow,
         return NEAT_ERROR_BAD_ARGUMENT;
     }
 
-    if(!json_is_array(json))
+    if(!json_is_object(json))
     {
-	neat_log(NEAT_LOG_ERROR, "Properties not specified as JSON array\n");
+	neat_log(NEAT_LOG_ERROR, "Properties not specified as JSON object\n");
 	json_decref(json);
 	return NEAT_ERROR_BAD_ARGUMENT;
     }
@@ -1048,9 +1050,21 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     }
 }
 
+static void neat_on_pm_reply(struct neat_ctx *ctx, struct neat_flow *flow, char *reply)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    neat_log(NEAT_LOG_DEBUG, "Got reply from PM:\n%s", reply);
+
+    neat_he_lookup(ctx, flow, he_connected_cb);
+}
+
 neat_error_code
 neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
 {
+    char *req_string;
+    neat_error_code rc;
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (flow->name) {
@@ -1061,7 +1075,12 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
 
-    return neat_he_lookup(mgr, flow, he_connected_cb);
+    // FIXME: use JSON_COMPACT when we get it working nicely
+    req_string = json_dumps(flow->req_properties, 0); // JSON_INDENT(1));
+    rc = neat_pmi_send(mgr, flow, req_string, strlen(req_string), neat_on_pm_reply);
+    free(req_string);
+
+    return rc;
 }
 
 neat_error_code

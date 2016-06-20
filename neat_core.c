@@ -1728,7 +1728,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
 
             if (stream_id)
-                sndinfo->snd_sid = 1;
+                sndinfo->snd_sid = stream_id;
 
 #if defined(SCTP_EOR)
             if ((flow->isSCTPExplicitEOR) && (len == amt)) {
@@ -1746,7 +1746,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
 
             if (stream_id)
-                sndrcvinfo->sinfo_stream = 1;
+                sndrcvinfo->sinfo_stream = stream_id;
 #if defined(SCTP_EOR)
             if ((flow->isSCTPExplicitEOR) && (len == amt)) {
                 sndrcvinfo->sinfo_flags |= SCTP_EOR;

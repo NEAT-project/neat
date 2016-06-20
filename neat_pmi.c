@@ -344,9 +344,10 @@ neat_error_code neat_pmi_send(struct neat_ctx *ctx,
 {
     uv_fs_t *send_req;
     struct neat_pmi_req *pr;
-    char *requestbuf, *replybuf;
     size_t rqlen;
-    neat_error_code error = NEAT_OK;;
+    neat_error_code error = NEAT_OK;
+    char *requestbuf = NULL;
+    char *replybuf = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 

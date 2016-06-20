@@ -1056,9 +1056,11 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
 #if defined(SCTP_RECVRCVINFO) && !defined(USRSCTP_SUPPORT)
     int optval;
 #endif
+#ifdef SCTP_STATUS
     unsigned int optlen;
     int rc;
     struct sctp_status status;
+#endif
 #endif
 
     neat_flow *newFlow = neat_new_flow(ctx);
@@ -1144,7 +1146,7 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     }
 
     switch (newFlow->sockStack) {
-#ifdef IPPROTO_SCTP
+#if defined(IPPROTO_SCTP) && defined(SCTP_STATUS)
         case NEAT_STACK_SCTP:
             optlen = sizeof(status);
             // status.sstat_assoc_id = SCTP_FUTURE_ASSOC;
@@ -1207,6 +1209,11 @@ neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t
     if (count < 0) {
         return NEAT_ERROR_BAD_ARGUMENT;
     }
+
+#if defined(__APPLE__)
+    neat_log(NEAT_LOG_ERROR, "Multistreaming not available on OSX");
+    return NEAT_ERROR_UNABLE;
+#endif
 
     if ((flow->propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) == 0) {
         neat_log(NEAT_LOG_ERROR, "Multistreaming is only supported by SCTP");
@@ -1942,7 +1949,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
             break;
     }
 
-#ifdef IPPROTO_SCTP
+#if defined(IPPROTO_SCTP) && defined(SCTP_INITMSG)
     if (he_ctx->candidate->ai_stack == NEAT_STACK_SCTP) {
         struct sctp_initmsg init;
         memset(&init, 0, sizeof(init));

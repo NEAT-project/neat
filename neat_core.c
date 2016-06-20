@@ -695,7 +695,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             return READ_WITH_ERROR;
         }
 
-#ifdef CMSG_FIRSTHDR
+#if (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
         for (cmsg = CMSG_FIRSTHDR(&msghdr); cmsg != NULL; cmsg = CMSG_NXTHDR(&msghdr, cmsg)) {
             if (cmsg->cmsg_len == 0) {
                 neat_log(NEAT_LOG_DEBUG, "Error in ancilliary data from recvmsg");
@@ -719,7 +719,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             }
 #endif // defined(IPPROTP_SCTP)
         }
-#endif // defined(CMSG_FIRSTHDR)
+#endif // (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
 
         flags = msghdr.msg_flags; // For notification handling
 #else // !defined(USRSCTP_SUPPORT)

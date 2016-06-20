@@ -6,9 +6,13 @@
 
 static struct neat_transport_property transports[] = {
     NEAT_TRANSPORT_PROPERTY(TCP, "transport_TCP", IPPROTO_TCP),
+#ifdef IPPROTO_SCTP
     NEAT_TRANSPORT_PROPERTY(SCTP, "transport_SCTP", IPPROTO_SCTP),
+#endif
     NEAT_TRANSPORT_PROPERTY(UDP, "transport_UDP", IPPROTO_UDP),
+#ifdef IPPROTO_UDPLITE
     NEAT_TRANSPORT_PROPERTY(UDPlite, "transport_UDPlite", IPPROTO_UDPLITE)
+#endif
 };
 
 uint8_t neat_property_translate_protocols_old(uint64_t propertyMask,
@@ -134,6 +138,7 @@ uint8_t neat_property_translate_protocols(json_t *candidates,
     size_t idx;
     json_t *candidate, *transport, *val;
     int i, j, found;
+    int protocol_count = (int)sizeof(transports) / (int)sizeof(struct neat_transport_property);
 
     nr_of_protocols = 0;
 
@@ -145,7 +150,7 @@ uint8_t neat_property_translate_protocols(json_t *candidates,
 	    return nr_of_protocols;
 	}
 
-	for (i = 0; i < NEAT_MAX_NUM_PROTO; i++) {
+	for (i = 0; i < protocol_count; i++) {
 	    transport = json_object_get(candidate, transports[i].property_name);
 	    neat_log(NEAT_LOG_DEBUG, "Checking candidate for %s", transports[i].name);
 	    if (transport != NULL) {

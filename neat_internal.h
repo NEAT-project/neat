@@ -118,6 +118,7 @@ struct neat_flow
     uv_poll_t *handle;
 
     json_t *req_properties;
+    json_t *he_properties;
 
     size_t writeLimit;  // maximum to write if the socket supports partial writes
     size_t writeSize;   // send buffer size

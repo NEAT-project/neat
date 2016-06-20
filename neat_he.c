@@ -206,7 +206,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     // KAH: no property for IP family specified?
         family = AF_UNSPEC; /* AF_INET and AF_INET6 */
 
-    nr_of_protocols = neat_property_translate_protocols(flow->req_properties,
+    nr_of_protocols = neat_property_translate_protocols(flow->he_properties,
             protocols);
     if (nr_of_protocols == 0)
         return NEAT_ERROR_UNABLE;

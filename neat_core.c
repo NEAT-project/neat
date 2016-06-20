@@ -357,6 +357,8 @@ void neat_free_flow(neat_flow *flow)
 
     if (flow->req_properties)
 	json_decref(flow->req_properties);
+    if (flow->he_properties)
+	json_decref(flow->he_properties);
 
 #if defined(USRSCTP_SUPPORT)
     if (flow->sockProtocol == IPPROTO_SCTP) {
@@ -1052,11 +1054,34 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
 
 static void neat_on_pm_reply(struct neat_ctx *ctx, struct neat_flow *flow, char *reply)
 {
+    json_error_t err;
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    neat_log(NEAT_LOG_DEBUG, "Got reply from PM:\n%s", reply);
+    if (reply != NULL) {
+	neat_log(NEAT_LOG_DEBUG, "Got reply from PM:\n%s", reply);
+    } else {
+	neat_log(NEAT_LOG_ERROR, "Request to PM failed.");
+	io_error(ctx, flow, NEAT_ERROR_INTERNAL);
+	return;
+    }
 
-    neat_he_lookup(ctx, flow, he_connected_cb);
+    flow->he_properties = json_loads(reply, 0, &err);
+    if (!flow->he_properties) {
+	neat_log(NEAT_LOG_ERROR, "Invalid JSON input at line %d col %d: %s\n",
+		 err.line, err.column, err.text);
+        return;
+    }
+
+    if(!json_is_array(flow->he_properties))
+    {
+	neat_log(NEAT_LOG_ERROR, "Candidates not specified as JSON array\n");
+	json_decref(flow->he_properties);
+	return;
+    }
+
+    if (neat_he_lookup(ctx, flow, he_connected_cb) != NEAT_OK)
+	neat_log(NEAT_LOG_ERROR, "HE error!");
 }
 
 neat_error_code

@@ -489,7 +489,10 @@ int main(int argc, char *argv[])
         goto cleanup;
     }
 
-    neat_error_code rc = neat_set_property_json(ctx, flow, "{\"transport_TCP\": {\"value\": true}, \"transport_SCTP\": {\"value\": true}, \"transport_foo\": {\"value\": true}}");
+    //neat_error_code rc = neat_set_property_json(ctx, flow,
+    //"{\"transport_TCP\": {\"value\": true}, \"transport_SCTP\":
+    //{\"value\": true}, \"transport_foo\": {\"value\": true}}");
+    neat_error_code rc = neat_set_property_json(ctx, flow, "{\"transport_TCP\": {\"value\": true}, \"transport_SCTP\": {\"value\": true}, \"transport_UDP\": {\"value\": false, \"precedence\": 2}}");
     if (rc) {
 	fprintf(stderr, "%s - error: neat_set_prop_json: %u\n", __func__, (uint32_t)rc);
 	result = EXIT_FAILURE;

@@ -1102,7 +1102,9 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
 
     // FIXME: use JSON_COMPACT when we get it working nicely
     req_string = json_dumps(flow->req_properties, 0); // JSON_INDENT(1));
-    rc = neat_pmi_send(mgr, flow, req_string, strlen(req_string), neat_on_pm_reply);
+    rc = neat_pmi_send(mgr, flow, (req_string != NULL) ? req_string : "{}",
+		       (req_string != NULL) ? strlen(req_string) : 3,
+		       neat_on_pm_reply);
     free(req_string);
 
     return rc;

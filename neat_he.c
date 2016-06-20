@@ -157,6 +157,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
         uv_poll_cb callback_fx;
         callback_fx = resolver->userData2;
        int ret = flow->connectfx(he_ctx, callback_fx);
+       printf("flow->connectfx returned with ret=%d\n", ret);
         if (ret == -1) {
             neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
             free(he_ctx->handle);

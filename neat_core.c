@@ -2010,7 +2010,8 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
             he_ctx->readSize = 0;
         }
         he_ctx->writeLimit =  he_ctx->writeSize / 4;
-        if (neat_stack_first_proto(he_ctx->candidate->ai_stack) == NEAT_STACK_SCTP_UDP) {
+        printf("stack=%d\n", he_ctx->candidate->ai_stack);
+        if (he_ctx->candidate->ai_stack == NEAT_STACK_SCTP_UDP) {
             struct sctp_udpencaps encaps;
             memset(&encaps, 0, sizeof(struct sctp_udpencaps));
             encaps.sue_address.ss_family = AF_INET;
@@ -2026,8 +2027,8 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
             he_ctx->isSCTPExplicitEOR = 1;
 #endif
 
-	// Subscribe to SCTP events
-	neat_sctp_init_events(he_ctx->sock);
+        // Subscribe to SCTP events
+        neat_sctp_init_events(he_ctx->sock);
 
         neat_log(NEAT_LOG_INFO, "%s: Connect from %s to %s", __func__,
            inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, slen),
@@ -2043,6 +2044,7 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
 
         neat_flow *flow = he_ctx->flow;
         if (flow->hefirstConnect) {
+        printf("flow->hefirstConnect\n");
             flow->hefirstConnect = 0;
             flow->family = he_ctx->candidate->ai_family;
             flow->sockType = he_ctx->candidate->ai_socktype;
@@ -2059,9 +2061,13 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
             flow->isSCTPExplicitEOR = he_ctx->isSCTPExplicitEOR;
             flow->firstWritePending = 1;
             flow->isPolling = 0;
+            printf("vor upcall\n");
             usrsctp_set_upcall(he_ctx->sock, handle_upcall, (void *)flow);
+            printf("nach upcall\n");
             free(he_ctx);
+            printf("nach free\n");
         } else {
+        printf("not hefirstConnect: close socket\n");
             flow->closefx(he_ctx->nc, flow);
             free(he_ctx);
         }
@@ -2176,7 +2182,7 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
         flow->readSize = 0;
     }
     flow->writeLimit = flow->writeSize / 4;
-    if (neat_stack_first_proto(he_ctx->candidate->ai_stack) == NEAT_STACK_SCTP_UDP) {
+    if (flow->sockStack == NEAT_STACK_SCTP_UDP) {
         struct sctp_udpencaps encaps;
         memset(&encaps, 0, sizeof(struct sctp_udpencaps));
         encaps.sue_address.ss_family = AF_INET;

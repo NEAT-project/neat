@@ -47,6 +47,7 @@ struct neat_flow_operations
   void *userData;
 
   neat_error_code status;
+  int stream_id;
   neat_flow_operations_fx on_connected;
   neat_flow_operations_fx on_error;
   neat_flow_operations_fx on_readable;
@@ -95,9 +96,7 @@ neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
                            const unsigned char *buffer, uint32_t amt);
 neat_error_code neat_write_ex(struct neat_ctx *ctx, struct neat_flow *flow,
                               const unsigned char *buffer, uint32_t amt,
-                              int stream_id, int context, int pr_method, int pr_value,
-                              const char* preferred_destination, int unordered,
-                              float priority);
+                              int stream_id);
 neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t *outMask);
 neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
@@ -153,6 +152,8 @@ neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *fl
 #define NEAT_ERROR_UNABLE (7)
 #define NEAT_ERROR_MESSAGE_TOO_BIG (8)
 #define NEAT_ERROR_REMOTE (9)
+
+#define NEAT_INVALID_STREAM (-1)
 
 // cleanup extern "C"
 #ifdef __cplusplus

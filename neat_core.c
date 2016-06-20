@@ -679,8 +679,13 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         msghdr.msg_namelen = 0;
         msghdr.msg_iov = &iov;
         msghdr.msg_iovlen = 1;
+#if defined(SCTP_RCVINFO) || defined(SCTP_SNDRCV)
         msghdr.msg_control = cmsgbuf;
         msghdr.msg_controllen = sizeof(cmsgbuf);
+#else
+        msghdr.msg_control = NULL;
+        msghdr.msg_controllen = 0;
+#endif
         msghdr.msg_flags = 0;
 #ifdef MSG_NOTIFICATION
         msghdr.msg_flags |= MSG_NOTIFICATION;
@@ -695,6 +700,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 neat_log(NEAT_LOG_DEBUG, "Error in ancilliary data from recvmsg");
                 break;
             }
+#ifdef IPPROTO_SCTP
             if (cmsg->cmsg_level == IPPROTO_SCTP) {
 #if defined (SCTP_RCVINFO)
                 if (cmsg->cmsg_type == SCTP_RCVINFO) {
@@ -710,6 +716,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 }
 #endif
             }
+#endif // defined(IPPROTP_SCTP)
         }
 
         flags = msghdr.msg_flags; // For notification handling
@@ -1043,12 +1050,14 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
 static void do_accept(neat_ctx *ctx, neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+#if defined(IPPROTO_SCTP)
 #if defined(SCTP_RECVRCVINFO) && !defined(USRSCTP_SUPPORT)
     int optval;
 #endif
+    unsigned int optlen;
     int rc;
     struct sctp_status status;
-    unsigned int optlen;
+#endif
 
     neat_flow *newFlow = neat_new_flow(ctx);
     newFlow->name = strdup (flow->name);

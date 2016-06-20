@@ -618,7 +618,6 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                         neat_error_code code)
 {
     int stream_id = NEAT_INVALID_STREAM;
-#if defined(IPPROTO_SCTP)
     ssize_t n, spaceFree;
     ssize_t spaceNeeded, spaceThreshold;
     //Not used when notifications aren't available:
@@ -896,15 +895,11 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->firstWritePending = 1;
         flow->isPolling = 1;
 
-#ifdef IPPROTO_SCTP
-        if (flow->sockProtocol == IPPROTO_SCTP) {
+        if (flow->sockStack == NEAT_STACK_SCTP) {
             flow->stream_count = 1;
         } else {
             flow->stream_count = 1;
         }
-#else
-        flow->stream_count = 1;
-#endif
 
         LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);

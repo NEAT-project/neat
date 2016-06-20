@@ -924,7 +924,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         if (status < 0) {
             flow->heConnectAttemptCount--;
             if (flow->heConnectAttemptCount == 0) {
-                io_error(he_ctx->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+		io_error(flow->ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
             }
         }
     }

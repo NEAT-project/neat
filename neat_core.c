@@ -1132,9 +1132,9 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
         }
     }
 
-    switch (newFlow->sockProtocol) {
+    switch (newFlow->sockStack) {
 #ifdef IPPROTO_SCTP
-        case IPPROTO_SCTP:
+        case NEAT_STACK_SCTP:
             optlen = sizeof(status);
             // status.sstat_assoc_id = SCTP_FUTURE_ASSOC;
             status.sstat_assoc_id = 0;
@@ -1932,7 +1932,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     }
 
 #ifdef IPPROTO_SCTP
-    if (he_ctx->candidate->ai_protocol == IPPROTO_SCTP) {
+    if (he_ctx->candidate->ai_stack == NEAT_STACK_SCTP) {
         struct sctp_initmsg init;
         memset(&init, 0, sizeof(init));
         init.sinit_num_ostreams = he_ctx->flow->stream_count;

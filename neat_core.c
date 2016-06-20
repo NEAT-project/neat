@@ -532,6 +532,7 @@ static void handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *
 	neat_notify_aborted(flow);
 	// Fallthrough:
     case SCTP_COMM_UP: // Fallthrough:
+        // TODO: Allocate send buffers here instead?
     case SCTP_RESTART:
 	// TODO: might want to "translate" the state codes to a NEAT code.
 	neat_notify_network_status_changed(flow, sac->sac_state);
@@ -623,6 +624,18 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     //Not used when notifications aren't available:
     int flags __attribute__((unused));
 #if !defined(USRSCTP_SUPPORT)
+
+#if defined(SCTP_RCVINFO)
+    struct sctp_rcvinfo *rcvinfo;
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_rcvinfo))];
+#elif defined (SCTP_SNDRCV)
+    struct sctp_sndrcvinfo *sndrcvinfo;
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
+#endif
+#if (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
+    struct cmsghdr *cmsg;
+#endif
+
     struct msghdr msghdr;
     struct iovec iov;
 #else
@@ -666,14 +679,40 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         msghdr.msg_namelen = 0;
         msghdr.msg_iov = &iov;
         msghdr.msg_iovlen = 1;
-        msghdr.msg_control = NULL;
-        msghdr.msg_controllen = 0;
+        msghdr.msg_control = cmsgbuf;
+        msghdr.msg_controllen = sizeof(cmsgbuf);
         msghdr.msg_flags = 0;
+#ifdef MSG_NOTIFICATION
+        msghdr.msg_flags |= MSG_NOTIFICATION;
+#endif
+
         if ((n = recvmsg(flow->fd, &msghdr, 0)) < 0) {
             return READ_WITH_ERROR;
         }
 
-	flags = msghdr.msg_flags; // For notification handling
+        for (cmsg = CMSG_FIRSTHDR(&msghdr); cmsg != NULL; cmsg = CMSG_NXTHDR(&msghdr, cmsg)) {
+            if (cmsg->cmsg_len == 0) {
+                neat_log(NEAT_LOG_DEBUG, "Error in ancilliary data from recvmsg");
+                break;
+            }
+            if (cmsg->cmsg_level == IPPROTO_SCTP) {
+#if defined (SCTP_RCVINFO)
+                if (cmsg->cmsg_type == SCTP_RCVINFO) {
+                    rcvinfo = (struct sctp_rcvinfo *)CMSG_DATA(cmsg);
+                    neat_log(NEAT_LOG_DEBUG, "Received data on stream %d", rcvinfo->rcv_sid);
+                    stream_id = rcvinfo->rcv_sid;
+                }
+#elif defined (SCTP_SNDRCV)
+                if (cmsg->cmsg_type == SCTP_SNDRCV) {
+                    sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
+                    neat_log(NEAT_LOG_DEBUG, "Received data on stream %d", sndrcvinfo->sinfo_stream);
+                    stream_id = sndrcvinfo->sinfo_stream;
+                }
+#endif
+            }
+        }
+
+        flags = msghdr.msg_flags; // For notification handling
 #else // !defined(USRSCTP_SUPPORT)
         len = sizeof(struct sockaddr);
         memset((void *)&addr, 0, sizeof(struct sockaddr_in));
@@ -895,11 +934,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->firstWritePending = 1;
         flow->isPolling = 1;
 
-        if (flow->sockStack == NEAT_STACK_SCTP) {
-            flow->stream_count = 1;
-        } else {
-            flow->stream_count = 1;
-        }
+        assert(flow->stream_count);
 
         LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);
@@ -943,7 +978,6 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
 
     // TODO: Are there cases when we should keep polling?
     if (status < 0) {
-        neat_log(NEAT_LOG_DEBUG, "status: %d - events: %d", status, events);
         neat_log(NEAT_LOG_DEBUG, "ERROR: %s", uv_strerror(status));
 
 #if !defined(USRSCTP_SUPPORT)
@@ -1009,6 +1043,12 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
 static void do_accept(neat_ctx *ctx, neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+#if defined(SCTP_RECVRCVINFO) && !defined(USRSCTP_SUPPORT)
+    int optval;
+#endif
+    int rc;
+    struct sctp_status status;
+    unsigned int optlen;
 
     neat_flow *newFlow = neat_new_flow(ctx);
     newFlow->name = strdup (flow->name);
@@ -1069,6 +1109,15 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
             io_connected(ctx, newFlow, NEAT_OK);
             uvpollable_cb(newFlow->handle, NEAT_OK, 0);
         }
+
+#if defined(SCTP_RECVRCVINFO)
+        // Enable anciliarry data when receiving data from SCTP
+        optval = 1;
+        optlen = sizeof(optval);
+        rc = setsockopt(newFlow->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &optval, optlen);
+        if (rc < 0)
+            neat_log(NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
+#endif // defined(SCTP_RECVRCVINFO)
 #endif
         break;
     default:
@@ -1082,12 +1131,46 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
             uvpollable_cb(newFlow->handle, NEAT_OK, 0);
         }
     }
+
+    switch (newFlow->sockProtocol) {
+#ifdef IPPROTO_SCTP
+        case IPPROTO_SCTP:
+            optlen = sizeof(status);
+            // status.sstat_assoc_id = SCTP_FUTURE_ASSOC;
+            status.sstat_assoc_id = 0;
+            status.sstat_instrms = 1; /* setting a default value in case the
+                                       * getsockopt call fails.
+                                       */
+
+            rc = getsockopt(newFlow->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &optlen);
+            if (rc < 0) {
+                neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
+                perror("getsockopt");
+            }
+
+            // number of outbound streams == number of inbound streams
+            newFlow->stream_count = status.sstat_instrms;
+            neat_log(NEAT_LOG_DEBUG, "inbound streams: %d\n", newFlow->stream_count);
+            break;
+#endif
+        default:
+            newFlow->stream_count = 1;
+    }
+
+    /* For now, assume that flows have the same number of streams in both
+     * directions
+     */
+    if (allocate_send_buffers(newFlow) != NEAT_OK) {
+        io_error(ctx, newFlow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        return;
+    }
 }
 
 neat_error_code
 neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
 
     if (flow->name) {
         return NEAT_ERROR_BAD_ARGUMENT;
@@ -1096,7 +1179,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
     flow->name = strdup(name);
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
-    flow->streamCount = 1;
+    flow->stream_count = 1;
 
     return neat_he_lookup(mgr, flow, he_connected_cb);
 }
@@ -1122,7 +1205,7 @@ neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t
     flow->name = strdup(name);
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
-    flow->streamCount = (uint32_t)count;
+    flow->stream_count = (uint32_t)count;
 
     return neat_he_lookup(mgr, flow, he_connected_cb);
 }
@@ -1625,6 +1708,10 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
             sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
             memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
+
+            if (stream_id)
+                sndinfo->snd_sid = 1;
+
 #if defined(SCTP_EOR)
             if ((flow->isSCTPExplicitEOR) && (len == amt)) {
                 sndinfo->snd_flags |= SCTP_EOR;
@@ -1639,6 +1726,9 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
             sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
             memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
+
+            if (stream_id)
+                sndrcvinfo->sinfo_stream = 1;
 #if defined(SCTP_EOR)
             if ((flow->isSCTPExplicitEOR) && (len == amt)) {
                 sndrcvinfo->sinfo_flags |= SCTP_EOR;
@@ -1843,13 +1933,12 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 
 #ifdef IPPROTO_SCTP
     if (he_ctx->candidate->ai_protocol == IPPROTO_SCTP) {
-        // TODO: Do we need to explicitly allow multiple incoming streams?
         struct sctp_initmsg init;
         memset(&init, 0, sizeof(init));
-        init.sinit_num_ostreams = he_ctx->flow->streamCount;
-        init.sinit_max_instreams = he_ctx->flow->streamCount; // TODO: May depend on policy
+        init.sinit_num_ostreams = he_ctx->flow->stream_count;
+        init.sinit_max_instreams = he_ctx->flow->stream_count; // TODO: May depend on policy
         if (setsockopt(he_ctx->fd, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(struct sctp_initmsg)) < 0) {
-            neat_log(NEAT_LOG_ERROR, "Unable to set outbound stream count");
+            neat_log(NEAT_LOG_ERROR, "Unable to set inbound/outbound stream count");
             return -1;
         }
     }

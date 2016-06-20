@@ -84,7 +84,7 @@ def process_request(json_str):
 
     print("===== CANDIDATES =====")
     print(candidates_json)
-    api_writer(candidates_json)
+    api_writer(candidates_json.replace('NaN', '"NaN"'))
 
 
 def api_reader():

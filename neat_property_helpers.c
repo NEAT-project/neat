@@ -127,26 +127,27 @@ uint8_t neat_property_translate_protocols_old(uint64_t propertyMask,
 }
 
 // Extract which protocols to run HE on from candidate set.
-// This is too simple ATM, needs to consider precedences too.
 uint8_t neat_property_translate_protocols(json_t *candidates,
         int protocols[])
 {
     uint8_t nr_of_protocols;
     size_t idx;
     json_t *candidate, *transport, *val;
+    int i, j, found;
 
     nr_of_protocols = 0;
 
     json_array_foreach(candidates, idx, candidate) {
+	neat_log(NEAT_LOG_DEBUG, "Checking protocols set for candidate %d...", idx);
 	if (!json_is_object(candidate)) {
 	    neat_log(NEAT_LOG_ERROR, "Candidate %d is not a JSON object.\n",
 		     idx);
 	    return nr_of_protocols;
 	}
 
-	int i;
 	for (i = 0; i < NEAT_MAX_NUM_PROTO; i++) {
 	    transport = json_object_get(candidate, transports[i].property_name);
+	    neat_log(NEAT_LOG_DEBUG, "Checking candidate for %s", transports[i].name);
 	    if (transport != NULL) {
 		if (!json_is_object(transport)) {
 		    neat_log(NEAT_LOG_ERROR, "Candidate %d: transport type " \
@@ -161,8 +162,19 @@ uint8_t neat_property_translate_protocols(json_t *candidates,
 		    return nr_of_protocols;
 		}
 
-		if (json_is_true(val))
-		    protocols[nr_of_protocols++] = transports[i].protocol_no;
+		if (json_is_true(val)) {
+		    found = 0;
+		    for (j = 0; j < nr_of_protocols; j++) {
+			if (protocols[j] == transports[i].protocol_no) {
+			    found = 1;
+			    break;
+			}
+		    }
+
+		    if (!found)
+			protocols[nr_of_protocols++] = transports[i].protocol_no;
+		    neat_log(NEAT_LOG_DEBUG, "Candidate enabled %s", transports[i].name);
+		}
 	    }
 	}
     }

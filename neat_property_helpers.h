@@ -10,12 +10,12 @@
 struct neat_transport_property {
     char *name;
     char *property_name;
-    uint32_t protocol_no;
+    int protocol_no;
 };
 
 #define NEAT_TRANSPORT_PROPERTY(name, propname, protonum)		\
     {									\
-        "##name",							\
+        #name,								\
 	propname,							\
 	protonum							\
     }

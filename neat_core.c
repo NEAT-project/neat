@@ -964,7 +964,9 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
             if (so_error == ETIMEDOUT) {
                 io_timeout(ctx, flow);
                 return;
-            }
+            } else if (so_error == ECONNRESET) {
+		neat_notify_aborted(flow);
+	    }
         }
 
         neat_log(NEAT_LOG_ERROR, "Unspecified internal error when polling socket");
@@ -1686,6 +1688,13 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         return NEAT_ERROR_WOULD_BLOCK;
     }
     if (rv == -1) {
+	if (errno == ECONNRESET) {
+	    neat_log(NEAT_LOG_DEBUG, "%s: ECONNRESET", __func__);
+	    neat_notify_aborted(flow);
+	} else {
+	    neat_log(NEAT_LOG_DEBUG, "%s: err %d (%s)", __func__,
+		     errno, strerror(errno));
+	}
         return NEAT_ERROR_IO;
     }
     *actualAmt = rv;

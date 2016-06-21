@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <netinet/in.h>
+#include "neat_tlv.h"
 
 #ifdef __cplusplus
 extern "C" {

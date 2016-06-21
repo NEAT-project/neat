@@ -10,7 +10,6 @@ SET(CMAKE_MACOSX_RPATH 1)
 LIST(APPEND neat_headers
     neat.h
     neat_queue.h
-    neat_tlv.h
 )
 
 LIST(APPEND neat_sources

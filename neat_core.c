@@ -1149,20 +1149,15 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS)
         case NEAT_STACK_SCTP:
             optlen = sizeof(status);
-            // status.sstat_assoc_id = SCTP_FUTURE_ASSOC;
-            status.sstat_assoc_id = 0;
-            status.sstat_instrms = 1; /* setting a default value in case the
-                                       * getsockopt call fails.
-                                       */
-
             rc = getsockopt(newFlow->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &optlen);
             if (rc < 0) {
                 neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
-                perror("getsockopt");
+                newFlow->stream_count = 1;
+            } else {
+                newFlow->stream_count = status.sstat_instrms;
             }
 
             // number of outbound streams == number of inbound streams
-            newFlow->stream_count = status.sstat_instrms;
             neat_log(NEAT_LOG_DEBUG, "inbound streams: %d\n", newFlow->stream_count);
             break;
 #endif

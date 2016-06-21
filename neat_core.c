@@ -2315,6 +2315,7 @@ neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow, NEAT_OPTARG_PARAM)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+#if 0
     READ_OPT_BOOL(messages, NEAT_TAG_MESSAGES, 1);
     READ_OPT_BOOL(secure_interface, NEAT_TAG_SECURE_INTERFACE, 0);
     READ_OPT_STRING(capacity_profile, NEAT_TAG_CAPACITY_PROFILE, "default");
@@ -2328,6 +2329,7 @@ neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow, NEAT_OPTARG_PARAM)
                                                    "TLS/1.2;"
                                                    "TLS/1.1;"
                                                    "TLS/1.0");
+#endif
 
     flow->initialized = 1;
 

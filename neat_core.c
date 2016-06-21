@@ -1091,6 +1091,9 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
 
+    if (!flow->initialized)
+        neat_flow_init(mgr, flow, NULL);
+
     return neat_he_lookup(mgr, flow, he_connected_cb);
 }
 
@@ -2308,13 +2311,31 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 }
 
 neat_error_code
-neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
-                               uint64_t flags, int capacity_profile,
-                               struct neat_flow_security *sec)
+neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow, NEAT_OPTARG_PARAM)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    return NEAT_ERROR_UNABLE;
+    READ_OPT_BOOL(messages, NEAT_TAG_MESSAGES, 1);
+    READ_OPT_BOOL(secure_interface, NEAT_TAG_SECURE_INTERFACE, 0);
+    READ_OPT_STRING(capacity_profile, NEAT_TAG_CAPACITY_PROFILE, "default");
+    READ_OPT_INT(security, NEAT_TAG_SECURITY, 2);
+    READ_OPT_INT(verify_cert, NEAT_TAG_VERIFY_CERT, 2);
+    READ_OPT_STRING(certificate, NEAT_TAG_CERTIFICATE, "");
+    READ_OPT_STRING(key, NEAT_TAG_KEY, "");
+    READ_OPT_STRING(cipher, NEAT_TAG_CIPHER, "default");
+    READ_OPT_STRING(tls_versions, NEAT_TAG_TLS_VER, "DTLS/1.2;"
+                                                   "DTLS/1.0;"
+                                                   "TLS/1.2;"
+                                                   "TLS/1.1;"
+                                                   "TLS/1.0");
+
+    flow->initialized = 1;
+
+    // TODO: set property: message boundaries
+    // TODO: set property: security options
+    // TODO: set property: capacity profile
+
+    return NEAT_OK;
 }
 
 // Notify application about congestion via callback

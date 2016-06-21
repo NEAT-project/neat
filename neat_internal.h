@@ -151,6 +151,7 @@ struct neat_flow
     neat_accept_usrsctp_impl acceptusrsctpfx;
 #endif
 
+    unsigned int initialized : 1;
     unsigned int hefirstConnect : 1;
     unsigned int firstWritePending : 1;
     unsigned int acceptPending : 1;

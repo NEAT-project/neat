@@ -16,7 +16,7 @@
 
 static uint32_t config_buffer_size = 128;
 static uint16_t config_log_level = 1;
-static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+static char config_property[] = "NEAT_PROPERTY_UDP_BANNED,NEAT_PROPERTY_UDPLITE_BANNED";
 
 static unsigned char *buffer = NULL;
 static uint32_t buffer_filled = 0;

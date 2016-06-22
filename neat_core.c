@@ -1100,7 +1100,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
 neat_error_code
 neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 {
-#if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
+#if defined(TCP_USER_TIMEOUT)
     unsigned int timeout_msec;
     int rc;
 #endif
@@ -1115,8 +1115,8 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
             return NEAT_ERROR_BAD_ARGUMENT;
     }
 
-    // TCP User Timeout isn't supported by these platforms:
-#if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
+    // TCP User Timeout isn't supported on all platforms
+#if defined(TCP_USER_TIMEOUT)
     timeout_msec = ((unsigned int)seconds) * 1000;
 
     if (neat_base_stack(flow->sockStack) == NEAT_STACK_TCP) {
@@ -1141,8 +1141,10 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
         }
 
         return NEAT_ERROR_OK;
-    } else if (neat_base_stack(flow->sockStack) == NEAT_STACK_SCTP) {
-#if 0
+    }
+#endif // defined(TCP_USER_TIMEOUT)
+    if (neat_base_stack(flow->sockStack) == NEAT_STACK_SCTP) {
+#if 0 // Disabled due to discussion with MT in PR #85
         struct sctp_paddrparams params;
         unsigned int optsize = sizeof(params);
         int rc = getsockopt(flow->fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, &optsize);
@@ -1167,7 +1169,6 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 #endif // if 0
         return NEAT_ERROR_UNABLE;
     }
-#endif // !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
 
     return NEAT_ERROR_UNABLE;
 }

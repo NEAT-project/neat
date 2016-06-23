@@ -1,12 +1,24 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include "../neat.h"
 
-static uint32_t config_buffer_size = 512;
+/**********************************************************************
+
+    daytime server
+
+    server_daytime [OPTIONS]
+
+    https://tools.ietf.org/html/rfc867
+
+**********************************************************************/
+
+static char config_property[] = "NEAT_PROPERTY_UDP_BANNED,NEAT_PROPERTY_UDPLITE_BANNED";
 static uint16_t config_log_level = 1;
-static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+
+#define BUFFERSIZE 32
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
 
@@ -19,16 +31,10 @@ static void print_usage()
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    printf("server_echo [OPTIONS]\n");
+    printf("server_daytime [OPTIONS]\n");
     printf("\t- P \tneat properties (%s)\n", config_property);
-    printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
 }
-
-struct echo_flow {
-    unsigned char *buffer;
-    uint32_t bytes;
-};
 
 /*
     Error handler
@@ -42,49 +48,37 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
     exit(EXIT_FAILURE);
 }
 
-/*
-    Read data until buffered_amount == 0 - then stop event loop!
-*/
 static neat_error_code on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
     neat_error_code code;
-    struct echo_flow *ef = opCB->userData;
+    unsigned char buffer[BUFFERSIZE];
+    uint32_t buffer_filled;
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_read(opCB->ctx, opCB->flow, ef->buffer, config_buffer_size, &ef->bytes);
+    code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled);
     if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
-            if (config_log_level >= 1) {
-                printf("on_readable - NEAT_ERROR_WOULD_BLOCK\n");
-            }
             return NEAT_OK;
         } else {
-            fprintf(stderr, "%s - neat_read error: %d\n", __func__, (int)code);
+            fprintf(stderr, "%s - neat_read failed - code: %d\n", __func__, (int)code);
             return on_error(opCB);
         }
     }
 
-    // we got some data
-    if (ef->bytes > 0) {
+    if (buffer_filled > 0) {
         if (config_log_level >= 1) {
-            printf("received data - %d byte\n", ef->bytes);
+            printf("received data - %d byte\n", buffer_filled);
         }
         if (config_log_level >= 2) {
-            fwrite(ef->buffer, sizeof(char), ef->bytes, stdout);
+            fwrite(buffer, sizeof(char), buffer_filled, stdout);
             printf("\n");
             fflush(stdout);
         }
-        // echo data
-        opCB->on_readable = NULL;
-        opCB->on_writable = on_writable;
-        opCB->on_all_written = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-    // peer disconnected - stop callbacks and free ressources
-    } else {
+    } else { // peer disconnected
         if (config_log_level >= 1) {
             printf("peer disconnected\n");
         }
@@ -92,8 +86,6 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         opCB->on_writable = NULL;
         opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        free(ef->buffer);
-        free(ef);
         neat_free_flow(opCB->flow);
     }
     return NEAT_OK;
@@ -105,46 +97,40 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    opCB->on_readable = on_readable;
     opCB->on_writable = NULL;
     opCB->on_all_written = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
+    neat_shutdown(opCB->ctx, opCB->flow);
     return NEAT_OK;
 }
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
-    struct echo_flow *ef = opCB->userData;
+    time_t time_now;
+    char *time_string;
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    // set callbacks
-    opCB->on_readable = NULL;
     opCB->on_writable = NULL;
     opCB->on_all_written = on_all_written;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
-
-    code = neat_write(opCB->ctx, opCB->flow, ef->buffer, ef->bytes);
+    // get current time
+    time_now = time(NULL);
+    time_string = ctime(&time_now);
+    // and send it
+    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) time_string, strlen(time_string));
     if (code != NEAT_OK) {
-        fprintf(stderr, "%s - neat_write error: %d\n", __func__, (int)code);
+        fprintf(stderr, "%s - neat_write failed - code: %d\n", __func__, (int)code);
         return on_error(opCB);
     }
-
-    if (config_log_level >= 1) {
-        printf("sent data - %d byte\n", ef->bytes);
-    }
-
     return NEAT_OK;
 }
 
-
 static neat_error_code on_connected(struct neat_flow_operations *opCB)
 {
-    struct echo_flow *ef = NULL;
-
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -153,22 +139,11 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
         printf("peer connected\n");
     }
 
-    if ((opCB->userData = calloc(1, sizeof(struct echo_flow))) == NULL) {
-        fprintf(stderr, "%s - could not allocate echo_flow\n", __func__);
-        exit(EXIT_FAILURE);
-    }
-
-    ef = opCB->userData;
-
-    if ((ef->buffer = malloc(config_buffer_size)) == NULL) {
-        fprintf(stderr, "%s - could not allocate buffer\n", __func__);
-        exit(EXIT_FAILURE);
-    }
-
     opCB->on_readable = on_readable;
-    opCB->on_writable = NULL;
+    opCB->on_writable = on_writable;
     opCB->on_all_written = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
+
     return NEAT_OK;
 }
 
@@ -179,26 +154,20 @@ int main(int argc, char *argv[])
     char *arg_property = config_property;
     char *arg_property_ptr = NULL;
     char arg_property_delimiter[] = ",;";
-    static struct neat_ctx *ctx = NULL;
-    static struct neat_flow *flow = NULL;
-    static struct neat_flow_operations ops;
+    struct neat_ctx *ctx = NULL;
+    struct neat_flow *flow = NULL;
+    struct neat_flow_operations ops;
 
     memset(&ops, 0, sizeof(ops));
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:S:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:v:")) != -1) {
         switch(arg) {
         case 'P':
             arg_property = optarg;
             if (config_log_level >= 1) {
                 printf("option - properties: %s\n", arg_property);
-            }
-            break;
-        case 'S':
-            config_buffer_size = atoi(optarg);
-            if (config_log_level >= 1) {
-                printf("option - buffer size: %d\n", config_buffer_size);
             }
             break;
         case 'v':
@@ -292,8 +261,8 @@ int main(int argc, char *argv[])
             goto cleanup;
         }
 
-       // get next property
-       arg_property_ptr = strtok(NULL, arg_property_delimiter);
+        // get next property
+        arg_property_ptr = strtok(NULL, arg_property_delimiter);
     }
 
     // set properties
@@ -324,6 +293,9 @@ int main(int argc, char *argv[])
 
     // cleanup
 cleanup:
+    if (flow != NULL) {
+        neat_free_flow(flow);
+    }
     if (ctx != NULL) {
         neat_free_ctx(ctx);
     }

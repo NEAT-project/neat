@@ -1,0 +1,10 @@
+{
+  "cib_source": "happy_eyeballs",
+  "type": "remote",
+  "id": "d3",
+  "informational": {
+    "remote_address": "23:::23:15",
+    "remote_name": "example.com",
+    "remote_port": "80"
+  }
+}

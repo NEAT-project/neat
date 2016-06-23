@@ -5,10 +5,20 @@
 #include <sys/time.h>
 #include "../neat.h"
 
-/*
-    tneat
-    testing tool for neat
-*/
+/**********************************************************************
+
+    tneat - neat testing tool
+
+    tneat [OPTIONS] [HOST]
+    -l : message length in byte (client)
+    -n : number off messages to send (client)
+    -p : port
+    -P : neat properties
+    -R : receive buffer in byte (server)
+    -T : max runtime (client)
+    -v : log level (0 .. 2)
+
+**********************************************************************/
 
 /*
     default values
@@ -21,7 +31,7 @@ static uint16_t config_active = 0;
 static uint16_t config_chargen_offset = 0;
 static uint16_t config_port = 8080;
 static uint16_t config_log_level = 1;
-static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+static char config_property[] = "NEAT_PROPERTY_UDP_BANNED,NEAT_PROPERTY_UDPLITE_BANNED";
 static uint8_t done = 0;
 
 /*

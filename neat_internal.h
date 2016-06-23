@@ -67,7 +67,7 @@ typedef struct neat_ctx neat_ctx;
 typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
-                                           const unsigned char *buffer, uint32_t amt);
+                                           const unsigned char *buffer, uint32_t amt, int stream_id);
 typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
 #if defined(USRSCTP_SUPPORT)
 typedef struct socket * (*neat_accept_usrsctp_impl)(struct neat_ctx *ctx, struct neat_flow *flow, struct socket *sock);
@@ -75,6 +75,7 @@ typedef struct socket * (*neat_accept_usrsctp_impl)(struct neat_ctx *ctx, struct
 typedef int (*neat_connect_impl)(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
+typedef int (*neat_close2_impl)(int fd);
 typedef int (*neat_shutdown_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 #if defined(USRSCTP_SUPPORT)
 typedef int (*neat_usrsctp_receive_cb)(struct socket *sock, union sctp_sockstore addr, void *data,
@@ -89,6 +90,15 @@ struct neat_buffered_message {
     size_t bufferedAllocation; // size of buffered allocation
     TAILQ_ENTRY(neat_buffered_message) message_next;
 };
+
+typedef enum {
+    NEAT_STACK_UDP = 1,
+    NEAT_STACK_UDPLITE,
+    NEAT_STACK_TCP,
+    NEAT_STACK_SCTP,
+} neat_protocol_stack_type;
+
+#define NEAT_STACK_MAX_NUM 4
 
 TAILQ_HEAD(neat_message_queue_head, neat_buffered_message);
 
@@ -106,7 +116,8 @@ struct neat_flow
     uint64_t propertyUsed;
     uint8_t family;
     int sockType;
-    int sockProtocol;
+    uint16_t stream_count;
+    int sockStack;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
@@ -115,7 +126,8 @@ struct neat_flow
     size_t writeLimit;  // maximum to write if the socket supports partial writes
     size_t writeSize;   // send buffer size
     // The memory buffer for writing.
-    struct neat_message_queue_head bufferedMessages;
+    struct neat_message_queue_head *bufferedMessages;
+    size_t buffer_count;
 
     size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.
@@ -129,6 +141,7 @@ struct neat_flow
     neat_accept_impl acceptfx;
     neat_connect_impl connectfx;
     neat_close_impl closefx;
+    neat_close2_impl close2fx;
     neat_listen_impl listenfx;
     neat_shutdown_impl shutdownfx;
 
@@ -144,11 +157,26 @@ struct neat_flow
     unsigned int isPolling : 1;
     unsigned int ownedByCore : 1;
     unsigned int everConnected : 1;
-    unsigned int isDraining : 1;
+    unsigned int* isDraining; // TODO: Rework this to become a bitmap?
     unsigned int isSCTPExplicitEOR : 1;
+
+    //List with all non-freed HE contexts.
+    LIST_HEAD(he_cb_ctxs, he_cb_ctx) he_cb_ctx_list;
 };
 
 typedef struct neat_flow neat_flow;
+
+struct neat_path_stats {
+    void* ignored;
+};
+
+typedef struct neat_path_stats neat_path_stats;
+
+struct neat_interface_stats {
+    void* ignored;
+};
+
+typedef struct neat_interface_stats neat_interface_stats;
 
 //NEAT resolver public data structures/functions
 struct neat_resolver;
@@ -190,7 +218,7 @@ struct neat_resolver_server {
 struct neat_resolver_res {
     int32_t ai_family;
     int32_t ai_socktype;
-    int32_t ai_protocol;
+    int32_t ai_stack;
     uint32_t if_idx;
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len;
@@ -214,6 +242,8 @@ struct he_cb_ctx {
     size_t readSize;
     size_t writeLimit;
     unsigned int isSCTPExplicitEOR : 1;
+
+    LIST_ENTRY(he_cb_ctx) next_he_ctx;
 };
 
 //Intilize resolver. Sets up internal callbacks etc.
@@ -234,15 +264,18 @@ void neat_resolver_free_results(struct neat_resolver_results *results);
 //Start to resolve a domain name (or literal). Accepts a list of protocols, will
 //set socktype based on protocol
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-        const char *node, uint16_t port, int ai_protocol[],
-        uint8_t proto_count);
+        const char *node, uint16_t port, neat_protocol_stack_type ai_stack[],
+        uint8_t stack_count);
+//Check if node is an IP literal or not. Returns -1 on failure, 0 if not
+//literal, 1 if literal
+int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node);
 
 //Update timeouts (in ms) for DNS resolving. T1 is total timeout, T2 is how long
 //to wait after first reply from DNS server. Initial values are 30s and 1s.
 void neat_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
         uint16_t t2);
 
-void io_error(neat_ctx *ctx, neat_flow *flow,
+void io_error(neat_ctx *ctx, neat_flow *flow, int stream,
               neat_error_code code);
 
 enum neat_events{
@@ -289,7 +322,7 @@ struct neat_resolver {
 
     //These values are just passed on to neat_resolver_res
     //TODO: Remove this, will be set on result
-    int ai_protocol[NEAT_MAX_NUM_PROTO];
+    neat_protocol_stack_type ai_stack[NEAT_STACK_MAX_NUM];
     //DNS timeout before any domain has been resolved
     uint16_t dns_t1;
     //DNS timeout after at least one domain has been resolved
@@ -337,5 +370,19 @@ struct neat_resolver {
 };
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);
+
+// Internal routines for hooking up lower-level services/modules with
+// API callbacks:
+void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate);
+void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate);
+void neat_notify_send_failure(neat_flow *flow, neat_error_code code,
+			      int context, const unsigned char *unsent_buffer);
+void neat_notify_timeout(neat_flow *flow);
+void neat_notify_aborted(neat_flow *flow);
+void neat_notify_close(neat_flow *flow);
+void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code);
+
+int neat_base_stack(neat_protocol_stack_type stack);
+int neat_stack_to_protocol(neat_protocol_stack_type stack);
 
 #endif

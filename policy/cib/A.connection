@@ -1,0 +1,12 @@
+{
+  "cib_source":"happy_eyeballs",
+  "type":"connection",
+  "id":"A",
+  "timestamp":"1463575518",
+  "local":"s1",
+  "remote":"d1",
+  "informational": {
+    "protocol":"TCP",
+    "TCP_CC":"cubic"
+  }
+}

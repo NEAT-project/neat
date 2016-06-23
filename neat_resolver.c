@@ -160,8 +160,8 @@ static uint8_t neat_resolver_fill_results(
     uint8_t i;
     uint8_t num_addr_added = 0;
 
-    for (i = 0; i < NEAT_MAX_NUM_PROTO; i++) {
-        if (!resolver->ai_protocol[i])
+    for (i = 0; i < NEAT_STACK_MAX_NUM; i++) {
+        if (!resolver->ai_stack[i])
             break;
 
         result = calloc(sizeof(struct neat_resolver_res), 1);
@@ -173,7 +173,7 @@ static uint8_t neat_resolver_fill_results(
             sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 
         result->ai_family = src_addr->family;
-        result->ai_protocol = resolver->ai_protocol[i];
+        result->ai_stack = resolver->ai_stack[i];
         result->if_idx = src_addr->if_idx;
         result->src_addr = src_addr->u.generic.addr;
         result->src_addr_len = addrlen;
@@ -182,11 +182,9 @@ static uint8_t neat_resolver_fill_results(
         result->internal = neat_resolver_addr_internal(&dst_addr);
 
         //Code can't get here without having passed through sanitizing function
-        switch (result->ai_protocol) {
-        case IPPROTO_UDP:
-#ifdef IPPROTO_UDPLITE
-        case IPPROTO_UDPLITE:
-#endif
+        switch (result->ai_stack) {
+        case NEAT_STACK_UDP:
+        case NEAT_STACK_UDPLITE:
             result->ai_socktype = SOCK_DGRAM;
             break;
         default:
@@ -801,7 +799,7 @@ static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
 
 //Check if node is an IP literal or not. Returns -1 on failure, 0 if not
 //literal, 1 if literal
-static int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node)
+int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node)
 {
     struct in6_addr dummy_addr;
     int32_t v4_literal = 0, v6_literal = 0;
@@ -833,23 +831,19 @@ static int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node)
     return v4_literal | v6_literal;
 }
 
-static uint8_t neat_validate_protocols(int protocols[], uint8_t proto_count)
+static uint8_t neat_validate_protocols(neat_protocol_stack_type stacks[], uint8_t stack_count)
 {
     uint8_t i;
 
-    if (proto_count > NEAT_MAX_NUM_PROTO)
+    if (stack_count > NEAT_STACK_MAX_NUM)
         return RETVAL_FAILURE;
 
-    for (i = 0; i < proto_count; i++) {
-        switch (protocols[i]) {
-        case IPPROTO_UDP:
-#ifdef IPPROTO_UDPLITE
-        case IPPROTO_UDPLITE:
-#endif
-        case IPPROTO_TCP:
-#ifdef IPPROTO_SCTP
-        case IPPROTO_SCTP:
-#endif
+    for (i = 0; i < stack_count; i++) {
+        switch (stacks[i]) {
+        case NEAT_STACK_UDP:
+        case NEAT_STACK_UDPLITE:
+        case NEAT_STACK_TCP:
+        case NEAT_STACK_SCTP:
             continue;
         default:
             return RETVAL_FAILURE;
@@ -862,8 +856,8 @@ static uint8_t neat_validate_protocols(int protocols[], uint8_t proto_count)
 //Public NEAT resolver functions
 //getaddrinfo starts a query for the provided service
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-        const char *node, uint16_t port, int ai_protocol[],
-        uint8_t proto_count)
+        const char *node, uint16_t port, neat_protocol_stack_type ai_stack[],
+        uint8_t stack_count)
 {
     struct neat_addr *nsrc_addr = NULL;
     int8_t retval;
@@ -879,13 +873,13 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         return RETVAL_FAILURE;
     }
 
-    if (neat_validate_protocols(ai_protocol, proto_count)) {
+    if (neat_validate_protocols(ai_stack, stack_count)) {
         neat_log(NEAT_LOG_ERROR, "%s - Error in desired protocol list", __func__);
         return RETVAL_FAILURE;
     }
 
-    for (i = 0; i < proto_count; i++)
-        resolver->ai_protocol[i] = ai_protocol[i];
+    for (i = 0; i < stack_count; i++)
+        resolver->ai_stack[i] = ai_stack[i];
 
     resolver->family = family;
     resolver->dst_port = htons(port);
@@ -1049,7 +1043,7 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
     }
 
 
-    memset(resolver->ai_protocol, 0, sizeof(resolver->ai_protocol));
+    memset(resolver->ai_stack, 0, sizeof(resolver->ai_stack));
 }
 
 void neat_resolver_reset(struct neat_resolver *resolver)

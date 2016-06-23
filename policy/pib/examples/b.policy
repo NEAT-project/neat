@@ -1,0 +1,20 @@
+{  
+  "name":"TCP options",
+  "description":"optimize TCP stuff",
+  "match":{
+            "MTU": {
+              "precedence": 1,
+              "value": 9600
+            },
+            "is_wired": {
+              "precedence": 1,
+              "value": true
+            }
+          },
+  "properties":{
+                 "TCP_window_scale": {
+                   "precedence": 1,
+                   "value": true
+                 }
+               }
+}

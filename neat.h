@@ -30,32 +30,73 @@ typedef uint64_t neat_error_code;
 struct neat_flow_operations;
 typedef neat_error_code (*neat_flow_operations_fx)(struct neat_flow_operations *);
 
+// Additional callbacks from D.1.2 sect. 3.2/3.3:
+// Callback handler function prototypes
+// Not including ctx/flow pointers, flow_ops struct has those as well
+// as status code
+//(struct neat_flow_operations *ops, int ecn, uint32_t rate)
+typedef void (*neat_cb_flow_slowdown_t)(struct neat_flow_operations *, int, uint32_t);
+//(struct neat_flow_operations *flowops, uint32_t new_rate)
+typedef void (*neat_cb_flow_rate_hint_t)(struct neat_flow_operations *, uint32_t);
+//struct neat_flow_operations *flowops, int context, const unsigned char *unsent
+typedef void (*neat_cb_send_failure_t)(struct neat_flow_operations *, int, const unsigned char *);
+
+
 struct neat_flow_operations
 {
   void *userData;
 
   neat_error_code status;
+  int stream_id;
   neat_flow_operations_fx on_connected;
   neat_flow_operations_fx on_error;
   neat_flow_operations_fx on_readable;
   neat_flow_operations_fx on_writable;
   neat_flow_operations_fx on_all_written;
+  neat_flow_operations_fx on_network_status_changed;
+  neat_flow_operations_fx on_aborted;
+  neat_flow_operations_fx on_timeout;
+  neat_flow_operations_fx on_close;
+  neat_cb_send_failure_t on_send_failure;
+  neat_cb_flow_slowdown_t on_slowdown;
+  neat_cb_flow_rate_hint_t on_rate_hint;
 
   struct neat_ctx *ctx;
   struct neat_flow *flow;
 };
 
+// Flags to use for neat_flow_init()
+#define NEAT_PRESERVE_MSG_BOUNDARIES (1 << 0)
+#define NEAT_USE_SECURE_INTERFACE (1 << 1)
+
+struct neat_flow_security {
+    int security; // 1 = secure connection required, 2 = secure connection optional
+    int verification; // 1 = required, 2 = optional
+    const char* certificate; // filename for certificate
+    const char* key; // filename for key
+    const char** tls_versions; // list of tls versions available to use
+    const char** ciphers; // list of ciphers available to use
+};
+
 struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
+neat_error_code neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
+                                 uint64_t flags, int flow_profile, struct neat_flow_security *sec);
 void neat_free_flow(struct neat_flow *flow);
 
 neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
                                     struct neat_flow_operations *ops);
+
+neat_error_code neat_get_stats(struct neat_flow *flow, char **neat_stats);
+
 neat_error_code neat_open(struct neat_ctx *ctx, struct neat_flow *flow,
                           const char *name, uint16_t port);
 neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
                            const unsigned char *buffer, uint32_t amt);
+neat_error_code neat_write_ex(struct neat_ctx *ctx, struct neat_flow *flow,
+                              const unsigned char *buffer, uint32_t amt,
+                              int stream_id);
 neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t *outMask);
 neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
@@ -63,7 +104,14 @@ neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                             const char *name, uint16_t port);
 neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
-
+neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow);
+neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow);
+neat_error_code neat_change_timeout(struct neat_ctx *ctx, struct neat_flow *flow,
+                                    int seconds);
+neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow,
+                                      const char *name);
+neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow,
+                                      int rate, int seconds);
 
 // do we also need a set property with a void * or an int (e.g. timeouts) or should
 // we create higher level named functions for such things?
@@ -88,6 +136,10 @@ neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
 #define NEAT_PROPERTY_CONGESTION_CONTROL_BANNED   (1 << 16)
 #define NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED    (1 << 17)
 #define NEAT_PROPERTY_RETRANSMISSIONS_BANNED      (1 << 18)
+#define NEAT_PROPERTY_SEAMLESS_HANDOVER_DESIRED   (1 << 19)
+#define NEAT_PROPERTY_CONTINUOUS_CONNECTIVITY_DESIRED    (1 << 20)
+#define NEAT_PROPERTY_DISABLE_DYNAMIC_ENHANCEMENT     (1 << 21)
+#define NEAT_PROPERTY_LOW_LATENCY_DESIRED (1 << 22)
 
 #define NEAT_ERROR_OK (0)
 #define NEAT_OK NEAT_ERROR_OK
@@ -99,6 +151,9 @@ neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
 #define NEAT_ERROR_SECURITY (6)
 #define NEAT_ERROR_UNABLE (7)
 #define NEAT_ERROR_MESSAGE_TOO_BIG (8)
+#define NEAT_ERROR_REMOTE (9)
+
+#define NEAT_INVALID_STREAM (-1)
 
 // cleanup extern "C"
 #ifdef __cplusplus

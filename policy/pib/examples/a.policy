@@ -1,0 +1,21 @@
+{
+  "name":"Bulk transfer",
+  "description":"bulk file transfer policy",
+  "match":{
+            "remote_ip": {
+              "precedence": 1,
+              "value": "10.1.23.45"
+            }
+          },
+  "properties":{
+            "MTU": {
+               "precedence": 1,
+               "value": 9600
+                 },
+                 "capacity": {
+                   "precedence": 2,
+                   "value": [10000,100000]
+                 }
+                }
+}
+

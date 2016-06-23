@@ -844,6 +844,7 @@ static uint8_t neat_validate_protocols(neat_protocol_stack_type stacks[], uint8_
         case NEAT_STACK_UDPLITE:
         case NEAT_STACK_TCP:
         case NEAT_STACK_SCTP:
+        case NEAT_STACK_SCTP_UDP:
             continue;
         default:
             return RETVAL_FAILURE;

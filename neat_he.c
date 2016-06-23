@@ -32,6 +32,9 @@ static void he_print_results(struct neat_resolver_results *results)
             case NEAT_STACK_SCTP:
                 snprintf(proto, 16, "SCTP");
                 break;
+            case NEAT_STACK_SCTP_UDP:
+                snprintf(proto, 16, "SCTP/UDP");
+                break;
             case NEAT_STACK_UDPLITE:
                 snprintf(proto, 16, "UDPLite");
                 break;

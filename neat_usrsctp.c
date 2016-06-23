@@ -30,6 +30,7 @@ static void neat_usrsctp_udpsctp4_readable(uv_poll_t *handle,
                                     int status,
                                     int events)
 {
+printf("neat_usrsctp_udpsctp4_readable\n");
     if (status < 0) {
         neat_log(NEAT_LOG_ERROR, "%s: socket not readable", __func__);
         return;
@@ -163,7 +164,8 @@ struct neat_ctx *neat_usrsctp_init_ctx(struct neat_ctx *ctx)
             return NULL;
         }
     }
-    usrsctp_init(0, NULL, neat_log_usrsctp);
+    printf("set tunneling port %d\n", SCTP_UDP_TUNNELING_PORT);
+    usrsctp_init(SCTP_UDP_TUNNELING_PORT, NULL, neat_log_usrsctp);
     usrsctp_sysctl_set_sctp_debug_on(SCTP_DEBUG_ALL);
     return ctx;
 }

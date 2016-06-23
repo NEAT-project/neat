@@ -31,7 +31,7 @@ static uint16_t config_active = 0;
 static uint16_t config_chargen_offset = 0;
 static uint16_t config_port = 8080;
 static uint16_t config_log_level = 1;
-static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+static char config_property[] = "NEAT_PROPERTY_SCTP_REQUIRED,NEAT_PROPERTY_TCP_BANNED,NEAT_PROPERTY_IPV4_REQUIRED";
 static uint8_t done = 0;
 
 /*

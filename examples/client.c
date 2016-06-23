@@ -29,7 +29,7 @@ static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
 static uint16_t config_json_stats = 0;
 static char *config_primary_dest_addr = NULL;
-static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+static char config_property[] = "NEAT_PROPERTY_UDP_BANNED,NEAT_PROPERTY_UDPLITE_BANNED";
 
 struct std_buffer {
     unsigned char *buffer;

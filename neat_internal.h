@@ -382,4 +382,7 @@ void neat_notify_aborted(neat_flow *flow);
 void neat_notify_close(neat_flow *flow);
 void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code);
 
+int neat_base_stack(neat_protocol_stack_type stack);
+int neat_stack_to_protocol(neat_protocol_stack_type stack);
+
 #endif

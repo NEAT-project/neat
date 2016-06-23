@@ -1,8 +1,12 @@
 # Features overview
 
-| name           | status                | assignee | comment |
+| name           | status                | coder    | comment |
 | :------------: | :-------------------: | :------: | :-----: |
-| Feature a      | planned/wip/finished  | Felix    | dummy   |
+| example programs       | wip                   | felix    | implementing additional callback usage |
+| Feature a      | planned/wip/done  | Kermit   | dummy   |
+
+## example programs
+Detailed description of the examples is [here](https://github.com/NEAT-project/neat/blob/master/examples/README.md)
 
 ## Feature a
 Just a placeholder

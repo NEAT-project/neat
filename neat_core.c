@@ -1008,7 +1008,9 @@ static void uvpollable_cb(uv_poll_t *handle, int status, int events)
             if (so_error == ETIMEDOUT) {
                 io_timeout(ctx, flow);
                 return;
-            }
+            } else if (so_error == ECONNRESET) {
+		neat_notify_aborted(flow);
+	    }
         }
 
         neat_log(NEAT_LOG_ERROR, "Unspecified internal error when polling socket");
@@ -1227,7 +1229,7 @@ neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t
 neat_error_code
 neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 {
-#if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
+#if defined(TCP_USER_TIMEOUT)
     unsigned int timeout_msec;
     int rc;
 #endif
@@ -1242,8 +1244,8 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
             return NEAT_ERROR_BAD_ARGUMENT;
     }
 
-    // TCP User Timeout isn't supported by these platforms:
-#if !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
+    // TCP User Timeout isn't supported on all platforms
+#if defined(TCP_USER_TIMEOUT)
     timeout_msec = ((unsigned int)seconds) * 1000;
 
     if (neat_base_stack(flow->sockStack) == NEAT_STACK_TCP) {
@@ -1268,8 +1270,10 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
         }
 
         return NEAT_ERROR_OK;
-    } else if (neat_base_stack(flow->sockStack) == NEAT_STACK_SCTP) {
-#if 0
+    }
+#endif // defined(TCP_USER_TIMEOUT)
+    if (neat_base_stack(flow->sockStack) == NEAT_STACK_SCTP) {
+#if 0 // Disabled due to discussion with MT in PR #85
         struct sctp_paddrparams params;
         unsigned int optsize = sizeof(params);
         int rc = getsockopt(flow->fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, &optsize);
@@ -1294,7 +1298,6 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 #endif // if 0
         return NEAT_ERROR_UNABLE;
     }
-#endif // !(defined(__FreeBSD__) || defined(__NetBSD__) || defined (__APPLE__))
 
     return NEAT_ERROR_UNABLE;
 }
@@ -1823,6 +1826,13 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         return NEAT_ERROR_WOULD_BLOCK;
     }
     if (rv == -1) {
+	if (errno == ECONNRESET) {
+	    neat_log(NEAT_LOG_DEBUG, "%s: ECONNRESET", __func__);
+	    neat_notify_aborted(flow);
+	} else {
+	    neat_log(NEAT_LOG_DEBUG, "%s: err %d (%s)", __func__,
+		     errno, strerror(errno));
+	}
         return NEAT_ERROR_IO;
     }
     *actualAmt = rv;

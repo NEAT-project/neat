@@ -19,6 +19,7 @@
     -R : receive buffer in byte
     -S : send buffer in byte
     -J : print json stats for each time data is sent 
+    -T : write timeout in seconds (where available)
     -v : log level (0 .. 2)
     -A : set primary destination address
     
@@ -28,6 +29,7 @@ static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
 static uint16_t config_json_stats = 0;
+static uint16_t config_timeout = 0;
 static char *config_primary_dest_addr = NULL;
 static char config_property[] = "NEAT_PROPERTY_UDP_BANNED,NEAT_PROPERTY_UDPLITE_BANNED";
 
@@ -62,6 +64,7 @@ static void print_usage()
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- S \tsend buffer in byte (%d)\n", config_snd_buffer_size);
     printf("\t- J \tprint json stats for each time data is sent\n");
+    printf("\t- T \twrite timeout in seconds (where available) (%d)\n", config_timeout);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
     printf("\t- A \tprimary dest. addr. (auto)\n");
 }
@@ -125,6 +128,19 @@ static neat_error_code on_network_changed(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
+/*
+    Timeout handler
+*/
+static neat_error_code on_timeout(struct neat_flow_operations *opCB)
+{
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __func__);
+    }
+
+    fprintf(stderr, "The flow reached a timeout!\n");
+
+    exit(EXIT_FAILURE);
+}
 
 /*
     Read data from neat
@@ -241,6 +257,9 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
 	}
     }
 
+    if (config_timeout)
+        neat_change_timeout(ctx, flow, config_timeout);
+
     return NEAT_OK;
 }
 
@@ -337,7 +356,7 @@ int main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:R:S:Jv:A:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:R:S:T:Jv:A:")) != -1) {
         switch(arg) {
         case 'P':
             arg_property = optarg;
@@ -368,6 +387,12 @@ int main(int argc, char *argv[])
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - log level: %d\n", __func__, config_log_level);
+            }
+            break;
+        case 'T':
+            config_timeout = atoi(optarg);
+            if (config_log_level >= 1) {
+                fprintf(stderr, "%s - option - timeout: %d seconds\n", __func__, config_timeout);
             }
             break;
 	case 'A':
@@ -495,6 +520,7 @@ int main(int argc, char *argv[])
     ops.on_close = on_close;
     ops.on_aborted = on_abort;
     ops.on_network_status_changed = on_network_changed;
+    ops.on_timeout = on_timeout;
 
     if (neat_set_operations(ctx, flow, &ops)) {
         fprintf(stderr, "%s - error: neat_set_operations\n", __func__);

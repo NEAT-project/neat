@@ -47,7 +47,7 @@ $ cmake ..
 $ cmake --build .
 ```
 This will generate makefiles and compile the library and the samples.
-You will find the shared and the static library in the `build` directory and the samples in `build/samples` directory.
+You will find the shared and the static library in the `build` directory and the samples in `build/examples` directory.
 
 For an easy entry to NEAT, have a look at `neat_http_get.c` in the samples folder.
 ```shell

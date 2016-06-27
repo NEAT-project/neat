@@ -14,7 +14,7 @@
 
 **********************************************************************/
 
-static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+static char config_property[] = "NEAT_PROPERTY_UDP_BANNED,NEAT_PROPERTY_UDPLITE_BANNED";
 static uint16_t config_log_level = 1;
 static uint16_t chargen_offset = 0;
 

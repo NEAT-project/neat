@@ -18,8 +18,6 @@
     -P : neat properties
     -R : receive buffer in byte
     -S : send buffer in byte
-    -J : print json stats for each time data is sent 
-    -T : write timeout in seconds (where available)
     -v : log level (0 .. 2)
     -A : set primary destination address
     
@@ -28,10 +26,8 @@
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
-static uint16_t config_json_stats = 0;
-static uint16_t config_timeout = 0;
 static char *config_primary_dest_addr = NULL;
-static char config_property[] = "NEAT_PROPERTY_UDP_BANNED,NEAT_PROPERTY_UDPLITE_BANNED";
+static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
 struct std_buffer {
     unsigned char *buffer;
@@ -63,8 +59,6 @@ static void print_usage()
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- S \tsend buffer in byte (%d)\n", config_snd_buffer_size);
-    printf("\t- J \tprint json stats for each time data is sent\n");
-    printf("\t- T \twrite timeout in seconds (where available) (%d)\n", config_timeout);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
     printf("\t- A \tprimary dest. addr. (auto)\n");
 }
@@ -77,25 +71,8 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
-  /* Placeholder until neat_error handling is implemented*/
-    return 1;
-}
 
-void print_neat_stats(neat_flow *flow)
-{
-   neat_error_code error;
-
-   char* stats = NULL;
-   error = neat_get_stats(flow, &stats);
-   if(error != NEAT_OK){
-      printf("NEAT ERROR: %i\n", (int)error);
-      return;
-   } else {
-     if(stats != NULL) 
-        printf("json %s\n", stats);
-   }
-  /* Need to free the string allocated by jansson */
-  free(stats);
+    exit(EXIT_FAILURE);
 }
 
 /*
@@ -128,19 +105,6 @@ static neat_error_code on_network_changed(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-/*
-    Timeout handler
-*/
-static neat_error_code on_timeout(struct neat_flow_operations *opCB)
-{
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
-
-    fprintf(stderr, "The flow reached a timeout!\n");
-
-    exit(EXIT_FAILURE);
-}
 
 /*
     Read data from neat
@@ -171,7 +135,11 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     // all fine
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
-            fprintf(stderr, "%s - received %d bytes\n", __func__, buffer_filled);
+            if (opCB->stream_id != -1) {
+                fprintf(stderr, "%s - received %d bytes on stream %d\n", __func__, buffer_filled, opCB->stream_id);
+            } else {
+                fprintf(stderr, "%s - received %d bytes\n", __func__, buffer_filled);
+            }
         }
 
         fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
@@ -195,29 +163,58 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 */
 static neat_error_code on_writable(struct neat_flow_operations *opCB)
 {
+    static int message_number = 0;
+    static int last_message_number = 0;
     neat_error_code code;
+    unsigned char buf[64];
+    int len;
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_write(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled);
-    if (code != NEAT_OK) {
-        fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
-        return on_error(opCB);
+    switch (opCB->stream_id) {
+        case 0:
+            if (message_number > last_message_number) {
+                break;
+            }
+            code = neat_write_ex(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled, 0);
+            if (code != NEAT_OK) {
+                fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
+                return on_error(opCB);
+            }
+
+            if (config_log_level >= 1) {
+                fprintf(stderr, "%s - sent %d bytes\n", __func__, stdin_buffer.buffer_filled);
+            }
+
+            message_number++;
+            break;
+        case 1:
+            if (message_number <= last_message_number) {
+                break;
+            }
+
+            last_message_number = message_number;
+
+            len = snprintf((char*)buf, 64, "Sent message number %d\n", message_number);
+
+            code = neat_write_ex(opCB->ctx, opCB->flow, buf, len, 1);
+            if (code != NEAT_OK) {
+                fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
+                return on_error(opCB);
+            }
+
+            // stop writing
+            ops.on_writable = NULL;
+            neat_set_operations(ctx, flow, &ops);
+
+            break;
+        default:
+            fprintf(stderr, "Illegal stream id %d passed to on_writable\n", opCB->stream_id);
+            return NEAT_ERROR_BAD_ARGUMENT;
     }
 
-    if(config_json_stats){
-       print_neat_stats(opCB->flow);
-    } 
-
-    if (config_log_level >= 1) {
-        fprintf(stderr, "%s - sent %d bytes\n", __func__, stdin_buffer.buffer_filled);
-    }
-
-    // stop writing
-    ops.on_writable = NULL;
-    neat_set_operations(ctx, flow, &ops);
     return NEAT_OK;
 }
 
@@ -256,9 +253,6 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
 			config_primary_dest_addr);
 	}
     }
-
-    if (config_timeout)
-        neat_change_timeout(ctx, flow, config_timeout);
 
     return NEAT_OK;
 }
@@ -342,7 +336,6 @@ void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
     buffer->base = malloc(config_rcv_buffer_size);
 }
 
-
 int main(int argc, char *argv[])
 {
     uint64_t prop;
@@ -356,7 +349,7 @@ int main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:R:S:T:Jv:A:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:R:S:v:A:")) != -1) {
         switch(arg) {
         case 'P':
             arg_property = optarg;
@@ -376,23 +369,10 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "%s - option - send buffer size: %d\n", __func__, config_snd_buffer_size);
             }
             break;
-        case 'J':
- 	   config_json_stats = 1;
-            if (config_log_level >= 1) {
-                fprintf(stderr, "%s - option - json stats on send enabled\n", __func__);
-            }
-            break;
-
         case 'v':
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - log level: %d\n", __func__, config_log_level);
-            }
-            break;
-        case 'T':
-            config_timeout = atoi(optarg);
-            if (config_log_level >= 1) {
-                fprintf(stderr, "%s - option - timeout: %d seconds\n", __func__, config_timeout);
             }
             break;
 	case 'A':
@@ -520,7 +500,6 @@ int main(int argc, char *argv[])
     ops.on_close = on_close;
     ops.on_aborted = on_abort;
     ops.on_network_status_changed = on_network_changed;
-    ops.on_timeout = on_timeout;
 
     if (neat_set_operations(ctx, flow, &ops)) {
         fprintf(stderr, "%s - error: neat_set_operations\n", __func__);
@@ -529,7 +508,7 @@ int main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0)) == NEAT_OK) {
+    if (neat_open_multistream(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), 2) == NEAT_OK) {
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     } else {
         fprintf(stderr, "%s - error: neat_open\n", __func__);

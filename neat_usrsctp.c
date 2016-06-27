@@ -167,7 +167,6 @@ struct neat_ctx *neat_usrsctp_init_ctx(struct neat_ctx *ctx)
             return NULL;
         }
     }
-
     usrsctp_sysctl_set_sctp_debug_on(SCTP_DEBUG_ALL);
     return ctx;
 }

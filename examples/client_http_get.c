@@ -14,7 +14,7 @@
 
 **********************************************************************/
 
-static uint32_t config_rcv_buffer_size = 4096;
+static uint32_t config_rcv_buffer_size = 1024;
 static char request[512];
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 
@@ -110,8 +110,6 @@ int main(int argc, char *argv[])
     neat_get_property(ctx, flow, &prop);
     prop |= NEAT_PROPERTY_OPTIONAL_SECURITY;
     prop |= NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED;
-  //  prop |= NEAT_PROPERTY_SCTP_REQUIRED;
-  //  prop |= NEAT_PROPERTY_TCP_BANNED;
     neat_set_property(ctx, flow, prop);
 
     ops.on_connected = on_connected;

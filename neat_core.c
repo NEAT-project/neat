@@ -1929,13 +1929,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     case NEAT_STACK_TCP:
         setsockopt(flow->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
         break;
-    case NEAT_STACK_SCTP_UDP: {
-      /*  struct sctp_udpencaps encaps;
-        memset(&encaps, 0, sizeof(struct sctp_udpencaps));
-        encaps.sue_address.ss_family = AF_INET;
-        encaps.sue_port = htons(SCTP_UDP_TUNNELING_PORT);
-        setsockopt(flow->fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps));*/
-    }
+    case NEAT_STACK_SCTP_UDP:
     case NEAT_STACK_SCTP:
         flow->writeLimit = flow->writeSize / 4;
 #ifdef SCTP_NODELAY
@@ -2263,13 +2257,6 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
         flow->readSize = 0;
     }
     flow->writeLimit = flow->writeSize / 4;
-   /* if (flow->sockStack == NEAT_STACK_SCTP_UDP) {
-        struct sctp_udpencaps encaps;
-        memset(&encaps, 0, sizeof(struct sctp_udpencaps));
-        encaps.sue_address.ss_family = AF_INET;
-        encaps.sue_port = htons(SCTP_UDP_TUNNELING_PORT);
-        usrsctp_setsockopt(flow->sock, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps));
-    }*/
 
 #ifdef SCTP_NODELAY
     usrsctp_setsockopt(flow->sock, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));

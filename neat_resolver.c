@@ -942,8 +942,10 @@ neat_resolver_init(struct neat_ctx *nc,
                    neat_resolver_cleanup_t cleanup)
 {
     struct neat_resolver *resolver = calloc(sizeof(struct neat_resolver), 1);
-    if (!handle_resolve || !resolver)
+    if (!handle_resolve || !resolver) {
+        free(resolver);
         return NULL;
+    }
 
     resolver->nc = nc;
     resolver->cleanup = cleanup;

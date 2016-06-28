@@ -981,8 +981,7 @@ neat_resolver_init(struct neat_ctx *nc,
     if (uv_fs_event_start(&(resolver->resolv_conf_handle),
                       neat_resolver_resolv_conf_updated,
                       resolv_conf_path, 0)) {
-        neat_log(NEAT_LOG_ERROR, "%s - Could not start fs event handle", __func__);
-        return NULL;
+        neat_log(NEAT_LOG_WARNING, "%s - Could not start fs event handle", __func__);
     }
 
     if (!neat_resolver_add_initial_servers(resolver))

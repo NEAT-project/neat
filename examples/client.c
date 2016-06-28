@@ -90,11 +90,11 @@ print_neat_stats(neat_flow *flow)
 
    char* stats = NULL;
    error = neat_get_stats(flow, &stats);
-   if(error != NEAT_OK){
+   if (error != NEAT_OK){
       printf("NEAT ERROR: %i\n", (int)error);
       return;
    } else {
-     if(stats != NULL)
+     if (stats != NULL)
         printf("json %s\n", stats);
    }
   /* Need to free the string allocated by jansson */
@@ -215,7 +215,7 @@ on_writable(struct neat_flow_operations *opCB)
         return on_error(opCB);
     }
 
-    if(config_json_stats){
+    if (config_json_stats){
        print_neat_stats(opCB->flow);
     }
 

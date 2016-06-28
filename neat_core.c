@@ -1958,6 +1958,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         case NEAT_STACK_TCP:
             setsockopt(he_ctx->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
             break;
+#if defined(__FreeBSD__)
         case NEAT_STACK_SCTP_UDP: {
             struct sctp_udpencaps encaps;
             memset(&encaps, 0, sizeof(struct sctp_udpencaps));
@@ -1965,6 +1966,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
             encaps.sue_port = htons(SCTP_UDP_TUNNELING_PORT);
             setsockopt(he_ctx->fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps));
         }
+#endif
         case NEAT_STACK_SCTP:
             he_ctx->writeLimit =  he_ctx->writeSize / 4;
 #ifdef SCTP_NODELAY

@@ -68,7 +68,8 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB);
 /*
     print usage
 */
-static void print_usage()
+static void
+print_usage()
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -87,7 +88,8 @@ static void print_usage()
 /*
     print human readable file sizes - helper function
 */
-static char *filesize_human(double bytes, char *buffer, size_t buffersize)
+static char
+*filesize_human(double bytes, char *buffer, size_t buffersize)
 {
     uint8_t i = 0;
     const char* units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
@@ -107,7 +109,8 @@ static char *filesize_human(double bytes, char *buffer, size_t buffersize)
 /*
     error handler
 */
-static neat_error_code on_error(struct neat_flow_operations *opCB)
+static neat_error_code
+on_error(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -115,7 +118,8 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
     exit(EXIT_FAILURE);
 }
 
-static neat_error_code on_all_written(struct neat_flow_operations *opCB)
+static neat_error_code
+on_all_written(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     struct timeval now, diff_time;
@@ -153,7 +157,8 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
 /*
     send *config_message_size* chars to peer
 */
-static neat_error_code on_writable(struct neat_flow_operations *opCB)
+static neat_error_code
+on_writable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
@@ -208,7 +213,8 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-static neat_error_code on_readable(struct neat_flow_operations *opCB)
+static neat_error_code
+on_readable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     uint32_t buffer_filled;
@@ -292,7 +298,8 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 /*
     Connection established - set callbacks and reset statistics
 */
-static neat_error_code on_connected(struct neat_flow_operations *opCB)
+static neat_error_code
+on_connected(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = NULL;
 
@@ -337,7 +344,8 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     struct neat_ctx *ctx = NULL;
     struct neat_flow *flow = NULL;
@@ -535,7 +543,6 @@ int main(int argc, char *argv[])
 
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     }
-
 
     if (config_log_level >= 1) {
         printf("freeing ctx bye bye!\n");

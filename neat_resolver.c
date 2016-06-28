@@ -333,9 +333,10 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
         pair_itr = pair_itr->next_pair.le_next;
     }
 
-    if (!num_resolved_addrs)
+    if (!num_resolved_addrs) {
+        free(result_list);
         resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
-    else
+    } else
         resolver->handle_resolve(resolver, result_list, NEAT_RESOLVER_OK);
 }
 

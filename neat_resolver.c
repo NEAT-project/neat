@@ -517,7 +517,7 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
         rdf_result = ldns_rr_rdf(rr_record, 0);
         host_addr = ldns_buffer_new(ldns_rdf_size(rdf_result));
 
-        if(!host_addr)
+        if (!host_addr)
             continue;
 
         if (pair->src_addr->family == AF_INET) {

@@ -422,7 +422,6 @@ static uint8_t neat_resolver_check_duplicate(
 
     for (itr = pair->resolver->resolver_pairs.lh_first; itr != NULL;
             itr = itr->next_pair.le_next) {
-        addr_equal = 0;
 
         //Must match index
         if (src_addr->if_idx != itr->src_addr->if_idx ||

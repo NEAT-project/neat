@@ -16,7 +16,8 @@
 #include "neat_addr.h"
 
 char *
-compute_reverse_ip(struct neat_addr *src_addr) {
+compute_reverse_ip(struct neat_addr *src_addr)
+{
     struct in_addr src_addr4;
     struct in6_addr src_addr6;
     char reverse_ip[80]; // maximum length for a reverse /128 IPv6
@@ -80,7 +81,8 @@ compute_reverse_ip(struct neat_addr *src_addr) {
 }
 
 void
-add_pvd_result(struct pvds* pvds, ldns_rr_list *pvd_txt_list) {
+add_pvd_result(struct pvds* pvds, ldns_rr_list *pvd_txt_list)
+{
     struct pvd_infos pvd_infos;
     struct pvd_info *pvd_info;
     char *txt_record;

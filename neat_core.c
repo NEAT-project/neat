@@ -880,8 +880,10 @@ allocate_send_buffers(neat_flow* flow)
 
     flow->isDraining = calloc(flow->buffer_count, sizeof(unsigned int));
 
-    if (!flow->isDraining)
+    if (!flow->isDraining) {
+        free(flow->bufferedMessages);
         return NEAT_ERROR_INTERNAL;
+    }
 
     for (size_t buffer = 0; buffer < flow->buffer_count; ++buffer) {
         TAILQ_INIT(&(flow->bufferedMessages[buffer]));
@@ -1067,6 +1069,7 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
 #endif
 
     neat_flow *newFlow = neat_new_flow(ctx);
+    assert(newFlow != NULL);
     newFlow->name = strdup (flow->name);
     newFlow->port = flow->port;
     newFlow->propertyMask = flow->propertyMask;
@@ -1096,6 +1099,7 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     newFlow->stream_count = 1;
     if (allocate_send_buffers(newFlow) != NEAT_OK) {
         io_error(ctx, newFlow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        free(newFlow);
         return;
     }
 
@@ -1104,6 +1108,7 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
         newFlow->stream_count = 1;
         if (allocate_send_buffers(newFlow) != NEAT_OK) {
             io_error(ctx, newFlow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+            free(newFlow)
             return;
         }
 

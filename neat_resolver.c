@@ -275,9 +275,10 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
                 nsrc_addr, dst_addr);
     }
 
-    if (!num_resolved_addrs)
+    if (!num_resolved_addrs) {
         resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
-    else
+        free(result_list);
+    } else
         resolver->handle_resolve(resolver, result_list, NEAT_RESOLVER_OK);
 }
 

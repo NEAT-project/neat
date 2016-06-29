@@ -1109,6 +1109,8 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     newFlow->stream_count = 1;
     if (allocate_send_buffers(newFlow) != NEAT_OK) {
         io_error(ctx, newFlow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        free(newFlow->operations);
+        free(newFlow->handle);
         free(newFlow);
         return;
     }
@@ -1118,6 +1120,8 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
         newFlow->stream_count = 1;
         if (allocate_send_buffers(newFlow) != NEAT_OK) {
             io_error(ctx, newFlow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+            free(newFlow->operations);
+            free(newFlow->handle);
             free(newFlow);
             return;
         }

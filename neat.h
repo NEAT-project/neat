@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <netinet/in.h>
+#include "neat_tlv.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,7 +81,7 @@ struct neat_flow_security {
 
 struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
 neat_error_code neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
-                                 uint64_t flags, int flow_profile, struct neat_flow_security *sec);
+                                 NEAT_OPTARG_PARAM);
 void neat_free_flow(struct neat_flow *flow);
 
 neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,

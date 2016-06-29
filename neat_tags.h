@@ -1,0 +1,22 @@
+#ifndef NEAT_TAGS_INCLUDE
+#define NEAT_TAGS_INCLUDE
+
+typedef enum {
+    // neat_read/write
+    NEAT_TAG_CONTEXT = 1,
+    NEAT_TAG_STREAM,
+
+    // neat_flow_init
+    NEAT_TAG_MESSAGES,
+    NEAT_TAG_SECURE_INTERFACE,
+    NEAT_TAG_CAPACITY_PROFILE,
+    NEAT_TAG_SECURITY,
+    NEAT_TAG_VERIFY_CERT,
+    NEAT_TAG_CERTIFICATE,
+    NEAT_TAG_KEY,
+    NEAT_TAG_TLS_VER,
+    NEAT_TAG_CIPHER,
+} neat_tag;
+
+#endif /* ifndef NEAT_TAGS_INCLUDE */
+

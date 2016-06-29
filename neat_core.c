@@ -272,6 +272,8 @@ static void free_he_handle_cb(uv_handle_t *handle);
 static void free_cb(uv_handle_t *handle)
 {
     neat_flow *flow = handle->data;
+    struct he_cb_ctx *e;
+    struct he_cb_ctx *ne;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     flow->closefx(flow->ctx, flow);
@@ -288,6 +290,14 @@ static void free_cb(uv_handle_t *handle)
     // Make sure any still active HE connection attempts are
     // properly terminated and pertaining memory released
     int count = 0;
+
+    LIST_FOREACH_SAFE(e, &(flow->he_cb_ctx_list), next_he_ctx, ne) {
+        count++;
+        LIST_REMOVE(e, next_he_ctx);
+        free(e->handle);
+        free(e);
+    }
+    /*
     while(!LIST_EMPTY(&(flow->he_cb_ctx_list))) {
         count++;
         struct he_cb_ctx *e = LIST_FIRST(&(flow->he_cb_ctx_list));
@@ -295,7 +305,7 @@ static void free_cb(uv_handle_t *handle)
         free(e->handle);
         free(e);
     }
-
+    */
     free(flow->readBuffer);
     free(flow->handle);
     free(flow);

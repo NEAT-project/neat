@@ -151,7 +151,7 @@ on_writable(struct neat_flow_operations *opCB)
         code = neat_write_ex(opCB->ctx, opCB->flow, ef->buffer, ef->bytes, ef->stream_id);
     } else {
     */
-        code = neat_write(opCB->ctx, opCB->flow, ef->buffer, ef->bytes);
+        code = neat_write(opCB->ctx, opCB->flow, ef->buffer, ef->bytes, NULL, 0);
     // }
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: %d\n", __func__, (int)code);

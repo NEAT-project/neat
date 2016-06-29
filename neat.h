@@ -65,6 +65,29 @@ struct neat_flow_operations
   struct neat_flow *flow;
 };
 
+enum neat_tlv_type {
+    NEAT_TYPE_INTEGER = 0,
+    NEAT_TYPE_FLOAT,
+    NEAT_TYPE_STRING,
+};
+typedef enum neat_tlv_type neat_tlv_type;
+
+enum neat_tlv_tag {
+    NEAT_TAG_STREAM_ID = 0,
+};
+typedef enum neat_tlv_tag neat_tlv_tag;
+
+struct neat_tlv {
+    neat_tlv_tag  tag;
+    neat_tlv_type type;
+
+    union {
+        int   integer;
+        char *string;
+        float real;
+    } value;
+};
+
 // Flags to use for neat_flow_init()
 #define NEAT_PRESERVE_MSG_BOUNDARIES (1 << 0)
 #define NEAT_USE_SECURE_INTERFACE (1 << 1)
@@ -95,10 +118,8 @@ neat_error_code neat_open_multistream(struct neat_ctx *ctx, struct neat_flow *fl
 neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
-                           const unsigned char *buffer, uint32_t amt);
-neat_error_code neat_write_ex(struct neat_ctx *ctx, struct neat_flow *flow,
-                              const unsigned char *buffer, uint32_t amt,
-                              int stream_id);
+                           const unsigned char *buffer, uint32_t amt,
+                           struct neat_tlv optional[], unsigned int opt_count);
 neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t *outMask);
 neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,

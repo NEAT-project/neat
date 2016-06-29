@@ -172,6 +172,7 @@ on_writable(struct neat_flow_operations *opCB)
     static int message_number = 0;
     static int last_message_number = 0;
     neat_error_code code;
+    struct neat_tlv options[1];
     unsigned char buf[64];
     int len;
 
@@ -184,7 +185,15 @@ on_writable(struct neat_flow_operations *opCB)
             if (message_number > last_message_number) {
                 break;
             }
-            code = neat_write_ex(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled, 0);
+
+            options[0].tag           = NEAT_TAG_STREAM_ID;
+            options[0].type          = NEAT_TYPE_INTEGER;
+            options[0].value.integer = 0;
+
+            code = neat_write(opCB->ctx, opCB->flow,
+                              stdin_buffer.buffer, stdin_buffer.buffer_filled,
+                              options, 1);
+
             if (code != NEAT_OK) {
                 fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
                 return on_error(opCB);
@@ -205,7 +214,11 @@ on_writable(struct neat_flow_operations *opCB)
 
             len = snprintf((char*)buf, 64, "Sent message number %d\n", message_number);
 
-            code = neat_write_ex(opCB->ctx, opCB->flow, buf, len, 1);
+            options[0].tag           = NEAT_TAG_STREAM_ID;
+            options[0].type          = NEAT_TYPE_INTEGER;
+            options[0].value.integer = 1;
+            code = neat_write(opCB->ctx, opCB->flow, buf, len, options, 1);
+
             if (code != NEAT_OK) {
                 fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
                 return on_error(opCB);

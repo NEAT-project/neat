@@ -58,7 +58,7 @@ static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
-    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *)request, strlen(request));
+    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *)request, strlen(request), NULL, 0);
     if (code != NEAT_OK) {
         return on_error(opCB);
     }

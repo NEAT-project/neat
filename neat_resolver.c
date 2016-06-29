@@ -998,6 +998,7 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
 {
     struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
     struct neat_resolver_server *server;
+    struct neat_resolver_server *server_next;
 
     resolver_itr = resolver->resolver_pairs.lh_first;
 
@@ -1035,9 +1036,8 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
         uv_fs_event_stop(&(resolver->resolv_conf_handle));
 
         //Remove all entries in the server table
-        while (resolver->server_list.lh_first != NULL) {
-            server = resolver->server_list.lh_first;
-            LIST_REMOVE(resolver->server_list.lh_first, next_server);
+        LIST_FOREACH_SAFE(server, &(resolver->server_list), next_server, server_next) {
+            LIST_REMOVE(server, next_server);
             free(server);
         }
     } else {

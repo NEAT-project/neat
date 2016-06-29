@@ -18,11 +18,11 @@
     -P : neat properties
     -R : receive buffer in byte
     -S : send buffer in byte
-    -J : print json stats for each time data is sent 
+    -J : print json stats for each time data is sent
     -T : write timeout in seconds (where available)
     -v : log level (0 .. 2)
     -A : set primary destination address
-    
+
 **********************************************************************/
 
 static uint32_t config_rcv_buffer_size = 256;
@@ -50,9 +50,8 @@ void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
 void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
 static neat_error_code on_all_written(struct neat_flow_operations *opCB);
 
-/*
-    Print usage and exit
-*/
+
+// Print usage and exit
 static void
 print_usage()
 {
@@ -70,40 +69,36 @@ print_usage()
     printf("\t- A \tprimary dest. addr. (auto)\n");
 }
 
-/*
-    Error handler
-*/
+// Error handler
 static neat_error_code
 on_error(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
-  /* Placeholder until neat_error handling is implemented*/
+    // Placeholder until neat_error handling is implemented
     return 1;
 }
 
 static void
 print_neat_stats(neat_flow *flow)
 {
-   neat_error_code error;
+    neat_error_code error;
 
-   char* stats = NULL;
-   error = neat_get_stats(flow, &stats);
-   if (error != NEAT_OK){
-      printf("NEAT ERROR: %i\n", (int)error);
-      return;
-   } else {
-     if (stats != NULL)
+    char* stats = NULL;
+    error = neat_get_stats(flow, &stats);
+    if (error != NEAT_OK){
+        printf("NEAT ERROR: %i\n", (int)error);
+        return;
+    } else if (stats != NULL) {
         printf("json %s\n", stats);
-   }
-  /* Need to free the string allocated by jansson */
-  free(stats);
+    }
+    // Need to free the string allocated by jansson
+    free(stats);
 }
 
-/*
-    Abort handler
-*/
+
+// Abort handler
 static neat_error_code
 on_abort(struct neat_flow_operations *opCB)
 {
@@ -116,9 +111,7 @@ on_abort(struct neat_flow_operations *opCB)
     exit(EXIT_FAILURE);
 }
 
-/*
-    Network change handler
-*/
+// Network change handler
 static neat_error_code
 on_network_changed(struct neat_flow_operations *opCB)
 {
@@ -127,15 +120,13 @@ on_network_changed(struct neat_flow_operations *opCB)
     }
 
     if (config_log_level >= 1) {
-	fprintf(stderr, "Something happened in the network: %d\n", (int)opCB->status);
+        fprintf(stderr, "Something happened in the network: %d\n", (int)opCB->status);
     }
 
     return NEAT_OK;
 }
 
-/*
-    Timeout handler
-*/
+// Timeout handler
 static neat_error_code
 on_timeout(struct neat_flow_operations *opCB)
 {
@@ -148,9 +139,7 @@ on_timeout(struct neat_flow_operations *opCB)
     exit(EXIT_FAILURE);
 }
 
-/*
-    Read data from neat
-*/
+// Read data from neat
 static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
@@ -180,7 +169,6 @@ on_readable(struct neat_flow_operations *opCB)
         if (config_log_level >= 1) {
             fprintf(stderr, "%s - received %d bytes\n", __func__, buffer_filled);
         }
-
         fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
         fflush(stdout);
 
@@ -197,9 +185,7 @@ on_readable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-/*
-    Send data from stdin
-*/
+// Send data from stdin
 static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
@@ -257,14 +243,14 @@ on_connected(struct neat_flow_operations *opCB)
     neat_set_operations(ctx, flow, &ops);
 
     if (config_primary_dest_addr != NULL) {
-	rc = neat_set_primary_dest(ctx, flow, config_primary_dest_addr);
-	if (rc) {
-	    fprintf(stderr, "Failed to set primary dest. addr.: %u\n", rc);
-	} else {
-	    if (config_log_level > 1)
-		fprintf(stderr, "Primary dest. addr. set to: '%s'.\n",
-			config_primary_dest_addr);
-	}
+        rc = neat_set_primary_dest(ctx, flow, config_primary_dest_addr);
+        if (rc) {
+            fprintf(stderr, "Failed to set primary dest. addr.: %u\n", rc);
+        } else {
+            if (config_log_level > 1)
+                fprintf(stderr, "Primary dest. addr. set to: '%s'.\n",
+            config_primary_dest_addr);
+        }
     }
 
     if (config_timeout)
@@ -276,14 +262,14 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-  if (config_log_level >= 2) {
-    fprintf(stderr, "%s()\n", __func__);
-  }
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __func__);
+    }
 
-  fprintf(stderr, "%s - flow closed OK!\n", __func__);
+    fprintf(stderr, "%s - flow closed OK!\n", __func__);
 
-  return NEAT_OK;
-}
+    return NEAT_OK;
+    }
 
 /*
     Read from stdin
@@ -309,23 +295,23 @@ tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
         neat_set_operations(ctx, flow, &ops);
         neat_shutdown(ctx, flow);
     } else if (strncmp(buffer->base, "close\n", buffer_filled) == 0) {
-	if (config_log_level >= 1) {
+        if (config_log_level >= 1) {
             fprintf(stderr, "%s - tty_read - CLOSE\n", __func__);
         }
         uv_read_stop(stream);
         ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
         neat_close(ctx, flow);
-	buffer_filled = UV_EOF;
+        buffer_filled = UV_EOF;
     } else if (strncmp(buffer->base, "abort\n", buffer_filled) == 0) {
-	if (config_log_level >= 1) {
+        if (config_log_level >= 1) {
             fprintf(stderr, "%s - tty_read - ABORT\n", __func__);
         }
         uv_read_stop(stream);
         ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
         neat_abort(ctx, flow);
-	buffer_filled = UV_EOF;
+        buffer_filled = UV_EOF;
     }
 
     // all fine
@@ -391,12 +377,11 @@ main(int argc, char *argv[])
             }
             break;
         case 'J':
- 	   config_json_stats = 1;
+            config_json_stats = 1;
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - json stats on send enabled\n", __func__);
             }
             break;
-
         case 'v':
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {
@@ -409,11 +394,10 @@ main(int argc, char *argv[])
                 fprintf(stderr, "%s - option - timeout: %d seconds\n", __func__, config_timeout);
             }
             break;
-	case 'A':
-	    config_primary_dest_addr = optarg;
-	    if (config_log_level >= 1) {
-                fprintf(stderr, "%s - option - primary dest. address: %s\n", __func__,
-			config_primary_dest_addr);
+        case 'A':
+            config_primary_dest_addr = optarg;
+            if (config_log_level >= 1) {
+                fprintf(stderr, "%s - option - primary dest. address: %s\n", __func__, config_primary_dest_addr);
             }
             break;
         default:

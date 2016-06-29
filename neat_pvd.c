@@ -133,6 +133,7 @@ add_pvd_result(struct pvds* pvds, ldns_rr_list *pvd_txt_list)
 
 static int
 neat_pvd_dns_async(uv_loop_t *loop,
+                   struct pvd_async_query *async_query,
                    struct sockaddr_storage *dns_addr,
                    struct neat_addr *src_addr,
                    ldns_pkt *pkt,
@@ -144,8 +145,6 @@ neat_pvd_dns_async(uv_loop_t *loop,
     struct sockaddr *dns_addr2 = (struct sockaddr *) dns_addr;
     struct sockaddr_in *server_addr4;
     struct sockaddr_in6 *server_addr6;
-
-    struct pvd_async_query *async_query = malloc(sizeof(struct pvd_async_query));
 
     async_query->dns_uv_snd_buf = calloc(sizeof(uv_buf_t), 1);
     async_query->dns_snd_handle = calloc(sizeof(uv_udp_send_t), 1);
@@ -244,13 +243,9 @@ neat_pvd_dns_sent_cb(uv_udp_send_t *req, int status)
 {
 }
 
-//This callback is called when we close a UDP socket (handle) and allows us to
-//free any allocated resource. In our case, this is only the dns_snd_buf
 static void
-neat_pvd_dns_close_cb(uv_handle_t *handle)
+neat_pvd_free_async_query(struct pvd_async_query *async_query)
 {
-    struct pvd_async_query *async_query = handle->data;
-
     uv_udp_recv_stop(async_query->resolve_handle);
     free(async_query->dns_uv_snd_buf);
     free(async_query->dns_snd_handle);
@@ -259,9 +254,20 @@ neat_pvd_dns_close_cb(uv_handle_t *handle)
         free(async_query->dst_addr4);
     if (async_query->dst_addr6 != NULL)
         free(async_query->dst_addr6);
+    free(async_query->resolve_handle);
+
+    LIST_REMOVE(async_query, next_query);
     free(async_query);
-    // struct neat_resolver_src_dst_addr *resolver_pair = handle->data;
-    // neat_resolver_cleanup_pair(resolver_pair);
+}
+
+//This callback is called when we close a UDP socket (handle) and allows us to
+//free any allocated resource. In our case, this is only the dns_snd_buf
+static void
+neat_pvd_dns_close_cb(uv_handle_t *handle)
+{
+    struct pvd_async_query *async_query = handle->data;
+
+    neat_pvd_free_async_query(async_query);
 }
 
 //libuv gives the user control of how memory is allocated. This callback is
@@ -386,7 +392,12 @@ neat_pvd_dns_ptr_recv_cb(uv_udp_t *handle,
         free(dns_record_str);
         free(ptr_record);
 
+        struct pvd_async_query *async_query_new = malloc(sizeof(struct pvd_async_query));
+        LIST_INSERT_HEAD(&(async_query->pvd->queries), async_query_new, next_query);
+        async_query_new->pvd = async_query->pvd;
+
         neat_pvd_dns_async(dns_query->loop,
+                           async_query_new,
                            dns_query->dns_addr,
                            dns_query->src_addr,
                            pkt,
@@ -453,7 +464,12 @@ neat_pvd_handle_newaddr(struct neat_ctx *nc,
             continue;
         }
 
+        struct pvd_async_query *async_query = malloc(sizeof(struct pvd_async_query));
+        async_query->pvd = nc->pvd;
+        LIST_INSERT_HEAD(&(nc->pvd->queries), async_query, next_query);
+
         neat_pvd_dns_async(nc->loop,
+                           async_query,
                            dns_addr,
                            src_addr,
                            pkt,
@@ -461,10 +477,6 @@ neat_pvd_handle_newaddr(struct neat_ctx *nc,
                            neat_pvd_dns_ptr_recv_cb,
                            neat_pvd_dns_sent_cb,
                            dns_query);
-
-        // ldns_rdf_deep_free(dns_src);
-        // ldns_resolver_deep_free(resolver);
-        // ldns_rr_list_deep_free(pvd_ptr_list);
     }
     free(reverse_ip);
 
@@ -483,6 +495,7 @@ neat_pvd_init(struct neat_ctx *nc)
     pvd->newaddr_cb.event_cb    = neat_pvd_handle_newaddr;
     pvd->newaddr_cb.data        = pvd;
     LIST_INIT(&(pvd->results));
+    LIST_INIT(&(pvd->queries));
 
     if (neat_add_event_cb(nc, NEAT_NEWADDR, &(pvd->newaddr_cb))) {
         neat_log(NEAT_LOG_ERROR, "%s - Could not add one pvd callbacks", __func__);
@@ -490,4 +503,29 @@ neat_pvd_init(struct neat_ctx *nc)
     }
 
     return pvd;
+}
+
+void
+neat_pvd_release(struct neat_pvd *pvd)
+{
+    struct pvd_async_query *async_query, *async_query_itr;
+    struct pvd_result *pvd_result, *pvd_result_itr;
+    pvd_result_itr  = pvd->results.lh_first;
+    async_query_itr = pvd->queries.lh_first;
+
+    while (pvd_result_itr != NULL) {
+        pvd_result = pvd_result_itr;
+        pvd_result_itr = pvd_result_itr->next_result.le_next;
+        LIST_REMOVE(pvd_result, next_result);
+
+        free(pvd_result);
+    }
+    while (async_query_itr != NULL) {
+        async_query = async_query_itr;
+        async_query_itr = async_query_itr->next_query.le_next;
+        LIST_REMOVE(async_query, next_query);
+
+        free(async_query->data);
+        neat_pvd_free_async_query(async_query);
+    }
 }

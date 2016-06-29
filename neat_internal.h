@@ -323,6 +323,9 @@ struct neat_iofilter *insert_neat_iofilter(neat_ctx *ctx, neat_flow *flow);
 //Initialize PvD
 struct neat_pvd *neat_pvd_init(struct neat_ctx *nc);
 
+//Free PvD resources
+void neat_pvd_release(struct neat_pvd *pvd);
+
 enum neat_events{
     //A new address has been added to an interface
     NEAT_NEWADDR = 0,

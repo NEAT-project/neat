@@ -57,12 +57,18 @@ struct pvd_async_query {
     uv_udp_t *resolve_handle;
     struct sockaddr_in *dst_addr4;
     struct sockaddr_in6 *dst_addr6;
+    struct neat_pvd *pvd;
+    LIST_ENTRY(pvd_async_query) next_query;
 };
+
+struct pvd_async_query;
+LIST_HEAD(pvd_async_queries, pvd_async_query);
 
 struct neat_pvd {
     struct neat_ctx *nc;
     struct neat_event_cb newaddr_cb;
     struct pvd_results results;
+    struct pvd_async_queries queries;
 };
 //Add/remove addresses from src. address list
 // void neat_addr_update_src_list(struct neat_ctx *nc,

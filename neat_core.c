@@ -2415,18 +2415,14 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
 // this function needs to accept all the data (buffering if necessary)
 neat_error_code
 neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
-           const unsigned char *buffer, uint32_t amt)
+           const unsigned char *buffer, uint32_t amt,
+           struct neat_tlv optional[], unsigned int opt_count)
 {
+    int stream_id = 0;
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    return flow->writefx(ctx, flow, buffer, amt, 0);
-}
 
-neat_error_code
-neat_write_ex(struct neat_ctx *ctx, struct neat_flow *flow,
-              const unsigned char *buffer, uint32_t amt, int stream_id)
-{
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     return flow->writefx(ctx, flow, buffer, amt, stream_id);
 }

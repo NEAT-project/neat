@@ -73,7 +73,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
         if (src_addr->ss_family == AF_INET) {
             org_addr4 = (struct sockaddr_in*) &(nsrc_addr->u.v4.addr4);
 
-            if (org_addr4->sin_addr.s_addr == src_addr4->sin_addr.s_addr)
+            if (src_addr4 != NULL && org_addr4->sin_addr.s_addr == src_addr4->sin_addr.s_addr)
                 break;
         } else {
             org_addr6 = (struct sockaddr_in6*) &(nsrc_addr->u.v6.addr6);

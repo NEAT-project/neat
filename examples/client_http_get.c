@@ -16,7 +16,7 @@
 
 **********************************************************************/
 
-static uint32_t config_rcv_buffer_size = 1024;
+static uint32_t config_rcv_buffer_size = 65536;
 static uint32_t config_max_flows = 50;
 static char request[512];
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";

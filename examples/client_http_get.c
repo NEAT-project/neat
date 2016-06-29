@@ -91,6 +91,7 @@ main(int argc, char *argv[])
     result = EXIT_SUCCESS;
 
     memset(&ops, 0, sizeof(ops));
+    memset(flows, 0, sizeof(flows));
 
     if (argc < 2 || argc > 4) {
         fprintf(stderr, "usage: client_http_get [OPTIONS] HOST\n");

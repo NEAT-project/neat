@@ -119,6 +119,11 @@ main(int argc, char *argv[])
         }
     }
 
+    if (optind + 1 != argc) {
+        fprintf(stderr, "usage: client_http_get [OPTIONS] HOST\n");
+        goto cleanup;
+    }
+
     printf("%d flows - requesting: %s\n", num_flows, request);
 
     if ((ctx = neat_init_ctx()) == NULL) {

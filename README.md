@@ -51,7 +51,7 @@ You will find the shared and the static library in the `build` directory and the
 
 For an easy entry to NEAT, have a look at `neat_http_get.c` in the samples folder.
 ```shell
-$ ./neat_http_get www.neat-project.org
+$ ./client_http_get www.neat-project.org
 ```
 
 In order to (optionally) install the neat library simply run.

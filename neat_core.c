@@ -169,7 +169,7 @@ void neat_free_ctx(struct neat_ctx *nc)
         free(nc->resolver);
     }
 
-    if(nc->event_cbs)
+    if (nc->event_cbs)
         free(nc->event_cbs);
 
     free(nc->loop);

@@ -20,7 +20,7 @@
     -S : send buffer in byte
     -v : log level (0 .. 2)
     -A : set primary destination address
-    
+
 **********************************************************************/
 
 static uint32_t config_rcv_buffer_size = 256;
@@ -49,7 +49,8 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB);
 /*
     Print usage and exit
 */
-static void print_usage()
+static void
+print_usage()
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -66,7 +67,8 @@ static void print_usage()
 /*
     Error handler
 */
-static neat_error_code on_error(struct neat_flow_operations *opCB)
+static neat_error_code
+on_error(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -78,7 +80,8 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
 /*
     Abort handler
 */
-static neat_error_code on_abort(struct neat_flow_operations *opCB)
+static neat_error_code
+on_abort(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -92,7 +95,8 @@ static neat_error_code on_abort(struct neat_flow_operations *opCB)
 /*
     Network change handler
 */
-static neat_error_code on_network_changed(struct neat_flow_operations *opCB)
+static neat_error_code
+on_network_changed(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -109,7 +113,8 @@ static neat_error_code on_network_changed(struct neat_flow_operations *opCB)
 /*
     Read data from neat
 */
-static neat_error_code on_readable(struct neat_flow_operations *opCB)
+static neat_error_code
+on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
     uint32_t buffer_filled;
@@ -161,7 +166,8 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
 /*
     Send data from stdin
 */
-static neat_error_code on_writable(struct neat_flow_operations *opCB)
+static neat_error_code
+on_writable(struct neat_flow_operations *opCB)
 {
     static int message_number = 0;
     static int last_message_number = 0;
@@ -218,7 +224,8 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-static neat_error_code on_all_written(struct neat_flow_operations *opCB)
+static neat_error_code
+on_all_written(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -229,7 +236,8 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-static neat_error_code on_connected(struct neat_flow_operations *opCB)
+static neat_error_code
+on_connected(struct neat_flow_operations *opCB)
 {
     int rc;
 
@@ -257,7 +265,8 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-static neat_error_code on_close(struct neat_flow_operations *opCB)
+static neat_error_code
+on_close(struct neat_flow_operations *opCB)
 {
   if (config_log_level >= 2) {
     fprintf(stderr, "%s()\n", __func__);
@@ -271,7 +280,8 @@ static neat_error_code on_close(struct neat_flow_operations *opCB)
 /*
     Read from stdin
 */
-void tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
+void
+tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -326,7 +336,8 @@ void tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer
     free(buffer->base);
 }
 
-void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
+void
+tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -336,7 +347,8 @@ void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
     buffer->base = malloc(config_rcv_buffer_size);
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     uint64_t prop;
     int arg, result;

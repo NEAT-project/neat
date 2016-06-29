@@ -93,12 +93,6 @@ main(int argc, char *argv[])
     memset(&ops, 0, sizeof(ops));
     memset(flows, 0, sizeof(flows));
 
-    if (argc < 2 || argc > 4) {
-        fprintf(stderr, "usage: client_http_get [OPTIONS] HOST\n");
-        result = EXIT_FAILURE;
-        goto cleanup;
-    }
-
     snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
 
     while ((arg = getopt(argc, argv, "u:n:")) != -1) {
@@ -154,6 +148,8 @@ main(int argc, char *argv[])
         if (neat_open(ctx, flows[i], argv[argc - 1], 80) != NEAT_OK) {
             fprintf(stderr, "Could not open flow\n");
             result = EXIT_FAILURE;
+        } else {
+            fprintf(stderr, "Opened flow %d\n", i);
         }
     }
 

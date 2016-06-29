@@ -5,6 +5,7 @@
 #include <uv.h>
 #include "../neat.h"
 #include "../neat_internal.h"
+#include <assert.h>
 
 /**********************************************************************
 
@@ -23,24 +24,26 @@
 
 **********************************************************************/
 
-static uint32_t config_rcv_buffer_size = 256;
-static uint32_t config_snd_buffer_size = 128;
-static uint16_t config_log_level = 1;
-static char *config_primary_dest_addr = NULL;
-static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+static uint32_t config_rcv_buffer_size   = 256;
+static uint32_t config_snd_buffer_size   = 128;
+static uint16_t config_log_level         = 1;
+static char    *config_primary_dest_addr = NULL;
+static char     config_property[]        = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
 struct std_buffer {
     unsigned char *buffer;
-    uint32_t buffer_filled;
+    uint32_t       buffer_filled;
 };
 
-static struct neat_flow_operations ops;
 static struct std_buffer stdin_buffer;
-static struct neat_ctx *ctx = NULL;
-static struct neat_flow *flow = NULL;
-static unsigned char *buffer_rcv = NULL;
-static unsigned char *buffer_snd= NULL;
+static struct neat_ctx  *ctx      = NULL;
+static struct neat_flow *flow    = NULL;
+static unsigned char    *buffer_rcv = NULL;
+static unsigned char    *buffer_snd = NULL;
+
 static uv_tty_t tty;
+
+static struct neat_flow_operations ops;
 
 void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
 void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
@@ -117,8 +120,8 @@ static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
-    uint32_t buffer_filled;
     neat_error_code code;
+    uint32_t        buffer_filled;
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -169,12 +172,13 @@ on_readable(struct neat_flow_operations *opCB)
 static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
-    static int message_number = 0;
-    static int last_message_number = 0;
     neat_error_code code;
     struct neat_tlv options[1];
+    static int      message_number = 0;
+    static int      last_message_number = 0;
+
     unsigned char buf[64];
-    int len;
+    int           len;
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -200,7 +204,8 @@ on_writable(struct neat_flow_operations *opCB)
             }
 
             if (config_log_level >= 1) {
-                fprintf(stderr, "%s - sent %d bytes\n", __func__, stdin_buffer.buffer_filled);
+                fprintf(stderr, "%s - sent %d bytes\n", __func__,
+                        stdin_buffer.buffer_filled);
             }
 
             message_number++;
@@ -220,7 +225,7 @@ on_writable(struct neat_flow_operations *opCB)
             code = neat_write(opCB->ctx, opCB->flow, buf, len, options, 1);
 
             if (code != NEAT_OK) {
-                fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
+                fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
                 return on_error(opCB);
             }
 
@@ -341,7 +346,7 @@ tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
 
         // stop reading from stdin and set write callbacks
         uv_read_stop(stream);
-        ops.on_writable = on_writable;
+        ops.on_writable    = on_writable;
         ops.on_all_written = on_all_written;
         neat_set_operations(ctx, flow, &ops);
     }
@@ -356,18 +361,19 @@ tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    buffer->len = config_rcv_buffer_size;
+    buffer->len  = config_rcv_buffer_size;
     buffer->base = malloc(config_rcv_buffer_size);
+    assert(buffer->base);
 }
 
 int
 main(int argc, char *argv[])
 {
     uint64_t prop;
-    int arg, result;
-    char *arg_property = config_property;
-    char *arg_property_ptr = NULL;
-    char arg_property_delimiter[] = ",;";
+    int      arg, result;
+    char    *arg_property             = config_property;
+    char    *arg_property_ptr         = NULL;
+    char     arg_property_delimiter[] = ",;";
 
     memset(&ops, 0, sizeof(ops));
     memset(&stdin_buffer, 0, sizeof(stdin_buffer));
@@ -520,10 +526,10 @@ main(int argc, char *argv[])
     }
 
     // set callbacks
-    ops.on_connected = on_connected;
-    ops.on_error = on_error;
-    ops.on_close = on_close;
-    ops.on_aborted = on_abort;
+    ops.on_connected              = on_connected;
+    ops.on_error                  = on_error;
+    ops.on_close                  = on_close;
+    ops.on_aborted                = on_abort;
     ops.on_network_status_changed = on_network_changed;
 
     if (neat_set_operations(ctx, flow, &ops)) {

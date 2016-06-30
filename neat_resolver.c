@@ -275,9 +275,10 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
                 nsrc_addr, dst_addr);
     }
 
-    if (!num_resolved_addrs)
+    if (!num_resolved_addrs) {
         resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
-    else
+        free(result_list);
+    } else
         resolver->handle_resolve(resolver, result_list, NEAT_RESOLVER_OK);
 }
 
@@ -333,9 +334,10 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
         pair_itr = pair_itr->next_pair.le_next;
     }
 
-    if (!num_resolved_addrs)
+    if (!num_resolved_addrs) {
+        free(result_list);
         resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
-    else
+    } else
         resolver->handle_resolve(resolver, result_list, NEAT_RESOLVER_OK);
 }
 
@@ -422,7 +424,6 @@ static uint8_t neat_resolver_check_duplicate(
 
     for (itr = pair->resolver->resolver_pairs.lh_first; itr != NULL;
             itr = itr->next_pair.le_next) {
-        addr_equal = 0;
 
         //Must match index
         if (src_addr->if_idx != itr->src_addr->if_idx ||
@@ -943,8 +944,10 @@ neat_resolver_init(struct neat_ctx *nc,
                    neat_resolver_cleanup_t cleanup)
 {
     struct neat_resolver *resolver = calloc(sizeof(struct neat_resolver), 1);
-    if (!handle_resolve || !resolver)
+    if (!handle_resolve || !resolver) {
+        free(resolver);
         return NULL;
+    }
 
     resolver->nc = nc;
     resolver->cleanup = cleanup;
@@ -995,6 +998,7 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
 {
     struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
     struct neat_resolver_server *server;
+    struct neat_resolver_server *server_next;
 
     resolver_itr = resolver->resolver_pairs.lh_first;
 
@@ -1032,9 +1036,8 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
         uv_fs_event_stop(&(resolver->resolv_conf_handle));
 
         //Remove all entries in the server table
-        while (resolver->server_list.lh_first != NULL) {
-            server = resolver->server_list.lh_first;
-            LIST_REMOVE(resolver->server_list.lh_first, next_server);
+        LIST_FOREACH_SAFE(server, &(resolver->server_list), next_server, server_next) {
+            LIST_REMOVE(server, next_server);
             free(server);
         }
     } else {

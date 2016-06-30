@@ -1096,14 +1096,14 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
 
     newFlow->ownedByCore = 1;
     newFlow->isSCTPExplicitEOR = flow->isSCTPExplicitEOR;
-    newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
+    newFlow->operations = calloc(sizeof(struct neat_flow_operations), 1);
     newFlow->operations->on_connected = flow->operations->on_connected;
     newFlow->operations->on_readable = flow->operations->on_readable;
     newFlow->operations->on_writable = flow->operations->on_writable;
     newFlow->operations->ctx = ctx;
     newFlow->operations->flow = flow;
 
-    newFlow->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+    newFlow->handle = (uv_poll_t *) calloc(sizeof(uv_poll_t), 1);
     assert(newFlow->handle != NULL);
 
     newFlow->stream_count = 1;

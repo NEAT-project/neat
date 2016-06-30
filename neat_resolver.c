@@ -432,7 +432,7 @@ static uint8_t neat_resolver_check_duplicate(
 
         if (src_addr->family == AF_INET) {
             cmp_addr_4 = &(itr->src_addr->u.v4.addr4);
-            addr_equal = (cmp_addr_4->sin_addr.s_addr ==
+            addr_equal = (src_addr_4 != NULL && cmp_addr_4->sin_addr.s_addr ==
                           src_addr_4->sin_addr.s_addr);
         } else {
             cmp_addr_6 = &(itr->src_addr->u.v6.addr6);
@@ -784,7 +784,7 @@ static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
         if (resolver_pair->src_addr->family != addr_to_delete->family)
             continue;
 
-        if (addr_to_delete->family == AF_INET) {
+        if (addr_to_delete->family == AF_INET && addr4 != NULL) {
             addr4_cmp = &(resolver_pair->src_addr->u.v4.addr4);
 
             if (addr4_cmp->sin_addr.s_addr == addr4->sin_addr.s_addr)

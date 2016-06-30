@@ -873,33 +873,49 @@ static void free_he_handle_cb(uv_handle_t *handle)
     free(handle);
 }
 
-neat_error_code
-allocate_send_buffers(neat_flow* flow)
+/* allocate_send_buffers allocates memory to store at least count number of
+ * buffers for this flow. If count is lower than the previous number of
+ * allocated buffers, the existing number of buffers is kept unchanged.
+ */
+static neat_error_code
+allocate_send_buffers(neat_flow* flow, unsigned int count)
 {
+    void        *tmp;
+    unsigned int previous_buffer_count = flow->buffer_count;
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    assert(flow->stream_count > 0);
+    if (flow->bufferedMessages == NULL || count > previous_buffer_count) {
+        flow->buffer_count = count;
 
-    flow->buffer_count = flow->stream_count;
+        tmp = realloc(flow->bufferedMessages,
+                      count * sizeof(*flow->bufferedMessages));
 
-    flow->bufferedMessages = malloc(sizeof(*flow->bufferedMessages) *
-                                    flow->buffer_count);
+        if (!tmp)
+            return NEAT_ERROR_INTERNAL;
+        else
+            flow->bufferedMessages = tmp;
 
-    if (!flow->bufferedMessages)
-        return NEAT_ERROR_INTERNAL;
+        tmp = realloc(flow->isDraining,
+                      count * sizeof(*flow->isDraining));
 
-    flow->isDraining = calloc(flow->buffer_count, sizeof(unsigned int));
+        if (!tmp)
+            return NEAT_ERROR_INTERNAL;
+        else
+            flow->isDraining = tmp;
 
-    if (!flow->isDraining) {
-        free(flow->bufferedMessages);
-        return NEAT_ERROR_INTERNAL;
+        neat_log(NEAT_LOG_DEBUG, "Flow now has %d send buffers",
+                 flow->buffer_count);
+    } else {
+        neat_log(NEAT_LOG_DEBUG, "Requested %d send buffers, had %d.",
+                 count, flow->buffer_count);
+        return NEAT_OK;
     }
 
-    for (size_t buffer = 0; buffer < flow->buffer_count; ++buffer) {
-        TAILQ_INIT(&(flow->bufferedMessages[buffer]));
+    for (size_t i = previous_buffer_count; i < flow->buffer_count; ++i) {
+        TAILQ_INIT(&(flow->bufferedMessages[i]));
+        flow->isDraining[i] = 0;
     }
-
-    neat_log(NEAT_LOG_DEBUG, "Allocated %d send buffers", flow->buffer_count);
 
     return NEAT_OK;
 }
@@ -921,6 +937,8 @@ free_send_buffers(neat_ctx* ctx, neat_flow* flow)
 
     if (flow->bufferedMessages)
         free(flow->bufferedMessages);
+
+    flow->buffer_count = 0;
 }
 
 static void
@@ -955,12 +973,10 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->firstWritePending = 1;
         flow->isPolling = 1;
 
-        assert(flow->stream_count);
-
         LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);
 
-        if (allocate_send_buffers(flow) != NEAT_OK) {
+        if (allocate_send_buffers(flow, flow->stream_count) != NEAT_OK) {
             io_error(he_ctx->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO );
             return;
         }
@@ -1106,22 +1122,8 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     newFlow->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
     assert(newFlow->handle != NULL);
 
-    newFlow->stream_count = 1;
-    if (allocate_send_buffers(newFlow) != NEAT_OK) {
-        io_error(ctx, newFlow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
-        free(newFlow);
-        return;
-    }
-
     switch (newFlow->sockStack) {
     case NEAT_STACK_SCTP:
-        newFlow->stream_count = 1;
-        if (allocate_send_buffers(newFlow) != NEAT_OK) {
-            io_error(ctx, newFlow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
-            free(newFlow);
-            return;
-        }
-
 #if defined(USRSCTP_SUPPORT)
         newFlow->sock = newFlow->acceptusrsctpfx(ctx, newFlow, flow->sock);
         if (!newFlow->sock) {
@@ -1186,7 +1188,7 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     /* For now, assume that flows have the same number of streams in both
      * directions
      */
-    if (allocate_send_buffers(newFlow) != NEAT_OK) {
+    if (allocate_send_buffers(newFlow, newFlow->stream_count) != NEAT_OK) {
         io_error(ctx, newFlow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
         return;
     }
@@ -2493,6 +2495,9 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->sock = NULL;
     rv->acceptusrsctpfx = neat_accept_via_usrsctp;
 #endif
+
+    allocate_send_buffers(rv, 1);
+
     return rv;
 }
 

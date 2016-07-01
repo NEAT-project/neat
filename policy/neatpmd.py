@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import atexit
-import code
 import logging
 import os
 import stat
@@ -12,51 +11,8 @@ from operator import attrgetter
 from cib import CIB
 from policy import PIB, NEATProperty, NEATPolicy, NEATRequest
 
-
 FIFO_IN = 'pm_json.in'
 FIFO_OUT = 'pm_json.out'
-
-
-def example():
-    cib = CIB('cib/example/')
-    pib = PIB()
-
-    # ----- example from README.md -----
-    property1 = NEATProperty(('remote_ip', '10.1.23.45'), precedence=NEATProperty.IMMUTABLE)
-
-    request = NEATRequest()
-    request.properties.insert(property1)
-    request.properties.insert(NEATProperty(('MTU', (1500, float('inf')))))
-    request.properties.insert(NEATProperty(('transport_TCP', True)))
-
-    request.properties
-
-    policy1 = NEATPolicy(name='Bulk transfer')
-    policy1.match.insert(NEATProperty(('remote_ip', '10.1.23.45')))
-    policy1.properties.insert(NEATProperty(('capacity', (10000, 100000)), precedence=NEATProperty.IMMUTABLE))
-    policy1.properties.insert(NEATProperty(('MTU', 9600)))
-    pib.register(policy1)
-
-    policy2 = NEATPolicy(name='TCP options')
-    policy2.match.insert(NEATProperty(('MTU', 9600)))
-    policy2.match.insert(NEATProperty(('is_wired', True)))
-    policy2.properties.insert(NEATProperty(('TCP_window_scale', True)))
-    pib.register(policy2)
-
-    # code.interact(local=locals(), banner='start')
-
-    print("CIB lookup:")
-    cib.lookup(request)
-    request.dump()
-    # code.interact(local=locals(), banner='CIB lookup done')
-
-    print("PIB lookup:")
-    pib.lookup_all(request.candidates)
-    request.dump()
-
-    for candidate in request.candidates:
-        print(candidate.properties.json())
-    code.interact(local=locals(), banner='PIB lookup done')
 
 
 @atexit.register
@@ -70,11 +26,14 @@ def fifo_cleanup():
 
 
 def process_request(json_str):
+    """Process JSON requests from NEAT logic"""
     logging.debug(json_str)
+
     request = NEATRequest()
     request.properties.insert_json(json_str)
     print('received NEAT request: %s' % str(request.properties))
 
+    # main lookup sequence
     profiles._lookup(request.properties, remove_matched=True, apply=True)
     cib.lookup(request)
     pib.lookup_all(request.candidates)
@@ -82,8 +41,9 @@ def process_request(json_str):
     request.candidates.sort(key=attrgetter('score'), reverse=True)
     candidates_json = '[' + ', '.join([candidate.properties.json() for candidate in request.candidates]) + ']'
 
-    print("===== CANDIDATES =====")
-    print(candidates_json)
+    request.dump()
+    logging.info("JSON candidates piped to %s" % FIFO_OUT)
+
     api_writer(candidates_json)
 
 
@@ -100,12 +60,14 @@ def api_reader():
                 continue
             requests = line.splitlines()
             for r in requests:
+                logging.info("JSON request received in %s" % FIFO_IN)
                 process_request(r)
 
 
 def api_writer(out_str):
     with open(FIFO_OUT, 'w') as fifo:
         fifo.write(out_str)
+        print('written')
 
 
 def create_pipes():

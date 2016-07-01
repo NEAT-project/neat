@@ -161,7 +161,7 @@ class NEATProperty(object):
         if (other.precedence >= self.precedence) and not (
                         other.precedence == NEATProperty.IMMUTABLE and self.precedence == NEATProperty.IMMUTABLE):
 
-            # new precedence is higher than current precedence
+            # new precedence is higher than current precedence, update
             self.value = other.value
             self.precedence = other.precedence
             if value_differs:

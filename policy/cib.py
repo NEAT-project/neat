@@ -83,7 +83,11 @@ class CIB(object):
                 if not p:
                     continue
                 p['filename'] = filename
-
+                properties = PropertyDict()
+                properties.insert_dict(p.get('properties', {}))
+                # TODO convert CIB to PropertyDict
+                import code
+                code.interact(local=locals())
                 # convert JSON properties to NEATProperties
                 for key, value in p.pop('informational', {}).items():
                     p[key] = NEATProperty((key, value), precedence=NEATProperty.INFORMATIONAL)

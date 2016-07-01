@@ -285,8 +285,6 @@ static void free_cb(uv_handle_t *handle)
         free(flow->operations);
     }
 
-    free_send_buffers(flow->ctx, flow);
-
     // Make sure any still active HE connection attempts are
     // properly terminated and pertaining memory released
     int count = 0;
@@ -361,6 +359,8 @@ void neat_free_flow(neat_flow *flow)
 #endif
     if (flow->isPolling)
         uv_poll_stop(flow->handle);
+
+    free_send_buffers(flow->ctx, flow);
 
     if ((flow->handle != NULL) &&
         (flow->handle->type != UV_UNKNOWN_HANDLE))

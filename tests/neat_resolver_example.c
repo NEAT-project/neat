@@ -91,7 +91,7 @@ static void resolver_cleanup(struct neat_resolver *resolver)
 static uint8_t test_resolver(struct neat_ctx *nc, struct neat_resolver *resolver,
         uint8_t family, neat_protocol_stack_type stack[], uint8_t stack_count, char *node, uint16_t port)
 {
-    if (neat_getaddrinfo(resolver, family, node, port, stack, stack_count))
+    if (neat_getaddrinfo(resolver, family, node, port))
         return 1;
 
     neat_start_event_loop(nc, NEAT_RUN_DEFAULT);

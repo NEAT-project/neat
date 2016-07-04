@@ -216,8 +216,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     /* FIXME: derivation of the socket type is wrong.
      * FIXME: Make use of the array of protocols
      */
-    neat_getaddrinfo(ctx->resolver, family, flow->name, flow->port,
-            stacks, nr_of_stacks);
+    neat_getaddrinfo(ctx->resolver, family, flow->name, flow->port);
 
     return NEAT_OK;
 }

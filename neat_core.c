@@ -1387,21 +1387,18 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (neat_base_stack(flow->sockStack) == NEAT_STACK_SCTP) {
-        neat_protocol_stack_type stacks[] = {NEAT_STACK_SCTP};
+        literal = neat_resolver_check_for_literal(&family, name);
 
-	literal = neat_resolver_check_for_literal(&family, name);
+        if (literal != 1) {
+            neat_log(NEAT_LOG_ERROR, "%s: provided name '%s' is not an address literal.\n",
+                 __func__, name);
+            return NEAT_ERROR_BAD_ARGUMENT;
+        }
 
-	if (literal != 1) {
-	    neat_log(NEAT_LOG_ERROR, "%s: provided name '%s' is not an address literal.\n",
-		     __func__, name);
-	    return NEAT_ERROR_BAD_ARGUMENT;
-	}
+            ctx->resolver->handle_resolve = set_primary_dest_resolve_cb;
+            neat_getaddrinfo(ctx->resolver, AF_UNSPEC, name, flow->port);
 
-        ctx->resolver->handle_resolve = set_primary_dest_resolve_cb;
-        neat_getaddrinfo(ctx->resolver, AF_UNSPEC, name, flow->port,
-                stacks, sizeof(*stacks)/sizeof(stacks[0]));
-
-        return NEAT_ERROR_OK;
+            return NEAT_ERROR_OK;
     }
 
     return NEAT_ERROR_UNABLE;
@@ -1489,8 +1486,7 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 
     ctx->resolver->userData1 = (void *)flow;
 
-    neat_getaddrinfo(ctx->resolver, AF_INET, flow->name, flow->port,
-                     stacks, nr_of_stacks);
+    neat_getaddrinfo(ctx->resolver, AF_INET, flow->name, flow->port);
     return NEAT_OK;
 }
 

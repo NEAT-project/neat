@@ -265,8 +265,7 @@ void neat_resolver_free_results(struct neat_resolver_results *results);
 //Start to resolve a domain name (or literal). Accepts a list of protocols, will
 //set socktype based on protocol
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-        const char *node, uint16_t port, neat_protocol_stack_type ai_stack[],
-        uint8_t stack_count);
+        const char *node, uint16_t port);
 //Check if node is an IP literal or not. Returns -1 on failure, 0 if not
 //literal, 1 if literal
 int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node);

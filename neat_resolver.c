@@ -829,28 +829,6 @@ int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node)
     return v4_literal | v6_literal;
 }
 
-static uint8_t neat_validate_protocols(neat_protocol_stack_type stacks[], uint8_t stack_count)
-{
-    uint8_t i;
-
-    if (stack_count > NEAT_STACK_MAX_NUM)
-        return RETVAL_FAILURE;
-
-    for (i = 0; i < stack_count; i++) {
-        switch (stacks[i]) {
-        case NEAT_STACK_UDP:
-        case NEAT_STACK_UDPLITE:
-        case NEAT_STACK_TCP:
-        case NEAT_STACK_SCTP:
-            continue;
-        default:
-            return RETVAL_FAILURE;
-        }
-    }
-
-    return RETVAL_SUCCESS;
-}
-
 //This one will (at least for now) be used to start the first quest. Lets see
 //how much we can recycle when we start processing queue
 static void neat_start_request(struct neat_resolver *resolver,
@@ -899,9 +877,7 @@ static void neat_start_request(struct neat_resolver *resolver,
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
                          uint8_t family,
                          const char *node,
-                         uint16_t port,
-                         neat_protocol_stack_type ai_stack[],
-                         uint8_t stack_count)
+                         uint16_t port)
 {
     struct neat_resolver_request *request;
     uint8_t do_request = 0;
@@ -914,11 +890,6 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
 
     if (family && family != AF_INET && family != AF_INET6 && family != AF_UNSPEC) {
         neat_log(NEAT_LOG_ERROR, "%s - Invalid family specified", __func__);
-        return RETVAL_FAILURE;
-    }
-
-    if (neat_validate_protocols(ai_stack, stack_count)) {
-        neat_log(NEAT_LOG_ERROR, "%s - Error in desired protocol list", __func__);
         return RETVAL_FAILURE;
     }
 

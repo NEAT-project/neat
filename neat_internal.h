@@ -48,11 +48,15 @@ struct neat_cib
     uint8_t dummy;
 };
 
-struct neat_ctx {
+LIST_HEAD(neat_flow_list_head, neat_flow);
+
+struct neat_ctx
+{
     uv_loop_t *loop;
     struct neat_resolver *resolver;
     struct neat_pib pib;
     struct neat_cib cib;
+    struct neat_flow_list_head flows;
     uv_timer_t addr_lifetime_handle;
 
     // resolver
@@ -162,6 +166,7 @@ struct neat_flow
 
     //List with all non-freed HE contexts.
     LIST_HEAD(he_cb_ctxs, he_cb_ctx) he_cb_ctx_list;
+    LIST_ENTRY(neat_flow) next_flow;
 };
 
 typedef struct neat_flow neat_flow;

@@ -12,7 +12,6 @@
 // or if you have installed neat globally
 // clang -g neat_resolver_example.c -lneat
 
-
 static void resolver_handle(struct neat_resolver *resolver,
                      struct neat_resolver_results *results, uint8_t neat_code)
 {
@@ -21,7 +20,7 @@ static void resolver_handle(struct neat_resolver *resolver,
 
     if (neat_code != NEAT_RESOLVER_OK) {
         fprintf(stderr, "Resolver failed\n");
-        neat_stop_event_loop(resolver->nc);
+        //neat_stop_event_loop(resolver->nc);
         return;
     }
 
@@ -79,7 +78,7 @@ static void resolver_handle(struct neat_resolver *resolver,
 
     //Free list, it is callers responsibility
     neat_resolver_free_results(results);
-    neat_stop_event_loop(resolver->nc);
+    //neat_stop_event_loop(resolver->nc);
 }
 
 static void resolver_cleanup(struct neat_resolver *resolver)

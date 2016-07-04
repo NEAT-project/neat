@@ -186,6 +186,7 @@ struct neat_resolver_server;
 LIST_HEAD(neat_resolver_results, neat_resolver_res);
 LIST_HEAD(neat_resolver_servers, neat_resolver_server);
 
+//TODO: First argument will be changed, maybe change it to the data pointer?
 typedef void (*neat_resolver_handle_t)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
 typedef void (*neat_resolver_cleanup_t)(struct neat_resolver *resolver);
 

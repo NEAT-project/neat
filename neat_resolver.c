@@ -45,6 +45,7 @@ static void neat_resolver_handle_newaddr(struct neat_ctx *nc,
     if (src_addr->family == AF_INET6 && !src_addr->u.v6.ifa_pref)
         return;
 
+    //TODO: This will be a loop through all requests
     if (!request)
         return;
 
@@ -269,23 +270,22 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
 //query to the application using NEAT
 static void neat_resolver_timeout_cb(uv_timer_t *handle)
 {
-    struct neat_resolver *resolver = handle->data;
-    struct neat_resolver_request *request = resolver->request_queue.tqh_first;
+    struct neat_resolver_request *request = handle->data;
     struct neat_resolver_src_dst_addr *pair_itr = NULL;
     struct neat_resolver_results *result_list;
     uint32_t num_resolved_addrs = 0;
     uint8_t i;
 
     //DNS timeout, call DNS callback with timeout error code
-    if (!resolver->name_resolved_timeout) {
-        request->resolve_cb(resolver, NULL, NEAT_RESOLVER_TIMEOUT);
+    if (!request->name_resolved_timeout) {
+        request->resolve_cb(NULL, NULL, NEAT_RESOLVER_TIMEOUT);
         return;
     }
 
     //Signal internal error
     if ((result_list =
                 calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
-        request->resolve_cb(resolver, NULL, NEAT_RESOLVER_ERROR);
+        request->resolve_cb(NULL, NULL, NEAT_RESOLVER_ERROR);
         return;
     }
 
@@ -321,9 +321,9 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 
     if (!num_resolved_addrs) {
         free(result_list);
-        request->resolve_cb(resolver, NULL, NEAT_RESOLVER_ERROR);
+        request->resolve_cb(NULL, NULL, NEAT_RESOLVER_ERROR);
     } else
-        request->resolve_cb(resolver, result_list, NEAT_RESOLVER_OK);
+        request->resolve_cb(NULL, result_list, NEAT_RESOLVER_OK);
 }
 
 //Called when a DNS request has been (i.e., passed to socket). We will send the
@@ -561,11 +561,11 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
     ldns_rr_list_deep_free(rr_list);
     ldns_pkt_free(dns_reply);
 
-    if (num_resolved && !pair->resolver->name_resolved_timeout){
-        uv_timer_stop(&(pair->resolver->timeout_handle));
-        uv_timer_start(&(pair->resolver->timeout_handle), neat_resolver_timeout_cb,
+    if (num_resolved && !pair->request->name_resolved_timeout){
+        uv_timer_stop(&(pair->request->timeout_handle));
+        uv_timer_start(&(pair->request->timeout_handle), neat_resolver_timeout_cb,
                 pair->resolver->dns_t2, 0);
-        pair->resolver->name_resolved_timeout = 1;
+        pair->request->name_resolved_timeout = 1;
     }
 }
 
@@ -856,14 +856,14 @@ static void neat_start_request(struct neat_resolver *resolver,
     //node is a literal, so we will just wait a short while for address list to
     //be populated
     if (is_literal) {
-        uv_timer_start(&(resolver->timeout_handle),
+        uv_timer_start(&(request->timeout_handle),
                 neat_resolver_literal_timeout_cb,
                 DNS_LITERAL_TIMEOUT, 0);
         return;
     }
 
     //Start the resolver timeout, this includes fetching addresses
-    uv_timer_start(&(resolver->timeout_handle), neat_resolver_timeout_cb,
+    uv_timer_start(&(request->timeout_handle), neat_resolver_timeout_cb,
             resolver->dns_t1, 0);
 
     //No point starting to query if we don't have any source addresses
@@ -924,6 +924,9 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
     request = calloc(sizeof(struct neat_resolver_request), 1);
     request->family = family;
     request->dst_port = htons(port);
+
+    uv_timer_init(resolver->nc->loop, &(request->timeout_handle));
+    request->timeout_handle.data = request;
 
     LIST_INIT(&(request->resolver_pairs));
 
@@ -1001,8 +1004,6 @@ neat_resolver_init(struct neat_ctx *nc,
 
     uv_idle_init(nc->loop, &(resolver->idle_handle));
     resolver->idle_handle.data = resolver;
-    uv_timer_init(nc->loop, &(resolver->timeout_handle));
-    resolver->timeout_handle.data = resolver;
 
     if (uv_fs_event_init(nc->loop, &(resolver->resolv_conf_handle))) {
         neat_log(NEAT_LOG_ERROR, "%s - Could not initialize fs event handle", __func__);

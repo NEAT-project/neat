@@ -67,7 +67,7 @@ struct neat_resolver_src_dst_addr {
 struct neat_resolver_request {
     uint16_t dst_port;
     uint8_t family;
-    uint8_t __pad;
+    uint8_t name_resolved_timeout;
 
     char domain_name[MAX_DOMAIN_LENGTH];
 
@@ -76,6 +76,9 @@ struct neat_resolver_request {
 
     //Callback that will be called when resolving is done
     neat_resolver_handle_t resolve_cb; 
+
+    //Timeout handle owned by this request
+    uv_timer_t timeout_handle;
 
     void *data; //User data
 

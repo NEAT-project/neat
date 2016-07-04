@@ -968,12 +968,16 @@ neat_resolver_init(struct neat_ctx *nc,
                    neat_resolver_handle_t handle_resolve,
                    neat_resolver_cleanup_t cleanup)
 {
-    struct neat_resolver *resolver = calloc(sizeof(struct neat_resolver), 1);
 
-    if (!handle_resolve || !resolver) {
-        free(resolver);
+    struct neat_resolver *resolver;
+    
+    if (!handle_resolve)
         return NULL;
-    }
+
+    resolver = calloc(sizeof(struct neat_resolver), 1);
+
+    if (!resolver)
+        return NULL;
 
     TAILQ_INIT(&(resolver->request_queue));
 

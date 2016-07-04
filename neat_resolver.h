@@ -34,12 +34,14 @@ static char* const INET6_DNS_SERVERS [] = {"2001:4860:4860::8888", "2001:4860:48
 
 struct neat_addr;
 struct neat_resolver;
+struct neat_resolver_request;
 
 //Represent one source/dst address used for DNS lookups. We could save space by
 //recycling handle, but this structure will make it easier to support
 //fragmentation of DNS requests (way down the line)
 struct neat_resolver_src_dst_addr {
-    struct neat_resolver *resolver;
+    struct neat_resolver *resolver; //TODO: Remove?
+    struct neat_resolver_request *request;
     struct neat_addr *src_addr;
     //TODO: Dynamically allocate?
     struct neat_addr dst_addr;
@@ -69,12 +71,11 @@ struct neat_resolver_request {
 
     char domain_name[MAX_DOMAIN_LENGTH];
 
-    neat_resolver_handle_t resolve_cb; //Callback that will be called when resolving is done
+    //The resolver pairs related to this request
+    struct neat_resolver_pairs resolver_pairs;
 
-    //These values are just passed on to neat_resolver_res
-    //TODO: Remove this, will be set on result
-    //WHAT IS THIS? Causes a large number of allocs ...
-    neat_protocol_stack_type ai_stack[NEAT_STACK_MAX_NUM];
+    //Callback that will be called when resolving is done
+    neat_resolver_handle_t resolve_cb; 
 
     void *data; //User data
 

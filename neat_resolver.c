@@ -155,57 +155,32 @@ static uint8_t neat_resolver_addr_internal(struct sockaddr_storage *addr)
 
 //Create all results for one match
 static uint8_t neat_resolver_fill_results(
-        struct neat_resolver_request *request,
         struct neat_resolver_results *result_list,
         struct neat_addr *src_addr,
         struct sockaddr_storage dst_addr)
 {
     socklen_t addrlen;
-    struct sockaddr_in *addr4;
     struct neat_resolver_res *result;
-    uint8_t i;
     uint8_t num_addr_added = 0;
 
-    for (i = 0; i < NEAT_STACK_MAX_NUM; i++) {
-        if (!request->ai_stack[i])
-            break;
+    result = calloc(sizeof(struct neat_resolver_res), 1);
 
-        result = calloc(sizeof(struct neat_resolver_res), 1);
+    if (result == NULL)
+        return 0;
 
-        if (result == NULL)
-            continue;
+    addrlen = src_addr->family == AF_INET ?
+        sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 
-        addrlen = src_addr->family == AF_INET ?
-            sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
-
-        result->ai_family = src_addr->family;
-        result->ai_stack = request->ai_stack[i];
-        result->if_idx = src_addr->if_idx;
-        result->src_addr = src_addr->u.generic.addr;
-        result->src_addr_len = addrlen;
-        result->dst_addr = dst_addr;
-        result->dst_addr_len = addrlen;
-        result->internal = neat_resolver_addr_internal(&dst_addr);
-
-        //Code can't get here without having passed through sanitizing function
-        switch (result->ai_stack) {
-        case NEAT_STACK_UDP:
-        case NEAT_STACK_UDPLITE:
-            result->ai_socktype = SOCK_DGRAM;
-            break;
-        default:
-            result->ai_socktype = SOCK_STREAM;
-            break;
-        }
-
-        //Head of sockaddr_in and sockaddr_in6 is the same, so this is safe
-        //for setting port
-        addr4 = (struct sockaddr_in*) &(result->dst_addr);
-        addr4->sin_port = request->dst_port;
-
-        LIST_INSERT_HEAD(result_list, result, next_res);
-        num_addr_added++;
-    }
+    result->ai_family = src_addr->family;
+    result->if_idx = src_addr->if_idx;
+    result->src_addr = src_addr->u.generic.addr;
+    result->src_addr_len = addrlen;
+    result->dst_addr = dst_addr;
+    result->dst_addr_len = addrlen;
+    result->internal = neat_resolver_addr_internal(&dst_addr);
+    
+    LIST_INSERT_HEAD(result_list, result, next_res);
+    num_addr_added++;
 
     return num_addr_added;
 }
@@ -315,7 +290,7 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
     }
 
     LIST_INIT(result_list);
-    pair_itr = resolver->resolver_pairs.lh_first;
+    pair_itr = request->resolver_pairs.lh_first;
 
     //Iterate through all receiver pairs and create neat_resolver_res
     while (pair_itr != NULL) {
@@ -336,8 +311,7 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
                 return;
 
             //TODO: Consider connecting pairs to request instead of resolver
-            num_resolved_addrs += neat_resolver_fill_results(request,
-                                                             result_list,
+            num_resolved_addrs += neat_resolver_fill_results(result_list,
                                                              pair_itr->src_addr,
                                                              pair_itr->resolved_addr[i]);
         }
@@ -433,7 +407,7 @@ static uint8_t neat_resolver_check_duplicate(
     if (i <= 0)
         return 0;
 
-    for (itr = pair->resolver->resolver_pairs.lh_first; itr != NULL;
+    for (itr = pair->request->resolver_pairs.lh_first; itr != NULL;
             itr = itr->next_pair.le_next) {
 
         //Must match index
@@ -755,6 +729,7 @@ static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
         }
 
         resolver_pair->resolver = resolver;
+        resolver_pair->request = request;
         resolver_pair->src_addr = src_addr;
 
         if (neat_resolver_create_pair(resolver->nc, resolver_pair,
@@ -769,7 +744,7 @@ static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
             neat_resolver_mark_pair_del(resolver_pair);
         } else {
             //printf("Will lookup %s\n", resolver->domain_name);
-            LIST_INSERT_HEAD(&(resolver->resolver_pairs), resolver_pair,
+            LIST_INSERT_HEAD(&(request->resolver_pairs), resolver_pair,
                     next_pair);
         }
     }
@@ -923,7 +898,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
                          uint8_t stack_count)
 {
     struct neat_resolver_request *request;
-    uint8_t i, do_request = 0;
+    uint8_t do_request = 0;
     int8_t is_literal = 0;
 
     if (port == 0) {
@@ -949,11 +924,11 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
     request = calloc(sizeof(struct neat_resolver_request), 1);
     request->family = family;
     request->dst_port = htons(port);
+
+    LIST_INIT(&(request->resolver_pairs));
+
     //HACK: This is just a hack for testing, will be set based on argument later!
     request->resolve_cb = resolver->handle_resolve;
-
-    for (i = 0; i < stack_count; i++)
-        request->ai_stack[i] = ai_stack[i];
 
     is_literal = neat_resolver_check_for_literal(&resolver->family, node);
 

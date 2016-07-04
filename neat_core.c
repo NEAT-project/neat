@@ -177,7 +177,6 @@ void neat_free_ctx(struct neat_ctx *nc)
 
     while (!LIST_EMPTY(&nc->flows)) {
         struct neat_flow *f = LIST_FIRST(&nc->flows);
-        LIST_REMOVE(f, next_flow);
         neat_free_flow(f);
     }
 
@@ -373,6 +372,9 @@ void neat_free_flow(neat_flow *flow)
     if ((flow->handle != NULL) &&
         (flow->handle->type != UV_UNKNOWN_HANDLE))
         uv_close((uv_handle_t *)(flow->handle), free_cb);
+
+	LIST_REMOVE(flow, next_flow);
+	free(flow);
 }
 
 neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,

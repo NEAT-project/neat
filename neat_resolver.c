@@ -279,6 +279,8 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
     //DNS timeout, call DNS callback with timeout error code
     if (!request->name_resolved_timeout) {
         request->resolve_cb(NULL, NULL, NEAT_RESOLVER_TIMEOUT);
+
+        //TODO: Cleanup, remove request
         return;
     }
 
@@ -286,6 +288,8 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
     if ((result_list =
                 calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
         request->resolve_cb(NULL, NULL, NEAT_RESOLVER_ERROR);
+
+        //TODO: Cleanup, remove request
         return;
     }
 
@@ -308,7 +312,7 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 
             if (pair_itr->src_addr->family == AF_INET6 &&
                 !pair_itr->src_addr->u.v6.ifa_pref)
-                return;
+                break;
 
             //TODO: Consider connecting pairs to request instead of resolver
             num_resolved_addrs += neat_resolver_fill_results(result_list,
@@ -324,6 +328,8 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
         request->resolve_cb(NULL, NULL, NEAT_RESOLVER_ERROR);
     } else
         request->resolve_cb(NULL, result_list, NEAT_RESOLVER_OK);
+
+    //TODO: Cleanup, remove request
 }
 
 //Called when a DNS request has been (i.e., passed to socket). We will send the

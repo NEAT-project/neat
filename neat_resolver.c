@@ -155,7 +155,7 @@ static uint8_t neat_resolver_addr_internal(struct sockaddr_storage *addr)
 
 //Create all results for one match
 static uint8_t neat_resolver_fill_results(
-        struct neat_resolver *resolver,
+        struct neat_resolver_request *request,
         struct neat_resolver_results *result_list,
         struct neat_addr *src_addr,
         struct sockaddr_storage dst_addr)
@@ -167,7 +167,7 @@ static uint8_t neat_resolver_fill_results(
     uint8_t num_addr_added = 0;
 
     for (i = 0; i < NEAT_STACK_MAX_NUM; i++) {
-        if (!resolver->ai_stack[i])
+        if (!request->ai_stack[i])
             break;
 
         result = calloc(sizeof(struct neat_resolver_res), 1);
@@ -179,7 +179,7 @@ static uint8_t neat_resolver_fill_results(
             sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 
         result->ai_family = src_addr->family;
-        result->ai_stack = resolver->ai_stack[i];
+        result->ai_stack = request->ai_stack[i];
         result->if_idx = src_addr->if_idx;
         result->src_addr = src_addr->u.generic.addr;
         result->src_addr_len = addrlen;
@@ -201,7 +201,7 @@ static uint8_t neat_resolver_fill_results(
         //Head of sockaddr_in and sockaddr_in6 is the same, so this is safe
         //for setting port
         addr4 = (struct sockaddr_in*) &(result->dst_addr);
-        addr4->sin_port = resolver->dst_port;
+        addr4->sin_port = request->dst_port;
 
         LIST_INSERT_HEAD(result_list, result, next_res);
         num_addr_added++;
@@ -295,6 +295,7 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
 static void neat_resolver_timeout_cb(uv_timer_t *handle)
 {
     struct neat_resolver *resolver = handle->data;
+    struct neat_resolver_request *request = resolver->request_queue.tqh_first;
     struct neat_resolver_src_dst_addr *pair_itr = NULL;
     struct neat_resolver_results *result_list;
     uint32_t num_resolved_addrs = 0;
@@ -302,14 +303,14 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 
     //DNS timeout, call DNS callback with timeout error code
     if (!resolver->name_resolved_timeout) {
-        resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_TIMEOUT);
+        request->resolve_cb(resolver, NULL, NEAT_RESOLVER_TIMEOUT);
         return;
     }
 
     //Signal internal error
     if ((result_list =
                 calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
-        resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
+        request->resolve_cb(resolver, NULL, NEAT_RESOLVER_ERROR);
         return;
     }
 
@@ -334,9 +335,11 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
                 !pair_itr->src_addr->u.v6.ifa_pref)
                 return;
 
-            num_resolved_addrs += neat_resolver_fill_results(resolver,
-                    result_list, pair_itr->src_addr,
-                    pair_itr->resolved_addr[i]);
+            //TODO: Consider connecting pairs to request instead of resolver
+            num_resolved_addrs += neat_resolver_fill_results(request,
+                                                             result_list,
+                                                             pair_itr->src_addr,
+                                                             pair_itr->resolved_addr[i]);
         }
 
         pair_itr = pair_itr->next_pair.le_next;
@@ -344,9 +347,9 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 
     if (!num_resolved_addrs) {
         free(result_list);
-        resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
+        request->resolve_cb(resolver, NULL, NEAT_RESOLVER_ERROR);
     } else
-        resolver->handle_resolve(resolver, result_list, NEAT_RESOLVER_OK);
+        request->resolve_cb(resolver, result_list, NEAT_RESOLVER_OK);
 }
 
 //Called when a DNS request has been (i.e., passed to socket). We will send the
@@ -946,6 +949,8 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
     request = calloc(sizeof(struct neat_resolver_request), 1);
     request->family = family;
     request->dst_port = htons(port);
+    //HACK: This is just a hack for testing, will be set based on argument later!
+    request->resolve_cb = resolver->handle_resolve;
 
     for (i = 0; i < stack_count; i++)
         request->ai_stack[i] = ai_stack[i];

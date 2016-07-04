@@ -69,7 +69,7 @@ struct neat_resolver_request {
 
     char domain_name[MAX_DOMAIN_LENGTH];
 
-    neat_resolver_handle_t *cb; //Callback that will be called when resolving is done
+    neat_resolver_handle_t resolve_cb; //Callback that will be called when resolving is done
 
     //These values are just passed on to neat_resolver_res
     //TODO: Remove this, will be set on result

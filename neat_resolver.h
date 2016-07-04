@@ -4,6 +4,7 @@
 #include <uv.h>
 #include <ldns/ldns.h>
 
+#include "neat_internal.h"
 #include "neat_queue.h"
 
 //Timeout for complete DNS query
@@ -57,6 +58,27 @@ struct neat_resolver_src_dst_addr {
 
     //Keep track of which pairs are closed
     uint8_t closed;
+};
+
+//Struct representing one DNS request
+//TODO: Might be moved to neat_internal.h, will probably be passed to callback
+struct neat_resolver_request {
+    uint16_t dst_port;
+    uint8_t family;
+    uint8_t __pad;
+
+    char domain_name[MAX_DOMAIN_LENGTH];
+
+    neat_resolver_handle_t *cb; //Callback that will be called when resolving is done
+
+    //These values are just passed on to neat_resolver_res
+    //TODO: Remove this, will be set on result
+    //WHAT IS THIS? Causes a large number of allocs ...
+    neat_protocol_stack_type ai_stack[NEAT_STACK_MAX_NUM];
+
+    void *data; //User data
+
+    TAILQ_ENTRY(neat_resolver_request) next_req;
 };
 
 #endif

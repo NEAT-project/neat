@@ -126,8 +126,8 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
 
     LIST_INSERT_HEAD(&(nc->src_addrs), nsrc_addr, next_addr);
     ++nc->src_addr_cnt;
-    neat_run_event_cb(nc, NEAT_NEWADDR, nsrc_addr);
     neat_addr_print_src_addrs(nc);
+    neat_run_event_cb(nc, NEAT_NEWADDR, nsrc_addr);
 }
 
 void neat_addr_lifetime_timeout_cb(uv_timer_t *handle)

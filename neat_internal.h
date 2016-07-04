@@ -313,6 +313,7 @@ struct neat_event_cb {
     LIST_ENTRY(neat_event_cb) next_cb;
 };
 
+TAILQ_HEAD(neat_resolver_request_queue, neat_resolver_request);
 struct neat_resolver {
     //The resolver will wrap the context, so that we can easily have many
     //resolvers
@@ -339,7 +340,6 @@ struct neat_resolver {
     //total DNS timeout
     uint8_t name_resolved_timeout;
     uint8_t __pad2;
-    char domain_name[MAX_DOMAIN_LENGTH];
 
     //The reason we need two of these is that as of now, a neat_event_cb
     //struct can only be part of one list. This is a future optimization, if we
@@ -367,6 +367,9 @@ struct neat_resolver {
     //Users must be notified when it is safe to free or reset resolver memory.
     //It has to be done ansync due to libuv cleanup order
     neat_resolver_cleanup_t cleanup;
+
+    //DNS request queue, using TAILQ
+    struct neat_resolver_request_queue request_queue;
 };
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);

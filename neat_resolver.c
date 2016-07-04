@@ -24,7 +24,8 @@
 #include "neat_resolver_conf.h"
 
 static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
-        struct neat_addr *src_addr);
+                                          struct neat_addr *src_addr,
+                                          struct neat_resolver_request *request);
 static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
         struct neat_addr *addr_to_delete);
 
@@ -34,6 +35,7 @@ static void neat_resolver_handle_newaddr(struct neat_ctx *nc,
                                          void *data)
 {
     struct neat_resolver *resolver = p_ptr;
+    struct neat_resolver_request *request = resolver->request_queue.tqh_first;
     struct neat_addr *src_addr = data;
 
     if (resolver->family && resolver->family != src_addr->family)
@@ -43,7 +45,11 @@ static void neat_resolver_handle_newaddr(struct neat_ctx *nc,
     if (src_addr->family == AF_INET6 && !src_addr->u.v6.ifa_pref)
         return;
 
-    neat_resolver_create_pairs(resolver, src_addr);
+    if (!request)
+        return;
+
+    //TODO: Figure out what to do here
+    neat_resolver_create_pairs(resolver, src_addr, request);
 }
 
 static void neat_resolver_handle_deladdr(struct neat_ctx *nic,
@@ -209,6 +215,7 @@ static uint8_t neat_resolver_fill_results(
 //addresses can create a result structure for those that match
 static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
 {
+#if 0
     struct neat_resolver *resolver = handle->data;
     struct neat_resolver_results *result_list;
     uint32_t num_resolved_addrs = 0;
@@ -280,6 +287,7 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
         free(result_list);
     } else
         resolver->handle_resolve(resolver, result_list, NEAT_RESOLVER_OK);
+#endif
 }
 
 //Called when timeout expires. This function will pass the results of the DNS
@@ -585,7 +593,8 @@ static void neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
 }
 
 //Prepare and send (or, start sending) a DNS query for the given service
-static uint8_t neat_resolver_send_query(struct neat_resolver_src_dst_addr *pair)
+static uint8_t neat_resolver_send_query(struct neat_resolver_src_dst_addr *pair,
+                                        struct neat_resolver_request *request)
 {
     ldns_pkt *pkt;
     ldns_rr_type rr_type;
@@ -596,7 +605,7 @@ static uint8_t neat_resolver_send_query(struct neat_resolver_src_dst_addr *pair)
         rr_type = LDNS_RR_TYPE_AAAA;
 
     //Create a DNS query for aUrl
-    if (ldns_pkt_query_new_frm_str(&pkt, pair->resolver->domain_name, rr_type,
+    if (ldns_pkt_query_new_frm_str(&pkt, request->domain_name, rr_type,
                 LDNS_RR_CLASS_IN, 0) != LDNS_STATUS_OK) {
         neat_log(NEAT_LOG_ERROR, "%s - Could not create DNS packet", __func__);
         return RETVAL_FAILURE;
@@ -629,6 +638,9 @@ static uint8_t neat_resolver_send_query(struct neat_resolver_src_dst_addr *pair)
         neat_log(NEAT_LOG_ERROR, "%s - Failed to start DNS send", __func__);
         return RETVAL_FAILURE;
     }
+
+    neat_log(NEAT_LOG_DEBUG, "%s - Request for %s sent", __func__,
+             request->domain_name);
 
     return RETVAL_SUCCESS;
 }
@@ -714,14 +726,15 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
 //Called when we get a NEAT_NEWADDR message. Go through all matching DNS
 //servers, try to create src/dst pair and send query
 static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
-        struct neat_addr *src_addr)
+                                          struct neat_addr *src_addr,
+                                          struct neat_resolver_request *request)
 {
     struct neat_resolver_src_dst_addr *resolver_pair;
     struct neat_resolver_server *server_itr;
 
     //After adding support for restart, we can end up here without a domain
     //name. There is not point continuing if we have no domain name to resolve
-    if (!resolver->domain_name[0])
+    if (!request->domain_name[0])
         return RETVAL_SUCCESS;
 
     for (server_itr = resolver->server_list.lh_first; server_itr != NULL;
@@ -748,7 +761,7 @@ static uint8_t neat_resolver_create_pairs(struct neat_resolver *resolver,
             continue;
         }
 
-        if (neat_resolver_send_query(resolver_pair)) {
+        if (neat_resolver_send_query(resolver_pair, request)) {
             neat_log(NEAT_LOG_ERROR, "%s - Failed to start lookup", __func__);
             neat_resolver_mark_pair_del(resolver_pair);
         } else {
@@ -854,15 +867,61 @@ static uint8_t neat_validate_protocols(neat_protocol_stack_type stacks[], uint8_
     return RETVAL_SUCCESS;
 }
 
-//Public NEAT resolver functions
-//getaddrinfo starts a query for the provided service
-uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-        const char *node, uint16_t port, neat_protocol_stack_type ai_stack[],
-        uint8_t stack_count)
+//This one will (at least for now) be used to start the first quest. Lets see
+//how much we can recycle when we start processing queue
+static void neat_start_request(struct neat_resolver *resolver,
+                               struct neat_resolver_request *request,
+                               int8_t is_literal)
 {
     struct neat_addr *nsrc_addr = NULL;
-    int8_t retval;
-    uint8_t i;
+
+    //node is a literal, so we will just wait a short while for address list to
+    //be populated
+    if (is_literal) {
+        uv_timer_start(&(resolver->timeout_handle),
+                neat_resolver_literal_timeout_cb,
+                DNS_LITERAL_TIMEOUT, 0);
+        return;
+    }
+
+    //Start the resolver timeout, this includes fetching addresses
+    uv_timer_start(&(resolver->timeout_handle), neat_resolver_timeout_cb,
+            resolver->dns_t1, 0);
+
+    //No point starting to query if we don't have any source addresses
+    if (!resolver->nc->src_addr_cnt) {
+        neat_log(NEAT_LOG_ERROR, "%s - No available src addresses", __func__);
+        return;
+    }
+
+    //Iterate through src addresses, create udp sockets and start requesting
+    for (nsrc_addr = resolver->nc->src_addrs.lh_first; nsrc_addr != NULL;
+            nsrc_addr = nsrc_addr->next_addr.le_next) {
+        if (request->family && nsrc_addr->family != request->family)
+            continue;
+
+        //Do not use deprecated addresses
+        if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
+            continue;
+
+        //TODO: Potential place to filter based on policy
+
+        neat_resolver_create_pairs(resolver, nsrc_addr, request);
+    }
+}
+
+//Public NEAT resolver functions
+//getaddrinfo starts a query for the provided service
+uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
+                         uint8_t family,
+                         const char *node,
+                         uint16_t port,
+                         neat_protocol_stack_type ai_stack[],
+                         uint8_t stack_count)
+{
+    struct neat_resolver_request *request;
+    uint8_t i, do_request = 0;
+    int8_t is_literal = 0;
 
     if (port == 0) {
         neat_log(NEAT_LOG_ERROR, "%s - Invalid port specified", __func__);
@@ -879,60 +938,37 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
         return RETVAL_FAILURE;
     }
 
-    for (i = 0; i < stack_count; i++)
-        resolver->ai_stack[i] = ai_stack[i];
-
-    resolver->family = family;
-    resolver->dst_port = htons(port);
-
     if ((strlen(node) + 1) > MAX_DOMAIN_LENGTH) {
         neat_log(NEAT_LOG_ERROR, "%s - Domain name too long", __func__);
         return RETVAL_FAILURE;
     }
 
-    retval = neat_resolver_check_for_literal(&resolver->family, node);
+    request = calloc(sizeof(struct neat_resolver_request), 1);
+    request->family = family;
+    request->dst_port = htons(port);
 
-    if (retval < 0)
+    for (i = 0; i < stack_count; i++)
+        request->ai_stack[i] = ai_stack[i];
+
+    is_literal = neat_resolver_check_for_literal(&resolver->family, node);
+
+    if (is_literal < 0)
         return RETVAL_FAILURE;
 
     //No need to care about \0, we use calloc ...
-    memcpy(resolver->domain_name, node, strlen(node));
+    memcpy(request->domain_name, node, strlen(node));
 
-    //node is a literal, so we will just wait a short while for address list to
-    //be populated
-    if (retval) {
-        uv_timer_start(&(resolver->timeout_handle),
-                neat_resolver_literal_timeout_cb,
-                DNS_LITERAL_TIMEOUT, 0);
+    if (resolver->request_queue.tqh_first == NULL)
+        do_request = 1;
+
+    TAILQ_INSERT_TAIL(&(resolver->request_queue), request, next_req);
+
+    if (!do_request)
         return RETVAL_SUCCESS;
-    }
 
-    //Start the resolver timeout, this includes fetching addresses
-    uv_timer_start(&(resolver->timeout_handle), neat_resolver_timeout_cb,
-            resolver->dns_t1, 0);
+    //Start request
+    neat_start_request(resolver, request, is_literal);
 
-    //No point starting to query if we don't have any source addresses
-    if (!resolver->nc->src_addr_cnt) {
-        neat_log(NEAT_LOG_ERROR, "%s - No available src addresses", __func__);
-        return RETVAL_SUCCESS;
-    }
-
-    //Iterate through src addresses, create udp sockets and start requesting
-    for (nsrc_addr = resolver->nc->src_addrs.lh_first; nsrc_addr != NULL;
-            nsrc_addr = nsrc_addr->next_addr.le_next) {
-        if (resolver->family && nsrc_addr->family != resolver->family)
-            continue;
-
-        //Do not use deprecated addresses
-        if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
-            continue;
-
-        //TODO: Potential place to filter based on policy
-
-        neat_resolver_create_pairs(resolver, nsrc_addr);
-    }
-
-    //Iterate through available addresses and start sending DNS queries
     return RETVAL_SUCCESS;
 }
 
@@ -944,16 +980,30 @@ neat_resolver_init(struct neat_ctx *nc,
                    neat_resolver_cleanup_t cleanup)
 {
     struct neat_resolver *resolver = calloc(sizeof(struct neat_resolver), 1);
+
     if (!handle_resolve || !resolver) {
         free(resolver);
         return NULL;
     }
 
+    TAILQ_INIT(&(resolver->request_queue));
+
+    //We want to bind a resolver to one context to access address list
     resolver->nc = nc;
-    resolver->cleanup = cleanup;
-    resolver->handle_resolve = handle_resolve;
+
+    //Same timeouts accross all requests
+    //TODO: Might be changed, for example due to different networks. Policy?
     resolver->dns_t1 = DNS_TIMEOUT;
     resolver->dns_t2 = DNS_RESOLVED_TIMEOUT;
+
+    //The resolver still only process one query at a time, so we only need one
+    //handle, resolver pairs list etc.
+    //TODO: Optimize this so we can do multiple queries in parallel, should not
+    //be too hard. Will require more storage though
+    resolver->handle_resolve = handle_resolve;
+
+    //noop for now
+    resolver->cleanup = cleanup;
 
     resolver->newaddr_cb.event_cb = neat_resolver_handle_newaddr;
     resolver->newaddr_cb.data = resolver;
@@ -989,7 +1039,7 @@ neat_resolver_init(struct neat_ctx *nc,
 
     if (!neat_resolver_add_initial_servers(resolver))
         return NULL;
-
+    
     return resolver;
 }
 
@@ -999,6 +1049,8 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
     struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
     struct neat_resolver_server *server;
     struct neat_resolver_server *server_next;
+
+    return;
 
     resolver_itr = resolver->resolver_pairs.lh_first;
 
@@ -1041,9 +1093,8 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_m
             free(server);
         }
     } else {
-        memset(resolver->domain_name, 0, MAX_DOMAIN_LENGTH);
+        //memset(resolver->domain_name, 0, MAX_DOMAIN_LENGTH);
     }
-
 
     memset(resolver->ai_stack, 0, sizeof(resolver->ai_stack));
 }

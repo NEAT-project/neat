@@ -304,15 +304,9 @@ static void free_cb(uv_handle_t *handle)
         free(e->handle);
         free(e);
     }
-    /*
-    while(!LIST_EMPTY(&(flow->he_cb_ctx_list))) {
-        count++;
-        struct he_cb_ctx *e = LIST_FIRST(&(flow->he_cb_ctx_list));
-        LIST_REMOVE(e, next_he_ctx);
-        free(e->handle);
-        free(e);
-    }
-    */
+
+	LIST_REMOVE(flow, next_flow);
+
     free(flow->readBuffer);
     free(flow->handle);
     free(flow);
@@ -372,9 +366,6 @@ void neat_free_flow(neat_flow *flow)
     if ((flow->handle != NULL) &&
         (flow->handle->type != UV_UNKNOWN_HANDLE))
         uv_close((uv_handle_t *)(flow->handle), free_cb);
-
-	LIST_REMOVE(flow, next_flow);
-	free(flow);
 }
 
 neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,

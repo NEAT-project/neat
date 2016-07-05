@@ -98,6 +98,8 @@ static void neat_resolver_close_cb(uv_handle_t *handle)
 static void neat_resolver_close_timer(uv_handle_t *handle)
 {
     struct neat_resolver_request *request = handle->data;
+    TAILQ_REMOVE(&(request->resolver->dead_request_queue), request,
+                 next_dead_req);
     free(request);
 }
 
@@ -274,7 +276,7 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
 #endif
 }
 
-static void neat_request_cleanup(struct neat_resolver_request *request)
+static void neat_resolver_request_cleanup(struct neat_resolver_request *request)
 {
     struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
 
@@ -294,8 +296,11 @@ static void neat_request_cleanup(struct neat_resolver_request *request)
     if (uv_is_active((const uv_handle_t*) &(request->timeout_handle)))
         uv_timer_stop(&(request->timeout_handle));
 
+    //Move to dead requests list
     TAILQ_REMOVE(&(request->resolver->request_queue), request, next_req);
-
+    TAILQ_INSERT_HEAD(&(request->resolver->dead_request_queue), request,
+                      next_dead_req);
+    
     //Timers need to, like file descriptors, be closed async. Thus, freeing the
     //request must be deferred until timer has been closed. No need to use idle
     //etc. here. The callback will always be run.
@@ -315,16 +320,16 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 
     //DNS timeout, call DNS callback with timeout error code
     if (!request->name_resolved_timeout) {
-        request->resolve_cb(NULL, NULL, NEAT_RESOLVER_TIMEOUT);
-        neat_request_cleanup(request);
+        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_TIMEOUT);
+        neat_resolver_request_cleanup(request);
         return;
     }
 
     //Signal internal error
     if ((result_list =
                 calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
-        request->resolve_cb(NULL, NULL, NEAT_RESOLVER_ERROR);
-        neat_request_cleanup(request);
+        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_ERROR);
+        neat_resolver_request_cleanup(request);
         return;
     }
 
@@ -360,11 +365,11 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 
     if (!num_resolved_addrs) {
         free(result_list);
-        request->resolve_cb(NULL, NULL, NEAT_RESOLVER_ERROR);
+        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_ERROR);
     } else
-        request->resolve_cb(NULL, result_list, NEAT_RESOLVER_OK);
+        request->resolve_cb(request->resolver, result_list, NEAT_RESOLVER_OK);
 
-    neat_request_cleanup(request);
+    neat_resolver_request_cleanup(request);
 }
 
 //Called when a DNS request has been (i.e., passed to socket). We will send the
@@ -372,7 +377,6 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 static void neat_resolver_dns_sent_cb(uv_udp_send_t *req, int status)
 {
     //Callback will be used to send the follow-up request to check for errors
-    //printf("UDP send callback\n");
 }
 
 //libuv gives the user control of how memory is allocated. This callback is
@@ -984,6 +988,7 @@ neat_resolver_init(struct neat_ctx *nc,
         return NULL;
 
     TAILQ_INIT(&(resolver->request_queue));
+    TAILQ_INIT(&(resolver->dead_request_queue));
 
     //We want to bind a resolver to one context to access address list
     resolver->nc = nc;
@@ -1039,71 +1044,37 @@ neat_resolver_init(struct neat_ctx *nc,
 }
 
 //Helper function used by both cleanup and reset
-static void neat_resolver_cleanup(struct neat_resolver *resolver, uint8_t free_mem)
+static void neat_resolver_cleanup(struct neat_resolver *resolver)
 {
-#if 0
-    struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
+
+    struct neat_resolver_request *request_itr, *request_tmp;
     struct neat_resolver_server *server;
     struct neat_resolver_server *server_next;
 
-    return;
-
-    resolver_itr = resolver->resolver_pairs.lh_first;
-
-    while (resolver_itr != NULL) {
-        resolver_pair = resolver_itr;
-        resolver_itr = resolver_itr->next_pair.le_next;
-        neat_resolver_mark_pair_del(resolver_pair);
-
-        //If loop is stopped, we need to clean up (i.e., free dns buffer)
-        //manually since close_cb will never be called
-        if (uv_backend_fd(resolver->nc->loop) == -1)
-            neat_resolver_cleanup_pair(resolver_pair);
+    //"Free" all requests
+    for (request_itr = resolver->request_queue.tqh_first;
+         request_itr != NULL;) {
+        request_tmp = request_itr;
+        request_itr = request_itr->next_req.tqe_next;
+        neat_resolver_request_cleanup(request_tmp);
     }
+   
+    neat_remove_event_cb(resolver->nc, NEAT_NEWADDR, &(resolver->newaddr_cb));
+    neat_remove_event_cb(resolver->nc, NEAT_DELADDR, &(resolver->deladdr_cb));
+    uv_fs_event_stop(&(resolver->resolv_conf_handle));
 
-    resolver->free_resolver = free_mem;
-    resolver->name_resolved_timeout = 0;
-
-    if (uv_is_active((const uv_handle_t*) &(resolver->timeout_handle)))
-        uv_timer_stop(&(resolver->timeout_handle));
-
-    //We need to do this here, in addition to in mark_pair_del, since we might
-    //get in the situation where there are zero addresses to delete (for example
-    //if resolver is freed before there are no source addresses)
-    //TODO: Not sure if backend_fd is the best way to check if loop is closed,
-    //but it is what I found now. Improve later. alive() seems to always return
-    //true, for some reason. Will debug more later
-    if (uv_backend_fd(resolver->nc->loop) != -1 &&
-        !uv_is_active((const uv_handle_t*) &(resolver->idle_handle)))
-        uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
-
-    //Unsubscribe from callbacks if we are going to release memory
-    if (free_mem) {
-        neat_remove_event_cb(resolver->nc, NEAT_NEWADDR, &(resolver->newaddr_cb));
-        neat_remove_event_cb(resolver->nc, NEAT_DELADDR, &(resolver->deladdr_cb));
-        uv_fs_event_stop(&(resolver->resolv_conf_handle));
-
-        //Remove all entries in the server table
-        LIST_FOREACH_SAFE(server, &(resolver->server_list), next_server, server_next) {
-            LIST_REMOVE(server, next_server);
-            free(server);
-        }
-    } else {
-        //memset(resolver->domain_name, 0, MAX_DOMAIN_LENGTH);
+    //Remove all entries in the server table
+    LIST_FOREACH_SAFE(server, &(resolver->server_list), next_server, server_next) {
+        LIST_REMOVE(server, next_server);
+        free(server);
     }
-
-    memset(resolver->ai_stack, 0, sizeof(resolver->ai_stack));
-#endif
-}
-
-void neat_resolver_reset(struct neat_resolver *resolver)
-{
-    //neat_resolver_cleanup(resolver, 0);
 }
 
 void neat_resolver_release(struct neat_resolver *resolver)
 {
-    neat_resolver_cleanup(resolver, 1);
+    struct neat_resolver_request *request_itr, *request_tmp;
+
+    neat_resolver_cleanup(resolver);
 
     //If loop is not stopped, return. Otherwise, the idle callback will never be
     //called, so we have to manually free the pairs
@@ -1111,6 +1082,17 @@ void neat_resolver_release(struct neat_resolver *resolver)
         return;
 
     neat_resolver_flush_pairs_del(resolver);
+
+    //Free all dead requests
+    for (request_itr = resolver->dead_request_queue.tqh_first;
+         request_itr != NULL;) {
+        request_tmp = request_itr;
+        request_itr = request_itr->next_req.tqe_next;
+
+        //No need to remove from list. resolver can't be used after this
+        //function is called
+        free(request_tmp);
+    }
 }
 
 void neat_resolver_free_results(struct neat_resolver_results *results)

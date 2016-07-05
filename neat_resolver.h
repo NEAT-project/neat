@@ -84,6 +84,7 @@ struct neat_resolver_request {
     void *data; //User data
 
     TAILQ_ENTRY(neat_resolver_request) next_req;
+    TAILQ_ENTRY(neat_resolver_request) next_dead_req;
 };
 
 #endif

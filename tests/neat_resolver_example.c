@@ -78,7 +78,7 @@ static void resolver_handle(struct neat_resolver *resolver,
 
     //Free list, it is callers responsibility
     neat_resolver_free_results(results);
-    //neat_stop_event_loop(resolver->nc);
+    neat_stop_event_loop(resolver->nc);
 }
 
 static void resolver_cleanup(struct neat_resolver *resolver)
@@ -127,6 +127,8 @@ int main(int argc, char *argv[])
     test_stack[n++] = NEAT_STACK_UDPLITE;
 #endif
     test_resolver(nc, resolver, AF_INET, test_stack, n, "www.google.com", 80);
+
+#if 0
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_INET6, test_stack, n, "www.google.com", 80);
     neat_resolver_reset(resolver);
@@ -167,7 +169,8 @@ int main(int argc, char *argv[])
     test_resolver(nc, resolver, AF_INET6, test_stack, n, "bsd10.fh-muenster.de", 80);
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_UNSPEC, test_stack, n, "bsd10.fh-muenster.de", 80);
-
+#endif
+    fprintf(stderr, "Heihei\n");
     neat_free_ctx(nc);
     exit(EXIT_SUCCESS);
 }

@@ -254,8 +254,6 @@ struct neat_resolver *neat_resolver_init(struct neat_ctx *nc,
                                          neat_resolver_handle_t handle_resolve,
                                          neat_resolver_cleanup_t cleanup);
 
-//Reset resolver, it is ready for use right after this is called
-void neat_resolver_reset(struct neat_resolver *resolver);
 //Release all memory occupied by a resolver. Resolver can't be used again
 void neat_resolver_release(struct neat_resolver *resolver);
 
@@ -370,6 +368,7 @@ struct neat_resolver {
 
     //DNS request queue, using TAILQ
     struct neat_resolver_request_queue request_queue;
+    struct neat_resolver_request_queue dead_request_queue;
 };
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);

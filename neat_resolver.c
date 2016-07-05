@@ -37,7 +37,7 @@ static void neat_resolver_handle_newaddr(struct neat_ctx *nc,
                                          void *data)
 {
     struct neat_resolver *resolver = p_ptr;
-    struct neat_resolver_request *request = resolver->request_queue.tqh_first;
+    struct neat_resolver_request *request_itr;
     struct neat_addr *src_addr = data;
 
     if (resolver->family && resolver->family != src_addr->family)
@@ -47,12 +47,12 @@ static void neat_resolver_handle_newaddr(struct neat_ctx *nc,
     if (src_addr->family == AF_INET6 && !src_addr->u.v6.ifa_pref)
         return;
 
-    //TODO: This will be a loop through all requests
-    if (!request)
-        return;
+    request_itr = resolver->request_queue.tqh_first;
 
-    //TODO: Figure out what to do here
-    neat_resolver_create_pairs(src_addr, request);
+    while (request_itr != NULL) {
+        neat_resolver_create_pairs(src_addr, request_itr);
+        request_itr = request_itr->next_req.tqe_next;
+    }
 }
 
 static void neat_resolver_handle_deladdr(struct neat_ctx *nic,

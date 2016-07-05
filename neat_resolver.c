@@ -25,8 +25,8 @@
 
 static uint8_t neat_resolver_create_pairs(struct neat_addr *src_addr,
                                           struct neat_resolver_request *request);
-static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
-        struct neat_addr *addr_to_delete);
+static void neat_resolver_delete_pairs(struct neat_resolver_request *request,
+                                       struct neat_addr *addr_to_delete);
 
 static void neat_resolver_mark_pair_del(struct neat_resolver *resolver,
                                         struct neat_resolver_src_dst_addr *pair);
@@ -60,6 +60,7 @@ static void neat_resolver_handle_deladdr(struct neat_ctx *nic,
                                          void *data)
 {
     struct neat_resolver *resolver = p_ptr;
+    struct neat_resolver_request *request_itr;
     struct neat_addr *src_addr = data;
     struct sockaddr_in *src_addr4;
     struct sockaddr_in6 *src_addr6;
@@ -75,7 +76,13 @@ static void neat_resolver_handle_deladdr(struct neat_ctx *nic,
 
     neat_log(NEAT_LOG_INFO, "%s: Deleted %s", __func__, addr_str);
 
-    neat_resolver_delete_pairs(resolver, src_addr);
+    request_itr = resolver->request_queue.tqh_first;
+
+    while (request_itr != NULL) {
+        neat_resolver_delete_pairs(request_itr, src_addr);
+        request_itr = request_itr->next_req.tqe_next;
+    }
+
 }
 
 //libuv-specific callbacks
@@ -820,7 +827,7 @@ static uint8_t neat_resolver_create_pairs(struct neat_addr *src_addr,
 
 //Called when we get a NEAT_DELADDR message. Go though all resolve pairs and
 //remove those where src. address match the deleted address
-static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
+static void neat_resolver_delete_pairs(struct neat_resolver_request *request,
         struct neat_addr *addr_to_delete)
 {
     struct sockaddr_in *addr4 = NULL, *addr4_cmp;
@@ -832,7 +839,7 @@ static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
     else
         addr6 = &(addr_to_delete->u.v6.addr6);
 
-    resolver_itr = resolver->resolver_pairs.lh_first;
+    resolver_itr = request->resolver_pairs.lh_first;
 
     while (resolver_itr != NULL) {
         resolver_pair = resolver_itr;
@@ -845,12 +852,14 @@ static void neat_resolver_delete_pairs(struct neat_resolver *resolver,
             addr4_cmp = &(resolver_pair->src_addr->u.v4.addr4);
 
             if (addr4_cmp->sin_addr.s_addr == addr4->sin_addr.s_addr)
-                neat_resolver_mark_pair_del(resolver, resolver_pair);
+                neat_resolver_mark_pair_del(request->resolver, resolver_pair);
         } else {
             addr6_cmp = &(resolver_pair->src_addr->u.v6.addr6);
 
-            if (neat_addr_cmp_ip6_addr(&(addr6_cmp->sin6_addr), &(addr6->sin6_addr)))
-                neat_resolver_mark_pair_del(resolver, resolver_pair);
+            if (neat_addr_cmp_ip6_addr(&(addr6_cmp->sin6_addr),
+                                       &(addr6->sin6_addr))) {
+                neat_resolver_mark_pair_del(request->resolver, resolver_pair);
+            }
         }
     }
 }

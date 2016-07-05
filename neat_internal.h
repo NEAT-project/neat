@@ -282,8 +282,8 @@ int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node);
 void neat_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
         uint16_t t2);
 
-void io_error(neat_ctx *ctx, neat_flow *flow, int stream,
-              neat_error_code code);
+void neat_io_error(neat_ctx *ctx, neat_flow *flow, int stream,
+                   neat_error_code code);
 
 enum neat_events{
     //A new address has been added to an interface

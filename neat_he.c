@@ -121,9 +121,9 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code == NEAT_RESOLVER_TIMEOUT)  {
-        io_error(resolver->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        neat_io_error(resolver->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
     } else if ( code == NEAT_RESOLVER_ERROR ) {
-        io_error(resolver->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        neat_io_error(resolver->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
     }
 
     assert (results->lh_first);
@@ -172,7 +172,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     }
 
     if (flow->heConnectAttemptCount == 0) {
-        io_error(resolver->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        neat_io_error(resolver->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
     }
 }
 

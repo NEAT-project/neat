@@ -45,6 +45,8 @@ static neat_error_code neat_write_flush(struct neat_ctx *ctx, struct neat_flow *
 static int neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow);
 static int neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow);
 static int neat_close_via_kernel_2(int fd);
+static void io_error(neat_ctx *ctx, neat_flow *flow, int stream_id,
+                     neat_error_code code);
 #if defined(USRSCTP_SUPPORT)
 static int neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx);
 static int neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow);
@@ -423,8 +425,10 @@ neat_error_code neat_get_stats(neat_flow *flow, char **json_stats)
     flow->operations->ctx = ctx;\
     flow->operations->flow = flow;
 
-void io_error(neat_ctx *ctx, neat_flow *flow, int stream_id,
-                     neat_error_code code)
+
+void
+neat_io_error(neat_ctx *ctx, neat_flow *flow, int stream_id,
+              neat_error_code code)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -433,6 +437,12 @@ void io_error(neat_ctx *ctx, neat_flow *flow, int stream_id,
     }
     READYCALLBACKSTRUCT;
     flow->operations->on_error(flow->operations);
+}
+
+static void
+io_error(neat_ctx *ctx, neat_flow *flow, int stream_id, neat_error_code code)
+{
+    neat_io_error(ctx, flow, stream_id, code);
 }
 
 static void io_connected(neat_ctx *ctx, neat_flow *flow,

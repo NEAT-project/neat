@@ -47,11 +47,11 @@ static void neat_resolver_handle_newaddr(struct neat_ctx *nc,
     if (src_addr->family == AF_INET6 && !src_addr->u.v6.ifa_pref)
         return;
 
-    request_itr = resolver->request_queue.tqh_first;
+    request_itr = resolver->request_queue.lh_first;
 
     while (request_itr != NULL) {
         neat_resolver_create_pairs(src_addr, request_itr);
-        request_itr = request_itr->next_req.tqe_next;
+        request_itr = request_itr->next_req.le_next;
     }
 }
 
@@ -76,11 +76,11 @@ static void neat_resolver_handle_deladdr(struct neat_ctx *nic,
 
     neat_log(NEAT_LOG_INFO, "%s: Deleted %s", __func__, addr_str);
 
-    request_itr = resolver->request_queue.tqh_first;
+    request_itr = resolver->request_queue.lh_first;
 
     while (request_itr != NULL) {
         neat_resolver_delete_pairs(request_itr, src_addr);
-        request_itr = request_itr->next_req.tqe_next;
+        request_itr = request_itr->next_req.le_next;
     }
 
 }
@@ -105,8 +105,7 @@ static void neat_resolver_close_cb(uv_handle_t *handle)
 static void neat_resolver_close_timer(uv_handle_t *handle)
 {
     struct neat_resolver_request *request = handle->data;
-    TAILQ_REMOVE(&(request->resolver->dead_request_queue), request,
-                 next_dead_req);
+    LIST_REMOVE(request, next_dead_req);
     free(request);
 }
 
@@ -151,10 +150,10 @@ static void neat_resolver_idle_cb(uv_idle_t *handle)
         return;
 
     //Free all dead requests
-    for (request_itr = resolver->dead_request_queue.tqh_first;
+    for (request_itr = resolver->dead_request_queue.lh_first;
          request_itr != NULL;) {
         request_tmp = request_itr;
-        request_itr = request_itr->next_req.tqe_next;
+        request_itr = request_itr->next_req.le_next;
 
         //No need to remove from list. resolver can't be used after this
         //function is called
@@ -239,8 +238,8 @@ static void neat_resolver_request_cleanup(struct neat_resolver_request *request)
         uv_timer_stop(&(request->timeout_handle));
 
     //Move to dead requests list
-    TAILQ_REMOVE(&(request->resolver->request_queue), request, next_req);
-    TAILQ_INSERT_HEAD(&(request->resolver->dead_request_queue), request,
+    LIST_REMOVE(request, next_req);
+    LIST_INSERT_HEAD(&(request->resolver->dead_request_queue), request,
                       next_dead_req);
     
     //Timers need to, like file descriptors, be closed async. Thus, freeing the
@@ -989,7 +988,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
     //No need to care about \0, we use calloc ...
     memcpy(request->domain_name, node, strlen(node));
 
-    TAILQ_INSERT_TAIL(&(resolver->request_queue), request, next_req);
+    LIST_INSERT_HEAD(&(resolver->request_queue), request, next_req);
 
     //Start request
     neat_start_request(resolver, request, is_literal);
@@ -1015,8 +1014,8 @@ neat_resolver_init(struct neat_ctx *nc,
     if (!resolver)
         return NULL;
 
-    TAILQ_INIT(&(resolver->request_queue));
-    TAILQ_INIT(&(resolver->dead_request_queue));
+    LIST_INIT(&(resolver->request_queue));
+    LIST_INIT(&(resolver->dead_request_queue));
 
     //We want to bind a resolver to one context to access address list
     resolver->nc = nc;
@@ -1080,10 +1079,10 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver)
     struct neat_resolver_server *server_next;
 
     //"Free" all requests
-    for (request_itr = resolver->request_queue.tqh_first;
+    for (request_itr = resolver->request_queue.lh_first;
          request_itr != NULL;) {
         request_tmp = request_itr;
-        request_itr = request_itr->next_req.tqe_next;
+        request_itr = request_itr->next_req.le_next;
         neat_resolver_request_cleanup(request_tmp);
     }
    
@@ -1114,10 +1113,10 @@ void neat_resolver_release(struct neat_resolver *resolver)
     neat_resolver_flush_pairs_del(resolver);
 
     //Free all dead requests
-    for (request_itr = resolver->dead_request_queue.tqh_first;
+    for (request_itr = resolver->dead_request_queue.lh_first;
          request_itr != NULL;) {
         request_tmp = request_itr;
-        request_itr = request_itr->next_req.tqe_next;
+        request_itr = request_itr->next_req.le_next;
 
         //No need to remove from list. resolver can't be used after this
         //function is called

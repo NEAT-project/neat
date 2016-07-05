@@ -1925,6 +1925,8 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         neat_log(NEAT_LOG_ERROR, "Failed to create he socket");
         return -1;
     }
+	setsockopt(he_ctx->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+	setsockopt(he_ctx->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
 
     if (he_ctx->candidate->ai_family == AF_INET) {
         inet_ntop(AF_INET, &(((struct sockaddr_in *) &(he_ctx->candidate->src_addr))->sin_addr), addrsrcbuf, INET6_ADDRSTRLEN);
@@ -1980,6 +1982,9 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         neat_sctp_init_events(he_ctx->fd);
 #endif
             break;
+        case NEAT_STACK_UDP:
+
+			recvfrom(he_ctx->fd, NULL, 0, MSG_PEEK, NULL, 0);
         default:
             break;
     }

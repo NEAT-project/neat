@@ -311,7 +311,7 @@ struct neat_event_cb {
     LIST_ENTRY(neat_event_cb) next_cb;
 };
 
-LIST_HEAD(neat_resolver_request_queue, neat_resolver_request);
+TAILQ_HEAD(neat_resolver_request_queue, neat_resolver_request);
 struct neat_resolver {
     //The resolver will wrap the context, so that we can easily have many
     //resolvers

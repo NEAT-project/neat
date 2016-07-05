@@ -83,8 +83,8 @@ struct neat_resolver_request {
 
     void *data; //User data
 
-    LIST_ENTRY(neat_resolver_request) next_req;
-    LIST_ENTRY(neat_resolver_request) next_dead_req;
+    TAILQ_ENTRY(neat_resolver_request) next_req;
+    TAILQ_ENTRY(neat_resolver_request) next_dead_req;
 };
 
 #endif

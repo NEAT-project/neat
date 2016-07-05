@@ -162,11 +162,11 @@ void neat_free_ctx(struct neat_ctx *nc)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    neat_core_cleanup(nc);
-
     if (nc->resolver) {
         neat_resolver_release(nc->resolver);
     }
+
+    neat_core_cleanup(nc);
 
     if (nc->event_cbs)
         free(nc->event_cbs);

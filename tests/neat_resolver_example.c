@@ -78,8 +78,8 @@ static void resolver_handle(struct neat_resolver *resolver,
 
     //Free list, it is callers responsibility
     neat_resolver_free_results(results);
-    //neat_resolver_release(resolver);
-    neat_stop_event_loop(resolver->nc);
+    neat_resolver_release(resolver);
+    //neat_stop_event_loop(resolver->nc);
 }
 
 static void resolver_cleanup(struct neat_resolver *resolver)
@@ -113,10 +113,9 @@ int main(int argc, char *argv[])
     nc->resolver = resolver;
 
     neat_resolver_update_timeouts(resolver, 5000, 500);
-
     test_resolver(nc, resolver, AF_INET, "www.google.com", 80);
     test_resolver(nc, resolver, AF_INET, "www.facebook.com", 80);
-
+    
     neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
 #if 0
     neat_resolver_reset(resolver);

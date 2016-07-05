@@ -897,6 +897,11 @@ allocate_send_buffers(neat_flow* flow, unsigned int count)
         else
             flow->bufferedMessages = tmp;
 
+        for (size_t i = previous_buffer_count; i < flow->buffer_count; ++i) {
+            memset(&flow->bufferedMessages[i], 0, sizeof(struct neat_message_queue_head));
+            TAILQ_INIT(&(flow->bufferedMessages[i]));
+        }
+
         tmp = realloc(flow->isDraining,
                       count * sizeof(*flow->isDraining));
 
@@ -904,6 +909,10 @@ allocate_send_buffers(neat_flow* flow, unsigned int count)
             return NEAT_ERROR_INTERNAL;
         else
             flow->isDraining = tmp;
+
+        for (size_t i = previous_buffer_count; i < flow->buffer_count; ++i) {
+            flow->isDraining[i] = 0;
+        }
 
         neat_log(NEAT_LOG_DEBUG, "Flow now has %d send buffers",
                  flow->buffer_count);
@@ -913,31 +922,32 @@ allocate_send_buffers(neat_flow* flow, unsigned int count)
         return NEAT_OK;
     }
 
-    for (size_t i = previous_buffer_count; i < flow->buffer_count; ++i) {
-        TAILQ_INIT(&(flow->bufferedMessages[i]));
-        flow->isDraining[i] = 0;
-    }
-
     return NEAT_OK;
 }
 
 static void
 free_send_buffers(neat_ctx* ctx, neat_flow* flow)
 {
-    for (size_t i = 0; i < flow->buffer_count; ++i) {
-        struct neat_buffered_message *msg, *next_msg;
-        TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages[i], message_next, next_msg) {
-            TAILQ_REMOVE(&flow->bufferedMessages[i], msg, message_next);
-            free(msg->buffered);
-            free(msg);
+    if (flow->bufferedMessages != NULL) {
+        for (size_t i = 0; i < flow->buffer_count; ++i) {
+            struct neat_buffered_message *msg, *next_msg;
+            TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages[i], message_next, next_msg) {
+                TAILQ_REMOVE(&flow->bufferedMessages[i], msg, message_next);
+                free(msg->buffered);
+                free(msg);
+            }
         }
     }
 
-    if (flow->isDraining)
+    if (flow->isDraining) {
         free(flow->isDraining);
+        flow->isDraining = NULL;
+    }
 
-    if (flow->bufferedMessages)
+    if (flow->bufferedMessages) {
         free(flow->bufferedMessages);
+        flow->bufferedMessages = NULL;
+    }
 
     flow->buffer_count = 0;
 }

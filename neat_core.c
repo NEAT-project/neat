@@ -1132,6 +1132,7 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
 
     newFlow->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
     assert(newFlow->handle != NULL);
+    newFlow->handle->type = UV_UNKNOWN_HANDLE;
 
     switch (newFlow->sockStack) {
     case NEAT_STACK_SCTP:

@@ -124,8 +124,8 @@ struct neat_flow
     uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
-	struct sockaddr *srcAddr;
-	struct sockaddr *dstAddr;
+	struct sockaddr srcAddr;
+	struct sockaddr dstAddr;
     struct neat_ctx *ctx; // raw convenience pointer
     uv_poll_t *handle;
 

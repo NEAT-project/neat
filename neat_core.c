@@ -1121,6 +1121,9 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
     newFlow->writeSize = flow->writeSize;
     newFlow->readSize = flow->readSize;
 
+	memcpy(&newFlow->srcAddr, &flow->srcAddr, sizeof(struct sockaddr));
+	memcpy(&newFlow->dstAddr, &flow->dstAddr, sizeof(struct sockaddr));
+
     newFlow->ownedByCore = 1;
     newFlow->isSCTPExplicitEOR = flow->isSCTPExplicitEOR;
     newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
@@ -1164,6 +1167,27 @@ static void do_accept(neat_ctx *ctx, neat_flow *flow)
 #endif // defined(SCTP_RECVRCVINFO)
 #endif
         break;
+	case NEAT_STACK_UDP:
+		newFlow->fd = socket(newFlow->family, newFlow->sockType, newFlow->sockType);
+        if (newFlow->fd == -1) {
+            neat_free_flow(newFlow);
+        } else {
+			//int rv;
+			int enable = 1;
+
+			setsockopt(newFlow->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+			setsockopt(newFlow->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+
+			bind(newFlow->fd, &newFlow->srcAddr, sizeof(struct sockaddr));	//needs error check
+			connect(newFlow->fd, &newFlow->dstAddr, sizeof(struct sockaddr));	//needs error check
+
+			newFlow->everConnected = 1;
+
+            uv_poll_init(ctx->loop, newFlow->handle, newFlow->fd); // makes fd nb as side effect
+            newFlow->handle->data = newFlow;
+            io_connected(ctx, newFlow, NEAT_OK);
+            uvpollable_cb(newFlow->handle, NEAT_OK, 0);
+        }
     default:
         newFlow->fd = newFlow->acceptfx(ctx, newFlow, flow->fd);
         if (newFlow->fd == -1) {
@@ -1443,6 +1467,8 @@ accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *
     flow->sockStack = results->lh_first->ai_stack;
     flow->resolver_results = results;
     flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
+
+	memcpy(&flow->srcAddr, flow->sockAddr, sizeof(struct sockaddr));
 
     if (flow->listenfx(ctx, flow) == -1) {
         io_error(ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
@@ -2703,8 +2729,8 @@ neat_find_flow(neat_ctx *ctx, int sockProto,
 {
     neat_flow *flow;
     LIST_FOREACH(flow, &ctx->flows, next_flow) {
-        if ((sockaddr_cmp(flow->dstAddr, dst) != 0) && 
-               (sockaddr_cmp(flow->srcAddr, src) != 0)) {
+        if ((sockaddr_cmp(&flow->dstAddr, dst) != 0) && 
+               (sockaddr_cmp(&flow->srcAddr, src) != 0)) {
                        return flow;
         }
     }

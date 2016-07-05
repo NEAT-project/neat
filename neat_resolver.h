@@ -40,7 +40,7 @@ struct neat_resolver_request;
 //recycling handle, but this structure will make it easier to support
 //fragmentation of DNS requests (way down the line)
 struct neat_resolver_src_dst_addr {
-    struct neat_resolver *resolver; //TODO: Remove?
+    struct neat_resolver *resolver; //TODO: Remove
     struct neat_resolver_request *request;
     struct neat_addr *src_addr;
     //TODO: Dynamically allocate?
@@ -68,6 +68,7 @@ struct neat_resolver_request {
     uint16_t dst_port;
     uint8_t family;
     uint8_t name_resolved_timeout;
+    struct neat_resolver *resolver;
 
     char domain_name[MAX_DOMAIN_LENGTH];
 

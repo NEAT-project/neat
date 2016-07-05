@@ -78,6 +78,7 @@ struct neat_ctx *neat_init_ctx()
 
     uv_loop_init(nc->loop);
     LIST_INIT(&(nc->src_addrs));
+    LIST_INIT(&(nc->flows));
 
     uv_timer_init(nc->loop, &(nc->addr_lifetime_handle));
     nc->addr_lifetime_handle.data = nc;
@@ -173,6 +174,12 @@ void neat_free_ctx(struct neat_ctx *nc)
         free(nc->event_cbs);
 
     free(nc->loop);
+
+    while (!LIST_EMPTY(&nc->flows)) {
+        struct neat_flow *f = LIST_FIRST(&nc->flows);
+        neat_free_flow(f);
+    }
+
     free(nc);
     neat_log_close();
 }
@@ -295,15 +302,9 @@ static void free_cb(uv_handle_t *handle)
         free(e->handle);
         free(e);
     }
-    /*
-    while(!LIST_EMPTY(&(flow->he_cb_ctx_list))) {
-        count++;
-        struct he_cb_ctx *e = LIST_FIRST(&(flow->he_cb_ctx_list));
-        LIST_REMOVE(e, next_he_ctx);
-        free(e->handle);
-        free(e);
-    }
-    */
+
+	LIST_REMOVE(flow, next_flow);
+
     free(flow->readBuffer);
     free(flow->handle);
     free(flow);
@@ -2497,6 +2498,7 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 #endif
 
     allocate_send_buffers(rv, 1);
+    LIST_INSERT_HEAD(&mgr->flows, rv, next_flow);
 
     return rv;
 }

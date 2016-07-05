@@ -161,7 +161,7 @@ class NEATProperty(object):
         if (other.precedence >= self.precedence) and not (
                         other.precedence == NEATProperty.IMMUTABLE and self.precedence == NEATProperty.IMMUTABLE):
 
-            # new precedence is higher than current precedence
+            # new precedence is higher than current precedence, update
             self.value = other.value
             self.precedence = other.precedence
             if value_differs:
@@ -406,29 +406,9 @@ class NEATCandidate(object):
             # for property in properties.values():
             #    self.properties.insert(property)
 
-    def update(self, properties):
-        """Update candidate properties from a iterable containing (key,value) tuples."""
-        # TODO REMOVE
-        for k, v in properties:
-            self.add(NEATProperty((k, v)))
-
-    def add(self, property):
-        """Add single property to the candidate.properties list"""
-        # TODO REMOVE
-        self.properties.insert(property)
-
     @property
     def score(self):
         return sum(i.score for i in self.properties.values() if not math.isnan(i.score))
-
-    @property
-    def policy_properties(self):
-        """This are the properties appended during the PIB lookup"""
-        a = {}
-        for p in self.policies:
-            # TODO check for contradicting policies!
-            a.update(p.optional)
-        return a
 
     def dump(self):
         print('PROPERTIES: ' + str(self.properties) + ', POLICIES: ' + str(self.policies))
@@ -458,7 +438,7 @@ class NEATRequest(object):
         print(self.properties)
         print('===== candidates =====')
         for i, c in enumerate(self.candidates):
-            print('[%d]' % i, end='')
+            print('%d: ' % i, end='')
             c.dump()
         print('===== candidates =====')
 

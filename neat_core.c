@@ -984,13 +984,17 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->firstWritePending = 1;
         flow->isPolling = 1;
 
-        LIST_REMOVE(he_ctx, next_he_ctx);
-        free(he_ctx);
-
         if (allocate_send_buffers(flow, flow->stream_count) != NEAT_OK) {
             io_error(he_ctx->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO );
+
+            LIST_REMOVE(he_ctx, next_he_ctx);
+            free(he_ctx);
+
             return;
         }
+
+        LIST_REMOVE(he_ctx, next_he_ctx);
+        free(he_ctx);
 
         // TODO: Security layer.
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);

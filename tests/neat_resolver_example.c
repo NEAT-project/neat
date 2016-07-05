@@ -90,7 +90,7 @@ static void resolver_cleanup(struct neat_resolver *resolver)
 }
 
 static uint8_t test_resolver(struct neat_ctx *nc, struct neat_resolver *resolver,
-        uint8_t family, neat_protocol_stack_type stack[], uint8_t stack_count, char *node, uint16_t port)
+        uint8_t family, char *node, uint16_t port)
 {
     if (neat_getaddrinfo(resolver, family, node, port))
         return 1;
@@ -102,8 +102,6 @@ int main(int argc, char *argv[])
 {
     struct neat_ctx *nc = neat_init_ctx();
     struct neat_resolver *resolver;
-    neat_protocol_stack_type test_stack[NEAT_STACK_MAX_NUM];
-    uint8_t n;
 
     resolver = nc ? neat_resolver_init(nc, "/etc/resolv.conf", resolver_handle,
                                        resolver_cleanup) : NULL;
@@ -111,23 +109,13 @@ int main(int argc, char *argv[])
     if (nc == NULL || resolver == NULL)
         exit(EXIT_FAILURE);
 
-    memset(test_stack, 0, NEAT_STACK_MAX_NUM * sizeof(neat_protocol_stack_type));
-
     //this is set in he_lookup in the other example code
     nc->resolver = resolver;
 
     neat_resolver_update_timeouts(resolver, 5000, 500);
-    n = 0;
-    test_stack[n++] = NEAT_STACK_UDP;
-    test_stack[n++] = NEAT_STACK_TCP;
-#ifdef IPPROTO_SCTP
-    test_stack[n++] = NEAT_STACK_SCTP;
-#endif
-#ifdef IPPROTO_UDPLITE
-    test_stack[n++] = NEAT_STACK_UDPLITE;
-#endif
-    test_resolver(nc, resolver, AF_INET, test_stack, n, "www.google.com", 80);
-    test_resolver(nc, resolver, AF_INET, test_stack, n, "www.facebook.com", 80);
+
+    test_resolver(nc, resolver, AF_INET, "www.google.com", 80);
+    test_resolver(nc, resolver, AF_INET, "www.facebook.com", 80);
 
     neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
 #if 0

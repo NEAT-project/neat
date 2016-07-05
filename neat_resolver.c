@@ -239,6 +239,12 @@ static void neat_resolver_request_cleanup(struct neat_resolver_request *request)
 
     //Move to dead requests list
     LIST_REMOVE(request, next_req);
+
+    //Pointers are not reset by queue.h, so we must do that manually to prevent
+    //accessing elements in the request list
+    request->next_req.le_next = NULL;
+    request->next_req.le_prev = NULL;
+
     LIST_INSERT_HEAD(&(request->resolver->dead_request_queue), request,
                       next_dead_req);
     
@@ -264,6 +270,10 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
         struct sockaddr_in *dst_addr4;
         struct sockaddr_in6 *dst_addr6;
     } u;
+
+    //If resolver is marked for deletion, then ignore any new replies
+    if (request->resolver->free_resolver)
+        return;
 
     //There were no addresses available, so return error
     //TODO: Consider adding a different error
@@ -342,6 +352,10 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
     struct neat_resolver_results *result_list;
     uint32_t num_resolved_addrs = 0;
     uint8_t i;
+
+    //If resolver is marked for deletion, then ignore any new replies
+    if (request->resolver->free_resolver)
+        return;
 
     //DNS timeout, call DNS callback with timeout error code
     if (!request->name_resolved_timeout) {
@@ -433,8 +447,11 @@ static void neat_resolver_mark_pair_del(struct neat_resolver *resolver,
         uv_close((uv_handle_t*) &(pair->resolve_handle), neat_resolver_close_cb);
     }
 
-    if (pair->next_pair.le_next != NULL || pair->next_pair.le_prev != NULL)
+    if (pair->next_pair.le_next != NULL || pair->next_pair.le_prev != NULL) {
         LIST_REMOVE(pair, next_pair);
+        pair->next_pair.le_next = NULL;
+        pair->next_pair.le_prev = NULL;
+    }
 
     LIST_INSERT_HEAD(&(resolver->resolver_pairs_del), pair,
             next_pair);

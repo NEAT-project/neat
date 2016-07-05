@@ -211,86 +211,6 @@ static uint8_t neat_resolver_fill_results(
     return num_addr_added;
 }
 
-//This timeout is used when we "resolve" a literal. It works slightly different
-//than the normal resolver timeout function. We just iterate through source
-//addresses can create a result structure for those that match
-static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
-{
-#if 0
-    struct neat_resolver *resolver = handle->data;
-    struct neat_resolver_results *result_list;
-    uint32_t num_resolved_addrs = 0;
-    struct neat_addr *nsrc_addr = NULL;
-    void *dst_addr_pton = NULL;
-    struct sockaddr_storage dst_addr;
-    union {
-        struct sockaddr_in *dst_addr4;
-        struct sockaddr_in6 *dst_addr6;
-    } u;
-
-    //There were no addresses available, so return error
-    //TODO: Consider adding a different error
-    if (!resolver->nc->src_addr_cnt) {
-        resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
-        return;
-    }
-
-    //Signal internal error
-    if ((result_list =
-                calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
-        resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
-        return;
-    }
-
-    if (resolver->family == AF_INET) {
-        u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
-        memset(u.dst_addr4, 0, sizeof(struct sockaddr_in));
-        u.dst_addr4->sin_family = AF_INET;
-        u.dst_addr4->sin_port = resolver->dst_port;
-#ifdef HAVE_SIN_LEN
-        u.dst_addr4->sin_len = sizeof(struct sockaddr_in);
-#endif
-        dst_addr_pton = &(u.dst_addr4->sin_addr);
-    } else {
-        u.dst_addr6 = (struct sockaddr_in6*) &dst_addr;
-        memset(u.dst_addr6, 0, sizeof(struct sockaddr_in6));
-        u.dst_addr6->sin6_family = AF_INET6;
-        u.dst_addr6->sin6_port = resolver->dst_port;
-#ifdef HAVE_SIN6_LEN
-        u.dst_addr6->sin6_len = sizeof(struct sockaddr_in6);
-#endif
-        dst_addr_pton = &(u.dst_addr6->sin6_addr);
-
-    }
-
-    //We already know that this will be successful, it was checked in the
-    //literal-check performed earlier
-    inet_pton(resolver->family, resolver->domain_name, dst_addr_pton);
-
-    LIST_INIT(result_list);
-
-    for (nsrc_addr = resolver->nc->src_addrs.lh_first; nsrc_addr != NULL;
-            nsrc_addr = nsrc_addr->next_addr.le_next) {
-        //Family is always set for literals
-        if (nsrc_addr->family != resolver->family)
-            continue;
-
-        //Do not use deprecated addresses
-        if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
-            continue;
-
-        num_resolved_addrs += neat_resolver_fill_results(resolver, result_list,
-                nsrc_addr, dst_addr);
-    }
-
-    if (!num_resolved_addrs) {
-        resolver->handle_resolve(resolver, NULL, NEAT_RESOLVER_ERROR);
-        free(result_list);
-    } else
-        resolver->handle_resolve(resolver, result_list, NEAT_RESOLVER_OK);
-#endif
-}
-
 static void neat_resolver_request_cleanup(struct neat_resolver_request *request)
 {
     struct neat_resolver_src_dst_addr *resolver_pair, *resolver_itr;
@@ -321,6 +241,90 @@ static void neat_resolver_request_cleanup(struct neat_resolver_request *request)
     //etc. here. The callback will always be run.
     uv_close((uv_handle_t*) &(request->timeout_handle),
              neat_resolver_close_timer);
+}
+
+//This timeout is used when we "resolve" a literal. It works slightly different
+//than the normal resolver timeout function. We just iterate through source
+//addresses can create a result structure for those that match
+static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
+{
+    struct neat_resolver_request *request = handle->data;
+    struct neat_resolver_results *result_list;
+    uint32_t num_resolved_addrs = 0;
+    struct neat_addr *nsrc_addr = NULL;
+    void *dst_addr_pton = NULL;
+    struct sockaddr_storage dst_addr;
+    union {
+        struct sockaddr_in *dst_addr4;
+        struct sockaddr_in6 *dst_addr6;
+    } u;
+
+    //There were no addresses available, so return error
+    //TODO: Consider adding a different error
+    if (!request->resolver->nc->src_addr_cnt) {
+        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_ERROR);
+        return;
+    }
+
+    //Signal internal error
+    if ((result_list =
+                calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
+        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_ERROR);
+        return;
+    }
+
+    if (request->family == AF_INET) {
+        u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
+        memset(u.dst_addr4, 0, sizeof(struct sockaddr_in));
+        u.dst_addr4->sin_family = AF_INET;
+        u.dst_addr4->sin_port = request->dst_port;
+#ifdef HAVE_SIN_LEN
+        u.dst_addr4->sin_len = sizeof(struct sockaddr_in);
+#endif
+        dst_addr_pton = &(u.dst_addr4->sin_addr);
+    } else {
+        u.dst_addr6 = (struct sockaddr_in6*) &dst_addr;
+        memset(u.dst_addr6, 0, sizeof(struct sockaddr_in6));
+        u.dst_addr6->sin6_family = AF_INET6;
+        u.dst_addr6->sin6_port = request->dst_port;
+#ifdef HAVE_SIN6_LEN
+        u.dst_addr6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
+        dst_addr_pton = &(u.dst_addr6->sin6_addr);
+
+    }
+
+    //We already know that this will be successful, it was checked in the
+    //literal-check performed earlier
+    inet_pton(request->family, request->domain_name, dst_addr_pton);
+
+    LIST_INIT(result_list);
+
+    for (nsrc_addr = request->resolver->nc->src_addrs.lh_first;
+         nsrc_addr != NULL; nsrc_addr = nsrc_addr->next_addr.le_next) {
+        //Family is always set for literals
+        if (nsrc_addr->family != request->family)
+            continue;
+
+        //Do not use deprecated addresses
+        if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
+            continue;
+
+        num_resolved_addrs += neat_resolver_fill_results(result_list, nsrc_addr,
+                                                         dst_addr);
+    }
+
+    if (!num_resolved_addrs) {
+        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_ERROR);
+        free(result_list);
+    } else
+        request->resolve_cb(request->resolver, result_list, NEAT_RESOLVER_OK);
+
+    //This guard is good enough for now. The only case where a request can be
+    //freed (or marked for free) when we get here, is if resolver has been
+    //released
+    if (!request->resolver->free_resolver)
+        neat_resolver_request_cleanup(request);
 }
 
 //Called when timeout expires. This function will pass the results of the DNS
@@ -876,12 +880,14 @@ int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node)
         neat_log(NEAT_LOG_ERROR, "%s - Mismatch between family and literal", __func__);
         return -1;
     }
+
     if (*family == AF_UNSPEC) {
         if (v4_literal)
             *family = AF_INET;
         if (v6_literal)
             *family = AF_INET6;
     }
+
     return v4_literal | v6_literal;
 }
 
@@ -936,7 +942,6 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
                          uint16_t port)
 {
     struct neat_resolver_request *request;
-    uint8_t do_request = 0;
     int8_t is_literal = 0;
 
     if (port == 0) {
@@ -967,7 +972,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
     //HACK: This is just a hack for testing, will be set based on argument later!
     request->resolve_cb = resolver->handle_resolve;
 
-    is_literal = neat_resolver_check_for_literal(&resolver->family, node);
+    is_literal = neat_resolver_check_for_literal(&(resolver->family), node);
 
     if (is_literal < 0)
         return RETVAL_FAILURE;
@@ -975,13 +980,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
     //No need to care about \0, we use calloc ...
     memcpy(request->domain_name, node, strlen(node));
 
-    if (resolver->request_queue.tqh_first == NULL)
-        do_request = 1;
-
     TAILQ_INSERT_TAIL(&(resolver->request_queue), request, next_req);
-
-    if (!do_request)
-        return RETVAL_SUCCESS;
 
     //Start request
     neat_start_request(resolver, request, is_literal);

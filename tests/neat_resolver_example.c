@@ -128,6 +128,7 @@ int main(int argc, char *argv[])
 #endif
     test_resolver(nc, resolver, AF_INET, test_stack, n, "www.google.com", 80);
     test_resolver(nc, resolver, AF_INET, test_stack, n, "www.facebook.com", 80);
+    test_resolver(nc, resolver, AF_INET, test_stack, n, "127.0.0.1", 80);
 
     neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
 #if 0

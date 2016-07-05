@@ -2678,3 +2678,17 @@ neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow)
 
     return NEAT_OK;
 }
+
+neat_flow *
+neat_find_flow(neat_ctx *ctx, int sockProto, 
+       struct sockaddr *src, struct sockaddr *dst)
+{
+    neat_flow *flow;
+    LIST_FOREACH(flow, &ctx->flows, next_flow) {
+        if ((sockaddr_cmp(flow->dstAddr, dst) != 0) && 
+               (sockaddr_cmp(flow->srcAddr, src) != 0)) {
+                       return flow;
+        }
+    }
+    return NULL;
+}

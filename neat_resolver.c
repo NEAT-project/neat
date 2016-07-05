@@ -128,6 +128,7 @@ static void neat_resolver_flush_pairs_del(struct neat_resolver *resolver)
 static void neat_resolver_idle_cb(uv_idle_t *handle)
 {
     struct neat_resolver *resolver = handle->data;
+    struct neat_resolver_request *request_itr, *request_tmp;
 
     neat_resolver_flush_pairs_del(resolver);
 
@@ -137,9 +138,23 @@ static void neat_resolver_idle_cb(uv_idle_t *handle)
 
     uv_idle_stop(&(resolver->idle_handle));
 
-    //Only call cleanup when library user has marked that it is safe
-    //if (resolver->free_resolver && resolver->cleanup)
-    //    resolver->cleanup(resolver);
+    //idle is also both when we clean up one request and when we clean up the
+    //whole resolver, we need to guard against this
+    if (!resolver->free_resolver)
+        return;
+
+    //Free all dead requests
+    for (request_itr = resolver->dead_request_queue.tqh_first;
+         request_itr != NULL;) {
+        request_tmp = request_itr;
+        request_itr = request_itr->next_req.tqe_next;
+
+        //No need to remove from list. resolver can't be used after this
+        //function is called
+        free(request_tmp);
+    }
+
+    free(resolver);
 }
 
 static uint8_t neat_resolver_addr_internal(struct sockaddr_storage *addr)
@@ -366,10 +381,15 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
     if (!num_resolved_addrs) {
         free(result_list);
         request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_ERROR);
-    } else
+    } else {
         request->resolve_cb(request->resolver, result_list, NEAT_RESOLVER_OK);
+    }
 
-    neat_resolver_request_cleanup(request);
+    //This guard is good enough for now. The only case where a request can be
+    //freed (or marked for free) when we get here, is if resolver has been
+    //released
+    if (!request->resolver->free_resolver)
+        neat_resolver_request_cleanup(request);
 }
 
 //Called when a DNS request has been (i.e., passed to socket). We will send the
@@ -1074,6 +1094,8 @@ void neat_resolver_release(struct neat_resolver *resolver)
 {
     struct neat_resolver_request *request_itr, *request_tmp;
 
+    resolver->free_resolver = 1;
+
     neat_resolver_cleanup(resolver);
 
     //If loop is not stopped, return. Otherwise, the idle callback will never be
@@ -1093,6 +1115,8 @@ void neat_resolver_release(struct neat_resolver *resolver)
         //function is called
         free(request_tmp);
     }
+
+    free(resolver);
 }
 
 void neat_resolver_free_results(struct neat_resolver_results *results)

@@ -78,6 +78,7 @@ static void resolver_handle(struct neat_resolver *resolver,
 
     //Free list, it is callers responsibility
     neat_resolver_free_results(results);
+    //neat_resolver_release(resolver);
     neat_stop_event_loop(resolver->nc);
 }
 
@@ -170,7 +171,7 @@ int main(int argc, char *argv[])
     neat_resolver_reset(resolver);
     test_resolver(nc, resolver, AF_UNSPEC, test_stack, n, "bsd10.fh-muenster.de", 80);
 #endif
-    fprintf(stderr, "Heihei\n");
+
     neat_free_ctx(nc);
     exit(EXIT_SUCCESS);
 }

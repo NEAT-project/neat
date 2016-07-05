@@ -337,7 +337,7 @@ struct neat_resolver {
     //Flag used to signal if we have resolved name and timeout has switched from
     //total DNS timeout
     uint8_t name_resolved_timeout;
-    uint8_t __pad2;
+    uint8_t fs_event_closed;
 
     //The reason we need two of these is that as of now, a neat_event_cb
     //struct can only be part of one list. This is a future optimization, if we

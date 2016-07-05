@@ -128,6 +128,12 @@ static void neat_resolver_flush_pairs_del(struct neat_resolver *resolver)
     }
 }
 
+static void neat_resolver_idle_close_cb(uv_handle_t *handle)
+{
+    struct neat_resolver *resolver = handle->data;
+    free(resolver);
+}
+
 //This callback is called before libuv polls for I/O and is by default run on
 //every iteration. We use it to free memory used by the resolver, and it is only
 //active when this is relevant. I.e., we only start the idle handle when
@@ -143,12 +149,12 @@ static void neat_resolver_idle_cb(uv_idle_t *handle)
     if (resolver->resolver_pairs_del.lh_first)
         return;
 
-    uv_idle_stop(&(resolver->idle_handle));
-
     //idle is also both when we clean up one request and when we clean up the
     //whole resolver, we need to guard against this
-    if (!resolver->free_resolver)
+    if (!resolver->free_resolver) {
+        uv_idle_stop(&(resolver->idle_handle));
         return;
+    }
 
     //Free all dead requests
     for (request_itr = resolver->dead_request_queue.tqh_first;
@@ -161,7 +167,11 @@ static void neat_resolver_idle_cb(uv_idle_t *handle)
         free(request_tmp);
     }
 
-    free(resolver);
+    if (!resolver->fs_event_closed)
+        return;
+
+    uv_idle_stop(&(resolver->idle_handle));
+    uv_close((uv_handle_t*) handle, neat_resolver_idle_close_cb);
 }
 
 static uint8_t neat_resolver_addr_internal(struct sockaddr_storage *addr)
@@ -1084,6 +1094,12 @@ neat_resolver_init(struct neat_ctx *nc,
     return resolver;
 }
 
+static void neat_resolver_conf_close_cb(uv_handle_t *handle)
+{
+    struct neat_resolver *resolver = handle->data;
+    resolver->fs_event_closed = 1;
+}
+
 //Helper function used by both cleanup and reset
 static void neat_resolver_cleanup(struct neat_resolver *resolver)
 {
@@ -1103,6 +1119,8 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver)
     neat_remove_event_cb(resolver->nc, NEAT_NEWADDR, &(resolver->newaddr_cb));
     neat_remove_event_cb(resolver->nc, NEAT_DELADDR, &(resolver->deladdr_cb));
     uv_fs_event_stop(&(resolver->resolv_conf_handle));
+    uv_close((uv_handle_t*) &(resolver->resolv_conf_handle),
+             neat_resolver_conf_close_cb);
 
     //Remove all entries in the server table
     LIST_FOREACH_SAFE(server, &(resolver->server_list), next_server, server_next) {

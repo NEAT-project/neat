@@ -78,7 +78,7 @@ static void resolver_handle(struct neat_resolver *resolver,
 
     //Free list, it is callers responsibility
     neat_resolver_free_results(results);
-    neat_resolver_release(resolver);
+    //neat_resolver_release(resolver);
     //neat_stop_event_loop(resolver->nc);
 }
 

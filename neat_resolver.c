@@ -265,13 +265,9 @@ static void neat_resolver_request_cleanup(struct neat_resolver_request *request)
              neat_resolver_close_timer);
 }
 
-//This timeout is used when we "resolve" a literal. It works slightly different
-//than the normal resolver timeout function. We just iterate through source
-//addresses can create a result structure for those that match
-static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
+static uint32_t neat_resolver_literal_populate_results(struct neat_resolver_request *request,
+                                                       struct neat_resolver_results *result_list)
 {
-    struct neat_resolver_request *request = handle->data;
-    struct neat_resolver_results *result_list;
     uint32_t num_resolved_addrs = 0;
     struct neat_addr *nsrc_addr = NULL;
     void *dst_addr_pton = NULL;
@@ -280,27 +276,7 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
         struct sockaddr_in *dst_addr4;
         struct sockaddr_in6 *dst_addr6;
     } u;
-
-    //If resolver is marked for deletion, then ignore any new replies
-    if (request->resolver->free_resolver)
-        return;
-
-    //There were no addresses available, so return error
-    //TODO: Consider adding a different error
-    if (!request->resolver->nc->src_addr_cnt) {
-        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
-        neat_resolver_request_cleanup(request);
-        return;
-    }
-
-    //Signal internal error
-    if ((result_list =
-                calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
-        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
-        neat_resolver_request_cleanup(request);
-        return;
-    }
-
+    
     if (request->family == AF_INET) {
         u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
         memset(u.dst_addr4, 0, sizeof(struct sockaddr_in));
@@ -326,8 +302,6 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
     //literal-check performed earlier
     inet_pton(request->family, request->domain_name, dst_addr_pton);
 
-    LIST_INIT(result_list);
-
     for (nsrc_addr = request->resolver->nc->src_addrs.lh_first;
          nsrc_addr != NULL; nsrc_addr = nsrc_addr->next_addr.le_next) {
         //Family is always set for literals
@@ -342,50 +316,16 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
                                                          dst_addr);
     }
 
-    if (!num_resolved_addrs) {
-        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
-        free(result_list);
-    } else {
-        request->resolve_cb(result_list, NEAT_RESOLVER_OK, request->user_data);
-    }
-
-    //This guard is good enough for now. The only case where a request can be
-    //freed (or marked for free) when we get here, is if resolver has been
-    //released
-    if (!request->resolver->free_resolver)
-        neat_resolver_request_cleanup(request);
+    return num_resolved_addrs;
 }
 
-//Called when timeout expires. This function will pass the results of the DNS
-//query to the application using NEAT
-static void neat_resolver_timeout_cb(uv_timer_t *handle)
+static uint32_t neat_resolver_populate_results(struct neat_resolver_request *request,
+                                               struct neat_resolver_results *result_list)
 {
-    struct neat_resolver_request *request = handle->data;
     struct neat_resolver_src_dst_addr *pair_itr = NULL;
-    struct neat_resolver_results *result_list;
     uint32_t num_resolved_addrs = 0;
     uint8_t i;
 
-    //If resolver is marked for deletion, then ignore any new replies
-    if (request->resolver->free_resolver)
-        return;
-
-    //DNS timeout, call DNS callback with timeout error code
-    if (!request->name_resolved_timeout) {
-        request->resolve_cb(NULL, NEAT_RESOLVER_TIMEOUT, request->user_data);
-        neat_resolver_request_cleanup(request);
-        return;
-    }
-
-    //Signal internal error
-    if ((result_list =
-                calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
-        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
-        neat_resolver_request_cleanup(request);
-        return;
-    }
-
-    LIST_INIT(result_list);
     pair_itr = request->resolver_pairs.lh_first;
 
     //Iterate through all receiver pairs and create neat_resolver_res
@@ -415,6 +355,53 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
         pair_itr = pair_itr->next_pair.le_next;
     }
 
+    return num_resolved_addrs;
+}
+
+static void neat_resolver_timeout_shared(uv_timer_t *handle,
+                                         uint8_t literal)
+{
+    struct neat_resolver_request *request = handle->data;
+    struct neat_resolver_results *result_list;
+    uint32_t num_resolved_addrs = 0;
+
+    //If resolver is marked for deletion, then ignore any new replies
+    if (request->resolver->free_resolver)
+        return;
+
+    //DNS timeout, call DNS callback with timeout error code
+    if (!literal && !request->name_resolved_timeout) {
+        request->resolve_cb(NULL, NEAT_RESOLVER_TIMEOUT, request->user_data);
+        neat_resolver_request_cleanup(request);
+        return;
+    }
+
+    //There were no addresses available, so return error
+    //TODO: Consider adding a different error
+    if (literal && !request->resolver->nc->src_addr_cnt) {
+        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
+        neat_resolver_request_cleanup(request);
+        return;
+    }
+
+    //Signal internal error
+    if ((result_list =
+                calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
+        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
+        neat_resolver_request_cleanup(request);
+        return;
+    }
+
+    LIST_INIT(result_list);
+
+    if (literal) {
+        num_resolved_addrs = neat_resolver_literal_populate_results(request,
+                                                                    result_list);
+    } else {
+        num_resolved_addrs = neat_resolver_populate_results(request,
+                                                            result_list);
+    }
+
     if (!num_resolved_addrs) {
         request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
         free(result_list);
@@ -425,8 +412,24 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
     //This guard is good enough for now. The only case where a request can be
     //freed (or marked for free) when we get here, is if resolver has been
     //released
-    if (!request->resolver->free_resolver)
+    if (!request->resolver->free_resolver) {
         neat_resolver_request_cleanup(request);
+    }
+}
+
+//This timeout is used when we "resolve" a literal. It works slightly different
+//than the normal resolver timeout function. We just iterate through source
+//addresses can create a result structure for those that match
+static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
+{
+    neat_resolver_timeout_shared(handle, 1);
+}
+
+//Called when timeout expires. This function will pass the results of the DNS
+//query to the application using NEAT
+static void neat_resolver_timeout_cb(uv_timer_t *handle)
+{
+    neat_resolver_timeout_shared(handle, 0);
 }
 
 //Called when a DNS request has been (i.e., passed to socket). We will send the

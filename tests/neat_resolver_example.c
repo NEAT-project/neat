@@ -101,6 +101,23 @@ static void test_single_request_v4(struct neat_ctx *nc,
     neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
 }
 
+static void test_single_request_literal_v4(struct neat_ctx *nc,
+                                           struct neat_resolver *resolver)
+{
+    test_resolver(resolver, AF_INET, "127.0.0.1", 80);
+    expected_replies = 1;
+    num_replies = 0;
+    neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
+    test_resolver(resolver, AF_INET, "8.8.8.8", 80);
+    expected_replies = 1;
+    num_replies = 0;
+    neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
+    test_resolver(resolver, AF_INET, "8.8.4.4", 80);
+    expected_replies = 1;
+    num_replies = 0;
+    neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
+}
+
 static void test_single_request_v6(struct neat_ctx *nc,
                                    struct neat_resolver *resolver)
 {
@@ -125,6 +142,20 @@ static void test_parallel_requests_v4(struct neat_ctx *nc,
     test_resolver(resolver, AF_INET, "www.facebook.com", 80);
     test_resolver(resolver, AF_INET, "www.vg.no", 80);
     expected_replies = 3;
+    num_replies = 0;
+    neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
+}
+
+static void test_parallel_requests_literal_v4(struct neat_ctx *nc,
+                                              struct neat_resolver *resolver)
+{
+    test_resolver(resolver, AF_INET, "www.google.com", 80);
+    test_resolver(resolver, AF_INET, "127.0.0.1", 80);
+    test_resolver(resolver, AF_INET, "www.facebook.com", 80);
+    test_resolver(resolver, AF_INET, "8.8.8.8", 80);
+    test_resolver(resolver, AF_INET, "www.vg.no", 80);
+    test_resolver(resolver, AF_INET, "8.8.4.4", 80);
+    expected_replies = 6;
     num_replies = 0;
     neat_start_event_loop(nc, NEAT_RUN_DEFAULT);
 }
@@ -169,10 +200,12 @@ int main(int argc, char *argv[])
     neat_resolver_update_timeouts(resolver, 5000, 500);
 
     test_single_request_v4(nc, resolver);
-    test_single_request_v6(nc, resolver);
+    test_single_request_literal_v4(nc, resolver);
+    //test_single_request_v6(nc, resolver);
     test_parallel_requests_v4(nc, resolver);
-    test_parallel_requests_v6(nc, resolver);
-    test_parallel_requests_mixed(nc, resolver);
+    test_parallel_requests_literal_v4(nc, resolver);
+    //test_parallel_requests_v6(nc, resolver);
+    //test_parallel_requests_mixed(nc, resolver);
     neat_free_ctx(nc);
     exit(EXIT_SUCCESS);
 }

@@ -1403,8 +1403,8 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
             return NEAT_ERROR_BAD_ARGUMENT;
         }
 
-            neat_getaddrinfo(ctx->resolver, AF_UNSPEC, name, flow->port,
-                             set_primary_dest_resolve_cb, flow);
+            neat_resolve(ctx->resolver, AF_UNSPEC, name, flow->port,
+                         set_primary_dest_resolve_cb, flow);
 
             return NEAT_ERROR_OK;
     }
@@ -1489,8 +1489,8 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     if (!ctx->resolver)
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
 
-    neat_getaddrinfo(ctx->resolver, AF_INET, flow->name, flow->port,
-                     accept_resolve_cb, flow);
+    neat_resolve(ctx->resolver, AF_INET, flow->name, flow->port,
+                 accept_resolve_cb, flow);
     return NEAT_OK;
 }
 

@@ -229,8 +229,8 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
      */
     resolver_data->flow = flow;
     resolver_data->callback_fx = callback_fx;
-    neat_getaddrinfo(ctx->resolver, family, flow->name, flow->port,
-                     he_resolve_cb, resolver_data);
+    neat_resolve(ctx->resolver, family, flow->name, flow->port,
+                 he_resolve_cb, resolver_data);
 
     return NEAT_OK;
 }

@@ -6,6 +6,7 @@
 
 #include "neat_internal.h"
 #include "neat_queue.h"
+#include "neat_addr.h"
 
 //Timeout for complete DNS query
 #define DNS_TIMEOUT             30000

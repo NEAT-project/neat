@@ -263,7 +263,7 @@ void neat_resolver_free_results(struct neat_resolver_results *results);
 
 //Start to resolve a domain name (or literal). Accepts a list of protocols, will
 //set socktype based on protocol
-uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
+uint8_t neat_resolve(struct neat_resolver *resolver,
                          uint8_t family,
                          const char *node,
                          uint16_t port,

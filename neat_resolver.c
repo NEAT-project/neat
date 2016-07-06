@@ -974,12 +974,12 @@ static void neat_start_request(struct neat_resolver *resolver,
 
 //Public NEAT resolver functions
 //getaddrinfo starts a query for the provided service
-uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
-                         uint8_t family,
-                         const char *node,
-                         uint16_t port,
-                         neat_resolver_handle_t handle_resolve,
-                         void *user_data)
+uint8_t neat_resolve(struct neat_resolver *resolver,
+                     uint8_t family,
+                     const char *node,
+                     uint16_t port,
+                     neat_resolver_handle_t handle_resolve,
+                     void *user_data)
 {
     struct neat_resolver_request *request;
     int8_t is_literal = 0;

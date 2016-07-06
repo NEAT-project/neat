@@ -33,8 +33,52 @@ static char* const INET_DNS_SERVERS [] = {"8.8.8.8", "8.8.4.4", "208.67.222.222"
 static char* const INET6_DNS_SERVERS [] = {"2001:4860:4860::8888", "2001:4860:4860::8844", "2620:0:ccc::2", "2620:0:ccd::2"};
 
 struct neat_addr;
-struct neat_resolver;
 struct neat_resolver_request;
+
+TAILQ_HEAD(neat_resolver_request_queue, neat_resolver_request);
+struct neat_resolver {
+    //The resolver will wrap the context, so that we can easily have many
+    //resolvers
+    struct neat_ctx *nc;
+
+    //DNS timeout before any domain has been resolved
+    uint16_t dns_t1;
+    //DNS timeout after at least one domain has been resolved
+    uint16_t dns_t2;
+
+    //Will be set to 1 if we are going to free resolver in idle
+    //TODO: Will most likely be changed to a state variable
+    uint8_t free_resolver;
+    //Flag used to signal if we have resolved name and timeout has switched from
+    //total DNS timeout
+    uint8_t name_resolved_timeout;
+
+    //Flag set when the resolv.conf file monitoring has been closed. Must be
+    //done before we can free resolver
+    uint8_t fs_event_closed;
+    uint8_t __pad1;
+
+    //The reason we need two of these is that as of now, a neat_event_cb
+    //struct can only be part of one list. This is a future optimization, if we
+    //decide that it is a problem
+    struct neat_event_cb newaddr_cb;
+    struct neat_event_cb deladdr_cb;
+
+    //Keep track of all DNS servers seen until now
+    struct neat_resolver_servers server_list;
+
+    //Need to defer free until libuv has clean up memory. Keep this list here as
+    //an optimization, for example we don't have to have one idle handle per
+    //request
+    struct neat_resolver_pairs resolver_pairs_del;
+    uv_idle_t idle_handle;
+    uv_timer_t timeout_handle;
+    uv_fs_event_t resolv_conf_handle;
+
+    //DNS request queue, using TAILQ
+    struct neat_resolver_request_queue request_queue;
+    struct neat_resolver_request_queue dead_request_queue;
+};
 
 //Represent one source/dst address used for DNS lookups. We could save space by
 //recycling handle, but this structure will make it easier to support

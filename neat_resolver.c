@@ -126,6 +126,7 @@ static void neat_resolver_flush_pairs_del(struct neat_resolver *resolver)
             continue;
 
         LIST_REMOVE(resolver_pair, next_pair);
+        //TODO: Instead of free, consider making a resolve_pair cache
         free(resolver_pair);
     }
 }
@@ -1061,7 +1062,6 @@ neat_resolver_init(struct neat_ctx *nc, const char *resolv_conf_path)
         return NULL;
     }
 
-    LIST_INIT(&(resolver->resolver_pairs));
     LIST_INIT(&(resolver->resolver_pairs_del));
 
     uv_idle_init(nc->loop, &(resolver->idle_handle));

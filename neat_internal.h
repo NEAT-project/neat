@@ -32,6 +32,7 @@
 
 struct neat_event_cb;
 struct neat_addr;
+struct neat_resolver;
 
 //TODO: One drawback with using LIST from queue.h, is that a callback can only
 //be member of one list. Decide if this is critical and improve if needed
@@ -179,7 +180,6 @@ struct neat_interface_stats {
 typedef struct neat_interface_stats neat_interface_stats;
 
 //NEAT resolver public data structures/functions
-struct neat_resolver;
 struct neat_resolver_res;
 struct neat_resolver_server;
 
@@ -314,50 +314,6 @@ struct neat_event_cb {
     void (*event_cb)(struct neat_ctx *nc, void *p_ptr, void *data);
     void *data;
     LIST_ENTRY(neat_event_cb) next_cb;
-};
-
-TAILQ_HEAD(neat_resolver_request_queue, neat_resolver_request);
-struct neat_resolver {
-    //The resolver will wrap the context, so that we can easily have many
-    //resolvers
-    struct neat_ctx *nc;
-
-    //These values are just passed on to neat_resolver_res
-    //TODO: Remove this, will be set on result
-    neat_protocol_stack_type ai_stack[NEAT_STACK_MAX_NUM];
-    //DNS timeout before any domain has been resolved
-    uint16_t dns_t1;
-    //DNS timeout after at least one domain has been resolved
-    uint16_t dns_t2;
-
-    //Will be set to 1 if we are going to free resolver in idle
-    //TODO: Will most likely be changed to a state variable
-    uint8_t free_resolver;
-    //Flag used to signal if we have resolved name and timeout has switched from
-    //total DNS timeout
-    uint8_t name_resolved_timeout;
-    uint8_t fs_event_closed;
-
-    //The reason we need two of these is that as of now, a neat_event_cb
-    //struct can only be part of one list. This is a future optimization, if we
-    //decide that it is a problem
-    struct neat_event_cb newaddr_cb;
-    struct neat_event_cb deladdr_cb;
-
-    //Keep track of all DNS servers seen until now
-    struct neat_resolver_servers server_list;
-
-    //List of all active resolver pairs
-    struct neat_resolver_pairs resolver_pairs;
-    //Need to defer free until libuv has clean up memory
-    struct neat_resolver_pairs resolver_pairs_del;
-    uv_idle_t idle_handle;
-    uv_timer_t timeout_handle;
-    uv_fs_event_t resolv_conf_handle;
-
-    //DNS request queue, using TAILQ
-    struct neat_resolver_request_queue request_queue;
-    struct neat_resolver_request_queue dead_request_queue;
 };
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);

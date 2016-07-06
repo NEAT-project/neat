@@ -8,6 +8,9 @@
 // The resolver interface is internal - but this is still a good test
 #include "../neat_internal.h"
 
+//HACKHACKHACK, code is not supposed to access resolver directly
+#include "../neat_resolver.h"
+
 // clang -g neat_resolver_example.c ../build/libneatS.a -luv -lldns -lmnl
 // or if you have installed neat globally
 // clang -g neat_resolver_example.c -lneat

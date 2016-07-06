@@ -250,9 +250,7 @@ struct he_cb_ctx {
 //Intilize resolver. Sets up internal callbacks etc.
 //Resolve is required, cleanup is not
 struct neat_resolver *neat_resolver_init(struct neat_ctx *nc,
-                                         const char *resolv_conf_path,
-                                         neat_resolver_handle_t handle_resolve,
-                                         neat_resolver_cleanup_t cleanup);
+                                         const char *resolv_conf_path);
 
 //Release all memory occupied by a resolver. Resolver can't be used again
 void neat_resolver_release(struct neat_resolver *resolver);
@@ -262,8 +260,11 @@ void neat_resolver_free_results(struct neat_resolver_results *results);
 
 //Start to resolve a domain name (or literal). Accepts a list of protocols, will
 //set socktype based on protocol
-uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-        const char *node, uint16_t port);
+uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
+                         uint8_t family,
+                         const char *node,
+                         uint16_t port,
+                         neat_resolver_handle_t handle_resolve);
 //Check if node is an IP literal or not. Returns -1 on failure, 0 if not
 //literal, 1 if literal
 int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node);

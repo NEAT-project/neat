@@ -1401,8 +1401,8 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
             return NEAT_ERROR_BAD_ARGUMENT;
         }
 
-            ctx->resolver->handle_resolve = set_primary_dest_resolve_cb;
-            neat_getaddrinfo(ctx->resolver, AF_UNSPEC, name, flow->port);
+            neat_getaddrinfo(ctx->resolver, AF_UNSPEC, name, flow->port,
+                             set_primary_dest_resolve_cb);
 
             return NEAT_ERROR_OK;
     }
@@ -1483,16 +1483,12 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     assert(flow->handle != NULL);
 
     if (!ctx->resolver)
-        ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf",
-                                           accept_resolve_cb, NULL);
-    else if (ctx->resolver->handle_resolve != accept_resolve_cb)
-        // TODO: Race condition if this is updated before the callback for
-        // set_primary_addr is called
-        ctx->resolver->handle_resolve = accept_resolve_cb;
+        ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
 
     ctx->resolver->userData1 = (void *)flow;
 
-    neat_getaddrinfo(ctx->resolver, AF_INET, flow->name, flow->port);
+    neat_getaddrinfo(ctx->resolver, AF_INET, flow->name, flow->port,
+                     accept_resolve_cb);
     return NEAT_OK;
 }
 

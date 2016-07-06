@@ -79,7 +79,7 @@ static void resolver_handle(struct neat_resolver *resolver,
     //Free list, it is callers responsibility
     neat_resolver_free_results(results);
     //neat_resolver_release(resolver);
-    //neat_stop_event_loop(resolver->nc);
+    neat_stop_event_loop(resolver->nc);
 }
 
 static void resolver_cleanup(struct neat_resolver *resolver)
@@ -92,7 +92,7 @@ static void resolver_cleanup(struct neat_resolver *resolver)
 static uint8_t test_resolver(struct neat_ctx *nc, struct neat_resolver *resolver,
         uint8_t family, char *node, uint16_t port)
 {
-    if (neat_getaddrinfo(resolver, family, node, port))
+    if (neat_getaddrinfo(resolver, family, node, port, resolver_handle))
         return 1;
     else
         return 0;
@@ -103,8 +103,7 @@ int main(int argc, char *argv[])
     struct neat_ctx *nc = neat_init_ctx();
     struct neat_resolver *resolver;
 
-    resolver = nc ? neat_resolver_init(nc, "/etc/resolv.conf", resolver_handle,
-                                       resolver_cleanup) : NULL;
+    resolver = nc ? neat_resolver_init(nc, "/etc/resolv.conf") : NULL;
 
     if (nc == NULL || resolver == NULL)
         exit(EXIT_FAILURE);

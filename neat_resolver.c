@@ -971,7 +971,8 @@ static void neat_start_request(struct neat_resolver *resolver,
 uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
                          uint8_t family,
                          const char *node,
-                         uint16_t port)
+                         uint16_t port,
+                         neat_resolver_handle_t handle_resolve)
 {
     struct neat_resolver_request *request;
     int8_t is_literal = 0;
@@ -1002,7 +1003,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
     LIST_INIT(&(request->resolver_pairs));
 
     //HACK: This is just a hack for testing, will be set based on argument later!
-    request->resolve_cb = resolver->handle_resolve;
+    request->resolve_cb = handle_resolve;
 
     is_literal = neat_resolver_check_for_literal(&(resolver->family), node);
 
@@ -1022,17 +1023,10 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
 
 //Initialize the resolver. Set up callbacks etc.
 struct neat_resolver *
-neat_resolver_init(struct neat_ctx *nc,
-                   const char *resolv_conf_path,
-                   neat_resolver_handle_t handle_resolve,
-                   neat_resolver_cleanup_t cleanup)
+neat_resolver_init(struct neat_ctx *nc, const char *resolv_conf_path)
 {
-
     struct neat_resolver *resolver;
     
-    if (!handle_resolve)
-        return NULL;
-
     resolver = calloc(sizeof(struct neat_resolver), 1);
 
     if (!resolver)
@@ -1048,15 +1042,6 @@ neat_resolver_init(struct neat_ctx *nc,
     //TODO: Might be changed, for example due to different networks. Policy?
     resolver->dns_t1 = DNS_TIMEOUT;
     resolver->dns_t2 = DNS_RESOLVED_TIMEOUT;
-
-    //The resolver still only process one query at a time, so we only need one
-    //handle, resolver pairs list etc.
-    //TODO: Optimize this so we can do multiple queries in parallel, should not
-    //be too hard. Will require more storage though
-    resolver->handle_resolve = handle_resolve;
-
-    //noop for now
-    resolver->cleanup = cleanup;
 
     resolver->newaddr_cb.event_cb = neat_resolver_handle_newaddr;
     resolver->newaddr_cb.data = resolver;

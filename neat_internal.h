@@ -321,7 +321,6 @@ struct neat_resolver {
     //The resolver will wrap the context, so that we can easily have many
     //resolvers
     struct neat_ctx *nc;
-    uv_poll_cb userData2;
 
     //These values are just passed on to neat_resolver_res
     //TODO: Remove this, will be set on result

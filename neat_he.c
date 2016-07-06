@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include "neat.h"
+#include "neat_he.h"
 #include "neat_internal.h"
 #include "neat_property_helpers.h"
 
@@ -119,14 +120,14 @@ he_resolve_cb(struct neat_resolver_results *results,
               uint8_t code,
               void *user_data)
 {
-#if 0
-    neat_flow *flow = user_data;
+    struct neat_he_resolver_data *resolver_data = user_data;
+    struct neat_flow *flow = resolver_data->flow;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code == NEAT_RESOLVER_TIMEOUT)  {
-        io_error(resolver->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        io_error(flow->ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
     } else if ( code == NEAT_RESOLVER_ERROR ) {
-        io_error(resolver->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        io_error(flow->ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
     }
 
     assert (results->lh_first);
@@ -146,7 +147,7 @@ he_resolve_cb(struct neat_resolver_results *results,
         he_ctx->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
         assert(he_ctx->handle != NULL);
         he_ctx->handle->data = (void *)he_ctx;
-        he_ctx->nc = resolver->nc;
+        he_ctx->nc = flow->ctx;
         he_ctx->candidate = candidate;
         he_ctx->flow = flow;
 #ifdef USRSCTP_SUPPORT
@@ -155,7 +156,7 @@ he_resolve_cb(struct neat_resolver_results *results,
         he_ctx->fd = -1;
 
         uv_poll_cb callback_fx;
-        callback_fx = resolver->userData2;
+        callback_fx = resolver_data->callback_fx;
        int ret = flow->connectfx(he_ctx, callback_fx);
         if (ret == -1) {
             neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
@@ -175,9 +176,10 @@ he_resolve_cb(struct neat_resolver_results *results,
     }
 
     if (flow->heConnectAttemptCount == 0) {
-        io_error(resolver->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        io_error(flow->ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
     }
-#endif
+
+    free(resolver_data);
 }
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx)
@@ -185,7 +187,15 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM]; /* We only support SCTP, TCP, UDP, and UDPLite */
     uint8_t nr_of_stacks;
     uint8_t family;
+    struct neat_he_resolver_data *resolver_data;
+    
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    resolver_data = calloc(sizeof(struct neat_he_resolver_data), 1);
+
+    if (!resolver_data) {
+        return NEAT_ERROR_INTERNAL; 
+    }
 
     if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) &&
         (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED))
@@ -220,8 +230,10 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     /* FIXME: derivation of the socket type is wrong.
      * FIXME: Make use of the array of protocols
      */
+    resolver_data->flow = flow;
+    resolver_data->callback_fx = callback_fx;
     neat_getaddrinfo(ctx->resolver, family, flow->name, flow->port,
-                     he_resolve_cb, flow);
+                     he_resolve_cb, resolver_data);
 
     return NEAT_OK;
 }

@@ -23,7 +23,7 @@ static void he_print_results(struct neat_resolver_results *results)
     neat_log(NEAT_LOG_INFO, "Happy-Eyeballs results:");
 
     LIST_FOREACH(result, results, next_res) {
-        switch (result->ai_stack) {
+        /*switch (result->ai_stack) {
             case NEAT_STACK_UDP:
                 snprintf(proto, 16, "UDP");
                 break;
@@ -39,7 +39,7 @@ static void he_print_results(struct neat_resolver_results *results)
             default:
                 snprintf(proto, 16, "stack%d", result->ai_stack);
                 break;
-        }
+        }*/
         switch (result->ai_family) {
             case AF_INET:
                 snprintf(family, 16, "IPv4");

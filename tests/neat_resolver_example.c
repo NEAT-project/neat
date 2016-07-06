@@ -36,6 +36,7 @@ static void resolver_handle(struct neat_resolver_results *results,
         getnameinfo((struct sockaddr *)&result->dst_addr, result->dst_addr_len,
                     dst_str, sizeof(dst_str), NULL, 0,
                     NI_NUMERICHOST);
+        /*
         switch (result->ai_stack) {
         case NEAT_STACK_UDP:
             fprintf(stderr, "UDP/");
@@ -52,7 +53,8 @@ static void resolver_handle(struct neat_resolver_results *results,
         default:
             fprintf(stderr, "stack%d/", result->ai_stack);
             break;
-        }
+        }*/
+
         switch (result->ai_family) {
         case AF_INET:
             fprintf(stderr, "IPv4");
@@ -64,6 +66,7 @@ static void resolver_handle(struct neat_resolver_results *results,
             fprintf(stderr, "family%d", result->ai_family);
             break;
         }
+        /*
         switch (result->ai_socktype) {
         case SOCK_DGRAM:
             fprintf(stderr, "[SOCK_DGRAM]");
@@ -77,7 +80,7 @@ static void resolver_handle(struct neat_resolver_results *results,
         default:
             fprintf(stderr, "[%d]", result->ai_socktype);
             break;
-        }
+        }*/
         printf(": %s -> %s\n", src_str, dst_str);
     }
 

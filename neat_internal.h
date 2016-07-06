@@ -228,8 +228,6 @@ struct neat_resolver_server {
 //Struct passed to resolver callback, mirrors what we get back from getaddrinfo
 struct neat_resolver_res {
     int32_t ai_family;
-    int32_t ai_socktype; //TODO: Remove
-    int32_t ai_stack; //TODO: Remove
     uint32_t if_idx;
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len;

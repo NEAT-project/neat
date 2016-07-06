@@ -983,8 +983,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket fd %d", __func__, he_ctx->fd);
         flow->hefirstConnect = 0;
         flow->family = he_ctx->candidate->ai_family;
-        flow->sockType = he_ctx->candidate->ai_socktype;
-        flow->sockStack = he_ctx->candidate->ai_stack;
+        flow->sockType = SOCK_STREAM;
+        flow->sockStack = NEAT_STACK_TCP;
         flow->everConnected = 1;
 #if defined(USRSCTP_SUPPORT)
         flow->sock = he_ctx->sock;
@@ -1459,10 +1459,11 @@ accept_resolve_cb(struct neat_resolver_results *results,
         io_error(ctx, flow, NEAT_INVALID_STREAM, code);
         return;
     }
+
     assert (results->lh_first);
     flow->family = results->lh_first->ai_family;
-    flow->sockType = results->lh_first->ai_socktype;
-    flow->sockStack = results->lh_first->ai_stack;
+    flow->sockType = SOCK_STREAM;
+    flow->sockStack = NEAT_STACK_TCP;
     flow->resolver_results = results;
     flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
 
@@ -1943,12 +1944,13 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         neat_connect_via_usrsctp(he_ctx);
     } else {
 #endif
-    protocol = neat_stack_to_protocol(neat_base_stack(he_ctx->candidate->ai_stack));
+    //protocol = neat_stack_to_protocol(neat_base_stack(he_ctx->candidate->ai_stack));
+    protocol = IPPROTO_TCP;
     if (protocol == 0) {
-        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->candidate->ai_stack);
+        //neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->candidate->ai_stack);
         return -1;
     }
-    if ((he_ctx->fd = socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, protocol)) < 0) {
+    if ((he_ctx->fd = socket(he_ctx->candidate->ai_family, SOCK_STREAM, protocol)) < 0) {
         neat_log(NEAT_LOG_ERROR, "Failed to create he socket");
         return -1;
     }
@@ -1991,6 +1993,10 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     } else {
         he_ctx->readSize = 0;
     }
+
+    setsockopt(he_ctx->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+
+#if 0
     switch (he_ctx->candidate->ai_stack) {
         case NEAT_STACK_TCP:
             setsockopt(he_ctx->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
@@ -2015,6 +2021,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         default:
             break;
     }
+#endif
 
 #if defined(IPPROTO_SCTP) && defined(SCTP_INITMSG)
     if (he_ctx->candidate->ai_stack == NEAT_STACK_SCTP) {

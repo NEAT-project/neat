@@ -73,7 +73,6 @@ uint8_t neat_log_init() {
 void neat_log(uint8_t level, const char* format, ...) {
 
     struct timeval tv_now, tv_diff;
-    int32_t time_diff;
     // skip unwanted loglevels
     if (neat_log_level < level) {
         return;
@@ -85,10 +84,17 @@ void neat_log(uint8_t level, const char* format, ...) {
     }
 
     gettimeofday(&tv_now, NULL);
-    time_diff = (tv_now.tv_usec + 1000000 * tv_now.tv_sec) - (tv_init.tv_usec + 1000000 * tv_init.tv_sec);
-    tv_diff.tv_sec = time_diff / 1000000;
-    tv_diff.tv_usec = time_diff % 1000000;
-    fprintf(neat_log_fd, "[%f]", (double)(tv_diff.tv_sec + (double)tv_diff.tv_usec/1000000.0));
+
+    tv_diff.tv_sec = tv_now.tv_sec - tv_init.tv_sec;
+
+    if (tv_init.tv_usec < tv_now.tv_usec) {
+        tv_diff.tv_usec = tv_now.tv_usec - tv_init.tv_usec;
+    } else {
+        tv_diff.tv_sec -= 1;
+        tv_diff.tv_usec = 1000000 + tv_now.tv_usec - tv_init.tv_usec;
+    }
+
+    fprintf(neat_log_fd, "[%4ld.%06ld]", (long)tv_diff.tv_sec, (long)tv_diff.tv_usec);
 
     switch (level) {
         case NEAT_LOG_ERROR:

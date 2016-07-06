@@ -1111,8 +1111,10 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver)
     neat_remove_event_cb(resolver->nc, NEAT_NEWADDR, &(resolver->newaddr_cb));
     neat_remove_event_cb(resolver->nc, NEAT_DELADDR, &(resolver->deladdr_cb));
     uv_fs_event_stop(&(resolver->resolv_conf_handle));
-    uv_close((uv_handle_t*) &(resolver->resolv_conf_handle),
-             neat_resolver_conf_close_cb);
+
+    if (!uv_is_closing((const uv_handle_t*) &(resolver->resolv_conf_handle)))
+        uv_close((uv_handle_t*) &(resolver->resolv_conf_handle),
+                neat_resolver_conf_close_cb);
 
     //Remove all entries in the server table
     LIST_FOREACH_SAFE(server, &(resolver->server_list), next_server, server_next) {

@@ -36,24 +36,6 @@ static void resolver_handle(struct neat_resolver_results *results,
         getnameinfo((struct sockaddr *)&result->dst_addr, result->dst_addr_len,
                     dst_str, sizeof(dst_str), NULL, 0,
                     NI_NUMERICHOST);
-        /*
-        switch (result->ai_stack) {
-        case NEAT_STACK_UDP:
-            fprintf(stderr, "UDP/");
-            break;
-        case NEAT_STACK_TCP:
-            fprintf(stderr, "TCP/");
-            break;
-        case NEAT_STACK_SCTP:
-            fprintf(stderr, "SCTP/");
-            break;
-        case NEAT_STACK_UDPLITE:
-            fprintf(stderr, "UDP-LITE/");
-            break;
-        default:
-            fprintf(stderr, "stack%d/", result->ai_stack);
-            break;
-        }*/
 
         switch (result->ai_family) {
         case AF_INET:
@@ -66,21 +48,7 @@ static void resolver_handle(struct neat_resolver_results *results,
             fprintf(stderr, "family%d", result->ai_family);
             break;
         }
-        /*
-        switch (result->ai_socktype) {
-        case SOCK_DGRAM:
-            fprintf(stderr, "[SOCK_DGRAM]");
-            break;
-        case SOCK_STREAM:
-            fprintf(stderr, "[SOCK_STREAM]");
-            break;
-        case SOCK_SEQPACKET:
-            fprintf(stderr, "[SOCK_SEQPACKET]");
-            break;
-        default:
-            fprintf(stderr, "[%d]", result->ai_socktype);
-            break;
-        }*/
+
         printf(": %s -> %s\n", src_str, dst_str);
     }
 

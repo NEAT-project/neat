@@ -40,9 +40,6 @@ static void neat_resolver_handle_newaddr(struct neat_ctx *nc,
     struct neat_resolver_request *request_itr;
     struct neat_addr *src_addr = data;
 
-    if (resolver->family && resolver->family != src_addr->family)
-        return;
-
     //Ignore addresses that are deprecated
     if (src_addr->family == AF_INET6 && !src_addr->u.v6.ifa_pref)
         return;
@@ -50,6 +47,11 @@ static void neat_resolver_handle_newaddr(struct neat_ctx *nc,
     request_itr = resolver->request_queue.tqh_first;
 
     while (request_itr != NULL) {
+        if (request_itr->family && request_itr->family != src_addr->family) {
+            request_itr = request_itr->next_req.tqe_next;
+            continue;
+        }
+
         neat_resolver_create_pairs(src_addr, request_itr);
         request_itr = request_itr->next_req.tqe_next;
     }
@@ -1010,7 +1012,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
     //HACK: This is just a hack for testing, will be set based on argument later!
     request->resolve_cb = handle_resolve;
 
-    is_literal = neat_resolver_check_for_literal(&(resolver->family), node);
+    is_literal = neat_resolver_check_for_literal(&(request->family), node);
 
     if (is_literal < 0)
         return RETVAL_FAILURE;

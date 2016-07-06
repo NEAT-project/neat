@@ -329,11 +329,7 @@ struct neat_resolver {
     uint16_t dns_t1;
     //DNS timeout after at least one domain has been resolved
     uint16_t dns_t2;
-    uint16_t dst_port;
-    uint16_t __pad;
 
-    //Domain name and family to look up
-    uint8_t family;
     //Will be set to 1 if we are going to free resolver in idle
     //TODO: Will most likely be changed to a state variable
     uint8_t free_resolver;

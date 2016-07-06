@@ -17,15 +17,6 @@
 #define MAX_NUM_RESOLVED        3
 #define NO_PROTOCOL             0xFFFFFFFF
 
-//These are the private networks defined by IANA. We use them to check if we end
-//up in the private network after following redirects
-#define IANA_A_NW           0x0a000000 //10.0.0.0
-#define IANA_A_MASK         0xff000000 //255.0.0.0 (8)
-#define IANA_B_NW           0xac100000 //172.16.0.0
-#define IANA_B_MASK         0xfff00000 //255.240.0.0 (12)
-#define IANA_C_NW           0xc0a80000 //192.168.0.0
-#define IANA_C_MASK         0xffff0000 //255.255.0.0 (16)
-
 //We know these servers will not lie and will accept queries from an network
 //address. Until we have defined a syntax for IP/interface information in
 //resolv.conf (and the like), then this is as good as we can do

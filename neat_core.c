@@ -27,6 +27,7 @@
 #include "neat_queue.h"
 #include "neat_property_helpers.h"
 #include "neat_stat.h"
+#include "neat_resolver_helpers.h"
 
 #if defined(USRSCTP_SUPPORT)
     #include "neat_usrsctp_internal.h"
@@ -1423,7 +1424,7 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (neat_base_stack(flow->sockStack) == NEAT_STACK_SCTP) {
-        literal = neat_resolver_check_for_literal(&family, name);
+        literal = neat_resolver_helpers_check_for_literal(&family, name);
 
         if (literal != 1) {
             neat_log(NEAT_LOG_ERROR, "%s: provided name '%s' is not an address literal.\n",

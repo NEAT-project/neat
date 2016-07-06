@@ -972,7 +972,8 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
                          uint8_t family,
                          const char *node,
                          uint16_t port,
-                         neat_resolver_handle_t handle_resolve)
+                         neat_resolver_handle_t handle_resolve,
+                         void *user_data)
 {
     struct neat_resolver_request *request;
     int8_t is_literal = 0;
@@ -996,6 +997,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
     request->family = family;
     request->dst_port = htons(port);
     request->resolver = resolver;
+    request->data = user_data;
 
     uv_timer_init(resolver->nc->loop, &(request->timeout_handle));
     request->timeout_handle.data = request;

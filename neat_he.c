@@ -217,7 +217,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
      * FIXME: Make use of the array of protocols
      */
     neat_getaddrinfo(ctx->resolver, family, flow->name, flow->port,
-                     he_resolve_cb);
+                     he_resolve_cb, flow);
 
     return NEAT_OK;
 }

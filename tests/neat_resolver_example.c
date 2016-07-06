@@ -92,7 +92,7 @@ static void resolver_cleanup(struct neat_resolver *resolver)
 static uint8_t test_resolver(struct neat_ctx *nc, struct neat_resolver *resolver,
         uint8_t family, char *node, uint16_t port)
 {
-    if (neat_getaddrinfo(resolver, family, node, port, resolver_handle))
+    if (neat_getaddrinfo(resolver, family, node, port, resolver_handle, NULL))
         return 1;
     else
         return 0;

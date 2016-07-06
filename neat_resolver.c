@@ -1133,8 +1133,21 @@ void neat_resolver_release(struct neat_resolver *resolver)
 
     //If loop is not stopped, return. Otherwise, the idle callback will never be
     //called, so we have to manually free the pairs
-    if (uv_backend_fd(resolver->nc->loop) != -1)
+    if (uv_backend_fd(resolver->nc->loop) != -1) {
+        //Idle handle will only be started if we have one or more active pairs.
+        //That might not be the case, for example someone has requested IPv6 and
+        //only has IPv4 addresses
+        //
+        //I find it cleaner to use idle here than to look into each request and
+        //check for pairs or something. Even though it forces one more iteration
+        //of loop ...
+
+        if (!uv_is_active((uv_handle_t*) &(resolver->idle_handle))) {
+            uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
+        }
+
         return;
+    }
 
     neat_resolver_flush_pairs_del(resolver);
 

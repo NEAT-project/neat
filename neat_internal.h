@@ -49,11 +49,15 @@ struct neat_cib
     uint8_t dummy;
 };
 
-struct neat_ctx {
+LIST_HEAD(neat_flow_list_head, neat_flow);
+
+struct neat_ctx
+{
     uv_loop_t *loop;
     struct neat_resolver *resolver;
     struct neat_pib pib;
     struct neat_cib cib;
+    struct neat_flow_list_head flows;
     uv_timer_t addr_lifetime_handle;
 
     // resolver
@@ -121,6 +125,8 @@ struct neat_flow
     uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
+	struct sockaddr *srcAddr;
+	struct sockaddr *dstAddr;
     struct neat_ctx *ctx; // raw convenience pointer
     uv_poll_t *handle;
 
@@ -163,6 +169,7 @@ struct neat_flow
 
     //List with all non-freed HE contexts.
     LIST_HEAD(he_cb_ctxs, he_cb_ctx) he_cb_ctx_list;
+    LIST_ENTRY(neat_flow) next_flow;
 };
 
 typedef struct neat_flow neat_flow;
@@ -278,8 +285,8 @@ int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node);
 void neat_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
         uint16_t t2);
 
-void io_error(neat_ctx *ctx, neat_flow *flow, int stream,
-              neat_error_code code);
+void neat_io_error(neat_ctx *ctx, neat_flow *flow, int stream,
+                   neat_error_code code);
 
 enum neat_events{
     //A new address has been added to an interface

@@ -355,16 +355,6 @@ struct neat_resolver {
     uv_timer_t timeout_handle;
     uv_fs_event_t resolv_conf_handle;
 
-    //Result is the resolved addresses, code is one of the neat_resolver_codes.
-    //Ownsership of results is transfered to application, so it is the
-    //applications responsibility to free memory
-    //void (*handle_resolve)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
-    neat_resolver_handle_t handle_resolve;
-
-    //Users must be notified when it is safe to free or reset resolver memory.
-    //It has to be done ansync due to libuv cleanup order
-    neat_resolver_cleanup_t cleanup;
-
     //DNS request queue, using TAILQ
     struct neat_resolver_request_queue request_queue;
     struct neat_resolver_request_queue dead_request_queue;

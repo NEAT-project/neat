@@ -1324,10 +1324,12 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 }
 
 static void
-set_primary_dest_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
+set_primary_dest_resolve_cb(struct neat_resolver_results *results,
+                            uint8_t code,
+                            void *user_data)
 {
     int rc;
-    neat_flow *flow = (neat_flow *)resolver->userData1;
+    neat_flow *flow = user_data;
     struct neat_ctx *ctx = flow->ctx;
     char dest_addr[NI_MAXHOST];
 
@@ -1417,9 +1419,11 @@ neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow, int rate, in
 }
 
 static void
-accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
+accept_resolve_cb(struct neat_resolver_results *results,
+                  uint8_t code,
+                  void *user_data)
 {
-    neat_flow *flow = (neat_flow *)resolver->userData1;
+    neat_flow *flow = user_data;
     struct neat_ctx *ctx = flow->ctx;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 

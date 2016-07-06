@@ -12,11 +12,13 @@
 // or if you have installed neat globally
 // clang -g neat_resolver_example.c -lneat
 
-static void resolver_handle(struct neat_resolver *resolver,
-                     struct neat_resolver_results *results, uint8_t neat_code)
+static void resolver_handle(struct neat_resolver_results *results,
+                            uint8_t neat_code,
+                            void *user_data)
 {
     char src_str[INET6_ADDRSTRLEN], dst_str[INET6_ADDRSTRLEN];
     struct neat_resolver_res *result;
+    struct neat_resolver *resolver = user_data;
 
     if (neat_code != NEAT_RESOLVER_OK) {
         fprintf(stderr, "Resolver failed\n");
@@ -92,7 +94,7 @@ static void resolver_cleanup(struct neat_resolver *resolver)
 static uint8_t test_resolver(struct neat_ctx *nc, struct neat_resolver *resolver,
         uint8_t family, char *node, uint16_t port)
 {
-    if (neat_getaddrinfo(resolver, family, node, port, resolver_handle, NULL))
+    if (neat_getaddrinfo(resolver, family, node, port, resolver_handle, resolver))
         return 1;
     else
         return 0;

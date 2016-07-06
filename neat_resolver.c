@@ -285,14 +285,16 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
     //There were no addresses available, so return error
     //TODO: Consider adding a different error
     if (!request->resolver->nc->src_addr_cnt) {
-        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_ERROR);
+        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
+        neat_resolver_request_cleanup(request);
         return;
     }
 
     //Signal internal error
     if ((result_list =
                 calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
-        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_ERROR);
+        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
+        neat_resolver_request_cleanup(request);
         return;
     }
 
@@ -338,10 +340,11 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
     }
 
     if (!num_resolved_addrs) {
-        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_ERROR);
+        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
         free(result_list);
-    } else
-        request->resolve_cb(request->resolver, result_list, NEAT_RESOLVER_OK);
+    } else {
+        request->resolve_cb(result_list, NEAT_RESOLVER_OK, request->user_data);
+    }
 
     //This guard is good enough for now. The only case where a request can be
     //freed (or marked for free) when we get here, is if resolver has been
@@ -366,7 +369,7 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
 
     //DNS timeout, call DNS callback with timeout error code
     if (!request->name_resolved_timeout) {
-        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_TIMEOUT);
+        request->resolve_cb(NULL, NEAT_RESOLVER_TIMEOUT, request->user_data);
         neat_resolver_request_cleanup(request);
         return;
     }
@@ -374,7 +377,7 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
     //Signal internal error
     if ((result_list =
                 calloc(sizeof(struct neat_resolver_results), 1)) == NULL) {
-        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_ERROR);
+        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
         neat_resolver_request_cleanup(request);
         return;
     }
@@ -410,10 +413,10 @@ static void neat_resolver_timeout_cb(uv_timer_t *handle)
     }
 
     if (!num_resolved_addrs) {
+        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
         free(result_list);
-        request->resolve_cb(request->resolver, NULL, NEAT_RESOLVER_ERROR);
     } else {
-        request->resolve_cb(request->resolver, result_list, NEAT_RESOLVER_OK);
+        request->resolve_cb(result_list, NEAT_RESOLVER_OK, request->user_data);
     }
 
     //This guard is good enough for now. The only case where a request can be
@@ -997,7 +1000,7 @@ uint8_t neat_getaddrinfo(struct neat_resolver *resolver,
     request->family = family;
     request->dst_port = htons(port);
     request->resolver = resolver;
-    request->data = user_data;
+    request->user_data = user_data;
 
     uv_timer_init(resolver->nc->loop, &(request->timeout_handle));
     request->timeout_handle.data = request;

@@ -186,8 +186,11 @@ struct neat_resolver_server;
 LIST_HEAD(neat_resolver_results, neat_resolver_res);
 LIST_HEAD(neat_resolver_servers, neat_resolver_server);
 
-//TODO: First argument will be changed, maybe change it to the data pointer?
-typedef void (*neat_resolver_handle_t)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
+//Arguments are result struct (must be freed by user), neat_resolver_code and
+//user_data passed to getaddrinfo
+typedef void (*neat_resolver_handle_t)(struct neat_resolver_results *,
+                                       uint8_t,
+                                       void *);
 typedef void (*neat_resolver_cleanup_t)(struct neat_resolver *resolver);
 
 enum neat_resolver_code {
@@ -318,7 +321,6 @@ struct neat_resolver {
     //The resolver will wrap the context, so that we can easily have many
     //resolvers
     struct neat_ctx *nc;
-    void *userData1;
     uv_poll_cb userData2;
 
     //These values are just passed on to neat_resolver_res

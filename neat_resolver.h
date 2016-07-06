@@ -81,7 +81,7 @@ struct neat_resolver_request {
     //Timeout handle owned by this request
     uv_timer_t timeout_handle;
 
-    void *data; //User data
+    void *user_data; //User data
 
     TAILQ_ENTRY(neat_resolver_request) next_req;
     TAILQ_ENTRY(neat_resolver_request) next_dead_req;

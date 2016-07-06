@@ -115,9 +115,12 @@ static void free_he_handle_cb(uv_handle_t *handle)
 }
 
 static void
-he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
+he_resolve_cb(struct neat_resolver_results *results,
+              uint8_t code,
+              void *user_data)
 {
-    neat_flow *flow = (neat_flow *)resolver->userData1;
+#if 0
+    neat_flow *flow = user_data;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code == NEAT_RESOLVER_TIMEOUT)  {
@@ -174,6 +177,7 @@ he_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *resu
     if (flow->heConnectAttemptCount == 0) {
         io_error(resolver->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
     }
+#endif
 }
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx)
@@ -210,8 +214,8 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
     }
 
-    ctx->resolver->userData1 = (void *)flow; // TODO: This doesn't allow multiple sockets
-    ctx->resolver->userData2 = callback_fx;
+    /*ctx->resolver->userData1 = (void *)flow; // TODO: This doesn't allow multiple sockets
+    ctx->resolver->userData2 = callback_fx;*/
 
     /* FIXME: derivation of the socket type is wrong.
      * FIXME: Make use of the array of protocols

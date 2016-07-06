@@ -768,25 +768,11 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 
     if ((neat_base_stack(flow->sockStack) == NEAT_STACK_SCTP) &&
         (!flow->readBufferMsgComplete)) {
-        spaceFree = flow->readBufferAllocation - flow->readBufferSize;
-        if (flow->readSize > 0) {
-            spaceThreshold = (flow->readSize / 4 + 8191) & ~8191;
-        } else {
-            spaceThreshold = 8192;
+
+        if (resize_read_buffer(flow) != READ_OK) {
+            return READ_WITH_ERROR;
         }
-        if (spaceFree < spaceThreshold) {
-            if (flow->readBufferAllocation == 0) {
-                spaceNeeded = spaceThreshold;
-            } else {
-                spaceNeeded = 2 * flow->readBufferAllocation;
-            }
-            flow->readBuffer = realloc(flow->readBuffer, spaceNeeded);
-            if (flow->readBuffer == NULL) {
-                flow->readBufferAllocation = 0;
-                return READ_WITH_ERROR;
-            }
-            flow->readBufferAllocation = spaceNeeded;
-        }
+
 #if !defined(USRSCTP_SUPPORT)
         iov.iov_base = flow->readBuffer + flow->readBufferSize;
         iov.iov_len = flow->readBufferAllocation - flow->readBufferSize;

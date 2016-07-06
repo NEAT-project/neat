@@ -726,13 +726,11 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             flow->readBufferMsgComplete = 1;
 
             if (n == 0) {
-                fprintf(stdout, "%s:%d %s\n",__FUNCTION__,__LINE__,"read 0 bytes");
                 flow->readBufferMsgComplete = 0;
                 return READ_WITH_ZERO;
             }
 
             if (flow->acceptPending) {
-                fprintf(stdout, "%s:%d %s\n",__FUNCTION__,__LINE__," accept socket read");
                 flow->readBufferMsgComplete = 0;
 
                 neat_flow *newFlow = neat_find_flow(ctx, &flow->srcAddr, (struct sockaddr *)&peerAddr);

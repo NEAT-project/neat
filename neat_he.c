@@ -217,8 +217,10 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     nr_of_stacks = neat_property_translate_protocols(flow->propertyMask,
             stacks);
 
-    if (nr_of_stacks == 0)
+    if (nr_of_stacks == 0) {
+        free(resolver_data);
         return NEAT_ERROR_UNABLE;
+    }
 
     if (!ctx->resolver) {
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");

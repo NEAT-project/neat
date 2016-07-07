@@ -1469,7 +1469,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
     //variables should be determined by something else, like which listen socket
     //data arrives on
     flow->sockType = SOCK_STREAM;
-    flow->sockStack = NEAT_STACK_STCP;
+    flow->sockStack = NEAT_STACK_TCP;
     flow->resolver_results = results;
     flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
 

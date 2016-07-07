@@ -2045,7 +2045,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     
     retval = connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen);    
     if (retval && errno != EINPROGRESS) {
-        neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d connect retval %d", __func__, he_ctx->fd, retval);
+        neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d connect error (%d): %s", __func__, he_ctx->fd, errno, strerror(errno));
         return -2;
     }
 

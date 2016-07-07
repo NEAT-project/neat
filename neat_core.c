@@ -2267,7 +2267,7 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
         return -1;
     }
 
-    he_ctx->sock = usrsctp_socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, protocol, NULL, NULL, 0, NULL);
+    he_ctx->sock = usrsctp_socket(he_ctx->candidate->ai_family, he_ctx->ai_socktype, protocol, NULL, NULL, 0, NULL);
     if (he_ctx->sock) {
         usrsctp_set_non_blocking(he_ctx->sock, 1);
         len = (socklen_t)sizeof(int);
@@ -2311,8 +2311,8 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
         if (flow->hefirstConnect) {
             flow->hefirstConnect = 0;
             flow->family = he_ctx->candidate->ai_family;
-            flow->sockType = he_ctx->candidate->ai_socktype;
-            flow->sockStack = he_ctx->candidate->ai_stack;
+            flow->sockType = he_ctx->ai_socktype;
+            flow->sockStack = he_ctx->ai_stack;
             flow->everConnected = 1;
             flow->sock = he_ctx->sock;
             flow->fd = -1;

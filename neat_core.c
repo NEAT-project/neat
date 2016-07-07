@@ -1933,7 +1933,7 @@ int neat_base_stack(neat_protocol_stack_type stack)
 static int
 neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 {
-    int enable = 1;
+    int enable = 1, retval;
     socklen_t len = 0;
     int size = 0, protocol;
 #ifdef __linux__
@@ -2042,10 +2042,13 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 #endif
 
     uv_poll_init(he_ctx->nc->loop, he_ctx->handle, he_ctx->fd); // makes fd nb as side effect
-    if ((he_ctx->fd == -1) ||
-        (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
-        neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d", __func__, he_ctx->fd);
-        return -2;
+    if ((he_ctx->fd == -1)) {
+        retval = connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen);
+        
+        if (retval && errno != EINPROGRESS) {
+            neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d %d", __func__, he_ctx->fd, retval);
+            return -2;
+        }
     }
     uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx);
 #if defined(USRSCTP_SUPPORT)

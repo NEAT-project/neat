@@ -74,6 +74,21 @@ struct neat_ctx *neat_init_ctx()
     neat_log_init();
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+    // TODO: Disable these checks for non-debug builds
+    if (sizeof(neat_tag_name) / sizeof(neat_tag_name[0]) != NEAT_TAG_LAST) {
+        neat_log(NEAT_LOG_DEBUG,
+                 "Warning: Expected %d tag names, but found %d tag names",
+                 NEAT_TAG_LAST,
+                 sizeof(neat_tag_name) / sizeof(*neat_tag_name));
+    }
+
+    for (int i = 0; i < NEAT_TAG_LAST; ++i) {
+        if (neat_tag_name[i] == NULL) {
+            neat_log(NEAT_LOG_DEBUG, "Warning: Missing one or more tag names (index %d)", i);
+            break;
+        }
+    }
+
     nc = calloc(sizeof(struct neat_ctx), 1);
 
     if (!nc) {

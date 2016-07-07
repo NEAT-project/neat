@@ -2042,14 +2042,13 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 #endif
 
     uv_poll_init(he_ctx->nc->loop, he_ctx->handle, he_ctx->fd); // makes fd nb as side effect
-    if (he_ctx->fd == -1) {
-        retval = connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen);
-        
-        if (retval && errno != EINPROGRESS) {
-            neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d %d", __func__, he_ctx->fd, retval);
-            return -2;
-        }
+    
+    retval = connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen);    
+    if (retval && errno != EINPROGRESS) {
+        neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d connect retval %d", __func__, he_ctx->fd, retval);
+        return -2;
     }
+
     uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx);
 #if defined(USRSCTP_SUPPORT)
     }

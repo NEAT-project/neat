@@ -2260,9 +2260,9 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    protocol = neat_stack_to_protocol(neat_base_stack(he_ctx->candidate->ai_stack));
+    protocol = neat_stack_to_protocol(neat_base_stack(he_ctx->ai_stack));
     if (protocol == 0) {
-        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->candidate->ai_stack);
+        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->ai_stack);
         return -1;
     }
 

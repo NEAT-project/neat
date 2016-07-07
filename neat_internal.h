@@ -32,6 +32,7 @@
 
 struct neat_event_cb;
 struct neat_addr;
+struct neat_resolver;
 
 //TODO: One drawback with using LIST from queue.h, is that a callback can only
 //be member of one list. Decide if this is critical and improve if needed
@@ -186,14 +187,17 @@ struct neat_interface_stats {
 typedef struct neat_interface_stats neat_interface_stats;
 
 //NEAT resolver public data structures/functions
-struct neat_resolver;
 struct neat_resolver_res;
 struct neat_resolver_server;
 
 LIST_HEAD(neat_resolver_results, neat_resolver_res);
 LIST_HEAD(neat_resolver_servers, neat_resolver_server);
 
-typedef void (*neat_resolver_handle_t)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
+//Arguments are result struct (must be freed by user), neat_resolver_code and
+//user_data passed to getaddrinfo
+typedef void (*neat_resolver_handle_t)(struct neat_resolver_results *,
+                                       uint8_t,
+                                       void *);
 typedef void (*neat_resolver_cleanup_t)(struct neat_resolver *resolver);
 
 enum neat_resolver_code {
@@ -224,8 +228,6 @@ struct neat_resolver_server {
 //Struct passed to resolver callback, mirrors what we get back from getaddrinfo
 struct neat_resolver_res {
     int32_t ai_family;
-    int32_t ai_socktype;
-    int32_t ai_stack;
     uint32_t if_idx;
     struct sockaddr_storage src_addr;
     socklen_t src_addr_len;
@@ -249,6 +251,8 @@ struct he_cb_ctx {
     size_t readSize;
     size_t writeLimit;
     unsigned int isSCTPExplicitEOR : 1;
+    int32_t ai_socktype;
+    int32_t ai_stack;
 
     LIST_ENTRY(he_cb_ctx) next_he_ctx;
 };
@@ -256,12 +260,8 @@ struct he_cb_ctx {
 //Intilize resolver. Sets up internal callbacks etc.
 //Resolve is required, cleanup is not
 struct neat_resolver *neat_resolver_init(struct neat_ctx *nc,
-                                         const char *resolv_conf_path,
-                                         neat_resolver_handle_t handle_resolve,
-                                         neat_resolver_cleanup_t cleanup);
+                                         const char *resolv_conf_path);
 
-//Reset resolver, it is ready for use right after this is called
-void neat_resolver_reset(struct neat_resolver *resolver);
 //Release all memory occupied by a resolver. Resolver can't be used again
 void neat_resolver_release(struct neat_resolver *resolver);
 
@@ -270,12 +270,12 @@ void neat_resolver_free_results(struct neat_resolver_results *results);
 
 //Start to resolve a domain name (or literal). Accepts a list of protocols, will
 //set socktype based on protocol
-uint8_t neat_getaddrinfo(struct neat_resolver *resolver, uint8_t family,
-        const char *node, uint16_t port, neat_protocol_stack_type ai_stack[],
-        uint8_t stack_count);
-//Check if node is an IP literal or not. Returns -1 on failure, 0 if not
-//literal, 1 if literal
-int8_t neat_resolver_check_for_literal(uint8_t *family, const char *node);
+uint8_t neat_resolve(struct neat_resolver *resolver,
+                         uint8_t family,
+                         const char *node,
+                         uint16_t port,
+                         neat_resolver_handle_t handle_resolve,
+                         void *user_data);
 
 //Update timeouts (in ms) for DNS resolving. T1 is total timeout, T2 is how long
 //to wait after first reply from DNS server. Initial values are 30s and 1s.
@@ -318,62 +318,6 @@ struct neat_event_cb {
     void (*event_cb)(struct neat_ctx *nc, void *p_ptr, void *data);
     void *data;
     LIST_ENTRY(neat_event_cb) next_cb;
-};
-
-struct neat_resolver {
-    //The resolver will wrap the context, so that we can easily have many
-    //resolvers
-    struct neat_ctx *nc;
-    void *userData1;
-    uv_poll_cb userData2;
-
-    //These values are just passed on to neat_resolver_res
-    //TODO: Remove this, will be set on result
-    neat_protocol_stack_type ai_stack[NEAT_STACK_MAX_NUM];
-    //DNS timeout before any domain has been resolved
-    uint16_t dns_t1;
-    //DNS timeout after at least one domain has been resolved
-    uint16_t dns_t2;
-    uint16_t dst_port;
-    uint16_t __pad;
-
-    //Domain name and family to look up
-    uint8_t family;
-    //Will be set to 1 if we are going to free resolver in idle
-    //TODO: Will most likely be changed to a state variable
-    uint8_t free_resolver;
-    //Flag used to signal if we have resolved name and timeout has switched from
-    //total DNS timeout
-    uint8_t name_resolved_timeout;
-    uint8_t __pad2;
-    char domain_name[MAX_DOMAIN_LENGTH];
-
-    //The reason we need two of these is that as of now, a neat_event_cb
-    //struct can only be part of one list. This is a future optimization, if we
-    //decide that it is a problem
-    struct neat_event_cb newaddr_cb;
-    struct neat_event_cb deladdr_cb;
-
-    //Keep track of all DNS servers seen until now
-    struct neat_resolver_servers server_list;
-
-    //List of all active resolver pairs
-    struct neat_resolver_pairs resolver_pairs;
-    //Need to defer free until libuv has clean up memory
-    struct neat_resolver_pairs resolver_pairs_del;
-    uv_idle_t idle_handle;
-    uv_timer_t timeout_handle;
-    uv_fs_event_t resolv_conf_handle;
-
-    //Result is the resolved addresses, code is one of the neat_resolver_codes.
-    //Ownsership of results is transfered to application, so it is the
-    //applications responsibility to free memory
-    //void (*handle_resolve)(struct neat_resolver*, struct neat_resolver_results *, uint8_t);
-    neat_resolver_handle_t handle_resolve;
-
-    //Users must be notified when it is safe to free or reset resolver memory.
-    //It has to be done ansync due to libuv cleanup order
-    neat_resolver_cleanup_t cleanup;
 };
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);

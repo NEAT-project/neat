@@ -27,6 +27,7 @@
 #include "neat_queue.h"
 #include "neat_property_helpers.h"
 #include "neat_stat.h"
+#include "neat_resolver_helpers.h"
 
 #if defined(USRSCTP_SUPPORT)
     #include "neat_usrsctp_internal.h"
@@ -135,6 +136,12 @@ static void neat_walk_cb(uv_handle_t *handle, void *arg)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+    //HACK: Can't stop the IDLE handle used by resolver. Should probably do
+    //something more advanced in case we use other idle handles
+    if (handle->type == UV_IDLE) {
+        return;
+    }
+
     if (!uv_is_closing(handle))
         uv_close(handle, NULL);
 }
@@ -144,6 +151,7 @@ static void neat_close_loop(struct neat_ctx *nc)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     uv_walk(nc->loop, neat_walk_cb, nc);
+
     //Let all close handles run
     uv_run(nc->loop, UV_RUN_DEFAULT);
     uv_loop_close(nc->loop);
@@ -168,12 +176,11 @@ void neat_free_ctx(struct neat_ctx *nc)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    neat_core_cleanup(nc);
-
     if (nc->resolver) {
         neat_resolver_release(nc->resolver);
-        free(nc->resolver);
     }
+
+    neat_core_cleanup(nc);
 
     if (nc->event_cbs)
         free(nc->event_cbs);
@@ -1055,8 +1062,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket fd %d", __func__, he_ctx->fd);
         flow->hefirstConnect = 0;
         flow->family = he_ctx->candidate->ai_family;
-        flow->sockType = he_ctx->candidate->ai_socktype;
-        flow->sockStack = he_ctx->candidate->ai_stack;
+        flow->sockType = he_ctx->ai_socktype;
+        flow->sockStack = he_ctx->ai_stack;
         flow->everConnected = 1;
 #if defined(USRSCTP_SUPPORT)
         flow->sock = he_ctx->sock;
@@ -1455,10 +1462,12 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 }
 
 static void
-set_primary_dest_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
+set_primary_dest_resolve_cb(struct neat_resolver_results *results,
+                            uint8_t code,
+                            void *user_data)
 {
     int rc;
-    neat_flow *flow = (neat_flow *)resolver->userData1;
+    neat_flow *flow = user_data;
     struct neat_ctx *ctx = flow->ctx;
     char dest_addr[NI_MAXHOST];
 
@@ -1524,21 +1533,18 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (neat_base_stack(flow->sockStack) == NEAT_STACK_SCTP) {
-        neat_protocol_stack_type stacks[] = {NEAT_STACK_SCTP};
+        literal = neat_resolver_helpers_check_for_literal(&family, name);
 
-	literal = neat_resolver_check_for_literal(&family, name);
+        if (literal != 1) {
+            neat_log(NEAT_LOG_ERROR, "%s: provided name '%s' is not an address literal.\n",
+                 __func__, name);
+            return NEAT_ERROR_BAD_ARGUMENT;
+        }
 
-	if (literal != 1) {
-	    neat_log(NEAT_LOG_ERROR, "%s: provided name '%s' is not an address literal.\n",
-		     __func__, name);
-	    return NEAT_ERROR_BAD_ARGUMENT;
-	}
+            neat_resolve(ctx->resolver, AF_UNSPEC, name, flow->port,
+                         set_primary_dest_resolve_cb, flow);
 
-        ctx->resolver->handle_resolve = set_primary_dest_resolve_cb;
-        neat_getaddrinfo(ctx->resolver, AF_UNSPEC, name, flow->port,
-                stacks, sizeof(*stacks)/sizeof(stacks[0]));
-
-        return NEAT_ERROR_OK;
+            return NEAT_ERROR_OK;
     }
 
     return NEAT_ERROR_UNABLE;
@@ -1551,9 +1557,11 @@ neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow, int rate, in
 }
 
 static void
-accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *results, uint8_t code)
+accept_resolve_cb(struct neat_resolver_results *results,
+                  uint8_t code,
+                  void *user_data)
 {
-    neat_flow *flow = (neat_flow *)resolver->userData1;
+    neat_flow *flow = user_data;
     struct neat_ctx *ctx = flow->ctx;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -1561,10 +1569,16 @@ accept_resolve_cb(struct neat_resolver *resolver, struct neat_resolver_results *
         io_error(ctx, flow, NEAT_INVALID_STREAM, code);
         return;
     }
+
     assert (results->lh_first);
     flow->family = results->lh_first->ai_family;
-    flow->sockType = results->lh_first->ai_socktype;
-    flow->sockStack = results->lh_first->ai_stack;
+    //This is a HACK and is bogus, but it is no worse than what was here before.
+    //The resolver doesn't care about transport protocol, only family. So they
+    //would just get this first socket type, which is usually TCP. I guess these
+    //variables should be determined by something else, like which listen socket
+    //data arrives on
+    flow->sockType = SOCK_STREAM;
+    flow->sockStack = NEAT_STACK_TCP;
     flow->resolver_results = results;
     flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
 
@@ -1624,17 +1638,10 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     assert(flow->handle != NULL);
 
     if (!ctx->resolver)
-        ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf",
-                                           accept_resolve_cb, NULL);
-    else if (ctx->resolver->handle_resolve != accept_resolve_cb)
-        // TODO: Race condition if this is updated before the callback for
-        // set_primary_addr is called
-        ctx->resolver->handle_resolve = accept_resolve_cb;
+        ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
 
-    ctx->resolver->userData1 = (void *)flow;
-
-    neat_getaddrinfo(ctx->resolver, AF_INET, flow->name, flow->port,
-                     stacks, nr_of_stacks);
+    neat_resolve(ctx->resolver, AF_INET, flow->name, flow->port,
+                 accept_resolve_cb, flow);
     return NEAT_OK;
 }
 
@@ -2043,7 +2050,7 @@ int neat_base_stack(neat_protocol_stack_type stack)
 static int
 neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 {
-    int enable = 1;
+    int enable = 1, retval;
     socklen_t len = 0;
     int size = 0, protocol;
 #ifdef __linux__
@@ -2056,16 +2063,16 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
 #if defined(USRSCTP_SUPPORT)
-    if (neat_base_stack(he_ctx->candidate->ai_stack) == NEAT_STACK_SCTP) {
+    if (neat_base_stack(he_ctx->ai_stack) == NEAT_STACK_SCTP) {
         neat_connect_via_usrsctp(he_ctx);
     } else {
 #endif
-    protocol = neat_stack_to_protocol(neat_base_stack(he_ctx->candidate->ai_stack));
+    protocol = neat_stack_to_protocol(neat_base_stack(he_ctx->ai_stack));
     if (protocol == 0) {
-        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->candidate->ai_stack);
+        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->ai_stack);
         return -1;
     }
-    if ((he_ctx->fd = socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, protocol)) < 0) {
+    if ((he_ctx->fd = socket(he_ctx->candidate->ai_family, he_ctx->ai_socktype, protocol)) < 0) {
         neat_log(NEAT_LOG_ERROR, "Failed to create he socket");
         return -1;
     }
@@ -2108,6 +2115,10 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     } else {
         he_ctx->readSize = 0;
     }
+
+    setsockopt(he_ctx->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+
+#if 0
     switch (he_ctx->candidate->ai_stack) {
         case NEAT_STACK_TCP:
             setsockopt(he_ctx->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
@@ -2131,9 +2142,10 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         default:
             break;
     }
+#endif
 
 #if defined(IPPROTO_SCTP) && defined(SCTP_INITMSG)
-    if (he_ctx->candidate->ai_stack == NEAT_STACK_SCTP) {
+    if (he_ctx->ai_stack == NEAT_STACK_SCTP) {
         struct sctp_initmsg init;
         memset(&init, 0, sizeof(init));
         init.sinit_num_ostreams = he_ctx->flow->stream_count;
@@ -2146,11 +2158,13 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 #endif
 
     uv_poll_init(he_ctx->nc->loop, he_ctx->handle, he_ctx->fd); // makes fd nb as side effect
-    if ((he_ctx->fd == -1) ||
-        (connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen) && (errno != EINPROGRESS))) {
-        neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d", __func__, he_ctx->fd);
+    
+    retval = connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen);    
+    if (retval && errno != EINPROGRESS) {
+        neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d connect error (%d): %s", __func__, he_ctx->fd, errno, strerror(errno));
         return -2;
     }
+
     uv_poll_start(he_ctx->handle, UV_WRITABLE, callback_fx);
 #if defined(USRSCTP_SUPPORT)
     }
@@ -2372,13 +2386,13 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    protocol = neat_stack_to_protocol(neat_base_stack(he_ctx->candidate->ai_stack));
+    protocol = neat_stack_to_protocol(neat_base_stack(he_ctx->ai_stack));
     if (protocol == 0) {
-        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->candidate->ai_stack);
+        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->ai_stack);
         return -1;
     }
 
-    he_ctx->sock = usrsctp_socket(he_ctx->candidate->ai_family, he_ctx->candidate->ai_socktype, protocol, NULL, NULL, 0, NULL);
+    he_ctx->sock = usrsctp_socket(he_ctx->candidate->ai_family, he_ctx->ai_socktype, protocol, NULL, NULL, 0, NULL);
     if (he_ctx->sock) {
         usrsctp_set_non_blocking(he_ctx->sock, 1);
         len = (socklen_t)sizeof(int);
@@ -2422,8 +2436,8 @@ neat_connect_via_usrsctp(struct he_cb_ctx *he_ctx)
         if (flow->hefirstConnect) {
             flow->hefirstConnect = 0;
             flow->family = he_ctx->candidate->ai_family;
-            flow->sockType = he_ctx->candidate->ai_socktype;
-            flow->sockStack = he_ctx->candidate->ai_stack;
+            flow->sockType = he_ctx->ai_socktype;
+            flow->sockStack = he_ctx->ai_stack;
             flow->everConnected = 1;
             flow->sock = he_ctx->sock;
             flow->fd = -1;

@@ -369,6 +369,9 @@ main(int argc, char *argv[])
     char *arg_property_ptr = NULL;
     char arg_property_delimiter[] = ",;";
 
+    NEAT_OPTARGS_DECLARE(NEAT_OPTARGS_MAX);
+    NEAT_OPTARGS_INIT();
+
     memset(&ops, 0, sizeof(ops));
     memset(&stdin_buffer, 0, sizeof(stdin_buffer));
 
@@ -532,8 +535,10 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
+    NEAT_OPTARG_INT(NEAT_TAG_STREAM_COUNT, 2);
+
     // wait for on_connected or on_error to be invoked
-    if (neat_open_multistream(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), 2) == NEAT_OK) {
+    if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), NEAT_OPTARGS, NEAT_OPTARGS_COUNT) == NEAT_OK) {
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     } else {
         fprintf(stderr, "%s - error: neat_open\n", __func__);

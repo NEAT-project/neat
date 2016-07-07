@@ -33,6 +33,8 @@ static void he_print_results(struct neat_resolver_results *results)
                 snprintf(family, 16, "family%d", result->ai_family);
                 break;
         }
+
+        //printf("port: %u\n", result->dst_port);
         getnameinfo((struct sockaddr *)&result->src_addr, result->src_addr_len,
                     addr_name_src, sizeof(addr_name_src),
                     serv_name_src, sizeof(serv_name_src),

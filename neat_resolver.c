@@ -228,7 +228,6 @@ static uint32_t neat_resolver_literal_populate_results(struct neat_resolver_requ
         u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
         memset(u.dst_addr4, 0, sizeof(struct sockaddr_in));
         u.dst_addr4->sin_family = AF_INET;
-        u.dst_addr4->sin_port = request->dst_port;
 #ifdef HAVE_SIN_LEN
         u.dst_addr4->sin_len = sizeof(struct sockaddr_in);
 #endif
@@ -237,7 +236,6 @@ static uint32_t neat_resolver_literal_populate_results(struct neat_resolver_requ
         u.dst_addr6 = (struct sockaddr_in6*) &dst_addr;
         memset(u.dst_addr6, 0, sizeof(struct sockaddr_in6));
         u.dst_addr6->sin6_family = AF_INET6;
-        u.dst_addr6->sin6_port = request->dst_port;
 #ifdef HAVE_SIN6_LEN
         u.dst_addr6->sin6_len = sizeof(struct sockaddr_in6);
 #endif
@@ -259,7 +257,8 @@ static uint32_t neat_resolver_literal_populate_results(struct neat_resolver_requ
         if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
             continue;
 
-        num_resolved_addrs += neat_resolver_helpers_fill_results(result_list,
+        num_resolved_addrs += neat_resolver_helpers_fill_results(request,
+                                                                 result_list,
                                                                  nsrc_addr,
                                                                  dst_addr);
     }
@@ -295,7 +294,8 @@ static uint32_t neat_resolver_populate_results(struct neat_resolver_request *req
                 break;
 
             //TODO: Consider connecting pairs to request instead of resolver
-            num_resolved_addrs += neat_resolver_helpers_fill_results(result_list,
+            num_resolved_addrs += neat_resolver_helpers_fill_results(request,
+                                                                     result_list,
                                                                      pair_itr->src_addr,
                                                                      pair_itr->resolved_addr[i]);
         }

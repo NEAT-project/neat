@@ -71,13 +71,15 @@ neat_resolver_helpers_check_for_literal(uint8_t *family,
 
 //Create all results for one match
 uint8_t
-neat_resolver_helpers_fill_results(struct neat_resolver_results *result_list,
+neat_resolver_helpers_fill_results(struct neat_resolver_request *request,
+                                   struct neat_resolver_results *result_list,
                                    struct neat_addr *src_addr,
                                    struct sockaddr_storage dst_addr)
 {
     socklen_t addrlen;
     struct neat_resolver_res *result;
     uint8_t num_addr_added = 0;
+    struct sockaddr_in *addr4;
 
     result = calloc(sizeof(struct neat_resolver_res), 1);
 
@@ -94,7 +96,12 @@ neat_resolver_helpers_fill_results(struct neat_resolver_results *result_list,
     result->dst_addr = dst_addr;
     result->dst_addr_len = addrlen;
     result->internal = neat_resolver_helpers_addr_internal(&dst_addr);
-    
+   
+    //Head of sockaddr_in and sockaddr_in6 is the same, so this is safe
+    //for setting port
+    addr4 = (struct sockaddr_in*) &(result->dst_addr);
+    addr4->sin_port = request->dst_port;
+ 
     LIST_INSERT_HEAD(result_list, result, next_res);
     num_addr_added++;
 

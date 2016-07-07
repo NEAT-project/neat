@@ -1380,37 +1380,6 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
 }
 
 neat_error_code
-neat_open_multistream(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port, int count)
-{
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    if (flow->name) {
-        return NEAT_ERROR_BAD_ARGUMENT;
-    }
-
-    if (count < 0) {
-        return NEAT_ERROR_BAD_ARGUMENT;
-    }
-
-#if defined(__APPLE__)
-    neat_log(NEAT_LOG_ERROR, "Multistreaming not available on OSX");
-    return NEAT_ERROR_UNABLE;
-#endif
-
-    if ((flow->propertyMask & NEAT_PROPERTY_SCTP_REQUIRED) == 0) {
-        neat_log(NEAT_LOG_ERROR, "Multistreaming is only supported by SCTP");
-        return NEAT_ERROR_UNABLE;
-    }
-
-    flow->name = strdup(name);
-    flow->port = port;
-    flow->propertyAttempt = flow->propertyMask;
-    flow->stream_count = (uint32_t)count;
-
-    return neat_he_lookup(mgr, flow, he_connected_cb);
-}
-
-neat_error_code
 neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 {
 #if defined(TCP_USER_TIMEOUT)

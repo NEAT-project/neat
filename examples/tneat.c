@@ -195,7 +195,7 @@ on_writable(struct neat_flow_operations *opCB)
         }
     }
 
-    code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size);
+    code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size, NULL, 0);
 
     if (done) {
         opCB->on_writable = NULL;

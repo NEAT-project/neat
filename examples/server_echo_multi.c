@@ -15,8 +15,8 @@
 **********************************************************************/
 
 static uint32_t config_buffer_size = 512;
-static uint16_t config_log_level = 1;
-static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+static uint16_t config_log_level   = 1;
+static char     config_property[]  = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
 
@@ -38,8 +38,8 @@ print_usage()
 
 struct echo_flow {
     unsigned char *buffer;
-    uint32_t bytes;
-    int stream_id;
+    uint32_t       bytes;
+    int            stream_id;
 };
 
 /*
@@ -62,7 +62,7 @@ static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
-    neat_error_code code;
+    neat_error_code   code;
     struct echo_flow *ef = opCB->userData;
 
     if (config_log_level >= 2) {
@@ -96,8 +96,8 @@ on_readable(struct neat_flow_operations *opCB)
         ef->stream_id = opCB->stream_id;
 
         // echo data
-        opCB->on_readable = NULL;
-        opCB->on_writable = on_writable;
+        opCB->on_readable    = NULL;
+        opCB->on_writable    = on_writable;
         opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
     // peer disconnected - stop callbacks and free ressources
@@ -105,8 +105,8 @@ on_readable(struct neat_flow_operations *opCB)
         if (config_log_level >= 1) {
             printf("peer disconnected\n");
         }
-        opCB->on_readable = NULL;
-        opCB->on_writable = NULL;
+        opCB->on_readable    = NULL;
+        opCB->on_writable    = NULL;
         opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
         free(ef->buffer);
@@ -123,8 +123,8 @@ on_all_written(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    opCB->on_readable = on_readable;
-    opCB->on_writable = NULL;
+    opCB->on_readable    = on_readable;
+    opCB->on_writable    = NULL;
     opCB->on_all_written = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
@@ -133,7 +133,8 @@ on_all_written(struct neat_flow_operations *opCB)
 static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
-    neat_error_code code;
+    neat_error_code   code;
+    struct neat_tlv   options[1];
     struct echo_flow *ef = opCB->userData;
 
     if (config_log_level >= 2) {
@@ -141,18 +142,16 @@ on_writable(struct neat_flow_operations *opCB)
     }
 
     // set callbacks
-    opCB->on_readable = NULL;
-    opCB->on_writable = NULL;
+    opCB->on_readable    = NULL;
+    opCB->on_writable    = NULL;
     opCB->on_all_written = on_all_written;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-    /*
-    if (ef->stream_id != -1) {
-        code = neat_write_ex(opCB->ctx, opCB->flow, ef->buffer, ef->bytes, ef->stream_id);
-    } else {
-    */
-        code = neat_write(opCB->ctx, opCB->flow, ef->buffer, ef->bytes);
-    // }
+    options[0].tag           = NEAT_TAG_STREAM_ID;
+    options[0].type          = NEAT_TYPE_INTEGER;
+    options[0].value.integer = opCB->stream_id; // Return on the same stream
+
+    code = neat_write(opCB->ctx, opCB->flow, ef->buffer, ef->bytes, options, 1);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: %d\n", __func__, (int)code);
         return on_error(opCB);
@@ -198,8 +197,8 @@ on_connected(struct neat_flow_operations *opCB)
         exit(EXIT_FAILURE);
     }
 
-    opCB->on_readable = on_readable;
-    opCB->on_writable = NULL;
+    opCB->on_readable    = on_readable;
+    opCB->on_writable    = NULL;
     opCB->on_all_written = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
@@ -209,11 +208,12 @@ int
 main(int argc, char *argv[])
 {
     uint64_t prop;
-    int arg, result;
-    char *arg_property = config_property;
-    char *arg_property_ptr = NULL;
-    char arg_property_delimiter[] = ",;";
-    static struct neat_ctx *ctx = NULL;
+    int      arg, result;
+    char    *arg_property             = config_property;
+    char    *arg_property_ptr         = NULL;
+    char     arg_property_delimiter[] = ",;";
+
+    static struct neat_ctx *ctx   = NULL;
     static struct neat_flow *flow = NULL;
     static struct neat_flow_operations ops;
 
@@ -339,7 +339,7 @@ main(int argc, char *argv[])
 
     // set callbacks
     ops.on_connected = on_connected;
-    ops.on_error = on_error;
+    ops.on_error     = on_error;
 
     if (neat_set_operations(ctx, flow, &ops)) {
         fprintf(stderr, "%s - neat_set_operations failed\n", __func__);

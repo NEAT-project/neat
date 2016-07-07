@@ -126,7 +126,7 @@ on_writable(struct neat_flow_operations *opCB)
     time_now = time(NULL);
     time_string = ctime(&time_now);
     // and send it
-    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) time_string, strlen(time_string));
+    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) time_string, strlen(time_string), NULL, 0);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write failed - code: %d\n", __func__, (int)code);
         return on_error(opCB);

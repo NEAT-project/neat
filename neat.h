@@ -182,6 +182,87 @@ neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *fl
 
 #define NEAT_INVALID_STREAM (-1)
 
+#define NEAT_OPTARGS (__optional_arguments)
+#define NEAT_OPTARGS_COUNT (__optional_argument_count)
+
+#define NEAT_OPTARGS_MAX (NEAT_TAG_LAST)
+
+#define NEAT_OPTARGS_INIT() \
+    do { \
+        NEAT_OPTARGS_COUNT = 0; \
+    } while (0);
+
+#define NEAT_OPTARGS_RESET NEAT_OPTARGS_INIT
+
+#ifdef assert
+
+#define NEAT_OPTARGS_DECLARE(max) \
+    struct neat_tlv __optargs_buffer[max]; \
+    struct neat_tlv *NEAT_OPTARGS = &__optargs_buffer[0]; \
+    unsigned int NEAT_OPTARGS_COUNT; \
+    unsigned int __optional_arguments_limit = max;
+
+#define NEAT_OPTARG_INT(tagname, val) \
+    do { \
+        assert(NEAT_OPTARGS_COUNT < __optional_arguments_limit);\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.integer = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_INTEGER;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#define NEAT_OPTARG_FLOAT(tagname, val) \
+    do { \
+        assert(NEAT_OPTARGS_COUNT < __optional_arguments_limit);\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.real = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_FLOAT;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#define NEAT_OPTARG_STRING(tagname, val) \
+    do { \
+        assert(NEAT_OPTARGS_COUNT < __optional_arguments_limit);\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.string = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_STRING;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#else
+
+#define NEAT_OPTARGS_DECLARE(max) \
+    struct neat_tlv __optargs_buffer[max]; \
+    struct neat_tlv *NEAT_OPTARGS = &__optargs_buffer[0]; \
+    unsigned int NEAT_OPTARGS_COUNT;
+
+#define NEAT_OPTARG_INT(tagname, val) \
+    do { \
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.integer = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_INTEGER;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#define NEAT_OPTARG_FLOAT(tagname, val) \
+    do { \
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.real = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_FLOAT;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#define NEAT_OPTARG_STRING(tagname, val) \
+    do { \
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.string = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_STRING;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#endif // ifdef assert else
+
+
 // cleanup extern "C"
 #ifdef __cplusplus
 }

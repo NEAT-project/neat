@@ -1364,12 +1364,18 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (flow->name) {
+        neat_log(NEAT_LOG_ERROR, "Flow appears to already be open");
         return NEAT_ERROR_BAD_ARGUMENT;
     }
 
     HANDLE_OPTIONAL_ARGUMENTS_START()
         OPTIONAL_ARGUMENT(NEAT_TAG_STREAM_COUNT, stream_count, NEAT_TYPE_INTEGER)
     HANDLE_OPTIONAL_ARGUMENTS_END();
+
+    if (stream_count < 1) {
+        neat_log(NEAT_LOG_ERROR, "Stream count must be 1 or more");
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
 
     flow->name = strdup(name);
     flow->port = port;

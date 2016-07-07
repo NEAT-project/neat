@@ -62,8 +62,10 @@ static void neat_sctp_init_events(int sock);
 static neat_flow * do_accept(neat_ctx *ctx, neat_flow *flow);
 neat_flow * neat_find_flow(neat_ctx *, struct sockaddr *, struct sockaddr *);
 
+#define TAG_STRING(tag) [tag] = #tag
 const char *neat_tag_name[NEAT_TAG_LAST] = {
-    "NEAT_TAG_STREAM_ID",
+    TAG_STRING(NEAT_TAG_STREAM_ID),
+    TAG_STRING(NEAT_TAG_STREAM_COUNT),
 };
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent

@@ -336,7 +336,7 @@ void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code);
 int neat_base_stack(neat_protocol_stack_type stack);
 int neat_stack_to_protocol(neat_protocol_stack_type stack);
 
-const char *neat_tag_name[NEAT_TAG_LAST];
+extern const char *neat_tag_name[NEAT_TAG_LAST];
 
 #define HANDLE_OPTIONAL_ARGUMENTS_START() \
     do {\

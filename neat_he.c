@@ -17,29 +17,11 @@ static void he_print_results(struct neat_resolver_results *results)
     struct neat_resolver_res *result;
     char addr_name_src[INET6_ADDRSTRLEN], addr_name_dst[INET6_ADDRSTRLEN];
     char serv_name_src[6], serv_name_dst[6];
-    char proto[16];
     char family[16];
 
     neat_log(NEAT_LOG_INFO, "Happy-Eyeballs results:");
 
     LIST_FOREACH(result, results, next_res) {
-        /*switch (result->ai_stack) {
-            case NEAT_STACK_UDP:
-                snprintf(proto, 16, "UDP");
-                break;
-            case NEAT_STACK_TCP:
-                snprintf(proto, 16, "TCP");
-                break;
-            case NEAT_STACK_SCTP:
-                snprintf(proto, 16, "SCTP");
-                break;
-            case NEAT_STACK_UDPLITE:
-                snprintf(proto, 16, "UDPLite");
-                break;
-            default:
-                snprintf(proto, 16, "stack%d", result->ai_stack);
-                break;
-        }*/
         switch (result->ai_family) {
             case AF_INET:
                 snprintf(family, 16, "IPv4");
@@ -61,7 +43,7 @@ static void he_print_results(struct neat_resolver_results *results)
                     serv_name_dst, sizeof(serv_name_dst),
                     NI_NUMERICHOST | NI_NUMERICSERV);
 
-        neat_log(NEAT_LOG_INFO, "\t%s/%s - %s:%s -> %s:%s", proto, family,
+        neat_log(NEAT_LOG_INFO, "\t%s - %s:%s -> %s:%s", family,
             addr_name_src, serv_name_src, addr_name_dst, serv_name_dst);
     }
 }
@@ -153,7 +135,7 @@ he_resolve_cb(struct neat_resolver_results *results,
             he_ctx->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
             assert(he_ctx->handle != NULL);
             he_ctx->handle->data = (void *) he_ctx;
-            he_ctx->nc = flow->ctx;
+            he_ctx->nc = resolver_data->ctx;
             he_ctx->candidate = candidate;
             he_ctx->flow = flow;
             he_ctx->ai_stack = stacks[i];
@@ -245,6 +227,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     /* FIXME: derivation of the socket type is wrong.
      * FIXME: Make use of the array of protocols
      */
+    resolver_data->ctx = ctx;
     resolver_data->flow = flow;
     resolver_data->callback_fx = callback_fx;
     neat_resolve(ctx->resolver, family, flow->name, flow->port,

@@ -2042,7 +2042,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 #endif
 
     uv_poll_init(he_ctx->nc->loop, he_ctx->handle, he_ctx->fd); // makes fd nb as side effect
-    if ((he_ctx->fd == -1)) {
+    if (he_ctx->fd == -1) {
         retval = connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen);
         
         if (retval && errno != EINPROGRESS) {

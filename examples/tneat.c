@@ -523,7 +523,7 @@ main(int argc, char *argv[])
 
     if (config_active) {
         // connect to peer
-        if (neat_open(ctx, flow, argv[optind], config_port) == NEAT_OK) {
+        if (neat_open(ctx, flow, argv[optind], config_port, NULL, 0) == NEAT_OK) {
             if (config_log_level >= 1) {
                 printf("neat_open - connecting to %s:%d\n", argv[optind], config_port);
             }

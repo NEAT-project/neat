@@ -1341,19 +1341,25 @@ do_accept(neat_ctx *ctx, neat_flow *flow)
 }
 
 neat_error_code
-neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port)
+neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
+          struct neat_tlv optional[], unsigned int opt_count)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    int stream_count = 1;
 
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (flow->name) {
         return NEAT_ERROR_BAD_ARGUMENT;
     }
 
+    HANDLE_OPTIONAL_ARGUMENTS_START()
+        OPTIONAL_ARGUMENT(NEAT_TAG_STREAM_COUNT, stream_count, NEAT_TYPE_INTEGER)
+    HANDLE_OPTIONAL_ARGUMENTS_END();
+
     flow->name = strdup(name);
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
-    flow->stream_count = 1;
+    flow->stream_count = stream_count;
 
     return neat_he_lookup(mgr, flow, he_connected_cb);
 }

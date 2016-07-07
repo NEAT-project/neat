@@ -527,7 +527,7 @@ main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0)) == NEAT_OK) {
+    if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), NULL, 0) == NEAT_OK) {
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     } else {
         fprintf(stderr, "%s - error: neat_open\n", __func__);

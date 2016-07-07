@@ -74,6 +74,7 @@ typedef enum neat_tlv_type neat_tlv_type;
 
 enum neat_tlv_tag {
     NEAT_TAG_STREAM_ID = 0,
+    NEAT_TAG_STREAM_COUNT,
 
     NEAT_TAG_LAST
 };
@@ -113,8 +114,9 @@ neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow
 
 neat_error_code neat_get_stats(struct neat_flow *flow, char **neat_stats);
 
-neat_error_code neat_open(struct neat_ctx *ctx, struct neat_flow *flow,
-                          const char *name, uint16_t port);
+neat_error_code neat_open(struct neat_ctx *mgr, struct neat_flow *flow,
+                          const char *name, uint16_t port,
+                          struct neat_tlv optional[], unsigned int opt_count);
 neat_error_code neat_open_multistream(struct neat_ctx *ctx, struct neat_flow *flow,
                           const char *name, uint16_t port, int count);
 neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,

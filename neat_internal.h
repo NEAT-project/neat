@@ -336,4 +336,49 @@ void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code);
 int neat_base_stack(neat_protocol_stack_type stack);
 int neat_stack_to_protocol(neat_protocol_stack_type stack);
 
+const char *neat_tag_name[NEAT_TAG_LAST];
+
+#define HANDLE_OPTIONAL_ARGUMENTS_START() \
+    do {\
+        if (optional != NULL && opt_count > 0) {\
+            for (unsigned int i = 0; i < opt_count; ++i) {\
+                switch (optional[i].tag) {
+
+#define OPTIONAL_ARGUMENT(tag, var, vartype)\
+                case tag:\
+                    if (optional[i].type != vartype)\
+                        neat_log(NEAT_LOG_DEBUG,\
+                                 "Optional argument \"%s\" passed to function %s: "\
+                                 "Expected type %s, specified as something else. "\
+                                 "Ignoring.", "stream", #tag, __func__, #vartype);\
+                    else\
+                        var = optional[i].value.integer;\
+                    break;
+
+/* Like OPTIONAL_ARGUMENT, but sets the value in the presence parameter to 1 if
+ * the optional argument is present. Make sure to initialize the variable to 0;
+ */
+#define OPTIONAL_ARGUMENT_WITH_PRESENCE(tag, var, presence, vartype)\
+                case tag:\
+                    if (optional[i].type != vartype) {\
+                        neat_log(NEAT_LOG_DEBUG,\
+                                 "Optional argument \"%s\" passed to function %s: "\
+                                 "Expected type %s, specified as something else. "\
+                                 "Ignoring.", "stream", #tag, __func__, #vartype);\
+                    } else {\
+                        var = optional[i].value.integer;\
+                        presence = 1;\
+                    }\
+                    break;
+
+#define HANDLE_OPTIONAL_ARGUMENTS_END() \
+                default:\
+                    neat_log(NEAT_LOG_DEBUG,\
+                             "Unexpected optional argument \"%s\" passed to function %s, "\
+                             "ignoring.", neat_tag_name[optional[i].tag], __func__);\
+                    break;\
+                };\
+            }\
+        }\
+    } while (0);
 #endif

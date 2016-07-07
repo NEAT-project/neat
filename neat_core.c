@@ -62,6 +62,10 @@ static void neat_sctp_init_events(int sock);
 static neat_flow * do_accept(neat_ctx *ctx, neat_flow *flow);
 neat_flow * neat_find_flow(neat_ctx *, struct sockaddr *, struct sockaddr *);
 
+const char *neat_tag_name[NEAT_TAG_LAST] = {
+    "NEAT_TAG_STREAM_ID",
+};
+
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
 struct neat_ctx *neat_init_ctx()
@@ -2608,27 +2612,9 @@ neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (optional != NULL && opt_count > 0) {
-        for (unsigned int i = 0; i < opt_count; ++i) {
-            switch (optional[i].tag) {
-            case NEAT_TAG_STREAM_ID:
-                if (optional[i].type != NEAT_TYPE_INTEGER)
-                    neat_log(NEAT_LOG_DEBUG,
-                             "Optional argument \"%s\" passed to function %s: "
-                             "Expected integer, specified as something else. "
-                             "Ignoring.", "stream", __func__);
-                else
-                    stream_id = optional[i].value.integer;
-
-                break;
-            default:
-                neat_log(NEAT_LOG_DEBUG,
-                         "Optional argument \"%s\" passed to function %s: "
-                         "Unknown optional argument."
-                         "Ignoring.", "stream", __func__);
-            };
-        }
-    }
+    HANDLE_OPTIONAL_ARGUMENTS_START()
+        OPTIONAL_ARGUMENT(NEAT_TAG_STREAM_ID, stream_id, NEAT_TYPE_INTEGER);
+    HANDLE_OPTIONAL_ARGUMENTS_END();
 
     return flow->writefx(ctx, flow, buffer, amt, stream_id);
 }

@@ -1946,14 +1946,13 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
 #if defined(USRSCTP_SUPPORT)
-    if (neat_base_stack(he_ctx->candidate->ai_stack) == NEAT_STACK_SCTP) {
+    if (neat_base_stack(he_ctx->ai_stack) == NEAT_STACK_SCTP) {
         neat_connect_via_usrsctp(he_ctx);
     } else {
 #endif
-    //protocol = neat_stack_to_protocol(neat_base_stack(he_ctx->candidate->ai_stack));
-    protocol = IPPROTO_TCP;
+    protocol = neat_stack_to_protocol(neat_base_stack(he_ctx->ai_stack));
     if (protocol == 0) {
-        //neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->candidate->ai_stack);
+        neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->ai_stack);
         return -1;
     }
     if ((he_ctx->fd = socket(he_ctx->candidate->ai_family, he_ctx->ai_socktype, protocol)) < 0) {
@@ -2030,7 +2029,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 #endif
 
 #if defined(IPPROTO_SCTP) && defined(SCTP_INITMSG)
-    if (he_ctx->candidate->ai_stack == NEAT_STACK_SCTP) {
+    if (he_ctx->ai_stack == NEAT_STACK_SCTP) {
         struct sctp_initmsg init;
         memset(&init, 0, sizeof(init));
         init.sinit_num_ostreams = he_ctx->flow->stream_count;

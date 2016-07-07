@@ -251,6 +251,8 @@ struct he_cb_ctx {
     size_t readSize;
     size_t writeLimit;
     unsigned int isSCTPExplicitEOR : 1;
+    int32_t ai_socktype;
+    int32_t ai_stack;
 
     LIST_ENTRY(he_cb_ctx) next_he_ctx;
 };

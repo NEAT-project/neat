@@ -984,8 +984,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket fd %d", __func__, he_ctx->fd);
         flow->hefirstConnect = 0;
         flow->family = he_ctx->candidate->ai_family;
-        flow->sockType = SOCK_STREAM;
-        flow->sockStack = NEAT_STACK_TCP;
+        flow->sockType = he_ctx->ai_socktype;
+        flow->sockStack = he_ctx->ai_stack;
         flow->everConnected = 1;
 #if defined(USRSCTP_SUPPORT)
         flow->sock = he_ctx->sock;
@@ -1463,6 +1463,11 @@ accept_resolve_cb(struct neat_resolver_results *results,
 
     assert (results->lh_first);
     flow->family = results->lh_first->ai_family;
+    //This is a HACK and is bogus, but it is no worse than what was here before.
+    //The resolver doesn't care about transport protocol, only family. So they
+    //would just get this first socket type, which is usually TCP. I guess these
+    //variables should be determined by something else, like which listen socket
+    //data arrives on
     flow->sockType = SOCK_STREAM;
     flow->sockStack = NEAT_STACK_TCP;
     flow->resolver_results = results;
@@ -1951,7 +1956,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         //neat_log(NEAT_LOG_ERROR, "Stack %d not supported", he_ctx->candidate->ai_stack);
         return -1;
     }
-    if ((he_ctx->fd = socket(he_ctx->candidate->ai_family, SOCK_STREAM, protocol)) < 0) {
+    if ((he_ctx->fd = socket(he_ctx->candidate->ai_family, he_ctx->ai_socktype, protocol)) < 0) {
         neat_log(NEAT_LOG_ERROR, "Failed to create he socket");
         return -1;
     }

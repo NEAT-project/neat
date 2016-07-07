@@ -120,8 +120,11 @@ he_resolve_cb(struct neat_resolver_results *results,
               uint8_t code,
               void *user_data)
 {
+    neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM]; /* We only support SCTP, TCP, UDP, and UDPLite */
     struct neat_he_resolver_data *resolver_data = user_data;
     struct neat_flow *flow = resolver_data->flow;
+    uint8_t nr_of_stacks, i = 0;
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code == NEAT_RESOLVER_TIMEOUT)  {
@@ -129,6 +132,8 @@ he_resolve_cb(struct neat_resolver_results *results,
     } else if ( code == NEAT_RESOLVER_ERROR ) {
         neat_io_error(flow->ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
     }
+
+    nr_of_stacks = neat_property_translate_protocols(flow->propertyMask, stacks);
 
     assert (results->lh_first);
     assert (!flow->resolver_results);
@@ -140,38 +145,50 @@ he_resolve_cb(struct neat_resolver_results *results,
     flow->heConnectAttemptCount = 0;
     struct neat_resolver_res *candidate;
     LIST_FOREACH(candidate, results, next_res) {
-        //TODO: Potential place to filter based on policy
-        struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) malloc(sizeof(struct he_cb_ctx));
-        memset(he_ctx, 0, sizeof(struct he_cb_ctx));
-        assert(he_ctx !=NULL);
-        he_ctx->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
-        assert(he_ctx->handle != NULL);
-        he_ctx->handle->data = (void *)he_ctx;
-        he_ctx->nc = flow->ctx;
-        he_ctx->candidate = candidate;
-        he_ctx->flow = flow;
-#ifdef USRSCTP_SUPPORT
-        he_ctx->sock = NULL;
-#endif
-        he_ctx->fd = -1;
+        for (i = 0; i < nr_of_stacks; i++) {
+            //TODO: Potential place to filter based on policy
+            struct he_cb_ctx *he_ctx = (struct he_cb_ctx *) malloc(sizeof(struct he_cb_ctx));
+            memset(he_ctx, 0, sizeof(struct he_cb_ctx));
+            assert(he_ctx !=NULL);
+            he_ctx->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+            assert(he_ctx->handle != NULL);
+            he_ctx->handle->data = (void *) he_ctx;
+            he_ctx->nc = flow->ctx;
+            he_ctx->candidate = candidate;
+            he_ctx->flow = flow;
+            he_ctx->ai_stack = stacks[i];
 
-        uv_poll_cb callback_fx;
-        callback_fx = resolver_data->callback_fx;
-       int ret = flow->connectfx(he_ctx, callback_fx);
-        if (ret == -1) {
-            neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
-            free(he_ctx->handle);
-            free(he_ctx);
-	    continue;
-        } else if (ret == -2) {
-            neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
-            uv_close((uv_handle_t *)(he_ctx->handle), free_he_handle_cb);
-            free(he_ctx);
-            continue;
-        } else {
-            neat_log(NEAT_LOG_DEBUG, "%s: Connect successful for fd %d, ret = %d", __func__, he_ctx->fd, ret);
-            flow->heConnectAttemptCount++;
-            LIST_INSERT_HEAD(&(flow->he_cb_ctx_list), he_ctx, next_he_ctx);
+            switch (stacks[i]) {
+            case NEAT_STACK_UDP:
+            case NEAT_STACK_UDPLITE:
+                he_ctx->ai_socktype = SOCK_DGRAM;
+            default:
+                he_ctx->ai_socktype = SOCK_STREAM;
+            }
+
+#ifdef USRSCTP_SUPPORT
+            he_ctx->sock = NULL;
+#endif
+            he_ctx->fd = -1;
+
+            uv_poll_cb callback_fx;
+            callback_fx = resolver_data->callback_fx;
+            int ret = flow->connectfx(he_ctx, callback_fx);
+            if (ret == -1) {
+                neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
+                free(he_ctx->handle);
+                free(he_ctx);
+                continue;
+            } else if (ret == -2) {
+                neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
+                uv_close((uv_handle_t *)(he_ctx->handle), free_he_handle_cb);
+                free(he_ctx);
+                continue;
+            } else {
+                neat_log(NEAT_LOG_DEBUG, "%s: Connect successful for fd %d, ret = %d", __func__, he_ctx->fd, ret);
+                flow->heConnectAttemptCount++;
+                LIST_INSERT_HEAD(&(flow->he_cb_ctx_list), he_ctx, next_he_ctx);
+            }
         }
     }
 
@@ -217,6 +234,7 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
 
     nr_of_stacks = neat_property_translate_protocols(flow->propertyMask,
             stacks);
+
     if (nr_of_stacks == 0)
         return NEAT_ERROR_UNABLE;
 

@@ -1618,8 +1618,10 @@ accept_resolve_cb(struct neat_resolver_results *results,
 }
 
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
-                            const char *name, uint16_t port)
+                            uint16_t port, struct neat_tlv optional[], unsigned int opt_count)
 {
+    // const char *service_name = NULL;
+    const char *local_name = NULL;
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM]; /* We only support SCTP, TCP, UDP, and UDPLite */
     uint8_t nr_of_stacks;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1632,10 +1634,15 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     if (flow->name)
         return NEAT_ERROR_BAD_ARGUMENT;
 
-    if (!strcmp(name, "*"))
-        name = "0.0.0.0";
+    HANDLE_OPTIONAL_ARGUMENTS_START()
+        OPTIONAL_STRING(NEAT_TAG_LOCAL_NAME, local_name)
+        // OPTIONAL_STRING(NEAT_TAG_SERVICE_NAME, service_name)
+    HANDLE_OPTIONAL_ARGUMENTS_END();
 
-    flow->name = strdup(name);
+    if (!local_name)
+        local_name = "0.0.0.0";
+
+    flow->name = strdup(local_name);
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
     flow->ctx = ctx;

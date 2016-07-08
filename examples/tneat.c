@@ -535,7 +535,7 @@ main(int argc, char *argv[])
         }
     } else {
         // wait for on_connected or on_error to be invoked
-        if (neat_accept(ctx, flow, "*", config_port)) {
+        if (neat_accept(ctx, flow, config_port, NULL, 0)) {
             fprintf(stderr, "%s - neat_accept failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;

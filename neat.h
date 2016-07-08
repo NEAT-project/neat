@@ -76,6 +76,7 @@ enum neat_tlv_tag {
     NEAT_TAG_STREAM_ID = 0,
     NEAT_TAG_STREAM_COUNT,
     NEAT_TAG_LOCAL_NAME,
+    NEAT_TAG_SERVICE_NAME,
 
     NEAT_TAG_LAST
 };
@@ -130,7 +131,7 @@ neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
 neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t inMask);
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
-                            const char *name, uint16_t port);
+                            uint16_t port, struct neat_tlv optional[], unsigned int opt_count);
 neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
 neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow);
 neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow);

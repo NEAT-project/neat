@@ -1838,11 +1838,28 @@ neat_write_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
 
 static neat_error_code
 neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
-                      const unsigned char *buffer, uint32_t amt, int stream_id)
+                      const unsigned char *buffer, uint32_t amt,
+                      struct neat_tlv optional[], unsigned int opt_count)
 {
     ssize_t rv = 0;
     size_t len;
     int atomic;
+
+    int stream_id            = 0;
+    int has_stream_id        = 0;
+    // int has_context       = 0;
+    // int context           = 0;
+    // int has_pr_method     = 0;
+    // int pr_method         = 0;
+    // int has_pr_value      = 0;
+    // int pr_value          = 0;
+    // int has_unordered     = 0;
+    // int unordered         = 0;
+    // int has_priority      = 0;
+    // float priority        = 0.5f;
+    // int has_dest_addr     = 0;
+    // const char *dest_addr = "";
+
 #if defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
     struct cmsghdr *cmsg;
 #endif
@@ -1859,7 +1876,32 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+    HANDLE_OPTIONAL_ARGUMENTS_START()
+        OPTIONAL_INTEGER_PRESENT(NEAT_TAG_STREAM_ID, stream_id, has_stream_id)
+        // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_CONTEXT, context, has_context)
+        // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_PARTIAL_RELIABILITY_METHOD, pr_method, has_pr_method)
+        // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_PARTIAL_RELIABILITY_VALUE, pr_value, has_pr_value)
+        // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_UNORDERED, unordered, has_unordered)
+        // OPTIONAL_FLOAT_PRESENT(  NEAT_TAG_PRIORITY, priority, has_priority)
+        // OPTIONAL_STRING_PRESENT( NEAT_TAG_DESTINATION_IP_ADDRESS, dest_addr, has_dest_addr)
+    HANDLE_OPTIONAL_ARGUMENTS_END();
 
+    if (has_stream_id && stream_id < 0) {
+        neat_log(NEAT_LOG_DEBUG, "Invalid stream id: Must be 0 or greater");
+        return NEAT_ERROR_BAD_ARGUMENT;
+    } else if (has_stream_id && flow->stream_count == 1 && stream_id != 0) {
+        neat_log(NEAT_LOG_DEBUG,
+                 "Tried to specify stream id when only a single stream "
+                 "is in use. Ignoring.");
+        stream_id = 0;
+    } else if (has_stream_id && flow->sockStack != NEAT_STACK_SCTP) {
+        // For now, warn about this. Maybe we emulate multistreaming over TCP in
+        // the future?
+        neat_log(NEAT_LOG_DEBUG,
+                 "Tried to specify stream id when using a protocol which does "
+                 "not support multistreaming. Ignoring.");
+        stream_id = 0;
+    }
 
     switch (flow->sockStack) {
     case NEAT_STACK_TCP:
@@ -2626,15 +2668,9 @@ neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
            const unsigned char *buffer, uint32_t amt,
            struct neat_tlv optional[], unsigned int opt_count)
 {
-    int stream_id = 0;
-
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    HANDLE_OPTIONAL_ARGUMENTS_START()
-        OPTIONAL_INTEGER(NEAT_TAG_STREAM_ID, stream_id);
-    HANDLE_OPTIONAL_ARGUMENTS_END();
-
-    return flow->writefx(ctx, flow, buffer, amt, stream_id);
+    return flow->writefx(ctx, flow, buffer, amt, optional, opt_count);
 }
 
 neat_error_code

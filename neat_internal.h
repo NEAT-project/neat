@@ -72,7 +72,7 @@ typedef struct neat_ctx neat_ctx;
 typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
-                                           const unsigned char *buffer, uint32_t amt, int stream_id);
+                                           const unsigned char *buffer, uint32_t amt, struct neat_tlv optional[], unsigned int opt_count);
 typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
 #if defined(USRSCTP_SUPPORT)
 typedef struct socket * (*neat_accept_usrsctp_impl)(struct neat_ctx *ctx, struct neat_flow *flow, struct socket *sock);

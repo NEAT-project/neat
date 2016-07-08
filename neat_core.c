@@ -1371,7 +1371,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     }
 
     HANDLE_OPTIONAL_ARGUMENTS_START()
-        OPTIONAL_ARGUMENT(NEAT_TAG_STREAM_COUNT, stream_count, NEAT_TYPE_INTEGER)
+        OPTIONAL_INTEGER(NEAT_TAG_STREAM_COUNT, stream_count)
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if (stream_count < 1) {
@@ -2611,7 +2611,7 @@ neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     HANDLE_OPTIONAL_ARGUMENTS_START()
-        OPTIONAL_ARGUMENT(NEAT_TAG_STREAM_ID, stream_id, NEAT_TYPE_INTEGER);
+        OPTIONAL_INTEGER(NEAT_TAG_STREAM_ID, stream_id);
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     return flow->writefx(ctx, flow, buffer, amt, stream_id);

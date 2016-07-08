@@ -344,16 +344,26 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
             for (unsigned int i = 0; i < opt_count; ++i) {\
                 switch (optional[i].tag) {
 
-#define OPTIONAL_ARGUMENT(tag, var, vartype)\
-                case tag:\
-                    if (optional[i].type != vartype)\
-                        neat_log(NEAT_LOG_DEBUG,\
-                                 "Optional argument \"%s\" passed to function %s: "\
-                                 "Expected type %s, specified as something else. "\
-                                 "Ignoring.", "stream", #tag, __func__, #vartype);\
-                    else\
-                        var = optional[i].value.integer;\
-                    break;
+#define OPTIONAL_ARGUMENT(tag, var, field, vartype, typestr)\
+    case tag:\
+             if (optional[i].type != vartype)\
+        neat_log(NEAT_LOG_DEBUG,\
+                 "Optional argument \"%s\" passed to function %s: "\
+                 "Expected type %s, specified as something else. "\
+                 "Ignoring.", #tag, __func__, #typestr);\
+             else\
+        var = optional[i].value.field ;\
+        break;
+
+#define OPTIONAL_INTEGER(tag, var)\
+        OPTIONAL_ARGUMENT(tag, var, integer, NEAT_TYPE_INTEGER, "integer")
+
+#define OPTIONAL_STRING(tag, var)\
+        OPTIONAL_ARGUMENT(tag, var, string, NEAT_TYPE_STRING, "string")
+
+#define OPTIONAL_FLOAT(tag, var)\
+        OPTIONAL_ARGUMENT(tag, var, real, NEAT_TYPE_REAL, "real")
+
 
 /* Like OPTIONAL_ARGUMENT, but sets the value in the presence parameter to 1 if
  * the optional argument is present. Make sure to initialize the variable to 0;

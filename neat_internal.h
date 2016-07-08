@@ -362,24 +362,34 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
         OPTIONAL_ARGUMENT(tag, var, string, NEAT_TYPE_STRING, "string")
 
 #define OPTIONAL_FLOAT(tag, var)\
-        OPTIONAL_ARGUMENT(tag, var, real, NEAT_TYPE_REAL, "real")
+        OPTIONAL_ARGUMENT(tag, var, real, NEAT_TYPE_FLOAT, "float")
 
 
 /* Like OPTIONAL_ARGUMENT, but sets the value in the presence parameter to 1 if
  * the optional argument is present. Make sure to initialize the variable to 0;
  */
-#define OPTIONAL_ARGUMENT_WITH_PRESENCE(tag, var, presence, vartype)\
-                case tag:\
-                    if (optional[i].type != vartype) {\
-                        neat_log(NEAT_LOG_DEBUG,\
-                                 "Optional argument \"%s\" passed to function %s: "\
-                                 "Expected type %s, specified as something else. "\
-                                 "Ignoring.", "stream", #tag, __func__, #vartype);\
-                    } else {\
-                        var = optional[i].value.integer;\
-                        presence = 1;\
-                    }\
-                    break;
+#define OPTIONAL_ARGUMENT_PRESENT(tag, var, field, presence, vartype, typestr)\
+    case tag:\
+        if (optional[i].type != vartype) {\
+            neat_log(NEAT_LOG_DEBUG,\
+                     "Optional argument \"%s\" passed to function %s: "\
+                     "Expected type %s, specified as something else. "\
+                     "Ignoring.", "stream", #tag, __func__, typestr);\
+        } else {\
+            var = optional[i].value.field ;\
+            presence = 1;\
+        }\
+        break;
+
+#define OPTIONAL_INTEGER_PRESENT(tag, var, presence)\
+        OPTIONAL_ARGUMENT_PRESENT(tag, var, integer, presence, NEAT_TYPE_INTEGER, "integer")
+
+#define OPTIONAL_STRING_PRESENT(tag, var, presence)\
+        OPTIONAL_ARGUMENT_PRESENT(tag, var, string, presence, NEAT_TYPE_STRING, "string")
+
+#define OPTIONAL_FLOAT_PRESENT(tag, var, presence)\
+        OPTIONAL_ARGUMENT_PRESENT(tag, var, real, presence, NEAT_TYPE_FLOAT, "float")
+
 
 #define HANDLE_OPTIONAL_ARGUMENTS_END() \
                 default:\

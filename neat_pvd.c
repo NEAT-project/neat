@@ -146,9 +146,14 @@ neat_pvd_dns_async(uv_loop_t *loop,
     struct sockaddr_in *server_addr4;
     struct sockaddr_in6 *server_addr6;
 
-    async_query->dns_uv_snd_buf = calloc(sizeof(uv_buf_t), 1);
-    async_query->dns_snd_handle = calloc(sizeof(uv_udp_send_t), 1);
-    async_query->resolve_handle = calloc(sizeof(uv_udp_t), 1);
+    if ((async_query->dns_uv_snd_buf = calloc(sizeof(uv_buf_t), 1)) == NULL ||
+        (async_query->dns_snd_handle = calloc(sizeof(uv_udp_send_t), 1)) == NULL ||
+        (async_query->resolve_handle = calloc(sizeof(uv_udp_t), 1)) == NULL) {
+        neat_log(NEAT_LOG_ERROR,
+                "%s: can't allocate buffer");
+        return 1;
+    }
+
     async_query->dst_addr4      = NULL;
     async_query->dst_addr6      = NULL;
 
@@ -195,7 +200,11 @@ neat_pvd_dns_async(uv_loop_t *loop,
 
     if (dns_addr2->sa_family == AF_INET) {
         server_addr4                        = (struct sockaddr_in *) dns_addr;
-        async_query->dst_addr4              = calloc(sizeof(struct sockaddr_in), 1);
+        if ((async_query->dst_addr4 = calloc(sizeof(struct sockaddr_in), 1)) == NULL) {
+            neat_log(NEAT_LOG_ERROR,
+                    "%s: can't allocate buffer");
+            return 1;
+        }
         async_query->dst_addr4->sin_family  = AF_INET;
         async_query->dst_addr4->sin_port    = htons(LDNS_PORT);
         async_query->dst_addr4->sin_addr    = server_addr4->sin_addr;
@@ -214,7 +223,11 @@ neat_pvd_dns_async(uv_loop_t *loop,
         }
     } else {
         server_addr6                        = (struct sockaddr_in6 *) dns_addr;
-        async_query->dst_addr6              = calloc(sizeof(struct sockaddr_in6), 1);
+        if ((async_query->dst_addr6 = calloc(sizeof(struct sockaddr_in6), 1)) == NULL) {
+            neat_log(NEAT_LOG_ERROR,
+                    "%s: can't allocate buffer");
+            return 1;
+        }
         async_query->dst_addr6->sin6_family = AF_INET6;
         async_query->dst_addr6->sin6_port   = htons(LDNS_PORT);
         async_query->dst_addr6->sin6_addr   = server_addr6->sin6_addr;
@@ -278,10 +291,10 @@ neat_pvd_dns_alloc_cb(uv_handle_t *handle,
                       size_t suggested_size,
                       uv_buf_t *buf)
 {
-    char *dns_rcv_buf = calloc(sizeof(char), 1472);
+    char *dns_rcv_buf = calloc(sizeof(char), DNS_BUF_SIZE);
 
     buf->base = dns_rcv_buf;
-    buf->len = sizeof(char)*1472;
+    buf->len = sizeof(char)*DNS_BUF_SIZE;
 }
 
 static void
@@ -392,7 +405,12 @@ neat_pvd_dns_ptr_recv_cb(uv_udp_t *handle,
         free(dns_record_str);
         free(ptr_record);
 
-        struct pvd_async_query *async_query_new = malloc(sizeof(struct pvd_async_query));
+        struct pvd_async_query *async_query_new;
+        if ((async_query_new = malloc(sizeof(struct pvd_async_query))) == NULL) {
+            neat_log(NEAT_LOG_ERROR,
+                    "%s: can't allocate buffer");
+            continue;
+        }
         LIST_INSERT_HEAD(&(async_query->pvd->queries), async_query_new, next_query);
         async_query_new->pvd = async_query->pvd;
 
@@ -448,7 +466,12 @@ neat_pvd_handle_newaddr(struct neat_ctx *nc,
 
         struct sockaddr_storage *dns_addr = &(dns_server->server_addr);
 
-        struct pvd_dns_query *dns_query = malloc(sizeof(struct pvd_dns_query));
+        struct pvd_dns_query *dns_query;
+        if ((dns_query = malloc(sizeof(struct pvd_dns_query))) == NULL) {
+            neat_log(NEAT_LOG_ERROR,
+                    "%s: can't allocate buffer");
+            continue;
+        }
         dns_query->loop                 = nc->loop;
         dns_query->src_addr             = src_addr;
         dns_query->dns_addr             = dns_addr;
@@ -464,7 +487,12 @@ neat_pvd_handle_newaddr(struct neat_ctx *nc,
             continue;
         }
 
-        struct pvd_async_query *async_query = malloc(sizeof(struct pvd_async_query));
+        struct pvd_async_query *async_query;
+        if ((async_query = malloc(sizeof(struct pvd_async_query))) == NULL) {
+            neat_log(NEAT_LOG_ERROR,
+                    "%s: can't allocate buffer");
+            continue;
+        }
         async_query->pvd = nc->pvd;
         LIST_INSERT_HEAD(&(nc->pvd->queries), async_query, next_query);
 

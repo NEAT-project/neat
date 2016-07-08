@@ -75,6 +75,7 @@ typedef enum neat_tlv_type neat_tlv_type;
 enum neat_tlv_tag {
     NEAT_TAG_STREAM_ID = 0,
     NEAT_TAG_STREAM_COUNT,
+    NEAT_TAG_LOCAL_NAME,
 
     NEAT_TAG_LAST
 };

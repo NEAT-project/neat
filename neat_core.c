@@ -66,6 +66,7 @@ neat_flow * neat_find_flow(neat_ctx *, struct sockaddr *, struct sockaddr *);
 const char *neat_tag_name[NEAT_TAG_LAST] = {
     TAG_STRING(NEAT_TAG_STREAM_ID),
     TAG_STRING(NEAT_TAG_STREAM_COUNT),
+    TAG_STRING(NEAT_TAG_LOCAL_NAME),
 };
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
@@ -1362,6 +1363,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
           struct neat_tlv optional[], unsigned int opt_count)
 {
     int stream_count = 1;
+    // const char *local_name = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -1372,6 +1374,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
 
     HANDLE_OPTIONAL_ARGUMENTS_START()
         OPTIONAL_INTEGER(NEAT_TAG_STREAM_COUNT, stream_count)
+        // OPTIONAL_STRING(NEAT_TAG_LOCAL_NAME, local_name)
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if (stream_count < 1) {

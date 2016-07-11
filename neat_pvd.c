@@ -83,17 +83,21 @@ compute_reverse_ip(struct neat_addr *src_addr)
 void
 add_pvd_result(struct pvds* pvds, ldns_rr_list *pvd_txt_list)
 {
+    int nb_txt = ldns_rr_list_rr_count(pvd_txt_list);
+    if (nb_txt == 0) {
+        return;
+    }
+
     struct pvd_infos pvd_infos;
     struct pvd_info *pvd_info;
     char *txt_record;
+    char *txt_record_original;
     char *dns_record_str;
     ldns_rr *rr;
     struct pvd *pvd;
-    int nb_txt = ldns_rr_list_rr_count(pvd_txt_list);
     ldns_rdf *dns_record = NULL;
 
     if ((pvd = (struct pvd *) malloc(sizeof(struct pvd))) == NULL) {
-        free(pvd);
         neat_log(NEAT_LOG_ERROR,
                 "%s: can't allocate buffer");
         return;
@@ -101,10 +105,11 @@ add_pvd_result(struct pvds* pvds, ldns_rr_list *pvd_txt_list)
     LIST_INIT(&pvd_infos);
 
     for (int i = 0; i < nb_txt; i++) {
-        rr              = ldns_rr_list_rr(pvd_txt_list, i);
-        dns_record      = ldns_rr_set_rdf(rr, NULL, 0);
-        dns_record_str  = ldns_rdf2str(dns_record);
-        txt_record      = strdup(dns_record_str);
+        rr                  = ldns_rr_list_rr(pvd_txt_list, i);
+        dns_record          = ldns_rr_set_rdf(rr, NULL, 0);
+        dns_record_str      = ldns_rdf2str(dns_record);
+        txt_record_original = strdup(dns_record_str);
+        txt_record          = txt_record_original;
 
         // Removing quotes if any
         if (txt_record[0] == '"' && txt_record[strlen(txt_record)-1] == '"') {
@@ -115,6 +120,7 @@ add_pvd_result(struct pvds* pvds, ldns_rr_list *pvd_txt_list)
         free(dns_record_str);
 
         if ((pvd_info = (struct pvd_info *) malloc(sizeof(struct pvd_info))) == NULL) {
+            free(txt_record_original);
             neat_log(NEAT_LOG_ERROR,
                     "%s: can't allocate buffer");
             continue;
@@ -125,10 +131,9 @@ add_pvd_result(struct pvds* pvds, ldns_rr_list *pvd_txt_list)
         LIST_INSERT_HEAD(&(pvd_infos), pvd_info, next_info);
     }
 
-    if (nb_txt > 0) {
-        pvd->infos = pvd_infos;
-        LIST_INSERT_HEAD(pvds, pvd, next_pvd);
-    }
+
+    pvd->infos = pvd_infos;
+    LIST_INSERT_HEAD(pvds, pvd, next_pvd);
 }
 
 static int
@@ -146,9 +151,20 @@ neat_pvd_dns_async(uv_loop_t *loop,
     struct sockaddr_in *server_addr4;
     struct sockaddr_in6 *server_addr6;
 
-    if ((async_query->dns_uv_snd_buf = calloc(sizeof(uv_buf_t), 1)) == NULL ||
-        (async_query->dns_snd_handle = calloc(sizeof(uv_udp_send_t), 1)) == NULL ||
-        (async_query->resolve_handle = calloc(sizeof(uv_udp_t), 1)) == NULL) {
+    if ((async_query->dns_uv_snd_buf = calloc(sizeof(uv_buf_t), 1)) == NULL) {
+        neat_log(NEAT_LOG_ERROR,
+                "%s: can't allocate buffer");
+        return 1;
+    }
+    if ((async_query->dns_snd_handle = calloc(sizeof(uv_udp_send_t), 1)) == NULL) {
+        free(async_query->dns_uv_snd_buf);
+        neat_log(NEAT_LOG_ERROR,
+                "%s: can't allocate buffer");
+        return 1;
+    }
+    if ((async_query->resolve_handle = calloc(sizeof(uv_udp_t), 1)) == NULL) {
+        free(async_query->dns_uv_snd_buf);
+        free(async_query->dns_snd_handle);
         neat_log(NEAT_LOG_ERROR,
                 "%s: can't allocate buffer");
         return 1;
@@ -201,6 +217,9 @@ neat_pvd_dns_async(uv_loop_t *loop,
     if (dns_addr2->sa_family == AF_INET) {
         server_addr4                        = (struct sockaddr_in *) dns_addr;
         if ((async_query->dst_addr4 = calloc(sizeof(struct sockaddr_in), 1)) == NULL) {
+            free(async_query->resolve_handle);
+            free(async_query->dns_uv_snd_buf);
+            free(async_query->dns_snd_handle);
             neat_log(NEAT_LOG_ERROR,
                     "%s: can't allocate buffer");
             return 1;
@@ -224,6 +243,9 @@ neat_pvd_dns_async(uv_loop_t *loop,
     } else {
         server_addr6                        = (struct sockaddr_in6 *) dns_addr;
         if ((async_query->dst_addr6 = calloc(sizeof(struct sockaddr_in6), 1)) == NULL) {
+            free(async_query->resolve_handle);
+            free(async_query->dns_uv_snd_buf);
+            free(async_query->dns_snd_handle);
             neat_log(NEAT_LOG_ERROR,
                     "%s: can't allocate buffer");
             return 1;
@@ -392,6 +414,7 @@ neat_pvd_dns_ptr_recv_cb(uv_udp_t *handle,
         dns_record      = ldns_rr_set_rdf(rr, NULL, 0);
         dns_record_str  = ldns_rdf2str(dns_record);
         ptr_record      = strdup(dns_record_str);
+        free(dns_record_str);
 
         ldns_pkt *pkt;
         if (ldns_pkt_query_new_frm_str(&pkt,
@@ -399,10 +422,11 @@ neat_pvd_dns_ptr_recv_cb(uv_udp_t *handle,
                                        LDNS_RR_TYPE_TXT,
                                        LDNS_RR_CLASS_IN, LDNS_RD)
             != LDNS_STATUS_OK) {
+
+            free(ptr_record);
             neat_log(NEAT_LOG_ERROR, "%s - Could not create DNS packet", __func__);
             continue;
         }
-        free(dns_record_str);
         free(ptr_record);
 
         struct pvd_async_query *async_query_new;
@@ -445,13 +469,14 @@ neat_pvd_handle_newaddr(struct neat_ctx *nc,
     struct neat_addr *src_addr  = (struct neat_addr *) data;
     char *reverse_ip            = compute_reverse_ip(src_addr);
 
-    if ((pvd_result = (struct pvd_result *) malloc(sizeof(struct pvd_result))) == NULL) {
-        neat_log(NEAT_LOG_ERROR,
-                "%s: can't allocate buffer");
+    if (strlen(reverse_ip) == 0) {
         return;
     }
 
-    if (strlen(reverse_ip) == 0) {
+    if ((pvd_result = (struct pvd_result *) malloc(sizeof(struct pvd_result))) == NULL) {
+        free(reverse_ip);
+        neat_log(NEAT_LOG_ERROR,
+                "%s: can't allocate buffer");
         return;
     }
 
@@ -483,12 +508,14 @@ neat_pvd_handle_newaddr(struct neat_ctx *nc,
                                        LDNS_RR_TYPE_PTR,
                                        LDNS_RR_CLASS_IN, LDNS_RD)
             != LDNS_STATUS_OK) {
+            free(dns_query);
             neat_log(NEAT_LOG_ERROR, "%s - Could not create DNS packet", __func__);
             continue;
         }
 
         struct pvd_async_query *async_query;
         if ((async_query = malloc(sizeof(struct pvd_async_query))) == NULL) {
+            free(dns_query);
             neat_log(NEAT_LOG_ERROR,
                     "%s: can't allocate buffer");
             continue;
@@ -496,15 +523,17 @@ neat_pvd_handle_newaddr(struct neat_ctx *nc,
         async_query->pvd = nc->pvd;
         LIST_INSERT_HEAD(&(nc->pvd->queries), async_query, next_query);
 
-        neat_pvd_dns_async(nc->loop,
-                           async_query,
-                           dns_addr,
-                           src_addr,
-                           pkt,
-                           neat_pvd_dns_alloc_cb,
-                           neat_pvd_dns_ptr_recv_cb,
-                           neat_pvd_dns_sent_cb,
-                           dns_query);
+        if (neat_pvd_dns_async(nc->loop,
+                               async_query,
+                               dns_addr,
+                               src_addr,
+                               pkt,
+                               neat_pvd_dns_alloc_cb,
+                               neat_pvd_dns_ptr_recv_cb,
+                               neat_pvd_dns_sent_cb,
+                               dns_query) != 0) {
+            free(dns_query);
+        }
     }
     free(reverse_ip);
 

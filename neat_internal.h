@@ -395,6 +395,9 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
 #define OPTIONAL_FLOAT(tag, var)\
         OPTIONAL_ARGUMENT(tag, var, real, NEAT_TYPE_FLOAT, "float")
 
+#define SKIP_OPTARG(tag)\
+    case tag:\
+        break;
 
 /* Like OPTIONAL_ARGUMENT, but sets the value in the presence parameter to 1 if
  * the optional argument is present. Make sure to initialize the variable to 0;

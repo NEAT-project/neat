@@ -2093,8 +2093,17 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                      unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
                       struct neat_tlv optional[], unsigned int opt_count)
 {
+    int stream_id = NEAT_INVALID_STREAM;
     ssize_t rv;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    HANDLE_OPTIONAL_ARGUMENTS_START()
+        SKIP_OPTARG(NEAT_TAG_STREAM_ID)
+        SKIP_OPTARG(NEAT_TAG_PARTIAL_MESSAGE_RECEIVED)
+        SKIP_OPTARG(NEAT_TAG_PARTIAL_SEQNUM)
+        SKIP_OPTARG(NEAT_TAG_UNORDERED)
+        SKIP_OPTARG(NEAT_TAG_UNORDERED_SEQNUM)
+    HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if ((neat_base_stack(flow->sockStack) == NEAT_STACK_UDP) ||
        (neat_base_stack(flow->sockStack) == NEAT_STACK_SCTP)) {
@@ -2109,7 +2118,7 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         *actualAmt = flow->readBufferSize;
         flow->readBufferSize = 0;
         flow->readBufferMsgComplete = 0;
-        return NEAT_OK;
+        goto end;
     }
 
     rv = recv(flow->fd, buffer, amt, 0);
@@ -2130,6 +2139,29 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     }
     neat_log(NEAT_LOG_DEBUG, "%s %d", __func__, rv);
     *actualAmt = rv;
+end:
+    // Fill in optional return values if they are requested
+    if (optional != NULL && opt_count > 0) {\
+        for (unsigned int i = 0; i < opt_count; ++i) {\
+            switch (optional[i].tag) {
+            case NEAT_TAG_STREAM_ID:
+                optional[i].value.integer = stream_id;
+                optional[i].type = NEAT_TYPE_INTEGER;
+                break;
+            case NEAT_TAG_PARTIAL_MESSAGE_RECEIVED:
+            case NEAT_TAG_PARTIAL_SEQNUM:
+            case NEAT_TAG_UNORDERED:
+            case NEAT_TAG_UNORDERED_SEQNUM:
+                // TODO: Assign meaningful values
+                optional[i].value.integer = 0;
+                optional[i].type = NEAT_TYPE_INTEGER;
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
     return NEAT_OK;
 }
 

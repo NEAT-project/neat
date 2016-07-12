@@ -60,7 +60,7 @@ neat_security_filter_dtor(struct neat_iofilter *filter)
 
 static neat_error_code
 drain_output(struct neat_ctx *ctx, struct neat_flow *flow,
-             struct neat_iofilter *filter)
+             struct neat_iofilter *filter, struct neat_tlv optional[], unsigned int opt_count)
 {
     neat_error_code rv;
     struct security_data *private;
@@ -78,7 +78,7 @@ drain_output(struct neat_ctx *ctx, struct neat_flow *flow,
         }
         rv = filter->writefx(ctx, flow, filter,
                              private->outCipherBuffer,
-                             private->outCipherBufferUsed, NULL, 0);
+                             private->outCipherBufferUsed, optional, opt_count);
         if (rv != NEAT_OK) {
             return rv;
         }
@@ -88,7 +88,7 @@ drain_output(struct neat_ctx *ctx, struct neat_flow *flow,
     if (!didFilterWrite) {
         rv = flow->writefx(ctx, flow,
                            private->outCipherBuffer,
-                           private->outCipherBufferUsed, NULL, 0);
+                           private->outCipherBufferUsed, optional, opt_count);
         if (rv != NEAT_OK) {
             return rv;
         }
@@ -104,7 +104,7 @@ drain_output(struct neat_ctx *ctx, struct neat_flow *flow,
 // gathers from network into inCipherBuffer
 static neat_error_code
 gather_input(struct neat_ctx *ctx, struct neat_flow *flow,
-             struct neat_iofilter *filter)
+             struct neat_iofilter *filter, struct neat_tlv optional[], unsigned int opt_count)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     struct security_data *private = (struct security_data *) filter->userData;
@@ -114,7 +114,7 @@ gather_input(struct neat_ctx *ctx, struct neat_flow *flow,
         return NEAT_ERROR_WOULD_BLOCK;
     }
     neat_error_code rv = flow->readfx(ctx, flow, private->inCipherBuffer + private->inCipherBufferUsed,
-                                      avail, &actualAmt);
+                                      avail, &actualAmt, optional, opt_count);
     neat_log(NEAT_LOG_DEBUG, "read in %d cipher text from transport (%u)",
              (rv == NEAT_OK) ? actualAmt : 0, rv);
     if (rv == NEAT_OK && actualAmt) {
@@ -135,7 +135,8 @@ static neat_error_code
 neat_security_filter_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           struct neat_iofilter *filter,
                           unsigned char *buffer, uint32_t amt,
-                          uint32_t *actualAmt);
+                          uint32_t *actualAmt,
+                          struct neat_tlv optional[], unsigned int opt_count);
 
 static neat_error_code neat_security_handshake(struct neat_flow_operations *opCB)
 {
@@ -173,7 +174,7 @@ static neat_error_code neat_security_handshake(struct neat_flow_operations *opCB
 
 static neat_error_code
 handshake(struct neat_ctx *ctx, struct neat_flow *flow,
-          struct neat_iofilter *filter)
+          struct neat_iofilter *filter, struct neat_tlv optional[], unsigned int opt_count)
 {
     neat_error_code rv;
     struct security_data *private;
@@ -213,14 +214,14 @@ handshake(struct neat_ctx *ctx, struct neat_flow *flow,
         amtread = 0;
     }
     private->outCipherBufferUsed += amtread;
-    rv = drain_output(ctx, flow, filter);
+    rv = drain_output(ctx, flow, filter, optional, opt_count);
     if (rv != NEAT_OK) {
         return rv;
     }
         
     // its possible we have some tls data from the server (e.g. a server hello) that
     // we need to read from the network and push through the BIO
-    rv = gather_input(ctx, flow, filter);
+    rv = gather_input(ctx, flow, filter, optional, opt_count);
     if (rv != NEAT_OK) {
         return rv;
     }
@@ -254,7 +255,7 @@ neat_security_filter_write(struct neat_ctx *ctx, struct neat_flow *flow,
     private = (struct security_data *) filter->userData;
 
     if (!SSL_is_init_finished(private->ssl)) {
-        rv = handshake(ctx, flow, filter);
+        rv = handshake(ctx, flow, filter, optional, opt_count);
         if (rv != NEAT_OK) {
             return rv;
         }
@@ -278,7 +279,7 @@ neat_security_filter_write(struct neat_ctx *ctx, struct neat_flow *flow,
     int amtread;
     while ((amtread = BIO_read(private->outputBIO, private->outCipherBuffer, CIPHER_BUFFER_SIZE)) > 0) {
         private->outCipherBufferUsed = amtread;
-        rv = drain_output(ctx, flow, filter);
+        rv = drain_output(ctx, flow, filter, optional, opt_count);
         if (rv != NEAT_OK) {
             return rv;
         }
@@ -290,7 +291,8 @@ static neat_error_code
 neat_security_filter_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           struct neat_iofilter *filter,
                           unsigned char *buffer, uint32_t amt,
-                          uint32_t *actualAmt)
+                          uint32_t *actualAmt,
+                          struct neat_tlv optional[], unsigned int opt_count)
 {
     neat_log(NEAT_LOG_DEBUG, "%s %d", __func__, *actualAmt);
     struct security_data *private;
@@ -300,7 +302,7 @@ neat_security_filter_read(struct neat_ctx *ctx, struct neat_flow *flow,
     if (!SSL_is_init_finished(private->ssl)) {
         // this should be masked by the handshake code and not happen on client
         assert(flow->isServer);
-        rv = handshake(ctx, flow, filter);
+        rv = handshake(ctx, flow, filter, optional, opt_count);
         if (rv != NEAT_OK) {
             return rv;
         }

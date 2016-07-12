@@ -2090,7 +2090,8 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
 static neat_error_code
 neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
-                     unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
+                     unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
+                      struct neat_tlv optional[], unsigned int opt_count)
 {
     ssize_t rv;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -2744,35 +2745,37 @@ neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
 static neat_error_code
 neat_recursive_filter_read(struct neat_ctx *ctx, struct neat_flow *flow,
                            struct neat_iofilter *filter,
-                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
+                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
+                           struct neat_tlv optional[], unsigned int opt_count)
 {
     if (!filter) {
         return NEAT_OK;
     }
     neat_error_code rv = neat_recursive_filter_read(ctx, flow,
-                                                    filter->next, buffer, amt, actualAmt);
+                                                    filter->next, buffer, amt, actualAmt, optional, opt_count);
     if (rv != NEAT_OK) {
         return rv;
     }
     if (!filter->readfx || !*actualAmt) {
         return NEAT_OK;
     }
-    return filter->readfx(ctx, flow, filter, buffer, amt, actualAmt);
+    return filter->readfx(ctx, flow, filter, buffer, amt, actualAmt, optional, opt_count);
 }
 
 neat_error_code
 neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
-          unsigned char *buffer, uint32_t amt, uint32_t *actualAmt)
+          unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
+          struct neat_tlv optional[], unsigned int opt_count)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    neat_error_code rv = flow->readfx(ctx, flow, buffer, amt, actualAmt);
+    neat_error_code rv = flow->readfx(ctx, flow, buffer, amt, actualAmt, optional, opt_count);
     if (rv != NEAT_OK) {
         return rv;
     }
 
     // apply the filters backwards
-    return neat_recursive_filter_read(ctx, flow, flow->iofilters, buffer, amt, actualAmt);
+    return neat_recursive_filter_read(ctx, flow, flow->iofilters, buffer, amt, actualAmt, optional, opt_count);
 }
 
 neat_error_code

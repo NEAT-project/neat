@@ -71,7 +71,8 @@ struct he_cb_ctx;
 
 typedef struct neat_ctx neat_ctx;
 typedef neat_error_code (*neat_read_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
-                                          unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
+                                          unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
+                                          struct neat_tlv optional[], unsigned int opt_count);
 typedef neat_error_code (*neat_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                            const unsigned char *buffer, uint32_t amt, struct neat_tlv optional[], unsigned int opt_count);
 typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, int fd);
@@ -119,7 +120,8 @@ typedef neat_error_code (*neat_filter_write_impl)(struct neat_ctx *ctx, struct n
                                                   struct neat_tlv optional[], unsigned int opt_count);
 typedef neat_error_code (*neat_filter_read_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
                                                  struct neat_iofilter *filter,
-                                                 unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
+                                                 unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
+                                                 struct neat_tlv optional[], unsigned int opt_count);
 
 struct neat_iofilter
 {

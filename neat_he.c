@@ -191,12 +191,6 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
     
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    resolver_data = calloc(sizeof(struct neat_he_resolver_data), 1);
-
-    if (!resolver_data) {
-        return NEAT_ERROR_INTERNAL; 
-    }
-
     if ((flow->propertyMask & NEAT_PROPERTY_IPV4_REQUIRED) &&
         (flow->propertyMask & NEAT_PROPERTY_IPV4_BANNED))
         return NEAT_ERROR_UNABLE;
@@ -217,6 +211,12 @@ neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callba
 
     nr_of_stacks = neat_property_translate_protocols(flow->propertyMask,
             stacks);
+
+    resolver_data = calloc(sizeof(struct neat_he_resolver_data), 1);
+
+    if (!resolver_data) {
+        return NEAT_ERROR_INTERNAL;
+    }
 
     if (nr_of_stacks == 0) {
         free(resolver_data);

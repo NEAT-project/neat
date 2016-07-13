@@ -150,6 +150,9 @@ neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *fl
                                       const char *name);
 neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow,
                                       int rate, int seconds);
+// The filename should be a PEM file with both cert and key
+neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct neat_flow *flow,
+                                     const char *filename);
 
 // do we also need a set property with a void * or an int (e.g. timeouts) or should
 // we create higher level named functions for such things?

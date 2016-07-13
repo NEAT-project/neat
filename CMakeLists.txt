@@ -22,6 +22,8 @@ LIST(APPEND neat_sources
     neat_resolver.c
     neat_resolver_conf.c
     neat_resolver_helpers.c
+    neat_security.c
+    tls-trust.c
 )
 
 # OS DEPENDENT
@@ -140,6 +142,23 @@ IF (NOT HAVE_SYS_LDNS_H OR NOT LDNS_LIB)
     MESSAGE(FATAL_ERROR "ldns/ldns.h not found - libdns installed?")
 ENDIF()
 
+FIND_PACKAGE(OpenSSL)
+IF (NOT OPENSSL_FOUND)
+    MESSAGE(STATUS "openssl >= 1.0.2 required for TLS - none found")
+ELSE()
+    MESSAGE(STATUS "OPENSSL version found: " ${OPENSSL_VERSION})
+    IF (OPENSSL_VERSION VERSION_LESS "1.0.2")
+        MESSAGE(STATUS "openssl >= 1.0.2 required for TLS")
+    ELSE()
+        CHECK_INCLUDE_FILE(openssl/ssl.h HAVE_SYS_OPENSSL_H)
+        FIND_LIBRARY(OPENSSL_LIB ssl)
+        FIND_LIBRARY(OPENSSL_CRYPTO_LIB crypto)
+        MESSAGE(STATUS "OPENSSL found: " ${OPENSSL_LIB})
+        MESSAGE(STATUS "OPENSSL Crypto found: " ${OPENSSL_CRYPTO_LIB})
+        ADD_DEFINITIONS(-DNEAT_USETLS)
+    ENDIF()
+ENDIF()
+
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     FIND_LIBRARY(MNL_LIB mnl)
     CHECK_INCLUDE_FILE(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
@@ -186,7 +205,7 @@ ENDIF()
 
 # COMPILER FLAGS
 #################################################
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
@@ -199,6 +218,8 @@ LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}
     ${JANSSON_LIB}
+    ${OPENSSL_LIB}
+    ${OPENSSL_CRYPTO_LIB}
     )
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")

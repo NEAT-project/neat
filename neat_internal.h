@@ -94,6 +94,10 @@ struct neat_buffered_message {
     size_t bufferedOffset;  // offset of data still to be written
     size_t bufferedSize;    // amount of unwritten data
     size_t bufferedAllocation; // size of buffered allocation
+    uint16_t stream_id;
+    uint8_t unordered;
+    uint8_t pr_method;
+    uint32_t pr_value;
     TAILQ_ENTRY(neat_buffered_message) message_next;
 };
 
@@ -155,7 +159,7 @@ struct neat_flow
     size_t writeLimit;  // maximum to write if the socket supports partial writes
     size_t writeSize;   // send buffer size
     // The memory buffer for writing.
-    struct neat_message_queue_head *bufferedMessages;
+    struct neat_message_queue_head bufferedMessages;
     size_t buffer_count;
 
     size_t readSize;   // receive buffer size
@@ -186,7 +190,7 @@ struct neat_flow
     unsigned int isPolling : 1;
     unsigned int ownedByCore : 1;
     unsigned int everConnected : 1;
-    unsigned int* isDraining; // TODO: Rework this to become a bitmap?
+    unsigned int isDraining;
     unsigned int isSCTPExplicitEOR : 1;
     unsigned int isServer : 1; // i.e. created via accept()
 

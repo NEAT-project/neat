@@ -6,6 +6,7 @@
 
 #include "neat.h"
 #include "neat_queue.h"
+#include "neat_security.h"
 #ifdef __linux__
     #include "neat_linux.h"
 #endif
@@ -107,6 +108,25 @@ typedef enum {
 
 TAILQ_HEAD(neat_message_queue_head, neat_buffered_message);
 
+struct neat_iofilter;
+typedef neat_error_code (*neat_filter_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
+                                                  struct neat_iofilter *filter,
+                                                  const unsigned char *buffer, uint32_t amt,
+                                                  struct neat_tlv optional[], unsigned int opt_count);
+typedef neat_error_code (*neat_filter_read_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
+                                                 struct neat_iofilter *filter,
+                                                 unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
+
+struct neat_iofilter
+{
+    void *userData;
+    void (*dtor)(struct neat_iofilter *);
+    struct neat_iofilter *next;
+
+    neat_filter_write_impl writefx;
+    neat_filter_read_impl  readfx;
+};
+
 struct neat_flow
 {
 #if defined(USRSCTP_SUPPORT)
@@ -115,6 +135,7 @@ struct neat_flow
     int fd;
     struct neat_flow_operations *operations; // see ownedByCore flag
     const char *name;
+    char *server_pem;
     uint16_t port;
     uint64_t propertyMask;
     uint64_t propertyAttempt;
@@ -129,6 +150,7 @@ struct neat_flow
 	struct sockaddr dstAddr;
     struct neat_ctx *ctx; // raw convenience pointer
     uv_poll_t *handle;
+    struct neat_iofilter *iofilters;
 
     size_t writeLimit;  // maximum to write if the socket supports partial writes
     size_t writeSize;   // send buffer size
@@ -166,6 +188,7 @@ struct neat_flow
     unsigned int everConnected : 1;
     unsigned int* isDraining; // TODO: Rework this to become a bitmap?
     unsigned int isSCTPExplicitEOR : 1;
+    unsigned int isServer : 1; // i.e. created via accept()
 
     //List with all non-freed HE contexts.
     LIST_HEAD(he_cb_ctxs, he_cb_ctx) he_cb_ctx_list;
@@ -285,6 +308,8 @@ void neat_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
 void neat_io_error(neat_ctx *ctx, neat_flow *flow, int stream,
                    neat_error_code code);
 
+struct neat_iofilter *insert_neat_iofilter(neat_ctx *ctx, neat_flow *flow);
+
 enum neat_events{
     //A new address has been added to an interface
     NEAT_NEWADDR = 0,
@@ -390,7 +415,6 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
 #define OPTIONAL_FLOAT_PRESENT(tag, var, presence)\
         OPTIONAL_ARGUMENT_PRESENT(tag, var, real, presence, NEAT_TYPE_FLOAT, "float")
 
-
 #define HANDLE_OPTIONAL_ARGUMENTS_END() \
                 default:\
                     neat_log(NEAT_LOG_DEBUG,\
@@ -401,4 +425,10 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
             }\
         }\
     } while (0);
+
+neat_error_code neat_security_install(neat_ctx *ctx, neat_flow *flow);
+void            neat_security_init(neat_ctx *ctx);
+void            neat_security_close(neat_ctx *ctx);
+void uvpollable_cb(uv_poll_t *handle, int status, int events);
+
 #endif

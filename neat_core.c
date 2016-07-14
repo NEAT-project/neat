@@ -2622,20 +2622,19 @@ static void handle_upcall(struct socket *sock, void *arg, int flags)
             io_connected(ctx, flow, NEAT_OK);
         }
 
-        for (unsigned int stream = 0; stream < flow->stream_count; ++stream) {
-            if (events & SCTP_EVENT_WRITE && flow->isDraining[stream]) {
-                neat_error_code code = neat_write_flush(ctx, flow, stream);
-                if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
-                    neat_io_error(ctx, flow, stream, code);
-                    return;
-                }
-                if (!flow->isDraining[stream]) {
-                    io_all_written(ctx, flow, stream);
-                }
+        if (events & SCTP_EVENT_WRITE && flow->isDraining) {
+            neat_error_code code = neat_write_flush(ctx, flow);
+            if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
+                neat_io_error(ctx, flow, 0, code);
+                return;
             }
-            if (events & SCTP_EVENT_WRITE) {
-                io_writable(ctx, flow, stream, NEAT_OK);
+            if (!flow->isDraining) {
+                io_all_written(ctx, flow, 0);
             }
+        }
+
+        if (events & SCTP_EVENT_WRITE) {
+            io_writable(ctx, flow, 0, NEAT_OK);
         }
 
         if (events & SCTP_EVENT_READ) {

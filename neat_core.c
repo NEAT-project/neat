@@ -1218,31 +1218,26 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         return;
     }
 
-// TODO: Check error in status
     if ((events & UV_WRITABLE) && flow->firstWritePending) {
         flow->firstWritePending = 0;
         io_connected(ctx, flow, NEAT_OK);
     }
-
     if (events & UV_WRITABLE && flow->isDraining) {
         neat_error_code code = neat_write_flush(ctx, flow);
         if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
-            io_error(ctx, flow, code); // TODO: Remove stream param
+            neat_io_error(ctx, flow, 0, code);
             return;
         }
         if (!flow->isDraining) {
-            io_all_written(ctx, flow, 0); // TODO: Remove stream param
+            io_all_written(ctx, flow, 0);
         }
     }
-
     if (events & UV_WRITABLE) {
-        io_writable(ctx, flow, 0, NEAT_OK);
+        io_writable(ctx, flow, 0, NEAT_OK); // TODO: Remove stream param
     }
-
     if (events & UV_READABLE) {
         io_readable(ctx, flow, NEAT_OK);
     }
-
     updatePollHandle(ctx, flow, flow->handle);
 }
 

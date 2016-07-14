@@ -1607,6 +1607,8 @@ accept_resolve_cb(struct neat_resolver_results *results,
                   uint8_t code,
                   void *user_data)
 {
+    uint8_t nr_of_stacks = 0;
+    neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM];
     neat_flow *flow = user_data;
     struct neat_ctx *ctx = flow->ctx;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1623,8 +1625,17 @@ accept_resolve_cb(struct neat_resolver_results *results,
     //would just get this first socket type, which is usually TCP. I guess these
     //variables should be determined by something else, like which listen socket
     //data arrives on
-    flow->sockType = SOCK_STREAM;
-    flow->sockStack = NEAT_STACK_TCP;
+
+    // Hack until we support listening for multiple protocols (again?)
+    // Assume that a transport protocol is specified with NEAT_PROPERTY_*_REQUIRED
+    nr_of_stacks = neat_property_translate_protocols(flow->propertyAttempt, stacks);
+    assert(nr_of_stacks == 1);
+
+    flow->sockStack = stacks[0];
+    flow->sockType = flow->sockStack == NEAT_STACK_UDP ||
+                     flow->sockStack == NEAT_STACK_UDPLITE ?
+                     SOCK_DGRAM : SOCK_STREAM;
+
     flow->resolver_results = results;
     flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
 

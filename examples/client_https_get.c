@@ -31,7 +31,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     uint32_t bytes_read = 0;
     neat_error_code code;
 
-    code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read);
+    code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read, NULL, 0);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
         return 0;
     } else if (code != NEAT_OK) {

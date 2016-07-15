@@ -63,7 +63,7 @@ on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_read(opCB->ctx, opCB->flow, buffer, config_buffer_size, &buffer_filled);
+    code = neat_read(opCB->ctx, opCB->flow, buffer, config_buffer_size, &buffer_filled, NULL, 0);
     if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             if (config_log_level >= 1) {

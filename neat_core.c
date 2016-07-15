@@ -1,7 +1,11 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #if defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
-#include <netinet/sctp.h>
+#ifdef __linux__
+    #include <linux/sctp.h>
+#else
+    #include <netinet/sctp.h>
+#endif
 #endif
 
 #include <assert.h>
@@ -2047,7 +2051,15 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                   0);
 #endif
         }
+#ifdef IPPROTO_SCTP
+        if (flow->sockStack == NEAT_STACK_SCTP) {
+            neat_log(NEAT_LOG_DEBUG, "%zd bytes sent on stream %d", rv, stream_id);
+        } else {
+            neat_log(NEAT_LOG_DEBUG, "%zd bytes sent", rv);
+        }
+#else
         neat_log(NEAT_LOG_DEBUG, "%zd bytes sent", rv);
+#endif
         if (rv < 0 ) {
             if (errno != EWOULDBLOCK) {
                 return NEAT_ERROR_IO;

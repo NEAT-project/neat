@@ -170,7 +170,6 @@ static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
     static int message_number = 0;
-    static int last_message_number = 0;
     neat_error_code code;
     struct neat_tlv options[1];
     unsigned char buf[64];
@@ -180,59 +179,41 @@ on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    switch (opCB->stream_id) {
-        case 0:
-            if (message_number > last_message_number) {
-                break;
-            }
+    options[0].tag           = NEAT_TAG_STREAM_ID;
+    options[0].type          = NEAT_TYPE_INTEGER;
+    options[0].value.integer = 0;
 
-            options[0].tag           = NEAT_TAG_STREAM_ID;
-            options[0].type          = NEAT_TYPE_INTEGER;
-            options[0].value.integer = 0;
+    code = neat_write(opCB->ctx, opCB->flow,
+                      stdin_buffer.buffer, stdin_buffer.buffer_filled,
+                      options, 1);
 
-            code = neat_write(opCB->ctx, opCB->flow,
-                              stdin_buffer.buffer, stdin_buffer.buffer_filled,
-                              options, 1);
-
-            if (code != NEAT_OK) {
-                fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
-                return on_error(opCB);
-            }
-
-            if (config_log_level >= 1) {
-                fprintf(stderr, "%s - sent %d bytes\n", __func__, stdin_buffer.buffer_filled);
-            }
-
-            message_number++;
-            break;
-        case 1:
-            if (message_number <= last_message_number) {
-                break;
-            }
-
-            last_message_number = message_number;
-
-            len = snprintf((char*)buf, 64, "Sent message number %d\n", message_number);
-
-            options[0].tag           = NEAT_TAG_STREAM_ID;
-            options[0].type          = NEAT_TYPE_INTEGER;
-            options[0].value.integer = 1;
-            code = neat_write(opCB->ctx, opCB->flow, buf, len, options, 1);
-
-            if (code != NEAT_OK) {
-                fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
-                return on_error(opCB);
-            }
-
-            // stop writing
-            ops.on_writable = NULL;
-            neat_set_operations(ctx, flow, &ops);
-
-            break;
-        default:
-            fprintf(stderr, "Illegal stream id %d passed to on_writable\n", opCB->stream_id);
-            return NEAT_ERROR_BAD_ARGUMENT;
+    if (code != NEAT_OK) {
+        fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
+        return on_error(opCB);
     }
+
+    if (config_log_level >= 1) {
+        fprintf(stderr, "%s - sent %d bytes\n", __func__, stdin_buffer.buffer_filled);
+    }
+
+    message_number++;
+
+    len = snprintf((char*)buf, 64, "Sent message number %d\n", message_number);
+
+    options[0].tag           = NEAT_TAG_STREAM_ID;
+    options[0].type          = NEAT_TYPE_INTEGER;
+    options[0].value.integer = 1;
+
+    code = neat_write(opCB->ctx, opCB->flow, buf, len, options, 1);
+
+    if (code != NEAT_OK) {
+        fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
+        return on_error(opCB);
+    }
+
+    // stop writing
+    ops.on_writable = NULL;
+    neat_set_operations(ctx, flow, &ops);
 
     return NEAT_OK;
 }

@@ -204,7 +204,7 @@ static void neat_resolver_request_cleanup(struct neat_resolver_request *request)
     request->next_req.tqe_prev = NULL;
     TAILQ_INSERT_HEAD(&(request->resolver->dead_request_queue), request,
                       next_dead_req);
-    
+
     //Timers need to, like file descriptors, be closed async. Thus, freeing the
     //request must be deferred until timer has been closed. No need to use idle
     //etc. here. The callback will always be run.
@@ -223,7 +223,7 @@ static uint32_t neat_resolver_literal_populate_results(struct neat_resolver_requ
         struct sockaddr_in *dst_addr4;
         struct sockaddr_in6 *dst_addr6;
     } u;
-    
+
     if (request->family == AF_INET) {
         u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
         memset(u.dst_addr4, 0, sizeof(struct sockaddr_in));
@@ -802,7 +802,7 @@ static void neat_start_request(struct neat_resolver *resolver,
 
         //Do not use deprecated addresses
         if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
-            continue;
+           continue;
 
         //TODO: Potential place to filter based on policy
 
@@ -873,7 +873,7 @@ struct neat_resolver *
 neat_resolver_init(struct neat_ctx *nc, const char *resolv_conf_path)
 {
     struct neat_resolver *resolver;
-    
+
     resolver = calloc(sizeof(struct neat_resolver), 1);
 
     if (!resolver)
@@ -921,7 +921,7 @@ neat_resolver_init(struct neat_ctx *nc, const char *resolv_conf_path)
 
     if (!neat_resolver_add_initial_servers(resolver))
         return NULL;
-    
+
     return resolver;
 }
 
@@ -946,7 +946,7 @@ static void neat_resolver_cleanup(struct neat_resolver *resolver)
         request_itr = request_itr->next_req.tqe_next;
         neat_resolver_request_cleanup(request_tmp);
     }
-   
+
     neat_remove_event_cb(resolver->nc, NEAT_NEWADDR, &(resolver->newaddr_cb));
     neat_remove_event_cb(resolver->nc, NEAT_DELADDR, &(resolver->deladdr_cb));
     uv_fs_event_stop(&(resolver->resolv_conf_handle));

@@ -110,6 +110,7 @@ struct neat_ctx *neat_init_ctx()
         return NULL;
     }
     nc->loop = malloc(sizeof(uv_loop_t));
+    nc->pvd = NULL;
 
     if (nc->loop == NULL) {
         free(nc);
@@ -218,6 +219,11 @@ void neat_free_ctx(struct neat_ctx *nc)
 
     if (nc->event_cbs)
         free(nc->event_cbs);
+
+    if (nc->pvd) {
+        neat_pvd_release(nc->pvd);
+        free(nc->pvd);
+    }
 
     free(nc->loop);
 
@@ -750,12 +756,12 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         return READ_WITH_ERROR;
     }
 
-    /* 
-     * The UDP Accept flow isn't going to have on_readable set, 
+    /*
+     * The UDP Accept flow isn't going to have on_readable set,
      * anything else will.
      */
     if (!flow->operations->on_readable) {
-        if (!(flow->sockStack == NEAT_STACK_UDP && flow->acceptPending)) { 
+        if (!(flow->sockStack == NEAT_STACK_UDP && flow->acceptPending)) {
             return READ_WITH_ERROR;
         }
     }
@@ -1709,6 +1715,9 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     if (!ctx->resolver)
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
 
+    if (!ctx->pvd)
+        ctx->pvd = neat_pvd_init(ctx);
+
     neat_resolve(ctx->resolver, AF_INET, flow->name, flow->port,
                  accept_resolve_cb, flow);
     return NEAT_OK;
@@ -2317,8 +2326,8 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 #endif
 
     uv_poll_init(he_ctx->nc->loop, he_ctx->handle, he_ctx->fd); // makes fd nb as side effect
-    
-    retval = connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen);    
+
+    retval = connect(he_ctx->fd, (struct sockaddr *) &(he_ctx->candidate->dst_addr), slen);
     if (retval && errno != EINPROGRESS) {
         neat_log(NEAT_LOG_DEBUG, "%s: Connect failed for fd %d connect error (%d): %s", __func__, he_ctx->fd, errno, strerror(errno));
         return -2;
@@ -3038,7 +3047,7 @@ neat_find_flow(neat_ctx *ctx, struct sockaddr *src, struct sockaddr *dst)
 {
     neat_flow *flow;
     LIST_FOREACH(flow, &ctx->flows, next_flow) {
-        if ((sockaddr_cmp(&flow->dstAddr, dst) != 0) && 
+        if ((sockaddr_cmp(&flow->dstAddr, dst) != 0) &&
                (sockaddr_cmp(&flow->srcAddr, src) != 0)) {
                        return flow;
         }

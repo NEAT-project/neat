@@ -24,7 +24,8 @@ static uint32_t buffer_filled = 0;
 /*
     print usage and exit
 */
-static void print_usage()
+static void
+print_usage()
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -39,7 +40,8 @@ static void print_usage()
 /*
     Error handler
 */
-static neat_error_code on_error(struct neat_flow_operations *opCB)
+static neat_error_code
+on_error(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -51,7 +53,8 @@ static neat_error_code on_error(struct neat_flow_operations *opCB)
 /*
     Read data until buffered_amount == 0 - then stop event loop!
 */
-static neat_error_code on_readable(struct neat_flow_operations *opCB)
+static neat_error_code
+on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
     neat_error_code code;
@@ -60,7 +63,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_read(opCB->ctx, opCB->flow, buffer, config_buffer_size, &buffer_filled);
+    code = neat_read(opCB->ctx, opCB->flow, buffer, config_buffer_size, &buffer_filled, NULL, 0);
     if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             if (config_log_level >= 1) {
@@ -93,7 +96,8 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-static neat_error_code on_connected(struct neat_flow_operations *opCB)
+static neat_error_code
+on_connected(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -108,7 +112,8 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     uint64_t prop;
     int arg, result;
@@ -256,7 +261,7 @@ int main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, "*", 8080)) {
+    if (neat_accept(ctx, flow, 8080, NULL, 0)) {
         fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;

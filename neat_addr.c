@@ -73,7 +73,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
         if (src_addr->ss_family == AF_INET) {
             org_addr4 = (struct sockaddr_in*) &(nsrc_addr->u.v4.addr4);
 
-            if (org_addr4->sin_addr.s_addr == src_addr4->sin_addr.s_addr)
+            if (src_addr4 != NULL && org_addr4->sin_addr.s_addr == src_addr4->sin_addr.s_addr)
                 break;
         } else {
             org_addr6 = (struct sockaddr_in6*) &(nsrc_addr->u.v6.addr6);
@@ -126,8 +126,8 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
 
     LIST_INSERT_HEAD(&(nc->src_addrs), nsrc_addr, next_addr);
     ++nc->src_addr_cnt;
-    neat_run_event_cb(nc, NEAT_NEWADDR, nsrc_addr);
     neat_addr_print_src_addrs(nc);
+    neat_run_event_cb(nc, NEAT_NEWADDR, nsrc_addr);
 }
 
 void neat_addr_lifetime_timeout_cb(uv_timer_t *handle)
@@ -177,4 +177,41 @@ void neat_addr_free_src_list(struct neat_ctx *nc)
         free(nsrc_addr);
     }
 
+}
+
+/*
+ * https://gist.github.com/kazuho/45eae4f92257daceb73e
+ * Copyright (c) 2014 Kazuho Oku
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+uint8_t sockaddr_cmp(struct sockaddr *x, struct sockaddr *y)
+{
+#define CMP(a, b) if (a != b) return a < b ? -1 : 1
+
+    CMP(x->sa_family, y->sa_family);
+
+    if (x->sa_family == AF_INET) {
+        struct sockaddr_in *xin = (void*)x, *yin = (void*)y;
+        CMP(ntohs(xin->sin_port), ntohs(yin->sin_port));
+        CMP(ntohl(xin->sin_addr.s_addr), ntohl(yin->sin_addr.s_addr));
+    } else if (x->sa_family == AF_INET6) {
+        struct sockaddr_in6 *xin6 = (void*)x, *yin6 = (void*)y;
+        CMP(ntohs(xin6->sin6_port), ntohs(yin6->sin6_port));
+        CMP(xin6->sin6_flowinfo, yin6->sin6_flowinfo);
+        CMP(xin6->sin6_scope_id, yin6->sin6_scope_id);
+        return memcmp(xin6->sin6_addr.s6_addr, yin6->sin6_addr.s6_addr, sizeof(xin6->sin6_addr.s6_addr));
+    }
+
+#undef CMP
+    return 0;
 }

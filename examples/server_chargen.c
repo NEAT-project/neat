@@ -23,7 +23,8 @@ static uint16_t chargen_offset = 0;
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
 
-static void print_usage()
+static void
+print_usage()
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -37,7 +38,8 @@ static void print_usage()
 /*
     Error handler
 */
-static neat_error_code on_error(struct neat_flow_operations *opCB)
+static neat_error_code
+on_error(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -60,7 +62,7 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled);
+    code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled, NULL, 0);
     if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             return NEAT_OK;
@@ -93,7 +95,8 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-static neat_error_code on_all_written(struct neat_flow_operations *opCB)
+static neat_error_code
+on_all_written(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -108,7 +111,8 @@ static neat_error_code on_all_written(struct neat_flow_operations *opCB)
 /*
     //XXX behave more like specified in the rfc (UDP, TCP)
 */
-static neat_error_code on_writable(struct neat_flow_operations *opCB)
+static neat_error_code
+on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
     unsigned char buffer[BUFFERSIZE];
@@ -131,7 +135,7 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
     opCB->on_all_written = on_all_written;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-    code = neat_write(opCB->ctx, opCB->flow, buffer, BUFFERSIZE);
+    code = neat_write(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, NULL, 0);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: %d\n", __func__, (int)code);
         return on_error(opCB);
@@ -141,7 +145,8 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB)
 }
 
 
-static neat_error_code on_connected(struct neat_flow_operations *opCB)
+static neat_error_code
+on_connected(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -159,7 +164,8 @@ static neat_error_code on_connected(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     uint64_t prop;
     int arg, result;
@@ -295,7 +301,7 @@ int main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, "*", 8080)) {
+    if (neat_accept(ctx, flow, 8080, NULL, 0)) {
         fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;

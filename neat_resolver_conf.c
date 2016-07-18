@@ -127,13 +127,13 @@ void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
 
     memset(resolv_path, 0, resolv_path_len);
     if (uv_fs_event_getpath(handle, resolv_path, &resolv_path_len)) {
-        neat_log(NEAT_LOG_ERROR, "Could not store resolv.conf path in buffer");
-        exit(EXIT_FAILURE);
+        neat_log(NEAT_LOG_WARNING, "Could not store resolv.conf path in buffer");
+        return;
     }
 
     //TODO: Read filename dynamically
     if (!(resolv_ptr = fopen(resolv_path, "r"))) {
-        neat_log(NEAT_LOG_ERROR, "Failed to open resolv-file");
+        neat_log(NEAT_LOG_WARNING, "Failed to open resolv-file");
         return;
     }
 

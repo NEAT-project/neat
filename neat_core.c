@@ -1645,7 +1645,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
     // Hack until we support listening for multiple protocols (again?)
     // Assume that a transport protocol is specified with NEAT_PROPERTY_*_REQUIRED
     nr_of_stacks = neat_property_translate_protocols(flow->propertyAttempt, stacks);
-    assert(nr_of_stacks == 1);
+    assert(nr_of_stacks > 0);
 
     flow->sockStack = stacks[0];
     flow->sockType = flow->sockStack == NEAT_STACK_UDP ||

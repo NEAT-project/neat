@@ -20,8 +20,8 @@ void neat_stats_build_json(neat_flow *flow, char **json_stats)
 	json_root = json_object();
 
 	json_object_set_new( json_root, "remote_host", json_string( flow->name ));
-	json_object_set_new( json_root, "sock_type", json_integer( flow->sockType ));
-	json_object_set_new( json_root, "sock_protocol", json_integer( neat_stack_to_protocol(flow->sockStack) ));
+	json_object_set_new( json_root, "sock_type", json_integer( flow->socket->type ));
+	json_object_set_new( json_root, "sock_protocol", json_integer( neat_stack_to_protocol(flow->socket->stack) ));
 	json_object_set_new( json_root, "port", json_integer( flow->port ));
 
 	/* TODO: fetch OS-specific stats from the respective stacks used for connecting */

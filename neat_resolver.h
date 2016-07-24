@@ -12,7 +12,7 @@
 #define DNS_TIMEOUT             30000
 //Timeout after first good reply
 #define DNS_RESOLVED_TIMEOUT    1000
-#define DNS_LITERAL_TIMEOUT     100
+#define DNS_LITERAL_TIMEOUT     1000
 #define DNS_BUF_SIZE            1472
 #define MAX_NUM_RESOLVED        3
 #define NO_PROTOCOL             0xFFFFFFFF

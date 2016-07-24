@@ -18,7 +18,7 @@ static void neat_usrsctp_sctp4_readable(uv_poll_t *handle,
                                     int status,
                                     int events)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(NEAT_LOG_DEBUG, "%s(status=%d, events=%d)", __func__, status, events);
     if (status < 0) {
         neat_log(NEAT_LOG_ERROR, "%s: socket not readable", __func__);
         return;

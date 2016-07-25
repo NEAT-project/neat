@@ -1152,10 +1152,11 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     if (flow->firstWritePending) {
         neat_log(NEAT_LOG_DEBUG, "%s: First successful connect. Socket fd %d", __func__, he_ctx->fd);
 
-        flow->socket = malloc(sizeof(*flow->socket));
         assert(flow->socket);
         flow->socket->fd = he_ctx->fd;
         flow->socket->flow = flow;
+        assert(flow->socket->handle->loop == NULL); // Old handle should be unused
+        free(flow->socket->handle); // Free the old handle
         flow->socket->handle = handle;
         flow->socket->handle->data = flow->socket;
         flow->socket->type = he_ctx->ai_socktype;
@@ -1167,10 +1168,11 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     } else if (flow->hefirstConnect && (status == 0)) {
         flow->hefirstConnect = 0;
 
-        flow->socket = malloc(sizeof(*flow->socket));
         assert(flow->socket);
         flow->socket->fd = he_ctx->fd;
         flow->socket->flow = flow;
+        assert(flow->socket->handle->loop == NULL); // Old handle should be unused
+        free(flow->socket->handle); // Free the old handle
         flow->socket->handle = handle;
         flow->socket->handle->data = flow->socket;
         flow->socket->family = he_ctx->candidate->ai_family;
@@ -1338,17 +1340,11 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->propertyUsed = flow->propertyUsed;
     newFlow->everConnected = 1;
 
-    newFlow->socket = calloc(1, sizeof(*newFlow->socket));
-    newFlow->socket->fd = -1;
-    newFlow->socket->flow = newFlow;
     newFlow->socket->stack   = listen_socket->stack;
     newFlow->socket->srcAddr = listen_socket->srcAddr;
     newFlow->socket->dstAddr = listen_socket->dstAddr;
     newFlow->socket->type    = listen_socket->type;
     newFlow->socket->family  = listen_socket->family;
-    newFlow->socket->handle  = (uv_poll_t *) malloc(sizeof(uv_poll_t));
-    assert(newFlow->socket->handle);
-    newFlow->socket->handle->type = UV_UNKNOWN_HANDLE;
 
     newFlow->ctx = ctx;
     newFlow->writeLimit = flow->writeLimit;
@@ -1893,8 +1889,6 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
     flow->ctx = ctx;
-    flow->socket->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
-    assert(flow->socket->handle != NULL);
 
     if (!ctx->resolver)
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
@@ -3178,7 +3172,7 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv = (neat_flow *)calloc (1, sizeof (neat_flow));
 
     if (!rv)
-        return NULL;
+        goto error;
 
     rv->writefx = neat_write_to_lower_layer;
     rv->readfx = neat_read_from_lower_layer;
@@ -3195,10 +3189,30 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->acceptusrsctpfx = neat_accept_via_usrsctp;
 #endif
 
+    rv->socket = malloc(sizeof(struct neat_pollable_socket));
+    if (!rv->socket)
+        goto error;
+
+    rv->socket->fd = 0;
+    rv->socket->flow = rv;
+
+    rv->socket->handle  = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+    rv->socket->handle->loop = NULL;
+    rv->socket->handle->type = UV_UNKNOWN_HANDLE;
+
     allocate_send_buffers(rv, 1);
     LIST_INSERT_HEAD(&mgr->flows, rv, next_flow);
 
     return rv;
+error:
+    if (rv->socket) {
+        if (rv->socket->handle)
+            free(rv->socket->handle);
+        free(rv->socket);
+    }
+    if (rv)
+        free(rv);
+    return NULL;
 }
 
 neat_error_code

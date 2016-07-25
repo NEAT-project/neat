@@ -3216,13 +3216,14 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 
     return rv;
 error:
-    if (rv->socket) {
-        if (rv->socket->handle)
-            free(rv->socket->handle);
-        free(rv->socket);
-    }
-    if (rv)
+    if (rv) {
+        if (rv->socket) {
+            if (rv->socket->handle)
+                free(rv->socket->handle);
+            free(rv->socket);
+        }
         free(rv);
+    }
     return NULL;
 }
 

@@ -1729,10 +1729,6 @@ accept_resolve_cb(struct neat_resolver_results *results,
                       stacks[i] == NEAT_STACK_UDPLITE ?
                       SOCK_DGRAM : SOCK_STREAM;
 
-        // TODO: Support SCTP over UDP
-        if (stacks[i] == NEAT_STACK_SCTP_UDP)
-            continue;
-
         // TODO: Support udplite
         if (stacks[i] == NEAT_STACK_UDPLITE)
             continue;

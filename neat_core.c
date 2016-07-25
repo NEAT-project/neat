@@ -2466,26 +2466,25 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         he_ctx->readSize = 0;
     }
 
-    setsockopt(he_ctx->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
-
-#if 0
-    switch (he_ctx->candidate->ai_stack) {
-        case NEAT_STACK_TCP:
-            setsockopt(he_ctx->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
-            break;
+    switch (he_ctx->ai_stack) {
+    case NEAT_STACK_TCP:
+        setsockopt(he_ctx->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+        break;
 #if defined(__FreeBSD__)
-        case NEAT_STACK_SCTP_UDP: {
+    case NEAT_STACK_SCTP_UDP:
+        {
             struct sctp_udpencaps encaps;
             memset(&encaps, 0, sizeof(struct sctp_udpencaps));
             encaps.sue_address.ss_family = AF_INET;
             encaps.sue_port = htons(SCTP_UDP_TUNNELING_PORT);
             setsockopt(he_ctx->fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps));
         }
+        // Fallthrough
 #endif
-        case NEAT_STACK_SCTP:
-            he_ctx->writeLimit =  he_ctx->writeSize / 4;
+    case NEAT_STACK_SCTP:
+        he_ctx->writeLimit =  he_ctx->writeSize / 4;
 #ifdef SCTP_NODELAY
-            setsockopt(he_ctx->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
+        setsockopt(he_ctx->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
 #endif
 #ifdef SCTP_EXPLICIT_EOR
         if (setsockopt(he_ctx->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
@@ -2495,13 +2494,12 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         // Subscribe to events needed for callbacks
         neat_sctp_init_events(he_ctx->fd);
 #endif
-            break;
-        case NEAT_STACK_UDP:
-			recvfrom(he_ctx->fd, NULL, 0, MSG_PEEK, NULL, 0);
-        default:
-            break;
+        break;
+    case NEAT_STACK_UDP:
+        recvfrom(he_ctx->fd, NULL, 0, MSG_PEEK, NULL, 0);
+    default:
+        break;
     }
-#endif
 
 #if defined(IPPROTO_SCTP) && defined(SCTP_INITMSG)
     if (he_ctx->ai_stack == NEAT_STACK_SCTP) {
@@ -2699,9 +2697,22 @@ neat_listen_via_kernel_ex(struct neat_ctx *ctx, struct neat_flow *flow,
     case NEAT_STACK_TCP:
         if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int)) != 0)
             neat_log(NEAT_LOG_DEBUG, "Unable to set socket option IPPROTO_TCP:TCP_NODELAY");
-
         break;
     case NEAT_STACK_SCTP_UDP:
+#if defined(__FreeBSD__)
+        {
+            struct sctp_udpencaps encaps;
+            memset(&encaps, 0, sizeof(struct sctp_udpencaps));
+            encaps.sue_address.ss_family = AF_INET;
+            encaps.sue_port = htons(SCTP_UDP_TUNNELING_PORT);
+            neat_log(NEAT_LOG_DEBUG, "Setting UDP encapsulation port to %d", SCTP_UDP_TUNNELING_PORT);
+            if (setsockopt(fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps)) != 0)
+                neat_log(NEAT_LOG_DEBUG, "Failed enabling UDP encapsulation!");
+            else
+                neat_log(NEAT_LOG_DEBUG, "UDP encapsulation enabled");
+        }
+#endif
+        // Fallthrough
     case NEAT_STACK_SCTP:
         flow->writeLimit = flow->writeSize / 4;
 #ifdef SCTP_NODELAY

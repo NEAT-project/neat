@@ -1162,7 +1162,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->socket->type = he_ctx->ai_socktype;
         flow->socket->family = he_ctx->candidate->ai_family;
         flow->socket->type = he_ctx->ai_socktype;
-        flow->socket->stack = he_ctx->ai_stack; // TODO: is this right?
+        flow->socket->stack = he_ctx->ai_stack;
 
         uvpollable_cb(handle, NEAT_OK, UV_WRITABLE);
     } else if (flow->hefirstConnect && (status == 0)) {
@@ -1177,7 +1177,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->socket->handle->data = flow->socket;
         flow->socket->family = he_ctx->candidate->ai_family;
         flow->socket->type = he_ctx->ai_socktype;
-        flow->socket->stack = he_ctx->ai_stack; // TODO: is this right?
+        flow->socket->stack = he_ctx->ai_stack;
         flow->everConnected = 1;
 
 #if defined(USRSCTP_SUPPORT)
@@ -2697,7 +2697,7 @@ neat_listen_via_kernel_ex(struct neat_ctx *ctx, struct neat_flow *flow,
 
     switch (stack) {
     case NEAT_STACK_TCP:
-        if (setsockopt(flow->socket->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int)) != 0)
+        if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int)) != 0)
             neat_log(NEAT_LOG_DEBUG, "Unable to set socket option IPPROTO_TCP:TCP_NODELAY");
 
         break;

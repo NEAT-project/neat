@@ -1684,6 +1684,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
                   void *user_data)
 {
     uint8_t nr_of_stacks = 0;
+    unsigned int socket_count = 0;
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM];
     neat_flow *flow = user_data;
     struct neat_ctx *ctx = flow->ctx;
@@ -1814,6 +1815,11 @@ accept_resolve_cb(struct neat_resolver_results *results,
             flow->acceptPending = 1;
         }
 
+        socket_count++;
+    }
+
+    if (socket_count == 0) {
+        neat_io_error(ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
     }
 }
 

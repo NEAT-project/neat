@@ -1813,52 +1813,8 @@ accept_resolve_cb(struct neat_resolver_results *results,
         } else {
             flow->acceptPending = 1;
         }
+
     }
-
-    // TODO: Check number of sockets created, call io_error if all failed
-
-    // neat_io_error(ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
-
-#if 0
-
-    flow->resolver_results = results;
-    flow->sockAddr = (struct sockaddr *) &(results->lh_first->dst_addr);
-
-	memcpy(&flow->srcAddr, flow->sockAddr, sizeof(struct sockaddr));
-
-    if (flow->listenfx(ctx, flow) == -1) {
-        neat_io_error(ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
-        return;
-    }
-
-    struct neat_pollable_socket *listen_socket = malloc(sizeof(*listen_socket));
-
-    listen_socket->fd = flow->fd;
-    listen_socket->flow = flow;
-    listen_socket->handle = NULL;
-    flow->handle->data = listen_socket;
-
-    if (flow->fd != -1) {
-        uv_poll_init(ctx->loop, flow->handle, flow->fd);
-
-        if ((neat_base_stack(flow->sockStack) == NEAT_STACK_SCTP) ||
-            (neat_base_stack(flow->sockStack) == NEAT_STACK_UDP) ||
-            (neat_base_stack(flow->sockStack) == NEAT_STACK_TCP)) {
-
-            if (neat_base_stack(flow->sockStack) == NEAT_STACK_UDP) {
-                recvfrom(flow->fd, NULL, 0, MSG_PEEK, NULL, 0);
-            }
-            flow->isPolling = 1;
-            flow->acceptPending = 1;
-            uv_poll_start(flow->handle, UV_READABLE, uvpollable_cb);
-        } else {
-            // do normal i/o events without accept() for non connected protocols
-            updatePollHandle(ctx, flow, flow->handle);
-        }
-    } else {
-        flow->acceptPending = 1;
-    }
-#endif
 }
 
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,

@@ -1135,7 +1135,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
 #if 0
         if (allocate_send_buffers(flow, flow->stream_count) != NEAT_OK) {
-            neat_io_error(he_ctx->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO );
+            neat_io_error(he_ctx->nc, flow, NEAT_ERROR_IO );
 
             LIST_REMOVE(he_ctx, next_he_ctx);
             free(he_ctx);
@@ -2682,7 +2682,7 @@ static void handle_connect(struct socket *sock, void *arg, int flags)
             flow->isPolling = 0;
             flow->stream_count = 1;
             if (allocate_send_buffers(flow, flow->stream_count) != NEAT_OK) {
-                neat_io_error(he_ctx->nc, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO );
+                neat_io_error(he_ctx->nc, flow, NEAT_ERROR_IO );
                 return;
             }
             usrsctp_set_upcall(sock, handle_upcall, (void *)flow);
@@ -2715,7 +2715,7 @@ static void handle_upcall(struct socket *sock, void *arg, int flags)
         if (events & SCTP_EVENT_WRITE && flow->isDraining) {
             neat_error_code code = neat_write_flush(ctx, flow);
             if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
-                neat_io_error(ctx, flow, 0, code);
+                neat_io_error(ctx, flow, code);
                 return;
             }
             if (!flow->isDraining) {

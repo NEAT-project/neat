@@ -488,9 +488,9 @@ neat_error_code neat_get_stats(neat_flow *flow, char **json_stats)
 
 
 void
-neat_io_error(neat_ctx *ctx, neat_flow *flow, int stream_id,
-              neat_error_code code)
+neat_io_error(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 {
+    const int stream_id = NEAT_INVALID_STREAM;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations || !flow->operations->on_error) {
@@ -1151,7 +1151,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         if (flow->propertyMask & NEAT_PROPERTY_REQUIRED_SECURITY) {
             neat_log(NEAT_LOG_DEBUG, "client required security");
             if (neat_security_install(flow->ctx, flow) != NEAT_OK) {
-                neat_io_error(flow->ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_SECURITY);
+                neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
             }
         } else {
             flow->firstWritePending = 1;
@@ -1170,7 +1170,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         if (status < 0) {
             flow->heConnectAttemptCount--;
             if (flow->heConnectAttemptCount == 0) {
-		neat_io_error(flow->ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+                neat_io_error(flow->ctx, flow, NEAT_ERROR_IO);
             }
         }
     }
@@ -1206,7 +1206,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
             unsigned int len = sizeof(so_error);
             if (getsockopt(flow->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
                 neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed: %s", strerror(errno));
-                neat_io_error(ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_INTERNAL);
+                neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
                 return;
             }
 
@@ -1222,13 +1222,13 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
 
 
         neat_log(NEAT_LOG_ERROR, "Unspecified internal error when polling socket");
-        neat_io_error(ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_INTERNAL);
+        neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
 
         return;
     }
 
     if (!events && status < 0) {
-        neat_io_error(ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        neat_io_error(ctx, flow, NEAT_ERROR_IO);
         return;
     }
 
@@ -1239,7 +1239,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     if (events & UV_WRITABLE && flow->isDraining) {
         neat_error_code code = neat_write_flush(ctx, flow);
         if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
-            neat_io_error(ctx, flow, 0, code);
+            neat_io_error(ctx, flow, code);
             return;
         }
         if (!flow->isDraining) {
@@ -1373,7 +1373,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow)
                 (newFlow->sockStack == NEAT_STACK_TCP)) {
                 neat_log(NEAT_LOG_DEBUG, "TCP Server Security");
                 if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
-                    neat_io_error(flow->ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_SECURITY);
+                    neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
                 }
             } else {
                 io_connected(ctx, newFlow, NEAT_OK);
@@ -1544,7 +1544,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
-        neat_io_error(ctx, flow, NEAT_INVALID_STREAM, code);
+        neat_io_error(ctx, flow, code);
         return;
     }
 
@@ -1630,7 +1630,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
-        neat_io_error(ctx, flow, NEAT_INVALID_STREAM, code);
+        neat_io_error(ctx, flow, code);
         return;
     }
 
@@ -1658,7 +1658,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
 	memcpy(&flow->srcAddr, flow->sockAddr, sizeof(struct sockaddr));
 
     if (flow->listenfx(ctx, flow) == -1) {
-        neat_io_error(ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        neat_io_error(ctx, flow, NEAT_ERROR_IO);
         return;
     }
 

@@ -318,8 +318,7 @@ uint8_t neat_resolve(struct neat_resolver *resolver,
 void neat_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
         uint16_t t2);
 
-void neat_io_error(neat_ctx *ctx, neat_flow *flow, int stream,
-                   neat_error_code code);
+void neat_io_error(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
 
 struct neat_iofilter *insert_neat_iofilter(neat_ctx *ctx, neat_flow *flow);
 

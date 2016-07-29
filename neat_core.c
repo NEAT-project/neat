@@ -1328,11 +1328,25 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 #endif
 
     neat_flow *newFlow = neat_new_flow(ctx);
-    assert(newFlow != NULL);
+    if (newFlow == NULL) {
+        neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+        return NULL;
+    }
+
     newFlow->name = strdup (flow->name);
+    if (newFlow->name == NULL) {
+        neat_io_error(ctx, newFlow, NEAT_ERROR_OUT_OF_MEMORY);
+        return NULL;
+    }
+
     if (flow->server_pem) {
         newFlow->server_pem = strdup (flow->server_pem);
+        if (newFlow->server_pem == NULL) {
+            neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+            return NULL;
+        }
     }
+
     newFlow->port = flow->port;
     newFlow->propertyMask = flow->propertyMask;
     newFlow->propertyAttempt = flow->propertyAttempt;
@@ -1354,12 +1368,26 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->isServer = 1;
     newFlow->isSCTPExplicitEOR = flow->isSCTPExplicitEOR;
     newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
+
+    if (newFlow->operations == NULL) {
+        neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+        return NULL;
+    }
+
     newFlow->operations->on_connected = flow->operations->on_connected;
     newFlow->operations->on_readable = flow->operations->on_readable;
     newFlow->operations->on_writable = flow->operations->on_writable;
     newFlow->operations->on_error = flow->operations->on_error;
     newFlow->operations->ctx = ctx;
     newFlow->operations->flow = flow;
+
+    // TODO: Should this be allocated here?
+    newFlow->socket->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+    if (newFlow->socket->handle == NULL) {
+        neat_io_error(ctx, newFlow, NEAT_ERROR_OUT_OF_MEMORY);
+        return NULL;
+    }
+    newFlow->socket->handle->type = UV_UNKNOWN_HANDLE;
 
     switch (newFlow->socket->stack) {
     case NEAT_STACK_SCTP_UDP:
@@ -1500,6 +1528,8 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     }
 
     flow->name = strdup(name);
+    if (flow->name == NULL)
+        return NEAT_ERROR_OUT_OF_MEMORY;
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
     flow->stream_count = stream_count;
@@ -1901,9 +1931,19 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
         local_name = "0.0.0.0";
 
     flow->name = strdup(local_name);
+    if (flow->name == NULL) {
+        return NEAT_ERROR_OUT_OF_MEMORY;
+    }
+
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
     flow->ctx = ctx;
+
+    // TODO: Should this be allocated here?
+    flow->socket->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+    if (flow->socket->handle == NULL) {
+        return NEAT_ERROR_OUT_OF_MEMORY;
+    }
 
     if (!ctx->resolver)
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
@@ -2045,7 +2085,7 @@ neat_write_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
     if ((flow->socket->stack != NEAT_STACK_TCP) || TAILQ_EMPTY(&flow->bufferedMessages)) {
         msg = malloc(sizeof(struct neat_buffered_message));
         if (msg == NULL) {
-            return NEAT_ERROR_INTERNAL;
+            return NEAT_ERROR_OUT_OF_MEMORY;
         }
         msg->buffered = NULL;
         msg->bufferedOffset = 0;
@@ -2070,13 +2110,13 @@ neat_write_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
     if (msg->bufferedOffset == 0) {
         msg->buffered = realloc(msg->buffered, needed);
         if (msg->buffered == NULL) {
-            return NEAT_ERROR_INTERNAL;
+            return NEAT_ERROR_OUT_OF_MEMORY;
         }
         msg->bufferedAllocation = needed;
     } else {
         void *newptr = malloc(needed);
         if (newptr == NULL) {
-            return NEAT_ERROR_INTERNAL;
+            return NEAT_ERROR_OUT_OF_MEMORY;
         }
         memcpy(newptr, msg->buffered + msg->bufferedOffset, msg->bufferedSize);
         free(msg->buffered);

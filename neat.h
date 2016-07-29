@@ -194,6 +194,7 @@ neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct neat_flow *flo
 #define NEAT_ERROR_UNABLE (7)
 #define NEAT_ERROR_MESSAGE_TOO_BIG (8)
 #define NEAT_ERROR_REMOTE (9)
+#define NEAT_ERROR_OUT_OF_MEMORY (10)
 
 #define NEAT_INVALID_STREAM (-1)
 

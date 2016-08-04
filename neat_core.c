@@ -1684,7 +1684,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
                   void *user_data)
 {
     int sctp_udp_encaps = 0;
-    struct neat_pollable_socket *sctp_socket;
+    struct neat_pollable_socket *sctp_socket = NULL;
     uint8_t nr_of_stacks = 0;
     unsigned int socket_count = 0;
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM];

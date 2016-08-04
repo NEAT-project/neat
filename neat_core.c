@@ -1847,7 +1847,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
         encaps.sue_address.ss_family = AF_INET;
         encaps.sue_port              = htons(SCTP_UDP_TUNNELING_PORT);
 
-        if (usrsctp_setsockopt(he_ctx->sock, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps)) != 0) {
+        if (usrsctp_setsockopt(sctp_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps)) != 0) {
             neat_log(NEAT_LOG_DEBUG, "Unable to set UDP encapsulation port");
         }
     }

@@ -159,9 +159,9 @@ static neat_error_code neat_security_handshake(struct neat_flow_operations *opCB
 
             // call on_connected
             if (rv == NEAT_OK) {
-                opCB->flow->handle->data = opCB->flow;
+                opCB->flow->socket->handle->data = opCB->flow->socket;
                 opCB->flow->firstWritePending = 1;
-                uvpollable_cb(opCB->flow->handle, NEAT_OK, UV_WRITABLE);
+                uvpollable_cb(opCB->flow->socket->handle, NEAT_OK, UV_WRITABLE);
             }
             break;
         }
@@ -345,7 +345,7 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
     // udp server
 
     int isClient = !flow->isServer;
-    if (flow->sockStack == NEAT_STACK_TCP) {
+    if (flow->socket->stack == NEAT_STACK_TCP) {
         struct security_data *private = calloc (1, sizeof (struct security_data));
         struct neat_iofilter *filter = insert_neat_iofilter(ctx, flow);
         filter->userData = private;
@@ -404,9 +404,9 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
         flow->operations->on_connected = NULL;
         neat_set_operations(ctx, flow, flow->operations);
 
-        flow->handle->data = flow;
+        flow->socket->handle->data = flow->socket;
         if (isClient) {
-            uvpollable_cb(flow->handle, NEAT_OK, UV_WRITABLE);
+            uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
         }
         return NEAT_OK;
     }

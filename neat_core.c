@@ -1683,6 +1683,8 @@ accept_resolve_cb(struct neat_resolver_results *results,
                   uint8_t code,
                   void *user_data)
 {
+    int sctp_udp_encaps = 0;
+    struct neat_pollable_socket *sctp_socket;
     uint8_t nr_of_stacks = 0;
     unsigned int socket_count = 0;
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM];
@@ -1725,9 +1727,20 @@ accept_resolve_cb(struct neat_resolver_results *results,
                       stacks[i] == NEAT_STACK_UDPLITE ?
                       SOCK_DGRAM : SOCK_STREAM;
 
-        // TODO: Support udplite
-        if (stacks[i] == NEAT_STACK_UDPLITE)
+        // Create only one SCTP socket, enable UDP encaps later
+        if (stacks[i] == NEAT_STACK_SCTP_UDP) {
+            sctp_udp_encaps = 1;
+
+            stacks[i] = NEAT_STACK_SCTP; // Pretend it's just a normal SCTP socket
+
+            if (sctp_socket != NULL)
+                continue;
+        } else if (stacks[i] == NEAT_STACK_SCTP && sctp_socket != NULL) {
             continue;
+        } else if (stacks[i] == NEAT_STACK_UDPLITE) {
+            // TODO: Enable UDPLite on platforms that support it
+            continue;
+        }
 
 #ifdef USRSCTP_SUPPORT
         if (stacks[i] != NEAT_STACK_SCTP) {
@@ -1742,7 +1755,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
             listen_socket = malloc(sizeof(*listen_socket));
 
             listen_socket->flow = flow;
-            listen_socket->stack = stacks[i];
+            listen_socket->stack = neat_base_stack(stacks[i]);
             listen_socket->family = results->lh_first->ai_family;
             listen_socket->type = socket_type;
 
@@ -1753,7 +1766,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
             assert(listen_socket);
 
             listen_socket->flow = flow;
-            listen_socket->stack = stacks[i];
+            listen_socket->stack = neat_base_stack(stacks[i]);
             listen_socket->family = results->lh_first->ai_family;
             listen_socket->type = socket_type;
 
@@ -1780,7 +1793,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
         assert(listen_socket);
 
         listen_socket->flow = flow;
-        listen_socket->stack = stacks[i];
+        listen_socket->stack = neat_base_stack(stacks[i]);
         listen_socket->family = results->lh_first->ai_family;
         listen_socket->type = socket_type;
 
@@ -1793,6 +1806,9 @@ accept_resolve_cb(struct neat_resolver_results *results,
         assert(handle);
         listen_socket->handle = handle;
         handle->data = listen_socket;
+
+        if (stacks[i] == NEAT_STACK_SCTP)
+            sctp_socket = listen_socket;
 
         if (listen_socket->fd != -1) { // fd == -1 => USRSCTP
             uv_poll_init(ctx->loop, handle, fd);
@@ -1820,7 +1836,43 @@ accept_resolve_cb(struct neat_resolver_results *results,
 
     if (socket_count == 0) {
         neat_io_error(ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        return;
     }
+
+#ifdef USRSCTP_SUPPORT
+    if (sctp_udp_encaps && sctp_socket) {
+        struct sctp_udpencaps encaps;
+        memset(&encaps, 0, sizeof(struct sctp_udpencaps));
+
+        encaps.sue_address.ss_family = AF_INET;
+        encaps.sue_port              = htons(SCTP_UDP_TUNNELING_PORT);
+
+        if (usrsctp_setsockopt(he_ctx->sock, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps)) != 0) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to set UDP encapsulation port");
+        }
+    }
+#else // ifdef USRSCTP_SUPPORT
+#if defined(__FreeBSD__)
+    // Enable SCTP/UDP encaps if specified
+    if (sctp_udp_encaps && sctp_socket) {
+        struct sctp_udpencaps encaps;
+        memset(&encaps, 0, sizeof(struct sctp_udpencaps));
+
+        encaps.sue_address.ss_family = sctp_socket->family;
+        encaps.sue_port              = htons(SCTP_UDP_TUNNELING_PORT);
+
+        if (setsockopt(sctp_socket->fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT,
+                       (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps)) != 0) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to set UDP encapsulation port");
+        }
+    }
+
+#else // if defined(__FreeBSD__)
+    if (sctp_udp_encaps && sctp_socket) {
+        neat_log(NEAT_LOG_DEBUG, "SCTP/UDP encapsulation not available");
+    }
+#endif // if defined(__FreeBSD__)
+#endif // ifdef else USRSCTP_SUPPORT
 }
 
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,

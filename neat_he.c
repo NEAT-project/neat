@@ -111,9 +111,9 @@ he_resolve_cb(struct neat_resolver_results *results,
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code == NEAT_RESOLVER_TIMEOUT)  {
-        neat_io_error(flow->ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        neat_io_error(flow->ctx, flow, NEAT_ERROR_IO);
     } else if ( code == NEAT_RESOLVER_ERROR ) {
-        neat_io_error(flow->ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        neat_io_error(flow->ctx, flow, NEAT_ERROR_IO);
     }
 
     nr_of_stacks = neat_property_translate_protocols(flow->propertyMask, stacks);
@@ -176,7 +176,7 @@ he_resolve_cb(struct neat_resolver_results *results,
     }
 
     if (flow->heConnectAttemptCount == 0) {
-        neat_io_error(flow->ctx, flow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
+        neat_io_error(flow->ctx, flow, NEAT_ERROR_IO);
     }
 
     free(resolver_data);

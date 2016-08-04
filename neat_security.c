@@ -167,7 +167,7 @@ static neat_error_code neat_security_handshake(struct neat_flow_operations *opCB
         }
     }
     if (rv != NEAT_OK) {
-        neat_io_error(opCB->ctx, opCB->flow, NEAT_INVALID_STREAM, rv);
+        neat_io_error(opCB->ctx, opCB->flow, rv);
     }
     return rv;
 }

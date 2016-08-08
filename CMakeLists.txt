@@ -34,15 +34,11 @@ IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     ADD_DEFINITIONS("-D_DEFAULT_SOURCE")
     LIST(APPEND neat_headers neat_linux.h)
     LIST(APPEND neat_sources neat_linux.c)
-    SET(LIB_DIR "/usr/local/lib")
-    SET(HDR_DIR "/usr/local/include/neat")
 
 ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_headers neat_bsd.h)
     LIST(APPEND neat_sources neat_bsd.c)
-    SET(LIB_DIR "/usr/local/lib")
-    SET(HDR_DIR "/usr/local/include/neat")
     SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
     SET(CMAKE_LIBRARY_PATH "/usr/local/lib")
     INCLUDE_DIRECTORIES("/usr/local/include")
@@ -51,8 +47,6 @@ ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_headers neat_bsd.h)
     LIST(APPEND neat_sources neat_bsd.c)
-    SET(LIB_DIR "/usr/local/lib")
-    SET(HDR_DIR "/usr/local/include/neat")
     SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include" "/usr/local/opt/openssl/include")
     SET(CMAKE_LIBRARY_PATH "/usr/local/lib")
     INCLUDE_DIRECTORIES("/usr/local/include" "/usr/local/opt/openssl/include")
@@ -61,8 +55,6 @@ ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
     MESSAGE(STATUS ${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_headers neat_bsd.h)
     LIST(APPEND neat_sources neat_bsd.c)
-    SET(LIB_DIR "/usr/local/lib")
-    SET(HDR_DIR "/usr/local/include/neat")
     SET(CMAKE_REQUIRED_INCLUDES "/usr/pkg/include" "/usr/include" "/usr/local/include")
     SET(CMAKE_LIBRARY_PATH "/usr/local/lib")
     INCLUDE_DIRECTORIES("/usr/pkg/include" "/usr/local/include")
@@ -177,8 +169,8 @@ ENDIF()
 
 CHECK_INCLUDE_FILE(netinet/sctp.h HAVE_NETINET_SCTP_H)
 IF (HAVE_NETINET_SCTP_H)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
-  SET(SCTP_INCLUDE "netinet/sctp.h")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
+    SET(SCTP_INCLUDE "netinet/sctp.h")
 ENDIF()
 
 IF (USRSCTP_SUPPORT)
@@ -192,20 +184,20 @@ IF (USRSCTP_SUPPORT)
 ENDIF()
 
 IF (SCTP_INCLUDE)
-  CHECK_STRUCT_HAS_MEMBER("struct sctp_event_subscribe" sctp_association_event ${SCTP_INCLUDE} HAVE_SCTP_EVENT_SUBSCRIBE)
-  CHECK_STRUCT_HAS_MEMBER("struct sctp_send_failed_event" ssfe_error ${SCTP_INCLUDE} HAVE_SCTP_SEND_FAILED_EVENT)
+    CHECK_STRUCT_HAS_MEMBER("struct sctp_event_subscribe" sctp_association_event ${SCTP_INCLUDE} HAVE_SCTP_EVENT_SUBSCRIBE)
+    CHECK_STRUCT_HAS_MEMBER("struct sctp_send_failed_event" ssfe_error ${SCTP_INCLUDE} HAVE_SCTP_SEND_FAILED_EVENT)
 ENDIF()
 
 IF (HAVE_SCTP_SEND_FAILED_EVENT)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_SCTP_SEND_FAILED_EVENT")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_SCTP_SEND_FAILED_EVENT")
 ENDIF()
 
 IF (USRSCTP_SUPPORT)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_SCTP_SEND_FAILED_EVENT")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_SCTP_SEND_FAILED_EVENT")
 ENDIF()
 
 IF (HAVE_SCTP_EVENT_SUBSCRIBE)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_SCTP_EVENT_SUBSCRIBE")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_SCTP_EVENT_SUBSCRIBE")
 ENDIF()
 
 # COMPILER FLAGS
@@ -236,8 +228,12 @@ ADD_LIBRARY(neat-static STATIC ${neat_sources})
 
 TARGET_LINK_LIBRARIES (neat ${neat_libs})
 
-INSTALL(TARGETS neat LIBRARY DESTINATION ${LIB_DIR})
-INSTALL(FILES ${neat_headers} DESTINATION ${HDR_DIR})
+# INSTALL
+#################################################
+MESSAGE(STATUS "Install directory: ${CMAKE_INSTALL_PREFIX}")
+
+INSTALL(TARGETS neat LIBRARY DESTINATION lib)
+INSTALL(FILES ${neat_headers} DESTINATION include/neat)
 
 
 # INCLUDE EXAMPLES AND TESTS FOLDER

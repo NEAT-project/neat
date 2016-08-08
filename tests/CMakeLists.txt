@@ -2,6 +2,7 @@
 #################################################
 LIST(APPEND neat_programs
     neat_resolver_example.c
+    test_echo.c
 )
 
 

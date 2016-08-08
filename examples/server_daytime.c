@@ -62,7 +62,7 @@ on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled);
+    code = neat_read(opCB->ctx, opCB->flow, buffer, BUFFERSIZE, &buffer_filled, NULL, 0);
     if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             return NEAT_OK;
@@ -126,7 +126,7 @@ on_writable(struct neat_flow_operations *opCB)
     time_now = time(NULL);
     time_string = ctime(&time_now);
     // and send it
-    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) time_string, strlen(time_string));
+    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) time_string, strlen(time_string), NULL, 0);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write failed - code: %d\n", __func__, (int)code);
         return on_error(opCB);
@@ -290,7 +290,7 @@ main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, "*", 8080)) {
+    if (neat_accept(ctx, flow, 8080, NULL, 0)) {
         fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;

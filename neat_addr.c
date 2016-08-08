@@ -15,6 +15,9 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
     char addr_str[INET6_ADDRSTRLEN];
     struct sockaddr_in *src_addr4;
     struct sockaddr_in6 *src_addr6;
+    struct pvd* pvd;
+    struct pvd_info* pvd_info;
+    struct pvd_result* pvd_result;
 
     neat_log(NEAT_LOG_INFO, "Available src-addresses:");
     for (nsrc_addr = nc->src_addrs.lh_first; nsrc_addr != NULL;
@@ -24,13 +27,29 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
             src_addr4 = &(nsrc_addr->u.v4.addr4);
             inet_ntop(AF_INET, &(src_addr4->sin_addr), addr_str,
                     INET_ADDRSTRLEN);
-            neat_log(NEAT_LOG_INFO, "\tIPv4: %s", addr_str);
+            neat_log(NEAT_LOG_INFO, "\tIPv4: %s/%u", addr_str, nsrc_addr->prefix_length);
         } else {
             src_addr6 = &(nsrc_addr->u.v6.addr6);
             inet_ntop(AF_INET6, &(src_addr6->sin6_addr), addr_str,
                     INET6_ADDRSTRLEN);
-            neat_log(NEAT_LOG_INFO, "\tIPv6: %s pref %u valid %u", addr_str,
-                    nsrc_addr->u.v6.ifa_pref, nsrc_addr->u.v6.ifa_valid);
+            neat_log(NEAT_LOG_INFO, "\tIPv6: %s/%u pref %u valid %u", addr_str,
+                    nsrc_addr->prefix_length, nsrc_addr->u.v6.ifa_pref,
+                    nsrc_addr->u.v6.ifa_valid);
+        }
+
+        if (nc->pvd == NULL)
+            continue;
+
+        LIST_FOREACH(pvd_result, &(nc->pvd->results), next_result) {
+            if (pvd_result->src_addr != nsrc_addr) {
+                continue;
+            }
+            LIST_FOREACH(pvd, &(pvd_result->pvds), next_pvd) {
+                neat_log(NEAT_LOG_INFO, "\t\tPVD:");
+                LIST_FOREACH(pvd_info, &(pvd->infos), next_info) {
+                    neat_log(NEAT_LOG_INFO, "\t\t\t%s => %s", pvd_info->key, pvd_info->value);
+                }
+            }
         }
     }
 }
@@ -45,7 +64,7 @@ uint8_t neat_addr_cmp_ip6_addr(struct in6_addr *aAddr,
 //Add/remove/update a source address based on information received from OS
 void neat_addr_update_src_list(struct neat_ctx *nc,
         struct sockaddr_storage *src_addr, uint32_t if_idx,
-        uint8_t newaddr, uint32_t ifa_pref, uint32_t ifa_valid)
+        uint8_t newaddr, uint8_t pref_length, uint32_t ifa_pref, uint32_t ifa_valid)
 {
     struct sockaddr_in *src_addr4 = NULL, *org_addr4 = NULL;
     struct sockaddr_in6 *src_addr6 = NULL, *org_addr6 = NULL;
@@ -116,6 +135,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
 
     nsrc_addr->family = src_addr->ss_family;
     nsrc_addr->if_idx = if_idx;
+    nsrc_addr->prefix_length = pref_length;
 
     memcpy(&(nsrc_addr->u.generic.addr), src_addr, sizeof(*src_addr));
 
@@ -126,8 +146,8 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
 
     LIST_INSERT_HEAD(&(nc->src_addrs), nsrc_addr, next_addr);
     ++nc->src_addr_cnt;
-    neat_run_event_cb(nc, NEAT_NEWADDR, nsrc_addr);
     neat_addr_print_src_addrs(nc);
+    neat_run_event_cb(nc, NEAT_NEWADDR, nsrc_addr);
 }
 
 void neat_addr_lifetime_timeout_cb(uv_timer_t *handle)
@@ -177,4 +197,41 @@ void neat_addr_free_src_list(struct neat_ctx *nc)
         free(nsrc_addr);
     }
 
+}
+
+/*
+ * https://gist.github.com/kazuho/45eae4f92257daceb73e
+ * Copyright (c) 2014 Kazuho Oku
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+uint8_t sockaddr_cmp(struct sockaddr *x, struct sockaddr *y)
+{
+#define CMP(a, b) if (a != b) return a < b ? -1 : 1
+
+    CMP(x->sa_family, y->sa_family);
+
+    if (x->sa_family == AF_INET) {
+        struct sockaddr_in *xin = (void*)x, *yin = (void*)y;
+        CMP(ntohs(xin->sin_port), ntohs(yin->sin_port));
+        CMP(ntohl(xin->sin_addr.s_addr), ntohl(yin->sin_addr.s_addr));
+    } else if (x->sa_family == AF_INET6) {
+        struct sockaddr_in6 *xin6 = (void*)x, *yin6 = (void*)y;
+        CMP(ntohs(xin6->sin6_port), ntohs(yin6->sin6_port));
+        CMP(xin6->sin6_flowinfo, yin6->sin6_flowinfo);
+        CMP(xin6->sin6_scope_id, yin6->sin6_scope_id);
+        return memcmp(xin6->sin6_addr.s6_addr, yin6->sin6_addr.s6_addr, sizeof(xin6->sin6_addr.s6_addr));
+    }
+
+#undef CMP
+    return 0;
 }

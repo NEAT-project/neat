@@ -195,7 +195,7 @@ on_writable(struct neat_flow_operations *opCB)
         }
     }
 
-    code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size);
+    code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size, NULL, 0);
 
     if (done) {
         opCB->on_writable = NULL;
@@ -227,7 +227,7 @@ on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_read(opCB->ctx, opCB->flow, tnf->rcv.buffer, config_rcv_buffer_size, &buffer_filled);
+    code = neat_read(opCB->ctx, opCB->flow, tnf->rcv.buffer, config_rcv_buffer_size, &buffer_filled, NULL, 0);
     if (code) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             fprintf(stderr, "%s - neat_read warning: NEAT_ERROR_WOULD_BLOCK\n", __func__);
@@ -523,7 +523,7 @@ main(int argc, char *argv[])
 
     if (config_active) {
         // connect to peer
-        if (neat_open(ctx, flow, argv[optind], config_port) == NEAT_OK) {
+        if (neat_open(ctx, flow, argv[optind], config_port, NULL, 0) == NEAT_OK) {
             if (config_log_level >= 1) {
                 printf("neat_open - connecting to %s:%d\n", argv[optind], config_port);
             }
@@ -535,7 +535,7 @@ main(int argc, char *argv[])
         }
     } else {
         // wait for on_connected or on_error to be invoked
-        if (neat_accept(ctx, flow, "*", config_port)) {
+        if (neat_accept(ctx, flow, config_port, NULL, 0)) {
             fprintf(stderr, "%s - neat_accept failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;

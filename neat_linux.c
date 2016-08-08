@@ -102,7 +102,7 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
     //TODO: Should this function be a callback instead? Will we have multiple
     //addresses handlers/types of context?
     neat_addr_update_src_list(nc, &src_addr, ifm->ifa_index,
-            nl_hdr->nlmsg_type == RTM_NEWADDR, ifa_pref, ifa_valid);
+            nl_hdr->nlmsg_type == RTM_NEWADDR, ifm->ifa_prefixlen, ifa_pref, ifa_valid);
 }
 
 //libuv datagram socket alloc function, un-interesting

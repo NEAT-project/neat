@@ -12,11 +12,15 @@
 
     https://tools.ietf.org/html/rfc862
 
+A TLS example:
+ server_echo -P NEAT_PROPERTY_REQUIRED_SECURITY,NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED -v 2 -p cert.pem
+
 **********************************************************************/
 
 static uint32_t config_buffer_size = 512;
 static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_UDP_BANNED,NEAT_PROPERTY_UDPLITE_BANNED";
+static char *pem_file = NULL;
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
 
@@ -34,6 +38,7 @@ print_usage()
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
+    printf("\t- p \tpem file (none)\n");
 }
 
 struct echo_flow {
@@ -68,7 +73,7 @@ on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_read(opCB->ctx, opCB->flow, ef->buffer, config_buffer_size, &ef->bytes);
+    code = neat_read(opCB->ctx, opCB->flow, ef->buffer, config_buffer_size, &ef->bytes, NULL, 0);
     if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             if (config_log_level >= 1) {
@@ -142,7 +147,7 @@ on_writable(struct neat_flow_operations *opCB)
     opCB->on_all_written = on_all_written;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-    code = neat_write(opCB->ctx, opCB->flow, ef->buffer, ef->bytes);
+    code = neat_write(opCB->ctx, opCB->flow, ef->buffer, ef->bytes, NULL, 0);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: %d\n", __func__, (int)code);
         return on_error(opCB);
@@ -204,7 +209,7 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:S:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:S:p:v:")) != -1) {
         switch(arg) {
         case 'P':
             arg_property = optarg;
@@ -216,6 +221,12 @@ main(int argc, char *argv[])
             config_buffer_size = atoi(optarg);
             if (config_log_level >= 1) {
                 printf("option - buffer size: %d\n", config_buffer_size);
+            }
+            break;
+        case 'p':
+            pem_file = optarg;
+            if (config_log_level >= 1) {
+                printf("option - pem file: %s\n", pem_file);
             }
             break;
         case 'v':
@@ -253,6 +264,12 @@ main(int argc, char *argv[])
     // set properties (TCP only etc..)
     if (neat_get_property(ctx, flow, &prop)) {
         fprintf(stderr, "%s - neat_get_property failed\n", __func__);
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
+
+    if (pem_file && neat_secure_identity(ctx, flow, pem_file)) {
+        fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
@@ -331,7 +348,7 @@ main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, "*", 8080)) {
+    if (neat_accept(ctx, flow, 8080, NULL, 0)) {
         fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;

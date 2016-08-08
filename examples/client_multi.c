@@ -124,7 +124,7 @@ on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_read(opCB->ctx, opCB->flow, buffer_rcv, config_rcv_buffer_size, &buffer_filled);
+    code = neat_read(opCB->ctx, opCB->flow, buffer_rcv, config_rcv_buffer_size, &buffer_filled, NULL, 0);
     if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             if (config_log_level >= 1) {
@@ -170,8 +170,8 @@ static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
     static int message_number = 0;
-    static int last_message_number = 0;
     neat_error_code code;
+    struct neat_tlv options[1];
     unsigned char buf[64];
     int len;
 
@@ -179,47 +179,41 @@ on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    switch (opCB->stream_id) {
-        case 0:
-            if (message_number > last_message_number) {
-                break;
-            }
-            code = neat_write_ex(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled, 0);
-            if (code != NEAT_OK) {
-                fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
-                return on_error(opCB);
-            }
+    options[0].tag           = NEAT_TAG_STREAM_ID;
+    options[0].type          = NEAT_TYPE_INTEGER;
+    options[0].value.integer = 0;
 
-            if (config_log_level >= 1) {
-                fprintf(stderr, "%s - sent %d bytes\n", __func__, stdin_buffer.buffer_filled);
-            }
+    code = neat_write(opCB->ctx, opCB->flow,
+                      stdin_buffer.buffer, stdin_buffer.buffer_filled,
+                      options, 1);
 
-            message_number++;
-            break;
-        case 1:
-            if (message_number <= last_message_number) {
-                break;
-            }
-
-            last_message_number = message_number;
-
-            len = snprintf((char*)buf, 64, "Sent message number %d\n", message_number);
-
-            code = neat_write_ex(opCB->ctx, opCB->flow, buf, len, 1);
-            if (code != NEAT_OK) {
-                fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
-                return on_error(opCB);
-            }
-
-            // stop writing
-            ops.on_writable = NULL;
-            neat_set_operations(ctx, flow, &ops);
-
-            break;
-        default:
-            fprintf(stderr, "Illegal stream id %d passed to on_writable\n", opCB->stream_id);
-            return NEAT_ERROR_BAD_ARGUMENT;
+    if (code != NEAT_OK) {
+        fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
+        return on_error(opCB);
     }
+
+    if (config_log_level >= 1) {
+        fprintf(stderr, "%s - sent %d bytes\n", __func__, stdin_buffer.buffer_filled);
+    }
+
+    message_number++;
+
+    len = snprintf((char*)buf, 64, "Sent message number %d\n", message_number);
+
+    options[0].tag           = NEAT_TAG_STREAM_ID;
+    options[0].type          = NEAT_TYPE_INTEGER;
+    options[0].value.integer = 1;
+
+    code = neat_write(opCB->ctx, opCB->flow, buf, len, options, 1);
+
+    if (code != NEAT_OK) {
+        fprintf(stderr, "%s - neat_write_ex - error: %d\n", __func__, (int)code);
+        return on_error(opCB);
+    }
+
+    // stop writing
+    ops.on_writable = NULL;
+    neat_set_operations(ctx, flow, &ops);
 
     return NEAT_OK;
 }
@@ -355,6 +349,9 @@ main(int argc, char *argv[])
     char *arg_property = config_property;
     char *arg_property_ptr = NULL;
     char arg_property_delimiter[] = ",;";
+
+    NEAT_OPTARGS_DECLARE(NEAT_OPTARGS_MAX);
+    NEAT_OPTARGS_INIT();
 
     memset(&ops, 0, sizeof(ops));
     memset(&stdin_buffer, 0, sizeof(stdin_buffer));
@@ -519,8 +516,10 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
+    NEAT_OPTARG_INT(NEAT_TAG_STREAM_COUNT, 2);
+
     // wait for on_connected or on_error to be invoked
-    if (neat_open_multistream(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), 2) == NEAT_OK) {
+    if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), NEAT_OPTARGS, NEAT_OPTARGS_COUNT) == NEAT_OK) {
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     } else {
         fprintf(stderr, "%s - error: neat_open\n", __func__);

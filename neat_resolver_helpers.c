@@ -33,7 +33,7 @@ neat_resolver_helpers_addr_internal(struct sockaddr_storage *addr)
 
 //Check if node is an IP literal or not. Returns -1 on failure, 0 if not
 //literal, 1 if literal
-int8_t 
+int8_t
 neat_resolver_helpers_check_for_literal(uint8_t *family,
                                         const char *node)
 {
@@ -96,12 +96,12 @@ neat_resolver_helpers_fill_results(struct neat_resolver_request *request,
     result->dst_addr = dst_addr;
     result->dst_addr_len = addrlen;
     result->internal = neat_resolver_helpers_addr_internal(&dst_addr);
-   
+
     //Head of sockaddr_in and sockaddr_in6 is the same, so this is safe
     //for setting port
     addr4 = (struct sockaddr_in*) &(result->dst_addr);
     addr4->sin_port = request->dst_port;
- 
+
     LIST_INSERT_HEAD(result_list, result, next_res);
     num_addr_added++;
 
@@ -152,7 +152,7 @@ neat_resolver_helpers_check_duplicate(struct neat_resolver_src_dst_addr *pair,
 
         if (src_addr->family == AF_INET) {
             cmp_addr_4 = &(itr->src_addr->u.v4.addr4);
-            addr_equal = (cmp_addr_4->sin_addr.s_addr ==
+            addr_equal = (src_addr_4 != NULL && cmp_addr_4->sin_addr.s_addr ==
                           src_addr_4->sin_addr.s_addr);
         } else {
             cmp_addr_6 = &(itr->src_addr->u.v6.addr6);
@@ -185,4 +185,3 @@ neat_resolver_helpers_check_duplicate(struct neat_resolver_src_dst_addr *pair,
 
     return 0;
 }
-

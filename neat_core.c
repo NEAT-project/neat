@@ -1569,7 +1569,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
 }
 
 neat_error_code
-neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
+neat_change_timeout(neat_ctx *mgr, neat_flow *flow, unsigned int seconds)
 {
 #if defined(TCP_USER_TIMEOUT)
     unsigned int timeout_msec;
@@ -1578,70 +1578,44 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (seconds < 0) {
-            neat_log(NEAT_LOG_WARNING,
-                    "Unable to change timeout: "
-                    "Negative timeout specified");
-
-            return NEAT_ERROR_BAD_ARGUMENT;
-    }
-
-    // TCP User Timeout isn't supported on all platforms
 #if defined(TCP_USER_TIMEOUT)
-    timeout_msec = ((unsigned int)seconds) * 1000;
-
-    if (neat_base_stack(flow->socket->stack) == NEAT_STACK_TCP) {
-        if (flow->socket->fd == -1) {
-            neat_log(NEAT_LOG_WARNING,
-                    "Unable to change timeout for TCP socket: "
-                    "Invalid socket value");
-            return NEAT_ERROR_BAD_ARGUMENT;
-        }
-
-        rc = setsockopt(flow->socket->fd,
-                        IPPROTO_TCP,
-                        TCP_USER_TIMEOUT,
-                        &timeout_msec,
-                        sizeof(timeout_msec));
-
-        if (rc < 0) {
-            neat_log(NEAT_LOG_ERROR,
-                    "Unable to change timeout for TCP socket: "
-                    "Call to setsockopt failed with errno=%d", errno);
-            return NEAT_ERROR_IO;
-        }
-
-        return NEAT_ERROR_OK;
-    }
-#endif // defined(TCP_USER_TIMEOUT)
-    if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-#if 0 // Disabled due to discussion with MT in PR #85
-        struct sctp_paddrparams params;
-        unsigned int optsize = sizeof(params);
-        int rc = getsockopt(flow->fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, &optsize);
-        if (rc < 0) {
-            neat_log(NEAT_LOG_ERROR,
-                    "Unable to change timeout for SCTP socket: "
-                    "Call to getsockopt failed with errno=%d", errno);
-            return NEAT_ERROR_IO;
-        }
-
-        params.spp_hbinterval = (unsigned int)seconds * 1000 / 4;
-        params.spp_flags |= SPP_HB_ENABLE;
-        params.spp_pathmaxrxt = 4;
-
-        rc = setsockopt(flow->fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params));
-        if (rc < 0) {
-            neat_log(NEAT_LOG_ERROR,
-                    "Unable to change timeout for SCTP socket: "
-                    "Call to setsockopt failed with errno=%d", errno);
-            return NEAT_ERROR_IO;
-        }
-#endif // if 0
+    if (neat_base_stack(flow->socket->stack) != NEAT_STACK_TCP)
+#endif
+    {
+        neat_log(NEAT_LOG_DEBUG, "Timeout is supported on Linux TCP only");
         return NEAT_ERROR_UNABLE;
     }
 
-    return NEAT_ERROR_UNABLE;
+#if defined(TCP_USER_TIMEOUT)
+    if (flow->socket->fd == -1) {
+        neat_log(NEAT_LOG_WARNING,
+                 "Unable to change timeout for TCP socket: "
+                 "Invalid socket value");
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    if (seconds > UINT_MAX - 1000) {
+        neat_log(NEAT_LOG_DEBUG, "Timeout value too large");
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    timeout_msec = seconds * 1000;
+
+    rc = setsockopt(flow->socket->fd,
+                    IPPROTO_TCP,
+                    TCP_USER_TIMEOUT,
+                    &timeout_msec,
+                    sizeof(timeout_msec));
+
+    if (rc < 0) {
+        neat_log(NEAT_LOG_ERROR,
+                 "Unable to change timeout for TCP socket: "
+                 "Call to setsockopt failed with errno=%d", errno);
+        return NEAT_ERROR_IO;
+    }
+
+    return NEAT_ERROR_OK;
+#endif // defined(TCP_USER_TIMEOUT)
 }
 
 static void

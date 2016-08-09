@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 ( $1 ../examples/server_echo -P "") &
 SERVER_PID=$!
@@ -21,6 +21,8 @@ echo "Running tests..."
 
 ./test_echo
 res=$?
+
+echo "Tests finished"
 
 # graceful kill for server process
 kill -TERM $SERVER_PID

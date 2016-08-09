@@ -1,20 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <netdb.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netdb.h>
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#if defined(__NetBSD__)
-    #define IPPROTO_SCTP 132
-#endif
-
-#include <unistd.h>
 
 void
 test_protocol(int protocol, int socktype)
@@ -30,9 +24,8 @@ test_protocol(int protocol, int socktype)
     hints.ai_protocol = protocol;
 
     rc = getaddrinfo("localhost", "8080", &hints, &info);
-
     if (rc != 0) {
-        fprintf(stderr, "%s", gai_strerror(rc));
+        fprintf(stderr, "getaddrinfo failed - %s", gai_strerror(rc));
         exit(EXIT_FAILURE);
     }
 
@@ -72,11 +65,18 @@ test_protocol(int protocol, int socktype)
     freeaddrinfo(info);
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
+    printf("Testing TCP\n");
     test_protocol(IPPROTO_TCP, SOCK_STREAM);
-    test_protocol(IPPROTO_SCTP, SOCK_STREAM);
+    printf("Testing UDP\n");
     test_protocol(IPPROTO_UDP, SOCK_DGRAM);
+#ifdef HAVE_NETINET_SCTP_H
+    printf("Testing SCTP\n");
+    test_protocol(IPPROTO_SCTP, SOCK_STREAM);
+#endif
+
 #if defined(__FreeBSD__)
     // test_protocol(IPPROTO_UDPLITE, SOCK_DGRAM);
 #endif

@@ -1,23 +1,29 @@
-#! /usr/bin/env bash
+#!/usr/bin/env bash
 
-if [ -n "$VERBOSE" ]; then
-    ( ../examples/server_echo -P "" ) &
-    SERVER_PID=$!
-else
-    ( ../examples/server_echo -P "" 2>/dev/null > /dev/null) &
-    SERVER_PID=$!
-fi
+( $1 ../examples/server_echo -P "") &
+SERVER_PID=$!
 
 echo "Starting NEAT server..."
 
+# wait until server started
 sleep 3
+
+# check if the server process is runnning
+kill -0 $!
+res=$?
+if [ $res -ne 0 ]; then
+    echo "Server not running - exit"
+    exit -1
+fi
+
 
 echo "Running tests..."
 
 ./test_echo
 res=$?
 
-kill -9 $SERVER_PID
+# graceful kill for server process
+kill -TERM $SERVER_PID
 
 if [ $res -ne 0 ]; then
     echo "TEST FAILED"
@@ -26,4 +32,3 @@ else
     echo "SUCCESS"
     exit 0
 fi
-

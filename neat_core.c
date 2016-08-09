@@ -785,20 +785,21 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
      * The UDP Accept flow isn't going to have on_readable set,
      * anything else will.
      */
-    if (!flow->operations->on_readable) {
-        if (!(socket->stack == NEAT_STACK_UDP && flow->acceptPending)) {
+    if (!flow->operations->on_readable && flow->acceptPending) {
+
+        if (socket->stack != NEAT_STACK_UDP && socket->stack != NEAT_STACK_UDPLITE) {
             neat_log(NEAT_LOG_DEBUG, "Exit 1");
             return READ_WITH_ERROR;
         }
     }
 
-    if ((socket->stack == NEAT_STACK_UDP) && (!flow->readBufferMsgComplete)) {
+    if ((socket->stack == NEAT_STACK_UDP || socket->stack == NEAT_STACK_UDPLITE) && (!flow->readBufferMsgComplete)) {
         if (resize_read_buffer(flow) != READ_OK) {
             neat_log(NEAT_LOG_DEBUG, "Exit 2");
             return READ_WITH_ERROR;
         }
 
-        if (socket->stack == NEAT_STACK_UDP) {
+        if (socket->stack == NEAT_STACK_UDP || socket->stack == NEAT_STACK_UDPLITE) {
             if (!flow->acceptPending && !flow->operations->on_readable) {
                 neat_log(NEAT_LOG_DEBUG, "Exit 3");
                 return READ_WITH_ERROR;
@@ -1239,8 +1240,9 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if ((events & UV_READABLE) && flow->acceptPending) {
-        if(pollable_socket->stack == NEAT_STACK_UDP) {
-            neat_log(NEAT_LOG_DEBUG, "io_readable for UDP accept flow");
+        if(pollable_socket->stack == NEAT_STACK_UDP ||
+           pollable_socket->stack == NEAT_STACK_UDPLITE) {
+            neat_log(NEAT_LOG_DEBUG, "io_readable for UDP or UDPLite accept flow");
             io_readable(ctx, flow, pollable_socket, NEAT_OK);
         } else {
             do_accept(ctx, flow, pollable_socket);
@@ -1446,6 +1448,35 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             io_connected(ctx, newFlow, NEAT_OK);
             uvpollable_cb(newFlow->socket->handle, NEAT_OK, 0);
         }
+        break;
+    case NEAT_STACK_UDPLITE:
+#if defined(__NetBSD__) || defined(__APPLE__)
+        assert(0); // Should not reach this point
+#else
+        neat_log(NEAT_LOG_DEBUG, "Creating new UDPLite socket");
+        newFlow->socket->fd = socket(newFlow->socket->family, newFlow->socket->type, IPPROTO_UDPLITE);
+
+        if (newFlow->socket->fd == -1) {
+            neat_free_flow(newFlow);
+        } else {
+            int enable = 1;
+
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+
+            bind(newFlow->socket->fd, &newFlow->socket->srcAddr, sizeof(struct sockaddr));
+            connect(newFlow->socket->fd, &newFlow->socket->dstAddr, sizeof(struct sockaddr));
+
+            newFlow->everConnected = 1;
+
+            uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
+
+            newFlow->socket->handle->data = newFlow->socket;
+
+            io_connected(ctx, newFlow, NEAT_OK);
+            uvpollable_cb(newFlow->socket->handle, NEAT_OK, 0);
+        }
+#endif
         break;
     default:
         newFlow->socket->fd = newFlow->acceptfx(ctx, newFlow, listen_socket->fd);
@@ -1767,9 +1798,11 @@ accept_resolve_cb(struct neat_resolver_results *results,
                 continue;
         } else if (stacks[i] == NEAT_STACK_SCTP && sctp_socket != NULL) {
             continue;
+#if defined(__NetBSD__) || defined(__APPLE__)
         } else if (stacks[i] == NEAT_STACK_UDPLITE) {
-            // TODO: Enable UDPLite on platforms that support it
+            neat_log(NEAT_LOG_DEBUG, "UDPLite not supported on this platform");
             continue;
+#endif
         }
 
 #ifdef USRSCTP_SUPPORT
@@ -1847,9 +1880,11 @@ accept_resolve_cb(struct neat_resolver_results *results,
 
             if ((neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_UDP) ||
+                (neat_base_stack(stacks[i]) == NEAT_STACK_UDPLITE) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_TCP)) {
 
-                if (neat_base_stack(stacks[i]) == NEAT_STACK_UDP) {
+                if (neat_base_stack(stacks[i]) == NEAT_STACK_UDP ||
+                    (neat_base_stack(stacks[i]) == NEAT_STACK_UDPLITE)) {
                     recvfrom(fd, NULL, 0, MSG_PEEK, NULL, 0);
                 }
                 uv_poll_start(handle, UV_READABLE, uvpollable_cb);
@@ -2349,7 +2384,8 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_UDP) ||
-       (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP)) {
+        (neat_base_stack(flow->socket->stack) == NEAT_STACK_UDPLITE) ||
+        (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP)) {
         if (!flow->readBufferMsgComplete) {
             return NEAT_ERROR_WOULD_BLOCK;
         }
@@ -2701,10 +2737,10 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         break;
     }
 
-    if (stack == NEAT_STACK_UDP) {
+    if (stack == NEAT_STACK_UDP || stack == NEAT_STACK_UDPLITE) {
         if (fd == -1 ||
             bind(fd, sockaddr, slen) == -1) {
-            neat_log(NEAT_LOG_ERROR, "%s: (UDP) bind failed - %s", __func__, strerror(errno));
+            neat_log(NEAT_LOG_ERROR, "%s: (%s) bind failed - %s", __func__, (stack == NEAT_STACK_UDP ? "UDP" : "UDPLite"), strerror(errno));
             return -1;
         }
     } else {

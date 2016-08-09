@@ -751,7 +751,7 @@ static void neat_resolver_delete_pairs(struct neat_resolver_request *request,
         if (resolver_pair->src_addr->family != addr_to_delete->family)
             continue;
 
-        if (addr_to_delete->family == AF_INET) {
+        if (addr_to_delete->family == AF_INET && addr4 != NULL) {
             addr4_cmp = &(resolver_pair->src_addr->u.v4.addr4);
 
             if (addr4_cmp->sin_addr.s_addr == addr4->sin_addr.s_addr)

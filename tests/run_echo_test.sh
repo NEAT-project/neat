@@ -22,6 +22,9 @@ echo "Running tests..."
 ./test_echo
 res=$?
 
+# wait for valgrind
+sleep 2
+
 echo "Tests finished"
 
 # graceful kill for server process

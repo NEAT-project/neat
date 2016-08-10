@@ -45,7 +45,6 @@
 #endif
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
-static void free_send_buffers(neat_ctx *ctx, neat_flow *flow);
 static neat_error_code neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 static int neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                                   neat_protocol_stack_type stack,
@@ -382,7 +381,6 @@ static void synchronous_free(neat_flow *flow)
 
 	LIST_REMOVE(flow, next_flow);
 
-    free_send_buffers(flow->ctx, flow);
     free_iofilters(flow->iofilters);
     free(flow->readBuffer);
     free(flow->socket->handle);
@@ -434,8 +432,6 @@ void neat_free_flow(neat_flow *flow)
     if (TAILQ_EMPTY(&flow->listen_sockets)) {
         if (flow->isPolling)
             uv_poll_stop(flow->socket->handle);
-
-        free_send_buffers(flow->ctx, flow);
 
         if ((flow->socket->handle != NULL) &&
             (flow->socket->handle->type != UV_UNKNOWN_HANDLE)) // TODO: Set handle type to unknown where appropriate
@@ -1052,92 +1048,6 @@ static void free_he_handle_cb(uv_handle_t *handle)
     free(handle);
 }
 
-/* allocate_send_buffers allocates memory to store at least count number of
- * buffers for this flow. If count is lower than the previous number of
- * allocated buffers, the existing number of buffers is kept unchanged.
- */
-static neat_error_code
-allocate_send_buffers(neat_flow* flow, unsigned int count)
-{
-    /*
-    void        *tmp;
-    unsigned int previous_buffer_count = flow->buffer_count;
-    */
-
-    assert(count == 1);
-
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    /*
-    if (flow->bufferedMessages == NULL || count > previous_buffer_count) {
-        flow->buffer_count = count;
-
-        tmp = realloc(flow->bufferedMessages,
-                      count * sizeof(*flow->bufferedMessages));
-
-        if (!tmp)
-            return NEAT_ERROR_INTERNAL;
-        else
-            flow->bufferedMessages = tmp;
-
-        for (size_t i = previous_buffer_count; i < flow->buffer_count; ++i) {
-            memset(&flow->bufferedMessages[i], 0, sizeof(struct neat_message_queue_head));
-            TAILQ_INIT(&(flow->bufferedMessages[i]));
-        }
-
-        tmp = realloc(flow->isDraining,
-                      count * sizeof(*flow->isDraining));
-
-        if (!tmp)
-            return NEAT_ERROR_INTERNAL;
-        else
-            flow->isDraining = tmp;
-
-        for (size_t i = previous_buffer_count; i < flow->buffer_count; ++i) {
-            flow->isDraining[i] = 0;
-        }
-
-        neat_log(NEAT_LOG_DEBUG, "Flow now has %d send buffers",
-                 flow->buffer_count);
-    } else {
-        neat_log(NEAT_LOG_DEBUG, "Requested %d send buffers, had %d.",
-                 count, flow->buffer_count);
-        return NEAT_OK;
-    }
-    */
-
-    return NEAT_OK;
-}
-
-static void
-free_send_buffers(neat_ctx* ctx, neat_flow* flow)
-{
-    /*
-    if (flow->bufferedMessages != NULL) {
-        for (size_t i = 0; i < flow->buffer_count; ++i) {
-            struct neat_buffered_message *msg, *next_msg;
-            TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages[i], message_next, next_msg) {
-                TAILQ_REMOVE(&flow->bufferedMessages[i], msg, message_next);
-                free(msg->buffered);
-                free(msg);
-            }
-        }
-    }
-
-    if (flow->isDraining) {
-        free(flow->isDraining);
-        flow->isDraining = NULL;
-    }
-
-    if (flow->bufferedMessages) {
-        free(flow->bufferedMessages);
-        flow->bufferedMessages = NULL;
-    }
-
-    flow->buffer_count = 0;
-    */
-}
-
 static void
 he_connected_cb(uv_poll_t *handle, int status, int events)
 {
@@ -1189,16 +1099,6 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->readSize = he_ctx->readSize;
         flow->isSCTPExplicitEOR = he_ctx->isSCTPExplicitEOR;
         flow->isPolling = 1;
-#if 0
-        if (allocate_send_buffers(flow, flow->stream_count) != NEAT_OK) {
-            neat_io_error(he_ctx->nc, flow, NEAT_ERROR_IO );
-
-            LIST_REMOVE(he_ctx, next_he_ctx);
-            free(he_ctx);
-
-            return;
-        }
-#endif
 
         LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);
@@ -1520,16 +1420,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     default:
         newFlow->stream_count = 1;
     }
-
-    /* For now, assume that flows have the same number of streams in both
-     * directions
-     */
-#if 0
-    if (allocate_send_buffers(newFlow, newFlow->stream_count) != NEAT_OK) {
-        neat_io_error(ctx, newFlow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
-        return NULL;
-    }
-#endif
 
     return newFlow;
 }
@@ -2957,10 +2847,6 @@ static void handle_connect(struct socket *sock, void *arg, int flags)
             flow->isPolling = 0;
             flow->stream_count = 1;
 
-            if (allocate_send_buffers(flow, flow->stream_count) != NEAT_OK) {
-                neat_io_error(he_ctx->nc, flow, NEAT_ERROR_IO );
-                return;
-            }
             usrsctp_set_upcall(sock, handle_upcall, (void*)flow->socket);
             io_connected(flow->ctx, flow, NEAT_OK);
         } else {
@@ -3192,7 +3078,6 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->socket->handle->loop = NULL;
     rv->socket->handle->type = UV_UNKNOWN_HANDLE;
 
-    allocate_send_buffers(rv, 1);
     LIST_INSERT_HEAD(&mgr->flows, rv, next_flow);
 
     return rv;

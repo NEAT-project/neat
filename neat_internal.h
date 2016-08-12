@@ -193,6 +193,9 @@ struct neat_flow
     struct neat_ctx *ctx; // raw convenience pointer
     struct neat_iofilter *iofilters;
 
+    uint32_t group;
+    float priority;
+
     // TODO: Move more socket-specific values to neat_pollable_socket
 
     size_t writeLimit;  // maximum to write if the socket supports partial writes

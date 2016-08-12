@@ -88,6 +88,7 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
     TAG_STRING(NEAT_TAG_UNORDERED_SEQNUM),
     TAG_STRING(NEAT_TAG_DESTINATION_IP_ADDRESS),
     TAG_STRING(NEAT_TAG_PRIORITY),
+    TAG_STRING(NEAT_TAG_FLOW_GROUP),
 };
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
@@ -2352,6 +2353,8 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
           struct neat_tlv optional[], unsigned int opt_count)
 {
     int stream_count = 1;
+    int group = 0;
+    float priority = 0.5f;
     // const char *local_name = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -2363,11 +2366,18 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
 
     HANDLE_OPTIONAL_ARGUMENTS_START()
         OPTIONAL_INTEGER(NEAT_TAG_STREAM_COUNT, stream_count)
+        OPTIONAL_INTEGER(NEAT_TAG_FLOW_GROUP, group)
+        OPTIONAL_FLOAT(NEAT_TAG_PRIORITY, priority)
         // OPTIONAL_STRING(NEAT_TAG_LOCAL_NAME, local_name)
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if (stream_count < 1) {
         neat_log(NEAT_LOG_ERROR, "Stream count must be 1 or more");
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    if (priority > 1.0f || priority < 0.1f) {
+        neat_log(NEAT_LOG_ERROR, "Priority must be between 0.1 and 1.0");
         return NEAT_ERROR_BAD_ARGUMENT;
     }
 
@@ -2378,6 +2388,8 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     flow->propertyAttempt = flow->propertyMask;
     flow->stream_count = stream_count;
     flow->ctx = mgr;
+    flow->group = group;
+    flow->priority = priority;
 
     if (!mgr->resolver)
         mgr->resolver = neat_resolver_init(mgr, "/etc/resolv.conf");
@@ -3298,6 +3310,10 @@ int neat_base_stack(neat_protocol_stack_type stack)
 static int
 neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 {
+#if defined(__FreeBSD__) && defined(FLOW_GROUPS)
+    int group;
+    int prio;
+#endif
     int enable = 1, retval;
     socklen_t len = 0;
     int size = 0, protocol;
@@ -3387,6 +3403,19 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     case NEAT_STACK_TCP:
         setsockopt(candidate->pollable_socket->fd,
                    IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+
+#if defined(__FreeBSD__) && defined(FLOW_GROUPS)
+        group = candidate->pollable_socket->flow->group;
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 8192 /* Group ID */, &group, sizeof(int)) != 0) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to set flow group: %s", strerror(errno));
+        }
+
+        // Map the priority range to some integer range
+        prio = candidate->pollable_socket->flow->priority * 255;
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 4096 /* Priority */, &prio, sizeof(int)) != 0) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to set flow priority: %s", strerror(errno));
+        }
+#endif
         break;
     case NEAT_STACK_SCTP_UDP:
 #if defined(__FreeBSD__)

@@ -122,6 +122,11 @@ IF (NEAT_LOG)
     ADD_DEFINITIONS(-DNEAT_LOG)
 ENDIF()
 
+OPTION(FLOW_GROUPS "Include support for flow grouping" 0)
+IF (FLOW_GROUPS)
+    ADD_DEFINITIONS(-DFLOW_GROUPS)
+ENDIF()
+
 # REQUIREMENTS
 #################################################
 CHECK_INCLUDE_FILE(uv.h HAVE_SYS_UV_H)

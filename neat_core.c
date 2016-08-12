@@ -89,6 +89,7 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
     TAG_STRING(NEAT_TAG_DESTINATION_IP_ADDRESS),
     TAG_STRING(NEAT_TAG_PRIORITY),
     TAG_STRING(NEAT_TAG_FLOW_GROUP),
+    TAG_STRING(NEAT_TAG_CC_ALGORITHM),
 };
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
@@ -416,6 +417,9 @@ static void synchronous_free(neat_flow *flow)
     flow->closefx(flow->ctx, flow);
     free((char *)flow->name);
     free((char *)flow->server_pem);
+    if (flow->cc_algorithm) {
+        free((char*)flow->cc_algorithm);
+    }
     if (flow->resolver_results) {
         neat_log(NEAT_LOG_DEBUG, "neat_resolver_free_results");
         neat_resolver_free_results(flow->resolver_results);
@@ -2355,6 +2359,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     int stream_count = 1;
     int group = 0;
     float priority = 0.5f;
+    const char *cc_algorithm = NULL;
     // const char *local_name = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -2368,6 +2373,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
         OPTIONAL_INTEGER(NEAT_TAG_STREAM_COUNT, stream_count)
         OPTIONAL_INTEGER(NEAT_TAG_FLOW_GROUP, group)
         OPTIONAL_FLOAT(NEAT_TAG_PRIORITY, priority)
+        OPTIONAL_STRING(NEAT_TAG_CC_ALGORITHM, cc_algorithm)
         // OPTIONAL_STRING(NEAT_TAG_LOCAL_NAME, local_name)
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
@@ -2396,6 +2402,13 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
 
     if (!mgr->pvd)
         mgr->pvd = neat_pvd_init(mgr);
+
+    if (cc_algorithm) {
+        flow->cc_algorithm = strdup(cc_algorithm);
+        if (flow->cc_algorithm == NULL) {
+            return NEAT_ERROR_OUT_OF_MEMORY;
+        }
+    }
 
 #if 1
     send_properties_to_pm(mgr, flow);
@@ -3314,6 +3327,9 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     int group;
     int prio;
 #endif
+#ifdef TCP_CONGESTION
+    const char *algo;
+#endif
     int enable = 1, retval;
     socklen_t len = 0;
     int size = 0, protocol;
@@ -3414,6 +3430,15 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         prio = candidate->pollable_socket->flow->priority * 255;
         if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 4096 /* Priority */, &prio, sizeof(int)) != 0) {
             neat_log(NEAT_LOG_DEBUG, "Unable to set flow priority: %s", strerror(errno));
+        }
+#endif
+
+#ifdef TCP_CONGESTION
+        if (candidate->pollable_socket->flow->cc_algorithm) {
+            algo = candidate->pollable_socket->flow->cc_algorithm;
+            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, TCP_CONGESTION, algo, strlen(algo)) != 0) {
+                neat_log(NEAT_LOG_DEBUG, "Unable to set CC algorithm: %s", strerror(errno));
+            }
         }
 #endif
         break;

@@ -196,6 +196,8 @@ struct neat_flow
     uint32_t group;
     float priority;
 
+    const char *cc_algorithm;
+
     // TODO: Move more socket-specific values to neat_pollable_socket
 
     size_t writeLimit;  // maximum to write if the socket supports partial writes

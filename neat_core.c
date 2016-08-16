@@ -429,17 +429,15 @@ void neat_free_flow(neat_flow *flow)
         return;
     }
 #endif
-    if (TAILQ_EMPTY(&flow->listen_sockets)) {
-        if (flow->isPolling)
-            uv_poll_stop(flow->socket->handle);
 
-        if ((flow->socket->handle != NULL) &&
-            (flow->socket->handle->type != UV_UNKNOWN_HANDLE)) // TODO: Set handle type to unknown where appropriate
-            uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
-    } else {
-        // Flows used for listening does not have a flow->handle
+    if (flow->isPolling)
+        uv_poll_stop(flow->socket->handle);
+
+    if (flow->socket && flow->socket->handle != NULL &&
+        (flow->socket->handle->type != UV_UNKNOWN_HANDLE))
+        uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
+    else
         synchronous_free(flow);
-    }
 }
 
 neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,
@@ -1837,12 +1835,6 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
     flow->ctx = ctx;
-
-    // TODO: Should this be allocated here?
-    flow->socket->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
-    if (flow->socket->handle == NULL) {
-        return NEAT_ERROR_OUT_OF_MEMORY;
-    }
 
     if (!ctx->resolver)
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");

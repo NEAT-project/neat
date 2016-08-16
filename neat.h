@@ -10,6 +10,11 @@
 extern "C" {
 #endif
 
+// TODO: this __attribute__ feature supposedly works with both clang and
+// modern gcc compilers. Could be moved to a cmake test for better
+// portability.
+#define NEAT_EXTERN __attribute__ ((__visibility__ ("default")))
+
 //Maps directly to libuv contants
 typedef enum {
     NEAT_RUN_DEFAULT = 0,
@@ -20,11 +25,11 @@ typedef enum {
 struct neat_ctx; // global
 struct neat_flow; // one per connection
 
-struct neat_ctx *neat_init_ctx();
-void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
-void neat_stop_event_loop(struct neat_ctx *nc);
-int neat_get_backend_fd(struct neat_ctx *nc);
-void neat_free_ctx(struct neat_ctx *nc);
+NEAT_EXTERN struct neat_ctx *neat_init_ctx();
+NEAT_EXTERN void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
+NEAT_EXTERN void neat_stop_event_loop(struct neat_ctx *nc);
+NEAT_EXTERN int neat_get_backend_fd(struct neat_ctx *nc);
+NEAT_EXTERN void neat_free_ctx(struct neat_ctx *nc);
 
 typedef uint64_t neat_error_code;
 struct neat_flow_operations;
@@ -115,44 +120,44 @@ struct neat_flow_security {
     const char** ciphers; // list of ciphers available to use
 };
 
-struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
-neat_error_code neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
+NEAT_EXTERN struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
+NEAT_EXTERN neat_error_code neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
                                  uint64_t flags, int flow_profile, struct neat_flow_security *sec);
-void neat_free_flow(struct neat_flow *flow);
+NEAT_EXTERN void neat_free_flow(struct neat_flow *flow);
 
-neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
                                     struct neat_flow_operations *ops);
 
-neat_error_code neat_get_stats(struct neat_flow *flow, char **neat_stats);
+NEAT_EXTERN neat_error_code neat_get_stats(struct neat_flow *flow, char **neat_stats);
 
-neat_error_code neat_open(struct neat_ctx *mgr, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_open(struct neat_ctx *mgr, struct neat_flow *flow,
                           const char *name, uint16_t port,
                           struct neat_tlv optional[], unsigned int opt_count);
-neat_error_code neat_open_multistream(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_open_multistream(struct neat_ctx *ctx, struct neat_flow *flow,
                           const char *name, uint16_t port, int count);
-neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
                           struct neat_tlv optional[], unsigned int opt_count);
-neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
                            const unsigned char *buffer, uint32_t amt,
                            struct neat_tlv optional[], unsigned int opt_count);
-neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t *outMask);
-neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
-                                  uint64_t inMask);
-neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
+                                              uint64_t inMask);
+NEAT_EXTERN neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                             uint16_t port, struct neat_tlv optional[], unsigned int opt_count);
-neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
-neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow);
-neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow);
-neat_error_code neat_change_timeout(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
+NEAT_EXTERN neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow);
+NEAT_EXTERN neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow);
+NEAT_EXTERN neat_error_code neat_change_timeout(struct neat_ctx *ctx, struct neat_flow *flow,
                                     unsigned int seconds);
-neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow,
                                       const char *name);
-neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow,
                                       int rate, int seconds);
 // The filename should be a PEM file with both cert and key
-neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct neat_flow *flow,
                                      const char *filename);
 
 // do we also need a set property with a void * or an int (e.g. timeouts) or should

@@ -10,6 +10,9 @@
 extern "C" {
 #endif
 
+// TODO: this __attribute__ feature supposedly works with both clang and
+// modern gcc compilers. Could be moved to a cmake test for better
+// portability.
 #define NEAT_EXTERN __attribute__ ((__visibility__ ("default")))
 
 //Maps directly to libuv contants

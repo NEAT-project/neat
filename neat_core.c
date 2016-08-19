@@ -1506,7 +1506,7 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, unsigned int seconds)
 #endif // defined(TCP_USER_TIMEOUT)
 }
 
-static void
+static neat_error_code
 set_primary_dest_resolve_cb(struct neat_resolver_results *results,
                             uint8_t code,
                             void *user_data)
@@ -1528,7 +1528,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
 
     if (code != NEAT_RESOLVER_OK) {
         neat_io_error(ctx, flow, code);
-        return;
+        return NEAT_ERROR_DNS;
     }
 
     assert(results->lh_first);
@@ -1567,6 +1567,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
     } else {
         neat_log(NEAT_LOG_DEBUG, "Updated primary destination address to: %s", dest_addr);
     }
+    return NEAT_ERROR_OK;
 }
 
 neat_error_code
@@ -1601,7 +1602,7 @@ neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow, int rate, in
     return NEAT_ERROR_UNABLE;
 }
 
-static void
+static neat_error_code
 accept_resolve_cb(struct neat_resolver_results *results,
                   uint8_t code,
                   void *user_data)
@@ -1617,7 +1618,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
 
     if (code != NEAT_RESOLVER_OK) {
         neat_io_error(ctx, flow, code);
-        return;
+        return NEAT_ERROR_DNS;
     }
 
     assert (results->lh_first);
@@ -1763,7 +1764,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
 
     if (socket_count == 0) {
         neat_io_error(ctx, flow, NEAT_ERROR_IO);
-        return;
+        return NEAT_ERROR_IO;
     }
 
 #ifdef USRSCTP_SUPPORT
@@ -1800,6 +1801,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
     }
 #endif // if defined(__FreeBSD__)
 #endif // ifdef else USRSCTP_SUPPORT
+    return NEAT_ERROR_OK;
 }
 
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,

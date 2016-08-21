@@ -19,7 +19,7 @@ ENDFOREACH ()
 
 # COPY TEST SCRIPTS
 #################################################
-foreach(neat_test ${neat_test_scripts})
+FOREACH (neat_test ${neat_test_scripts})
     MESSAGE(STATUS "copy script ${neat_test}")
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${neat_test} ${CMAKE_CURRENT_BINARY_DIR}/${neat_test} COPYONLY)
-endforeach()
+    CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/${neat_test} ${CMAKE_CURRENT_BINARY_DIR}/${neat_test} COPYONLY)
+ENDFOREACH ()

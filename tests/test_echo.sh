@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # determine script directory
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DIR=$(dirname "$0")
 
 # run server and use first script argument as prefix - e.g. "valgrind"
 ($1 $DIR/../examples/server_echo -P "") &
@@ -21,13 +21,15 @@ fi
 
 # run the tests
 echo "Starting tests..."
-$DIR/test_echo
+$1 $DIR/test_echo
 res=$?
 echo "Tests finished"
 
 # graceful kill for server process and wait for output
 kill -TERM $SERVER_PID
 sleep 2
+# kill it with fire...
+kill -KILL $SERVER_PID
 
 if [ $res -ne 0 ]; then
     echo "FAILED"

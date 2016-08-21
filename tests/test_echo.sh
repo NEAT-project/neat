@@ -1,8 +1,11 @@
 #!/bin/sh
 
-( $1 ../examples/server_echo -P "") &
-SERVER_PID=$!
+# determine script directory
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# run server and use first script argument as prefix - e.g. "valgrind"
+($1 $DIR/../examples/server_echo -P "") &
+SERVER_PID=$!
 echo "Starting NEAT server..."
 
 # wait until server started
@@ -16,22 +19,18 @@ if [ $res -ne 0 ]; then
     exit -1
 fi
 
-
-echo "Running tests..."
-
-./test_echo
+# run the tests
+echo "Starting tests..."
+$DIR/test_echo
 res=$?
-
-# wait for valgrind
-sleep 2
-
 echo "Tests finished"
 
-# graceful kill for server process
+# graceful kill for server process and wait for output
 kill -TERM $SERVER_PID
+sleep 2
 
 if [ $res -ne 0 ]; then
-    echo "TEST FAILED"
+    echo "FAILED"
     exit -1
 else
     echo "SUCCESS"

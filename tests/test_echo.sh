@@ -16,7 +16,7 @@ kill -0 $!
 res=$?
 if [ $res -ne 0 ]; then
     echo "Server not running - exit"
-    exit -1
+    exit 1
 fi
 
 # run the tests
@@ -33,7 +33,7 @@ kill -KILL $SERVER_PID
 
 if [ $res -ne 0 ]; then
     echo "FAILED"
-    exit -1
+    exit 1
 else
     echo "SUCCESS"
     exit 0

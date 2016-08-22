@@ -1544,13 +1544,13 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
 
     if (usrsctp_setsockopt(flow->socket->usrsctp_socket, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr)) < 0) {
         neat_log(NEAT_LOG_DEBUG, "Call to usrsctp_setsockopt failed");
-        return;
+        return NEAT_ERROR_IO;
     }
 #elif defined(HAVE_NETINET_SCTP_H) && defined(__linux__)
     rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_ASSOCINFO, &assocparams, &optlen);
     if (rc < 0) {
         neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed");
-        return;
+        return NEAT_ERROR_IO;
     }
 
     neat_log(NEAT_LOG_DEBUG, "assoc: %d", assocparams.sasoc_assoc_id);
@@ -1561,7 +1561,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
     rc = setsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr));
     if (rc < 0) {
         neat_log(NEAT_LOG_DEBUG, "Call to setsockopt failed");
-        return;
+        return NEAT_ERROR_IO;
     }
 #endif
     rc = getnameinfo((struct sockaddr *)&results->lh_first->dst_addr,

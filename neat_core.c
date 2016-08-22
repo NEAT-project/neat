@@ -89,6 +89,7 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
 struct neat_ctx *neat_init_ctx()
 {
     struct neat_ctx *nc;
+    struct neat_ctx *ctx = NULL;
     neat_log_init();
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -135,15 +136,18 @@ struct neat_ctx *neat_init_ctx()
     neat_usrsctp_init_ctx(nc);
 #endif
 #if defined(__linux__)
-    return neat_linux_init_ctx(nc);
+    ctx = neat_linux_init_ctx(nc);
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-    return neat_bsd_init_ctx(nc);
+    ctx = neat_bsd_init_ctx(nc);
 #else
     uv_loop_close(nc->loop);
-    free(nc->loop);
-    free(nc);
-    return NULL;
 #endif
+    if (!ctx) {
+      free(nc->loop);
+      free(nc);
+    }
+    return ctx;
+
 }
 
 //Start the internal NEAT event loop
@@ -257,10 +261,10 @@ uint8_t neat_add_event_cb(struct neat_ctx *nc, uint8_t event_type,
     //use the callback API
     if (!nc->event_cbs) {
         nc->event_cbs = calloc(NEAT_MAX_EVENT + 1,
-                sizeof(struct neat_event_cbs));
+                               sizeof(struct neat_event_cbs));
 
-        //TODO: Decide what to do here
-        assert(nc->event_cbs != NULL);
+        if (!nc->event_cbs)
+            return RETVAL_FAILURE;
 
         for (i = 0; i < NEAT_MAX_EVENT; i++)
             LIST_INIT(&(nc->event_cbs[i]));
@@ -334,8 +338,10 @@ struct neat_iofilter *
 insert_neat_iofilter(neat_ctx *ctx, neat_flow *flow)
 {
     struct neat_iofilter *filter = calloc (1, sizeof (struct neat_iofilter));
-    filter->next = flow->iofilters;
-    flow->iofilters = filter;
+    if (filter) {
+        filter->next = flow->iofilters;
+        flow->iofilters = filter;
+    }
     return filter;
 }
 

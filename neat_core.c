@@ -1525,7 +1525,11 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
 #ifdef USRSCTP_SUPPORT
     struct sctp_setprim addr;
 #elif defined(HAVE_NETINET_SCTP_H)
+#ifdef __linux__
     struct sctp_prim addr;
+#else
+    struct sctp_setprim addr;
+#endif
 #endif
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1535,18 +1539,19 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
         return NEAT_ERROR_DNS;
     }
 
-    assert(results->lh_first);
+    if (results->lh_first == NULL) {
+        neat_io_error(ctx, flow, NEAT_ERROR_UNABLE);
+        return NEAT_ERROR_UNABLE;
+    }
 
-#ifdef USRSCTP_SUPPORT
     addr.ssp_addr = results->lh_first->dst_addr;
 
+#ifdef USRSCTP_SUPPORT
     if (usrsctp_setsockopt(flow->socket->usrsctp_socket, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr)) < 0) {
         neat_log(NEAT_LOG_DEBUG, "Call to usrsctp_setsockopt failed");
         return NEAT_ERROR_IO;
     }
 #elif defined(HAVE_NETINET_SCTP_H)
-    addr.ssp_addr = results->lh_first->dst_addr;
-
     rc = setsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr));
     if (rc < 0) {
         neat_log(NEAT_LOG_DEBUG, "Call to setsockopt failed");

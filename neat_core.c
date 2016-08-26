@@ -1524,10 +1524,12 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
 
 #ifdef USRSCTP_SUPPORT
     struct sctp_setprim addr;
-#elif defined(HAVE_NETINET_SCTP_H) && defined(__linux__)
+#elif defined(HAVE_NETINET_SCTP_H)
+#ifdef __linux__
     struct sctp_prim addr;
-    struct sctp_assocparams assocparams;
-    unsigned int optlen = sizeof(assocparams);
+#else
+    struct sctp_setprim addr;
+#endif
 #endif
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1537,7 +1539,10 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
         return NEAT_ERROR_DNS;
     }
 
-    assert(results->lh_first);
+    if (results->lh_first == NULL) {
+        neat_io_error(ctx, flow, NEAT_ERROR_UNABLE);
+        return NEAT_ERROR_UNABLE;
+    }
 
 #ifdef USRSCTP_SUPPORT
     addr.ssp_addr = results->lh_first->dst_addr;
@@ -1546,16 +1551,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
         neat_log(NEAT_LOG_DEBUG, "Call to usrsctp_setsockopt failed");
         return NEAT_ERROR_IO;
     }
-#elif defined(HAVE_NETINET_SCTP_H) && defined(__linux__)
-    rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_ASSOCINFO, &assocparams, &optlen);
-    if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed");
-        return NEAT_ERROR_IO;
-    }
-
-    neat_log(NEAT_LOG_DEBUG, "assoc: %d", assocparams.sasoc_assoc_id);
-
-    addr.ssp_assoc_id = assocparams.sasoc_assoc_id;
+#elif defined(HAVE_NETINET_SCTP_H)
     addr.ssp_addr = results->lh_first->dst_addr;
 
     rc = setsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr));

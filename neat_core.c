@@ -45,7 +45,6 @@
 #endif
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
-static void free_send_buffers(neat_ctx *ctx, neat_flow *flow);
 static neat_error_code neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 static int neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                                   neat_protocol_stack_type stack,
@@ -90,6 +89,7 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
 struct neat_ctx *neat_init_ctx()
 {
     struct neat_ctx *nc;
+    struct neat_ctx *ctx = NULL;
     neat_log_init();
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -136,15 +136,18 @@ struct neat_ctx *neat_init_ctx()
     neat_usrsctp_init_ctx(nc);
 #endif
 #if defined(__linux__)
-    return neat_linux_init_ctx(nc);
+    ctx = neat_linux_init_ctx(nc);
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-    return neat_bsd_init_ctx(nc);
+    ctx = neat_bsd_init_ctx(nc);
 #else
     uv_loop_close(nc->loop);
-    free(nc->loop);
-    free(nc);
-    return NULL;
 #endif
+    if (!ctx) {
+      free(nc->loop);
+      free(nc);
+    }
+    return ctx;
+
 }
 
 //Start the internal NEAT event loop
@@ -258,10 +261,10 @@ uint8_t neat_add_event_cb(struct neat_ctx *nc, uint8_t event_type,
     //use the callback API
     if (!nc->event_cbs) {
         nc->event_cbs = calloc(NEAT_MAX_EVENT + 1,
-                sizeof(struct neat_event_cbs));
+                               sizeof(struct neat_event_cbs));
 
-        //TODO: Decide what to do here
-        assert(nc->event_cbs != NULL);
+        if (!nc->event_cbs)
+            return RETVAL_FAILURE;
 
         for (i = 0; i < NEAT_MAX_EVENT; i++)
             LIST_INIT(&(nc->event_cbs[i]));
@@ -335,8 +338,10 @@ struct neat_iofilter *
 insert_neat_iofilter(neat_ctx *ctx, neat_flow *flow)
 {
     struct neat_iofilter *filter = calloc (1, sizeof (struct neat_iofilter));
-    filter->next = flow->iofilters;
-    flow->iofilters = filter;
+    if (filter) {
+        filter->next = flow->iofilters;
+        flow->iofilters = filter;
+    }
     return filter;
 }
 
@@ -382,7 +387,6 @@ static void synchronous_free(neat_flow *flow)
 
 	LIST_REMOVE(flow, next_flow);
 
-    free_send_buffers(flow->ctx, flow);
     free_iofilters(flow->iofilters);
     free(flow->readBuffer);
     free(flow->socket->handle);
@@ -431,19 +435,15 @@ void neat_free_flow(neat_flow *flow)
         return;
     }
 #endif
-    if (TAILQ_EMPTY(&flow->listen_sockets)) {
-        if (flow->isPolling)
-            uv_poll_stop(flow->socket->handle);
 
-        free_send_buffers(flow->ctx, flow);
+    if (flow->isPolling)
+        uv_poll_stop(flow->socket->handle);
 
-        if ((flow->socket->handle != NULL) &&
-            (flow->socket->handle->type != UV_UNKNOWN_HANDLE)) // TODO: Set handle type to unknown where appropriate
-            uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
-    } else {
-        // Flows used for listening does not have a flow->handle
+    if (flow->socket && flow->socket->handle != NULL &&
+        (flow->socket->handle->type != UV_UNKNOWN_HANDLE))
+        uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
+    else
         synchronous_free(flow);
-    }
 }
 
 neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,
@@ -785,20 +785,21 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
      * The UDP Accept flow isn't going to have on_readable set,
      * anything else will.
      */
-    if (!flow->operations->on_readable) {
-        if (!(socket->stack == NEAT_STACK_UDP && flow->acceptPending)) {
+    if (!flow->operations->on_readable && flow->acceptPending) {
+
+        if (socket->stack != NEAT_STACK_UDP && socket->stack != NEAT_STACK_UDPLITE) {
             neat_log(NEAT_LOG_DEBUG, "Exit 1");
             return READ_WITH_ERROR;
         }
     }
 
-    if ((socket->stack == NEAT_STACK_UDP) && (!flow->readBufferMsgComplete)) {
+    if ((socket->stack == NEAT_STACK_UDP || socket->stack == NEAT_STACK_UDPLITE) && (!flow->readBufferMsgComplete)) {
         if (resize_read_buffer(flow) != READ_OK) {
             neat_log(NEAT_LOG_DEBUG, "Exit 2");
             return READ_WITH_ERROR;
         }
 
-        if (socket->stack == NEAT_STACK_UDP) {
+        if (socket->stack == NEAT_STACK_UDP || socket->stack == NEAT_STACK_UDPLITE) {
             if (!flow->acceptPending && !flow->operations->on_readable) {
                 neat_log(NEAT_LOG_DEBUG, "Exit 3");
                 return READ_WITH_ERROR;
@@ -1051,92 +1052,6 @@ static void free_he_handle_cb(uv_handle_t *handle)
     free(handle);
 }
 
-/* allocate_send_buffers allocates memory to store at least count number of
- * buffers for this flow. If count is lower than the previous number of
- * allocated buffers, the existing number of buffers is kept unchanged.
- */
-static neat_error_code
-allocate_send_buffers(neat_flow* flow, unsigned int count)
-{
-    /*
-    void        *tmp;
-    unsigned int previous_buffer_count = flow->buffer_count;
-    */
-
-    assert(count == 1);
-
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    /*
-    if (flow->bufferedMessages == NULL || count > previous_buffer_count) {
-        flow->buffer_count = count;
-
-        tmp = realloc(flow->bufferedMessages,
-                      count * sizeof(*flow->bufferedMessages));
-
-        if (!tmp)
-            return NEAT_ERROR_INTERNAL;
-        else
-            flow->bufferedMessages = tmp;
-
-        for (size_t i = previous_buffer_count; i < flow->buffer_count; ++i) {
-            memset(&flow->bufferedMessages[i], 0, sizeof(struct neat_message_queue_head));
-            TAILQ_INIT(&(flow->bufferedMessages[i]));
-        }
-
-        tmp = realloc(flow->isDraining,
-                      count * sizeof(*flow->isDraining));
-
-        if (!tmp)
-            return NEAT_ERROR_INTERNAL;
-        else
-            flow->isDraining = tmp;
-
-        for (size_t i = previous_buffer_count; i < flow->buffer_count; ++i) {
-            flow->isDraining[i] = 0;
-        }
-
-        neat_log(NEAT_LOG_DEBUG, "Flow now has %d send buffers",
-                 flow->buffer_count);
-    } else {
-        neat_log(NEAT_LOG_DEBUG, "Requested %d send buffers, had %d.",
-                 count, flow->buffer_count);
-        return NEAT_OK;
-    }
-    */
-
-    return NEAT_OK;
-}
-
-static void
-free_send_buffers(neat_ctx* ctx, neat_flow* flow)
-{
-    /*
-    if (flow->bufferedMessages != NULL) {
-        for (size_t i = 0; i < flow->buffer_count; ++i) {
-            struct neat_buffered_message *msg, *next_msg;
-            TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages[i], message_next, next_msg) {
-                TAILQ_REMOVE(&flow->bufferedMessages[i], msg, message_next);
-                free(msg->buffered);
-                free(msg);
-            }
-        }
-    }
-
-    if (flow->isDraining) {
-        free(flow->isDraining);
-        flow->isDraining = NULL;
-    }
-
-    if (flow->bufferedMessages) {
-        free(flow->bufferedMessages);
-        flow->bufferedMessages = NULL;
-    }
-
-    flow->buffer_count = 0;
-    */
-}
-
 static void
 he_connected_cb(uv_poll_t *handle, int status, int events)
 {
@@ -1188,16 +1103,6 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->readSize = he_ctx->readSize;
         flow->isSCTPExplicitEOR = he_ctx->isSCTPExplicitEOR;
         flow->isPolling = 1;
-#if 0
-        if (allocate_send_buffers(flow, flow->stream_count) != NEAT_OK) {
-            neat_io_error(he_ctx->nc, flow, NEAT_ERROR_IO );
-
-            LIST_REMOVE(he_ctx, next_he_ctx);
-            free(he_ctx);
-
-            return;
-        }
-#endif
 
         LIST_REMOVE(he_ctx, next_he_ctx);
         free(he_ctx);
@@ -1239,8 +1144,9 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if ((events & UV_READABLE) && flow->acceptPending) {
-        if(pollable_socket->stack == NEAT_STACK_UDP) {
-            neat_log(NEAT_LOG_DEBUG, "io_readable for UDP accept flow");
+        if(pollable_socket->stack == NEAT_STACK_UDP ||
+           pollable_socket->stack == NEAT_STACK_UDPLITE) {
+            neat_log(NEAT_LOG_DEBUG, "io_readable for UDP or UDPLite accept flow");
             io_readable(ctx, flow, pollable_socket, NEAT_OK);
         } else {
             do_accept(ctx, flow, pollable_socket);
@@ -1328,11 +1234,25 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 #endif
 
     neat_flow *newFlow = neat_new_flow(ctx);
-    assert(newFlow != NULL);
+    if (newFlow == NULL) {
+        neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+        return NULL;
+    }
+
     newFlow->name = strdup (flow->name);
+    if (newFlow->name == NULL) {
+        neat_io_error(ctx, newFlow, NEAT_ERROR_OUT_OF_MEMORY);
+        return NULL;
+    }
+
     if (flow->server_pem) {
         newFlow->server_pem = strdup (flow->server_pem);
+        if (newFlow->server_pem == NULL) {
+            neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+            return NULL;
+        }
     }
+
     newFlow->port = flow->port;
     newFlow->propertyMask = flow->propertyMask;
     newFlow->propertyAttempt = flow->propertyAttempt;
@@ -1354,12 +1274,26 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->isServer = 1;
     newFlow->isSCTPExplicitEOR = flow->isSCTPExplicitEOR;
     newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
+
+    if (newFlow->operations == NULL) {
+        neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+        return NULL;
+    }
+
     newFlow->operations->on_connected = flow->operations->on_connected;
     newFlow->operations->on_readable = flow->operations->on_readable;
     newFlow->operations->on_writable = flow->operations->on_writable;
     newFlow->operations->on_error = flow->operations->on_error;
     newFlow->operations->ctx = ctx;
     newFlow->operations->flow = flow;
+
+    // TODO: Should this be allocated here?
+    newFlow->socket->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+    if (newFlow->socket->handle == NULL) {
+        neat_io_error(ctx, newFlow, NEAT_ERROR_OUT_OF_MEMORY);
+        return NULL;
+    }
+    newFlow->socket->handle->type = UV_UNKNOWN_HANDLE;
 
     switch (newFlow->socket->stack) {
     case NEAT_STACK_SCTP_UDP:
@@ -1419,6 +1353,35 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             uvpollable_cb(newFlow->socket->handle, NEAT_OK, 0);
         }
         break;
+    case NEAT_STACK_UDPLITE:
+#if defined(__NetBSD__) || defined(__APPLE__)
+        assert(0); // Should not reach this point
+#else
+        neat_log(NEAT_LOG_DEBUG, "Creating new UDPLite socket");
+        newFlow->socket->fd = socket(newFlow->socket->family, newFlow->socket->type, IPPROTO_UDPLITE);
+
+        if (newFlow->socket->fd == -1) {
+            neat_free_flow(newFlow);
+        } else {
+            int enable = 1;
+
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+
+            bind(newFlow->socket->fd, &newFlow->socket->srcAddr, sizeof(struct sockaddr));
+            connect(newFlow->socket->fd, &newFlow->socket->dstAddr, sizeof(struct sockaddr));
+
+            newFlow->everConnected = 1;
+
+            uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
+
+            newFlow->socket->handle->data = newFlow->socket;
+
+            io_connected(ctx, newFlow, NEAT_OK);
+            uvpollable_cb(newFlow->socket->handle, NEAT_OK, 0);
+        }
+#endif
+        break;
     default:
         newFlow->socket->fd = newFlow->acceptfx(ctx, newFlow, listen_socket->fd);
         if (newFlow->socket->fd == -1) {
@@ -1462,16 +1425,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         newFlow->stream_count = 1;
     }
 
-    /* For now, assume that flows have the same number of streams in both
-     * directions
-     */
-#if 0
-    if (allocate_send_buffers(newFlow, newFlow->stream_count) != NEAT_OK) {
-        neat_io_error(ctx, newFlow, NEAT_INVALID_STREAM, NEAT_ERROR_IO);
-        return NULL;
-    }
-#endif
-
     return newFlow;
 }
 
@@ -1500,6 +1453,8 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     }
 
     flow->name = strdup(name);
+    if (flow->name == NULL)
+        return NEAT_ERROR_OUT_OF_MEMORY;
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
     flow->stream_count = stream_count;
@@ -1508,7 +1463,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
 }
 
 neat_error_code
-neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
+neat_change_timeout(neat_ctx *mgr, neat_flow *flow, unsigned int seconds)
 {
 #if defined(TCP_USER_TIMEOUT)
     unsigned int timeout_msec;
@@ -1517,73 +1472,47 @@ neat_change_timeout(neat_ctx *mgr, neat_flow *flow, int seconds)
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (seconds < 0) {
-            neat_log(NEAT_LOG_WARNING,
-                    "Unable to change timeout: "
-                    "Negative timeout specified");
-
-            return NEAT_ERROR_BAD_ARGUMENT;
-    }
-
-    // TCP User Timeout isn't supported on all platforms
 #if defined(TCP_USER_TIMEOUT)
-    timeout_msec = ((unsigned int)seconds) * 1000;
-
-    if (neat_base_stack(flow->socket->stack) == NEAT_STACK_TCP) {
-        if (flow->socket->fd == -1) {
-            neat_log(NEAT_LOG_WARNING,
-                    "Unable to change timeout for TCP socket: "
-                    "Invalid socket value");
-            return NEAT_ERROR_BAD_ARGUMENT;
-        }
-
-        rc = setsockopt(flow->socket->fd,
-                        IPPROTO_TCP,
-                        TCP_USER_TIMEOUT,
-                        &timeout_msec,
-                        sizeof(timeout_msec));
-
-        if (rc < 0) {
-            neat_log(NEAT_LOG_ERROR,
-                    "Unable to change timeout for TCP socket: "
-                    "Call to setsockopt failed with errno=%d", errno);
-            return NEAT_ERROR_IO;
-        }
-
-        return NEAT_ERROR_OK;
-    }
-#endif // defined(TCP_USER_TIMEOUT)
-    if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-#if 0 // Disabled due to discussion with MT in PR #85
-        struct sctp_paddrparams params;
-        unsigned int optsize = sizeof(params);
-        int rc = getsockopt(flow->fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, &optsize);
-        if (rc < 0) {
-            neat_log(NEAT_LOG_ERROR,
-                    "Unable to change timeout for SCTP socket: "
-                    "Call to getsockopt failed with errno=%d", errno);
-            return NEAT_ERROR_IO;
-        }
-
-        params.spp_hbinterval = (unsigned int)seconds * 1000 / 4;
-        params.spp_flags |= SPP_HB_ENABLE;
-        params.spp_pathmaxrxt = 4;
-
-        rc = setsockopt(flow->fd, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params));
-        if (rc < 0) {
-            neat_log(NEAT_LOG_ERROR,
-                    "Unable to change timeout for SCTP socket: "
-                    "Call to setsockopt failed with errno=%d", errno);
-            return NEAT_ERROR_IO;
-        }
-#endif // if 0
+    if (neat_base_stack(flow->socket->stack) != NEAT_STACK_TCP)
+#endif
+    {
+        neat_log(NEAT_LOG_DEBUG, "Timeout is supported on Linux TCP only");
         return NEAT_ERROR_UNABLE;
     }
 
-    return NEAT_ERROR_UNABLE;
+#if defined(TCP_USER_TIMEOUT)
+    if (flow->socket->fd == -1) {
+        neat_log(NEAT_LOG_WARNING,
+                 "Unable to change timeout for TCP socket: "
+                 "Invalid socket value");
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    if (seconds > UINT_MAX - 1000) {
+        neat_log(NEAT_LOG_DEBUG, "Timeout value too large");
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    timeout_msec = seconds * 1000;
+
+    rc = setsockopt(flow->socket->fd,
+                    IPPROTO_TCP,
+                    TCP_USER_TIMEOUT,
+                    &timeout_msec,
+                    sizeof(timeout_msec));
+
+    if (rc < 0) {
+        neat_log(NEAT_LOG_ERROR,
+                 "Unable to change timeout for TCP socket: "
+                 "Call to setsockopt failed with errno=%d", errno);
+        return NEAT_ERROR_IO;
+    }
+
+    return NEAT_ERROR_OK;
+#endif // defined(TCP_USER_TIMEOUT)
 }
 
-static void
+static neat_error_code
 set_primary_dest_resolve_cb(struct neat_resolver_results *results,
                             uint8_t code,
                             void *user_data)
@@ -1595,44 +1524,40 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
 
 #ifdef USRSCTP_SUPPORT
     struct sctp_setprim addr;
-#elif defined(HAVE_NETINET_SCTP_H) && defined(__linux__)
+#elif defined(HAVE_NETINET_SCTP_H)
+#ifdef __linux__
     struct sctp_prim addr;
-    struct sctp_assocparams assocparams;
-    unsigned int optlen = sizeof(assocparams);
+#else
+    struct sctp_setprim addr;
+#endif
 #endif
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
         neat_io_error(ctx, flow, code);
-        return;
+        return NEAT_ERROR_DNS;
     }
 
-    assert(results->lh_first);
+    if (results->lh_first == NULL) {
+        neat_io_error(ctx, flow, NEAT_ERROR_UNABLE);
+        return NEAT_ERROR_UNABLE;
+    }
 
 #ifdef USRSCTP_SUPPORT
     addr.ssp_addr = results->lh_first->dst_addr;
 
     if (usrsctp_setsockopt(flow->socket->usrsctp_socket, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr)) < 0) {
         neat_log(NEAT_LOG_DEBUG, "Call to usrsctp_setsockopt failed");
-        return;
+        return NEAT_ERROR_IO;
     }
-#elif defined(HAVE_NETINET_SCTP_H) && defined(__linux__)
-    rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_ASSOCINFO, &assocparams, &optlen);
-    if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed");
-        return;
-    }
-
-    neat_log(NEAT_LOG_DEBUG, "assoc: %d", assocparams.sasoc_assoc_id);
-
-    addr.ssp_assoc_id = assocparams.sasoc_assoc_id;
+#elif defined(HAVE_NETINET_SCTP_H)
     addr.ssp_addr = results->lh_first->dst_addr;
 
     rc = setsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr));
     if (rc < 0) {
         neat_log(NEAT_LOG_DEBUG, "Call to setsockopt failed");
-        return;
+        return NEAT_ERROR_IO;
     }
 #endif
     rc = getnameinfo((struct sockaddr *)&results->lh_first->dst_addr,
@@ -1644,6 +1569,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
     } else {
         neat_log(NEAT_LOG_DEBUG, "Updated primary destination address to: %s", dest_addr);
     }
+    return NEAT_ERROR_OK;
 }
 
 neat_error_code
@@ -1678,7 +1604,7 @@ neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow, int rate, in
     return NEAT_ERROR_UNABLE;
 }
 
-static void
+static neat_error_code
 accept_resolve_cb(struct neat_resolver_results *results,
                   uint8_t code,
                   void *user_data)
@@ -1694,7 +1620,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
 
     if (code != NEAT_RESOLVER_OK) {
         neat_io_error(ctx, flow, code);
-        return;
+        return NEAT_ERROR_DNS;
     }
 
     assert (results->lh_first);
@@ -1737,9 +1663,11 @@ accept_resolve_cb(struct neat_resolver_results *results,
                 continue;
         } else if (stacks[i] == NEAT_STACK_SCTP && sctp_socket != NULL) {
             continue;
+#if defined(__NetBSD__) || defined(__APPLE__)
         } else if (stacks[i] == NEAT_STACK_UDPLITE) {
-            // TODO: Enable UDPLite on platforms that support it
+            neat_log(NEAT_LOG_DEBUG, "UDPLite not supported on this platform");
             continue;
+#endif
         }
 
 #ifdef USRSCTP_SUPPORT
@@ -1817,9 +1745,11 @@ accept_resolve_cb(struct neat_resolver_results *results,
 
             if ((neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_UDP) ||
+                (neat_base_stack(stacks[i]) == NEAT_STACK_UDPLITE) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_TCP)) {
 
-                if (neat_base_stack(stacks[i]) == NEAT_STACK_UDP) {
+                if (neat_base_stack(stacks[i]) == NEAT_STACK_UDP ||
+                    (neat_base_stack(stacks[i]) == NEAT_STACK_UDPLITE)) {
                     recvfrom(fd, NULL, 0, MSG_PEEK, NULL, 0);
                 }
                 uv_poll_start(handle, UV_READABLE, uvpollable_cb);
@@ -1836,7 +1766,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
 
     if (socket_count == 0) {
         neat_io_error(ctx, flow, NEAT_ERROR_IO);
-        return;
+        return NEAT_ERROR_IO;
     }
 
 #ifdef USRSCTP_SUPPORT
@@ -1873,6 +1803,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
     }
 #endif // if defined(__FreeBSD__)
 #endif // ifdef else USRSCTP_SUPPORT
+    return NEAT_ERROR_OK;
 }
 
 neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
@@ -1901,6 +1832,10 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
         local_name = "0.0.0.0";
 
     flow->name = strdup(local_name);
+    if (flow->name == NULL) {
+        return NEAT_ERROR_OUT_OF_MEMORY;
+    }
+
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
     flow->ctx = ctx;
@@ -2045,7 +1980,7 @@ neat_write_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
     if ((flow->socket->stack != NEAT_STACK_TCP) || TAILQ_EMPTY(&flow->bufferedMessages)) {
         msg = malloc(sizeof(struct neat_buffered_message));
         if (msg == NULL) {
-            return NEAT_ERROR_INTERNAL;
+            return NEAT_ERROR_OUT_OF_MEMORY;
         }
         msg->buffered = NULL;
         msg->bufferedOffset = 0;
@@ -2070,13 +2005,13 @@ neat_write_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
     if (msg->bufferedOffset == 0) {
         msg->buffered = realloc(msg->buffered, needed);
         if (msg->buffered == NULL) {
-            return NEAT_ERROR_INTERNAL;
+            return NEAT_ERROR_OUT_OF_MEMORY;
         }
         msg->bufferedAllocation = needed;
     } else {
         void *newptr = malloc(needed);
         if (newptr == NULL) {
-            return NEAT_ERROR_INTERNAL;
+            return NEAT_ERROR_OUT_OF_MEMORY;
         }
         memcpy(newptr, msg->buffered + msg->bufferedOffset, msg->bufferedSize);
         free(msg->buffered);
@@ -2309,7 +2244,8 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_UDP) ||
-       (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP)) {
+        (neat_base_stack(flow->socket->stack) == NEAT_STACK_UDPLITE) ||
+        (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP)) {
         if (!flow->readBufferMsgComplete) {
             return NEAT_ERROR_WOULD_BLOCK;
         }
@@ -2661,10 +2597,10 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         break;
     }
 
-    if (stack == NEAT_STACK_UDP) {
+    if (stack == NEAT_STACK_UDP || stack == NEAT_STACK_UDPLITE) {
         if (fd == -1 ||
             bind(fd, sockaddr, slen) == -1) {
-            neat_log(NEAT_LOG_ERROR, "%s: (UDP) bind failed - %s", __func__, strerror(errno));
+            neat_log(NEAT_LOG_ERROR, "%s: (%s) bind failed - %s", __func__, (stack == NEAT_STACK_UDP ? "UDP" : "UDPLite"), strerror(errno));
             return -1;
         }
     } else {
@@ -2907,10 +2843,6 @@ static void handle_connect(struct socket *sock, void *arg, int flags)
             flow->isPolling = 0;
             flow->stream_count = 1;
 
-            if (allocate_send_buffers(flow, flow->stream_count) != NEAT_OK) {
-                neat_io_error(he_ctx->nc, flow, NEAT_ERROR_IO );
-                return;
-            }
             usrsctp_set_upcall(sock, handle_upcall, (void*)flow->socket);
             io_connected(flow->ctx, flow, NEAT_OK);
         } else {
@@ -3142,7 +3074,6 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->socket->handle->loop = NULL;
     rv->socket->handle->type = UV_UNKNOWN_HANDLE;
 
-    allocate_send_buffers(rv, 1);
     LIST_INSERT_HEAD(&mgr->flows, rv, next_flow);
 
     return rv;

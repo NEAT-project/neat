@@ -18,9 +18,9 @@
 static uint8_t expected_replies;
 static uint8_t num_replies;
 
-static void resolver_handle(struct neat_resolver_results *results,
-                            uint8_t neat_code,
-                            void *user_data)
+static neat_error_code resolver_handle(struct neat_resolver_results *results,
+                                       uint8_t neat_code,
+                                       void *user_data)
 {
     char src_str[INET6_ADDRSTRLEN], dst_str[INET6_ADDRSTRLEN];
     struct neat_resolver_res *result;
@@ -33,7 +33,7 @@ static void resolver_handle(struct neat_resolver_results *results,
 
         if (num_replies == expected_replies)
             neat_stop_event_loop(resolver->nc);
-        return;
+        return NEAT_ERROR_DNS;
     }
 
     LIST_FOREACH(result, results, next_res) {
@@ -64,6 +64,8 @@ static void resolver_handle(struct neat_resolver_results *results,
     //neat_resolver_release(resolver);
     if (num_replies == expected_replies)
         neat_stop_event_loop(resolver->nc);
+
+    return NEAT_ERROR_OK;
 }
 
 static void resolver_cleanup(struct neat_resolver *resolver)

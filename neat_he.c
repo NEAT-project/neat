@@ -98,7 +98,7 @@ static void free_he_handle_cb(uv_handle_t *handle)
     free(handle);
 }
 
-static void
+static neat_error_code
 he_resolve_cb(struct neat_resolver_results *results,
               uint8_t code,
               void *user_data)
@@ -180,6 +180,7 @@ he_resolve_cb(struct neat_resolver_results *results,
     }
 
     free(resolver_data);
+    return NEAT_ERROR_OK;
 }
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx)

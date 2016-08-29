@@ -248,9 +248,9 @@ LIST_HEAD(neat_resolver_servers, neat_resolver_server);
 
 //Arguments are result struct (must be freed by user), neat_resolver_code and
 //user_data passed to getaddrinfo
-typedef void (*neat_resolver_handle_t)(struct neat_resolver_results *,
-                                       uint8_t,
-                                       void *);
+typedef neat_error_code (*neat_resolver_handle_t)(struct neat_resolver_results *,
+                                                  uint8_t,
+                                                  void *);
 typedef void (*neat_resolver_cleanup_t)(struct neat_resolver *resolver);
 
 enum neat_resolver_code {

@@ -181,10 +181,11 @@ main(int argc, char *argv[])
 
         if (rc > 0) {
             /* there's stuff to do */
-            neat_start_event_loop(ctx, NEAT_RUN_ONCE);
+            neat_start_event_loop(ctx, NEAT_RUN_NOWAIT);
         }
         else {
             fprintf(stderr, "Waiting on %d streams...\n", streams_going);
+            neat_start_event_loop(ctx, NEAT_RUN_NOWAIT);
         }
 
     }

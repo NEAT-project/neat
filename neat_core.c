@@ -436,14 +436,14 @@ void neat_free_flow(neat_flow *flow)
     }
 #endif
 
-    if (flow->isPolling)
-        uv_poll_stop(flow->socket->handle);
-
-    if (flow->socket && flow->socket->handle != NULL &&
-        (flow->socket->handle->type != UV_UNKNOWN_HANDLE))
-        uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
-    else
+	if (!uv_is_closing((uv_handle_t *)(flow->socket->handle)) &&
+		((flow->socket->handle != NULL) &&
+		(flow->socket->handle->type != UV_UNKNOWN_HANDLE)) ) {
+		uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
+	} else {
         synchronous_free(flow);
+	}
+
 }
 
 neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,

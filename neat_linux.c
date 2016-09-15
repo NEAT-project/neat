@@ -50,7 +50,7 @@ static int neat_linux_parse_nlattr(const struct nlattr *attr, void *data)
 //Function which parses the netlink message (*ADDR) we have received and extract
 //relevant information, which is parsed to OS-independent
 //neat_addr_update_src_list
-static void neat_linux_handle_addr(struct neat_ctx *nc,
+static neat_error_code neat_linux_handle_addr(struct neat_ctx *nc,
                                    struct nlmsghdr *nl_hdr)
 {
     struct ifaddrmsg *ifm = (struct ifaddrmsg*) mnl_nlmsg_get_payload(nl_hdr);
@@ -68,10 +68,10 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
     //On Linux, lo has a fixed index. We have no interest in that interface
     //TODO: Consider other filters - bridges, ifb, ...
     if (ifm->ifa_index == LO_DEV_IDX)
-        return;
+        return NEAT_ERROR_OK;
 
     if (ifm->ifa_scope == RT_SCOPE_LINK)
-        return;
+        return NEAT_ERROR_OK;
 
     memset(attr_table, 0, sizeof(attr_table));
     memset(&src_addr, 0, sizeof(src_addr));
@@ -80,7 +80,7 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
                 neat_linux_parse_nlattr, &tb_storage) != MNL_CB_OK) {
         neat_log(NEAT_LOG_ERROR, "Failed to parse nlattr for msg of type %d",
                 __func__, nl_hdr->nlmsg_type);
-        return;
+        return NEAT_ERROR_OK;
     }
 
     //v4 and v6 has to be handled differently, both due to address size and
@@ -101,8 +101,9 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
 
     //TODO: Should this function be a callback instead? Will we have multiple
     //addresses handlers/types of context?
-    neat_addr_update_src_list(nc, &src_addr, ifm->ifa_index,
-            nl_hdr->nlmsg_type == RTM_NEWADDR, ifm->ifa_prefixlen, ifa_pref, ifa_valid);
+    return neat_addr_update_src_list(nc, &src_addr, ifm->ifa_index,
+                                     nl_hdr->nlmsg_type == RTM_NEWADDR,
+                                     ifm->ifa_prefixlen, ifa_pref, ifa_valid);
 }
 
 //libuv datagram socket alloc function, un-interesting

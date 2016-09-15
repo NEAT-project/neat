@@ -195,7 +195,7 @@ alloc_peer()
 		goto out;
 	}
 
-    if ((p->hdr = calloc(1, sizeof(struct peer))) == NULL) {
+    if ((p->hdr = calloc(1, sizeof(struct header))) == NULL) {
 		goto out;
 	}
 
@@ -212,18 +212,20 @@ alloc_peer()
 	}
 
 	/* create and initialise the timer */
-    if ((p->timer = calloc(1, sizeof(uv_timer_t *))) == NULL) {
+    if ((p->timer = calloc(1, sizeof(uv_timer_t ))) == NULL) {
 		goto out;
 	}
 
 	return p;
 
 	out:
-		free(p->timer);
-		free(p->file_buffer);
-		free(p->buffer);
-		free(p->hdr);
-		free(p);
+		if(p != NULL) {
+			free(p->timer);
+			free(p->file_buffer);
+			free(p->buffer);
+			free(p->hdr);
+			free(p);
+		}
 		return NULL;
 }
 
@@ -665,14 +667,14 @@ on_close(struct neat_flow_operations *opCB)
 	opCB->on_all_written = NULL;
 	neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-	free(pf->buffer);
-	free(pf);
-	neat_free_flow(opCB->flow);
-
 	if (pf->master) {
     	fprintf(stderr, "%s:%d Master, stopping\n", __func__, __LINE__);
 		neat_stop_event_loop(opCB->ctx);
 	}
+
+	free(pf->buffer);
+	free(pf);
+	neat_free_flow(opCB->flow);
 
     return NEAT_OK;
 }

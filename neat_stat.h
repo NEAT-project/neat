@@ -6,7 +6,7 @@
 #include <jansson.h>
 #include "neat_internal.h"
 
-void neat_stats_build_json(struct neat_flow *flow, char **json_stats);
+void neat_stats_build_json(struct neat_ctx *ctx, char **json_stats);
 
 /*Struct for collecting global statistics*/
 struct neat_stat{

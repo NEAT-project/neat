@@ -128,7 +128,7 @@ NEAT_EXTERN void neat_free_flow(struct neat_flow *flow);
 NEAT_EXTERN neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
                                     struct neat_flow_operations *ops);
 
-NEAT_EXTERN neat_error_code neat_get_stats(struct neat_flow *flow, char **neat_stats);
+NEAT_EXTERN neat_error_code neat_get_stats(struct neat_ctx *ctx, char **neat_stats);
 
 NEAT_EXTERN neat_error_code neat_open(struct neat_ctx *mgr, struct neat_flow *flow,
                           const char *name, uint16_t port,

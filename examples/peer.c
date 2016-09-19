@@ -26,7 +26,7 @@ static uint16_t config_log_level = 10;
 static char config_property[] = "NEAT_PROPERTY_UDP_REQUIRED";
 static char *pem_file = NULL;
 static uint32_t config_drop_randomly= 1;
-static uint32_t config_drop_rate= 50;
+static uint32_t config_drop_rate= 0;
 
 #define SEGMENT_SIZE 1024
 #define SECOND 1000
@@ -402,9 +402,9 @@ on_readable(struct neat_flow_operations *opCB)
                         if ((hdr->size == 0 && pf->segment == 0) || hdr->size == pf->segment) {
                 append_data(pf, hdr->data, hdr->data_size);
                 pf->sendcmd = ACK;
-                                if(hdr->size == pf->segment+1) {
+                                /*if(hdr->size == pf->segment+1) {
                                         pf->segment++;
-                                }
+                                }*/
                         } else {
                                 if(hdr->size < pf->segment) {
                                         fprintf(stderr, "%s:%d duplicate segment, sending ERROR\n",

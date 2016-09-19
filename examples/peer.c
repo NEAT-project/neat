@@ -22,11 +22,11 @@
 **********************************************************************/
 
 static uint32_t config_buffer_size_max = 1400;
-static uint16_t config_log_level = 0;
+static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_UDP_REQUIRED";
 static char *pem_file = NULL;
-static uint32_t config_drop_randomly= 0;
-static uint32_t config_drop_rate= 50;
+static uint32_t config_drop_randomly= 1;
+static uint32_t config_drop_rate= 80;
 
 #define SEGMENT_SIZE 1024
 #define SECOND 1000
@@ -407,11 +407,12 @@ on_readable(struct neat_flow_operations *opCB)
 				fprintf(stderr, "%s:%d got DATA %d segment\n",
 					__func__, __LINE__, hdr->size);
 			}
-			if ((hdr->size == 0 && pf->segment == 0) || hdr->size == pf->segment) {
+			
+			if ((hdr->size == 0 && pf->segment == 0) || hdr->size == pf->segment+1) {
                 append_data(pf, hdr->data, hdr->data_size);
                 pf->sendcmd = ACK;
 				if(hdr->size == pf->segment+1) {
-						pf->segment++;
+					pf->segment++;
 				}
 			} else {
 				if(hdr->size < pf->segment) {
@@ -559,23 +560,26 @@ on_writable(struct neat_flow_operations *opCB)
     	if (config_log_level >= 3) {
 			fprintf(stderr, "%s:%d Sending DATA Segment %d\n",
 									__func__, __LINE__, pf->segment);
-			fprintf(stderr, "%s:%d Sending bytes from %ld plug %d\n",
+			fprintf(stderr, "%s:%d Sending bytes from %ld plus %d\n",
 									__func__, __LINE__,
 									ftell(pf->fi->stream), SEGMENT_SIZE);
 		}
 		unsigned char buf[SEGMENT_SIZE];
 		size_t bytes;
 		
-
+		fseek(pf->fi->stream, pf->segment*SEGMENT_SIZE, SEEK_SET);
+		printf("file pointer: %ld", ftell(pf->fi->stream));
 		bytes = fread(buf, sizeof(unsigned char), SEGMENT_SIZE, pf->fi->stream);
 		if (bytes == 0) {
-				if(feof(pf->fi->stream)) {
-						fprintf(stderr, "%s:%d Sending DATA Segment %d hit EOF\n",
-												__func__, __LINE__, pf->segment);
-						explode();
-				} else {
-						explode();
-				}
+			if(feof(pf->fi->stream)) {
+				fprintf(stderr, "%s:%d Sending DATA Segment %d hit EOF\n",
+					__func__, __LINE__, pf->segment);
+				//pf->sendcmd = COMPLETE;
+				//explode();
+				return NEAT_OK;
+			} else {
+				explode();
+			}
 		}
 
 		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, DATA, 
@@ -588,7 +592,6 @@ on_writable(struct neat_flow_operations *opCB)
 		}
 		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, ACK, 
 				0, pf->segment, NULL, 0); 
-		pf->segment++;
         break;
     case ERROR:
     	if (config_log_level >= 3) {

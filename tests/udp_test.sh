@@ -1,18 +1,21 @@
 #!/bin/sh
 
-peer=../peer
+peer=../examples/peer
 
 IP=127.0.0.1
 PORT=6969
 FILE=test.txt
 RATE=90
+LOGLEVEL=0
 
 STAGEDIR=stage
 
-clientcmd= $peer -h $IP -p $PORT -f $FILE -D $RATE
-servercmd= $peer -p $PORT -D $RATE
+export NEAT_LOG_LEVEL=NEAT_LOG_OFF
 
-sendfile=test.txt
+clientcmd="$peer -h $IP -p $PORT -f $FILE -D $RATE -v $LOGLEVEL"
+servercmd="$peer -p $PORT -D $RATE -v $LOGLEVEL"
+
+sendfile="test.txt"
 recvfile=$STAGEDIR/$sendfile
 
 if [ ! -d "$dirname" ]
@@ -22,11 +25,13 @@ fi
 
 cd $STAGEDIR
 
-$(servercmd) &
-server = $!
+eval ../$servercmd &
+server=$!
+
+echo "SERVER PID $server"
 
 cd ..
-ret=$(clientcmd)
+ret=eval $clientcmd
 pkill $server
 
 if [ "$ret" == 0 ]
@@ -39,6 +44,6 @@ else
 	if [ "$srcsum" == "$dstsum" ] 
 	then 
 		exit 0
-	if
+	fi
 	exit 1
 fi

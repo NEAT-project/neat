@@ -139,10 +139,9 @@ openfile(const char *filename, const char *mode)
 
     if (stat(filename, &st) == -1) {
 		if(write == 0) {
-			return NULL;
-		} else {
 			fprintf(stderr, "%s - file not found\n", __func__);
 			free(fi);
+			return NULL;
 		}
     }
 

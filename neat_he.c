@@ -147,6 +147,7 @@ he_resolve_cb(struct neat_resolver_results *results,
             case NEAT_STACK_UDP:
             case NEAT_STACK_UDPLITE:
                 he_ctx->ai_socktype = SOCK_DGRAM;
+				break;
             default:
                 he_ctx->ai_socktype = SOCK_STREAM;
             }

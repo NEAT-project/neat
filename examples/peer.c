@@ -100,7 +100,7 @@ void free_peer(struct peer *);
 
 int append_data(struct peer *, unsigned char *, size_t );
 
-struct fileinfo * openfile(const char *);
+struct fileinfo * openfile(const char *, const char *);
 void freefileinfo(struct fileinfo *);
 
 int random_loss();
@@ -115,35 +115,48 @@ random_loss()
 }
 
 struct fileinfo *
-openfile(const char *filename) 
+openfile(const char *filename, const char *mode) 
 {
     struct fileinfo *fi;
     struct stat st;
+	uint8_t write = 0;
 
     fi = calloc(1, sizeof(struct fileinfo));
 
     if (fi == NULL) {
-            fprintf(stderr, "%s - could not calloc fileinfo struct\n", __func__);
-            return NULL;
+		fprintf(stderr, "%s - could not calloc fileinfo struct\n", __func__);
+		return NULL;
     }
 
+	if(strstr(filename, "\\") != NULL || strstr(filename, "/") != NULL) {
+		fprintf(stderr, "%s - banned characters in file path '\\' or '/'\n", __func__);
+		return NULL;
+	}
+
+	if(strstr(mode,"w") != NULL) {
+		write = 1;
+	}
+
+
     if (stat(filename, &st) == -1) {
-            free(fi);
-            fprintf(stderr, "%s - file not found\n", __func__);
-            return NULL;
+		free(fi);
+		fprintf(stderr, "%s - file not found\n", __func__);
+		if(write == 0) {
+			return NULL;
+		}
     }
 
     fi->size = st.st_size;
     fi->segments = (fi->size+SEGMENT_SIZE-1)/SEGMENT_SIZE; /* round up */
     fi->filename = strdup(filename);
 
-    fi->stream = fopen(filename, "r");
+    fi->stream = fopen(filename, mode);
 
     if (fi->stream == NULL) {
-            free(fi->filename);
-            free(fi);
-            fprintf(stderr, "%s - file not found\n", __func__);
-            return NULL;
+		free(fi->filename);
+		free(fi);
+		fprintf(stderr, "%s - file not found\n", __func__);
+		return NULL;
     }
 
     return fi;
@@ -206,6 +219,7 @@ alloc_peer()
     }
 
     p->file_buffer_alloc = 128*1024;
+    p->file_buffer_size = 0;
 
     if ((p->file_buffer = calloc(p->file_buffer_alloc, sizeof(unsigned char))) == NULL) {
         goto out;
@@ -246,10 +260,13 @@ append_data(struct peer *p, unsigned char *buffer, size_t size)
 {
     if(p->file_buffer_size+size < p->file_buffer_alloc) {
         memcpy(p->file_buffer + p->file_buffer_size, buffer, size);
+		p->file_buffer_size += size;
         return 0;
-    }
-
-    return 1;
+    } else {
+        fprintf(stderr, "%s():%d file buffer exhausted \n", __func__,__LINE__);
+		explode();
+		return 1;
+	}
 }
 
 int
@@ -292,7 +309,7 @@ print_usage()
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size_max);
     printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
-    printf("\t- t \thost\n");
+    printf("\t- h \thost\n");
     printf("\t- p \tport (%d)\n", config_port);
     printf("\t- f filename.txt \tsend file\n");
     printf("\t- D (%d)\tartificially drop packets\n", config_drop_rate);
@@ -366,7 +383,6 @@ on_readable(struct neat_flow_operations *opCB)
         }
 
         switch(hdr->cmd) {
-
         case CONNECT:
             if (!pf->master) {
                 pf->sendcmd = CONNECTACK;
@@ -391,10 +407,6 @@ on_readable(struct neat_flow_operations *opCB)
 			}
             pf->sendcmd = COMPLETE;
 			pf->complete = 1;
-
-			if (!pf->master) {
-			/* time to save and file then shut down*/
-			}
             break;
         case CONNECTACK:
 			if (config_log_level >= 3) {
@@ -410,7 +422,9 @@ on_readable(struct neat_flow_operations *opCB)
 			}
 			
 			if ((hdr->size == 0 && pf->segment == 0) || hdr->size == pf->segment+1) {
+
                 append_data(pf, hdr->data, hdr->data_size);
+
                 pf->sendcmd = ACK;
 				if(hdr->size == pf->segment+1) {
 					pf->segment++;
@@ -496,6 +510,21 @@ on_all_written(struct neat_flow_operations *opCB)
         opCB->on_writable = NULL;
         opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
+
+		if (!pf->master) {
+			/* time to save and file then shut down*/
+			struct fileinfo *fi;
+
+			fi = openfile(pf->file_name,"w");
+			if (fi == NULL) {
+				fprintf(stderr, "%s:%d could not open file %s\n",
+					__func__, __LINE__, pf->file_name);
+			}
+
+			fwrite(pf->file_buffer, sizeof(char), pf->file_buffer_size, fi->stream);
+			fclose(fi->stream);
+			freefileinfo(fi);
+		}
 		neat_close(opCB->ctx, opCB->flow);
         return NEAT_OK;
     }
@@ -569,7 +598,6 @@ on_writable(struct neat_flow_operations *opCB)
 		size_t bytes;
 		
 		fseek(pf->fi->stream, pf->segment*SEGMENT_SIZE, SEEK_SET);
-		printf("file pointer: %ld", ftell(pf->fi->stream));
 		bytes = fread(buf, sizeof(unsigned char), SEGMENT_SIZE, pf->fi->stream);
 		if (bytes == 0) {
 			if(feof(pf->fi->stream)) {
@@ -702,10 +730,8 @@ on_close(struct neat_flow_operations *opCB)
 	neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
 	if (pf->master) {
-		fprintf(stderr, "\n%s:%d Master, stopping\n", __func__, __LINE__);
 		neat_stop_event_loop(opCB->ctx);
 	}
-
 	free_peer(pf);
 
     return NEAT_OK;
@@ -728,7 +754,7 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:S:v:t:p:f:D:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:S:v:h:p:f:D:")) != -1) {
         switch(arg) {
         case 'P':
             arg_property = optarg;
@@ -748,7 +774,7 @@ main(int argc, char *argv[])
                 printf("option - log level: %d\n", config_log_level);
             }
             break;
-        case 't':
+        case 'h':
             target_addr = optarg;
             break;
         case 'p':
@@ -872,21 +898,16 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-
     if (sender) {
-        fprintf(stderr, "%s - opening file %s\n", __func__, filename);
-        /* open the file */
-
-        fi = openfile(filename);
+        fi = openfile(filename, "r");
         if (fi == NULL) {
             fprintf(stderr, "%s - failed to open file\n", __func__);
             perror("opening file");
             goto cleanup;
         }
 
-        fprintf(stdout, "%s:%d - file size %d bytes %d segments\n",
-                __func__, __LINE__, fi->size,fi->segments);
-        fprintf(stderr, "%s - connecting to %s:%d\n", __func__, target_addr, 6969);
+		fprintf(stdout, "sending %s (%d bytes, %d segments) to %s:%d\n",
+			filename, fi->size,fi->segments, target_addr, 6969);
 
         if (neat_open(ctx, flow, target_addr, config_port, NULL, 0) != NEAT_OK) {
             fprintf(stderr, "%s - neat_accept failed\n", __func__);
@@ -904,7 +925,7 @@ main(int argc, char *argv[])
 
     srandom(time(NULL));
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
-	fprintf(stderr, "%s - shutting down...\n", __func__);
+	fprintf(stderr, "\ndisconnected from peer %s\n", target_addr);
 
     // cleanup
 cleanup:

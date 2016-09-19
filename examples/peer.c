@@ -25,13 +25,14 @@ static uint32_t config_buffer_size_max = 1400;
 static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_UDP_REQUIRED";
 static char *pem_file = NULL;
-static uint32_t config_drop_randomly= 1;
+static uint32_t config_drop_randomly= 0;
 static uint32_t config_drop_rate= 80;
+static uint32_t config_port=6969;
 
 #define SEGMENT_SIZE 1024
 #define SECOND 1000
 
-const char *filename = "test.txt";
+const char *filename;
 int sender = 0;
 struct fileinfo *fi;
 uint32_t retry_limit = 10;
@@ -290,12 +291,14 @@ print_usage()
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    printf("server_echo [OPTIONS]\n");
+    printf("peer [OPTIONS]\n");
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size_max);
-    printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
-    printf("\t- p \tpem file (none)\n");
-    printf("\t- m \tact as master\n");
+    printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
+    printf("\t- t \thost\n");
+    printf("\t- p \tport (%d)\n", config_port);
+    printf("\t- f filename.txt \tsend file\n");
+    printf("\t- D (%d)\tartificially drop packets\n", config_drop_rate);
 }
 
 
@@ -720,7 +723,6 @@ main(int argc, char *argv[])
     char *arg_property_ptr = NULL;
     char arg_property_delimiter[] = ",;";
     char *target_addr = NULL;
-    uint16_t target_port = 0;
     static struct neat_ctx *ctx = NULL;
     static struct neat_flow *flow = NULL;
     static struct neat_flow_operations ops;
@@ -729,14 +731,8 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "mP:S:p:v:t:o:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:S:v:t:p:f:D:")) != -1) {
         switch(arg) {
-        case 'm':
-            sender = 1;
-            if (config_log_level >= 1) {
-                printf("option - acting as master(sending): %d\n", config_log_level);
-            }
-            break;
         case 'P':
             arg_property = optarg;
             if (config_log_level >= 1) {
@@ -749,12 +745,6 @@ main(int argc, char *argv[])
                 printf("option - buffer size: %d\n", config_buffer_size_max);
             }
             break;
-        case 'p':
-            pem_file = optarg;
-            if (config_log_level >= 1) {
-                printf("option - pem file: %s\n", pem_file);
-            }
-            break;
         case 'v':
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {
@@ -764,8 +754,19 @@ main(int argc, char *argv[])
         case 't':
             target_addr = optarg;
             break;
-        case 'o':
-            target_port = atoi(optarg);
+        case 'p':
+            config_port = atoi(optarg);
+            break;
+        case 'D':
+            config_drop_rate = atoi(optarg);
+			config_drop_randomly = 1;
+            break;
+        case 'f':
+            sender = 1;
+            if (config_log_level >= 1) {
+                printf("option - acting as master(sending): %d\n", config_log_level);
+            }
+			filename = strdup(optarg);
             break;
         default:
             print_usage();
@@ -896,14 +897,14 @@ main(int argc, char *argv[])
                 __func__, __LINE__, fi->size,fi->segments);
         fprintf(stderr, "%s - connecting to %s:%d\n", __func__, target_addr, 6969);
 
-        if (neat_open(ctx, flow, target_addr, target_port, NULL, 0) != NEAT_OK) {
+        if (neat_open(ctx, flow, target_addr, config_port, NULL, 0) != NEAT_OK) {
             fprintf(stderr, "%s - neat_accept failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
         }
     } else {
         // wait for on_connected or on_error to be invoked
-        if (neat_accept(ctx, flow, target_port, NULL, 0) != NEAT_OK) {
+        if (neat_accept(ctx, flow, config_port, NULL, 0) != NEAT_OK) {
             fprintf(stderr, "%s - neat_accept failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;

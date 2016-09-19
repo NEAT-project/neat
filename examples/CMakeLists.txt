@@ -11,6 +11,7 @@ LIST(APPEND neat_programs
     server_echo.c
     server_echo_multi.c
     tneat.c
+    peer.c
 )
 
 

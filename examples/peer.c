@@ -690,17 +690,24 @@ main(int argc, char *argv[])
     char *arg_property = config_property;
     char *arg_property_ptr = NULL;
     char arg_property_delimiter[] = ",;";
+    char *target_addr = NULL;
+    uint16_t target_port = 0;
     static struct neat_ctx *ctx = NULL;
     static struct neat_flow *flow = NULL;
     static struct neat_flow_operations ops;
-
 
     memset(&ops, 0, sizeof(ops));
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:S:p:v:m")) != -1) {
+    while ((arg = getopt(argc, argv, "mP:S:p:v:t:o:")) != -1) {
         switch(arg) {
+        case 'm':
+            sender = 1;
+            if (config_log_level >= 1) {
+                printf("option - acting as master(sending): %d\n", config_log_level);
+            }
+            break;
         case 'P':
             arg_property = optarg;
             if (config_log_level >= 1) {
@@ -725,11 +732,11 @@ main(int argc, char *argv[])
                 printf("option - log level: %d\n", config_log_level);
             }
             break;
-        case 'm':
-                        sender = 1;
-            if (config_log_level >= 1) {
-                printf("option - acting as master(sending): %d\n", config_log_level);
-            }
+        case 't':
+            target_addr = optarg;
+            break;
+        case 'o':
+            target_port = atoi(optarg);
             break;
         default:
             print_usage();
@@ -845,36 +852,36 @@ main(int argc, char *argv[])
     }
 
 
-        if (sender) {
+    if (sender) {
         fprintf(stderr, "%s - opening file %s\n", __func__, filename);
-                /* open the file */
+        /* open the file */
 
-
-                fi = openfile(filename);
-                if (fi == NULL) {
-                        fprintf(stderr, "%s - failed to open file\n", __func__);
-                        perror("opening file");
-                        goto cleanup;
-                }
-                fprintf(stdout, "%s:%d - file sixe %d bytes %d segments\n", __func__, __LINE__,
-                        fi->size,fi->segments);
-
-        fprintf(stderr, "%s - connecting to %s:%d\n", __func__, "139.133.204.4", 6969);
-            //if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), NULL, 0) == NEAT_OK) {
-            if (neat_open(ctx, flow, "139.133.204.4", 6969, NULL, 0) != NEAT_OK) {
-                        fprintf(stderr, "%s - neat_accept failed\n", __func__);
-                        result = EXIT_FAILURE;
-                        goto cleanup;
-                }
-        } else {
-                // wait for on_connected or on_error to be invoked
-                if (neat_accept(ctx, flow, 6969, NULL, 0) != NEAT_OK) {
-                        fprintf(stderr, "%s - neat_accept failed\n", __func__);
-                        result = EXIT_FAILURE;
-                        goto cleanup;
-                }
-
+        fi = openfile(filename);
+        if (fi == NULL) {
+            fprintf(stderr, "%s - failed to open file\n", __func__);
+            perror("opening file");
+            goto cleanup;
         }
+
+        fprintf(stdout, "%s:%d - file sixe %d bytes %d segments\n",
+                __func__, __LINE__, fi->size,fi->segments);
+
+        fprintf(stderr, "%s - connecting to %s:%d\n", __func__, target_addr, 6969);
+
+            //if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), NULL, 0) == NEAT_OK) {
+        if (neat_open(ctx, flow, target_addr, target_port, NULL, 0) != NEAT_OK) {
+            fprintf(stderr, "%s - neat_accept failed\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
+    } else {
+        // wait for on_connected or on_error to be invoked
+        if (neat_accept(ctx, flow, target_port, NULL, 0) != NEAT_OK) {
+            fprintf(stderr, "%s - neat_accept failed\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
+    }
 
     srandom(time(NULL));
 

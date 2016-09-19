@@ -2447,7 +2447,7 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
 #endif
         break;
     case NEAT_STACK_UDP:
-        recvfrom(he_ctx->fd, NULL, 0, MSG_PEEK, NULL, 0);
+        recvfrom(he_ctx->fd, NULL, 0, MSG_DONTWAIT | MSG_PEEK, NULL, 0);
     default:
         break;
     }

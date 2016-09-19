@@ -130,6 +130,7 @@ openfile(const char *filename, const char *mode)
 
 	if(strstr(filename, "\\") != NULL || strstr(filename, "/") != NULL) {
 		fprintf(stderr, "%s - banned characters in file path '\\' or '/'\n", __func__);
+		free(fi);
 		return NULL;
 	}
 

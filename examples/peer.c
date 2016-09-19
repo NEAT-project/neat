@@ -15,16 +15,13 @@
     peer 
 
         TODO Tidy up code, client() and server() should be functions
-        TODO Add retransmissions, timeouts
-        TODO Configurable client level loss
         TODO Write receved file to disk
 
 **********************************************************************/
 
 static uint32_t config_buffer_size_max = 1400;
-static uint16_t config_log_level = 1;
+static uint16_t config_log_level = 0;
 static char config_property[] = "NEAT_PROPERTY_UDP_REQUIRED";
-static char *pem_file = NULL;
 static uint32_t config_drop_randomly= 0;
 static uint32_t config_drop_rate= 80;
 static uint32_t config_port=6969;
@@ -797,12 +794,6 @@ main(int argc, char *argv[])
     // set properties (TCP only etc..)
     if (neat_get_property(ctx, flow, &prop)) {
         fprintf(stderr, "%s - neat_get_property failed\n", __func__);
-        result = EXIT_FAILURE;
-        goto cleanup;
-    }
-
-    if (pem_file && neat_secure_identity(ctx, flow, pem_file)) {
-        fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }

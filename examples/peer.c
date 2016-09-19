@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <sys/stat.h>
 #include <uv.h>
@@ -109,11 +110,12 @@ int random_loss();
 int 
 random_loss()
 {
-	if(config_drop_randomly && arc4random()%100 > config_drop_rate) {
-		return 1;
-	}
+    if (!config_drop_randomly)
 	return 0;
+
+    return ((uint32_t) random() % 100) > config_drop_rate;
 }
+
 struct fileinfo *
 openfile(const char *filename) 
 {
@@ -832,7 +834,7 @@ main(int argc, char *argv[])
 
     // set callbacks
     ops.on_connected = on_connected;
-	ops.on_close = on_close;
+    ops.on_close = on_close;
     ops.on_error = on_error;
 
     if (neat_set_operations(ctx, flow, &ops)) {
@@ -872,6 +874,8 @@ main(int argc, char *argv[])
 		}
 
 	}
+
+    srandom(time(NULL));
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 

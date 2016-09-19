@@ -308,6 +308,7 @@ on_error(struct neat_flow_operations *opCB)
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
+	explode();
 
     exit(EXIT_FAILURE);
 }

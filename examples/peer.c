@@ -14,10 +14,10 @@
 
     peer 
 
-	TODO Tidy up code, client() and server() should be functions
-	TODO Add retransmissions, timeouts
-	TODO Configurable client level loss
-	TODO Write receved file to disk
+        TODO Tidy up code, client() and server() should be functions
+        TODO Add retransmissions, timeouts
+        TODO Configurable client level loss
+        TODO Write receved file to disk
 
 **********************************************************************/
 
@@ -37,7 +37,7 @@ struct fileinfo *fi;
 uint32_t retry_limit = 10;
 
 #define explode() fprintf(stdout, "EXPLOSIVE ERRROR %s:%d\n",__func__, __LINE__);\
-	exit(0);
+        exit(0);
 
 #define ACK 1
 #define CONNECT 2
@@ -52,11 +52,11 @@ struct header {
     uint32_t size;
 
     uint32_t data_size;
-    unsigned char *data;	/* ptr into buf */
+    unsigned char *data;        /* ptr into buf */
 };
 
 struct peer {
-	struct header *hdr;
+    struct header *hdr;
     uint8_t sendcmd;
 
     uint8_t connected;
@@ -64,8 +64,8 @@ struct peer {
     uint8_t master;
     uint8_t complete;
 
-	uv_timer_t *timer;
-	uint32_t retry_count;
+    uv_timer_t *timer;
+    uint32_t retry_count;
 
     unsigned char *buffer;
     uint32_t buffer_size;
@@ -79,15 +79,15 @@ struct peer {
     uint32_t segments_count;
     char *file_name;
 
-	struct fileinfo *fi;
+    struct fileinfo *fi;
 };
 
 struct fileinfo 
 {
-	uint32_t size;
-	uint32_t segments;
-	char *filename;
-	FILE *stream;
+    uint32_t size;
+    uint32_t segments;
+    char *filename;
+    FILE *stream;
 };
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
@@ -95,7 +95,7 @@ static void on_timeout(uv_timer_t *);
 
 int parsemsg(struct header *, unsigned char *, size_t);
 int preparemsg(unsigned char *, uint32_t, uint32_t * ,uint8_t, uint8_t, 
-	uint32_t, unsigned char *, uint32_t ); 
+        uint32_t, unsigned char *, uint32_t ); 
 
 struct peer * alloc_peer();
 void free_peer(struct peer *);
@@ -111,7 +111,7 @@ int
 random_loss()
 {
     if (!config_drop_randomly)
-	return 0;
+        return 0;
 
     return ((uint32_t) random() % 100) > config_drop_rate;
 }
@@ -119,163 +119,164 @@ random_loss()
 struct fileinfo *
 openfile(const char *filename) 
 {
-	struct fileinfo *fi;
-	struct stat st;
-	fi = calloc(1, sizeof(struct fileinfo));
+    struct fileinfo *fi;
+    struct stat st;
 
-	if (fi == NULL) {
-		fprintf(stderr, "%s - could not calloc fileinfo struct\n", __func__);
-		return NULL;
-	}
+    fi = calloc(1, sizeof(struct fileinfo));
 
-	if (stat(filename, &st) == -1) {
-		free(fi);
-		fprintf(stderr, "%s - file not found\n", __func__);
-		return NULL;
-	}
+    if (fi == NULL) {
+            fprintf(stderr, "%s - could not calloc fileinfo struct\n", __func__);
+            return NULL;
+    }
 
-	fi->size = st.st_size;
-	fi->segments = (fi->size+SEGMENT_SIZE-1)/SEGMENT_SIZE; /* round up */
-	fi->filename = strdup(filename);
+    if (stat(filename, &st) == -1) {
+            free(fi);
+            fprintf(stderr, "%s - file not found\n", __func__);
+            return NULL;
+    }
 
-	fi->stream = fopen(filename, "r");
+    fi->size = st.st_size;
+    fi->segments = (fi->size+SEGMENT_SIZE-1)/SEGMENT_SIZE; /* round up */
+    fi->filename = strdup(filename);
 
-	if (fi->stream == NULL) {
-		free(fi->filename);
-		free(fi);
-		fprintf(stderr, "%s - file not found\n", __func__);
-		return NULL;
-	}
+    fi->stream = fopen(filename, "r");
 
-	return fi;
+    if (fi->stream == NULL) {
+            free(fi->filename);
+            free(fi);
+            fprintf(stderr, "%s - file not found\n", __func__);
+            return NULL;
+    }
+
+    return fi;
 }
 
 void
 freefileinfo( struct fileinfo *fi)
 {
-	if (fclose(fi->stream) != -1) {
-		fprintf(stderr, "%s - failed to close file\n", __func__);
-		perror("closing file");
-	}
-	free(fi->filename);
-	free(fi);
+    if (fclose(fi->stream) != -1) {
+            fprintf(stderr, "%s - failed to close file\n", __func__);
+            perror("closing file");
+    }
+    free(fi->filename);
+    free(fi);
 }
 
 int
 preparemsg(unsigned char *buf, uint32_t bufsz, uint32_t *actualsz, uint8_t cmd,
-	uint8_t flags, uint32_t size, unsigned char *data, uint32_t data_size) 
+        uint8_t flags, uint32_t size, unsigned char *data, uint32_t data_size) 
 {
-	size_t headsz = sizeof(cmd) + sizeof(flags) + sizeof(size);
+    size_t headsz = sizeof(cmd) + sizeof(flags) + sizeof(size);
 
-	if ( bufsz < (data_size + headsz)) {
-		return -1;
-	}
+    if ( bufsz < (data_size + headsz)) {
+            return -1;
+    }
 
-	*actualsz = data_size+headsz;
+    *actualsz = data_size+headsz;
 
-	buf[0] = cmd;
-	buf[1] = flags;
-	//buf[2] = htonl(size);
-	uint32_t nsize = htonl(size);
+    buf[0] = cmd;
+    buf[1] = flags;
+    //buf[2] = htonl(size);
+    uint32_t nsize = htonl(size);
 
-	memcpy(buf+2, &nsize, sizeof(uint32_t));
+    memcpy(buf+2, &nsize, sizeof(uint32_t));
 
-	if( data_size > 0 && data != NULL) {
-		memcpy(buf+headsz, data, *actualsz);
-	}
+    if( data_size > 0 && data != NULL) {
+            memcpy(buf+headsz, data, *actualsz);
+    }
 
-	return 1;
+    return 1;
 }
 
 struct peer *
 alloc_peer()
 {
-	struct peer *p;
+    struct peer *p;
 
-	
     if ((p = calloc(1, sizeof(struct peer))) == NULL) {
-		goto out;
-	}
+        goto out;
+    }
 
     if ((p->hdr = calloc(1, sizeof(struct header))) == NULL) {
-		goto out;
-	}
+        goto out;
+    }
 
-	p->buffer_alloc = config_buffer_size_max;
+    p->buffer_alloc = config_buffer_size_max;
 
     if ((p->buffer = calloc(p->buffer_alloc, sizeof(unsigned char))) == NULL) {
-		goto out;
-	}
+        goto out;
+    }
 
-	p->file_buffer_alloc = 128*1024;
+    p->file_buffer_alloc = 128*1024;
 
     if ((p->file_buffer = calloc(p->file_buffer_alloc, sizeof(unsigned char))) == NULL) {
-		goto out;
-	}
+        goto out;
+    }
 
-	/* create and initialise the timer */
+    /* create and initialise the timer */
     if ((p->timer = calloc(1, sizeof(uv_timer_t ))) == NULL) {
-		goto out;
-	}
+        goto out;
+    }
 
-	return p;
+    return p;
 
-	out:
-		if(p != NULL) {
-			free(p->timer);
-			free(p->file_buffer);
-			free(p->buffer);
-			free(p->hdr);
-			free(p);
-		}
-		return NULL;
+out:
+    if (p == NULL)
+        return NULL;
+
+    free(p->timer);
+    free(p->file_buffer);
+    free(p->buffer);
+    free(p->hdr);
+    free(p);
+
+    return NULL;
 }
 
 void
 free_peer(struct peer *p)
 {
-	if (p->file_name) {
-		free(p->file_name);
-	}
-
-	free(p->file_buffer);
-	free(p->buffer);
-	free(p->hdr);
-	free(p);
+    free(p->file_name);
+    free(p->file_buffer);
+    free(p->buffer);
+    free(p->hdr);
+    free(p);
 }
 
 int
 append_data(struct peer *p, unsigned char *buffer, size_t size)
 {
-	if(p->file_buffer_size+size < p->file_buffer_alloc) {
-		memcpy(p->file_buffer + p->file_buffer_size, buffer, size);
-		return 0;
-	}
-	return 1;
+    if(p->file_buffer_size+size < p->file_buffer_alloc) {
+        memcpy(p->file_buffer + p->file_buffer_size, buffer, size);
+        return 0;
+    }
+
+    return 1;
 }
 
 int
 parsemsg(struct header *hdr, unsigned char *buffer, size_t buffersize)
 {
-	size_t headsz = sizeof(hdr->cmd) + sizeof(hdr->flags) + sizeof(hdr->size);
+    uint32_t nsize;
+    size_t headsz = sizeof(hdr->cmd) + sizeof(hdr->flags) + sizeof(hdr->size);
 
     if (buffersize < headsz) {
         fprintf(stderr, "%s():%d %s\n", __func__,__LINE__, "buffersize < headsz");
         return 0;
-	}
+    }
 
     hdr->cmd = buffer[0];
     hdr->flags = buffer[1]; 
 
-	uint32_t nsize;
-	memcpy(&nsize, buffer+2, sizeof(uint32_t));
+    memcpy(&nsize, buffer+2, sizeof(uint32_t));
 
     hdr->size = ntohl(nsize); 
 
     if (buffersize > headsz) {
-		hdr->data = buffer+headsz;
-		hdr->data_size = buffersize-headsz;
+        hdr->data = buffer+headsz;
+        hdr->data_size = buffersize-headsz;
     }
+
     return 1;
 }
 
@@ -322,9 +323,9 @@ on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-	/* kill any running timer */
-	uv_timer_stop(pf->timer);
-	pf->retry_count = 0;
+        /* kill any running timer */
+        uv_timer_stop(pf->timer);
+        pf->retry_count = 0;
 
     code = neat_read(opCB->ctx, opCB->flow, pf->buffer, pf->buffer_alloc, &pf->buffer_size, NULL, 0);
     if (code != NEAT_OK) {
@@ -351,10 +352,10 @@ on_readable(struct neat_flow_operations *opCB)
             fflush(stdout);
         }
 
-		if(random_loss()) {
+                if(random_loss()) {
             printf("received data - %d byte, throwing it away\n", pf->buffer_size);
-			return NEAT_OK;
-		}
+                        return NEAT_OK;
+                }
 
         struct header *hdr = pf->hdr; 
         if (!parsemsg(hdr, pf->buffer, pf->buffer_size)) {
@@ -370,71 +371,71 @@ on_readable(struct neat_flow_operations *opCB)
                 pf->segments_count = hdr->size;
                 pf->segment = 0;
 
-				fprintf(stderr, "%s:%d got CONNECT %d segments\n",
-					__func__, __LINE__, pf->segments_count);
-				fprintf(stderr, "%s:%d receiving filename: %s %d segments\n",
-					__func__, __LINE__, pf->file_name, pf->segments_count);
+                                fprintf(stderr, "%s:%d got CONNECT %d segments\n",
+                                        __func__, __LINE__, pf->segments_count);
+                                fprintf(stderr, "%s:%d receiving filename: %s %d segments\n",
+                                        __func__, __LINE__, pf->file_name, pf->segments_count);
 
             } else {
                 pf->sendcmd = ERROR;
             }
             break;
         case COMPLETE:
-			fprintf(stderr, "%s:%d got CONNECTACK %d segments\n",
-					__func__, __LINE__, pf->segments_count);
+                        fprintf(stderr, "%s:%d got CONNECTACK %d segments\n",
+                                        __func__, __LINE__, pf->segments_count);
             pf->sendcmd = COMPLETE;
-			pf->complete = 1;
+                        pf->complete = 1;
 
-			if (!pf->master) {
-			/* time to save and file then shut down*/
-			}
+                        if (!pf->master) {
+                        /* time to save and file then shut down*/
+                        }
             break;
         case CONNECTACK:
-			fprintf(stderr, "%s:%d got CONNECTACK %d segments\n",
-					__func__, __LINE__, pf->segments_count);
+                        fprintf(stderr, "%s:%d got CONNECTACK %d segments\n",
+                                        __func__, __LINE__, pf->segments_count);
             pf->sendcmd = DATA;
             break;
         case DATA:
-			fprintf(stderr, "%s:%d got DATA %d segment\n",
-					__func__, __LINE__, hdr->size);
+                        fprintf(stderr, "%s:%d got DATA %d segment\n",
+                                        __func__, __LINE__, hdr->size);
 
-			if ((hdr->size == 0 && pf->segment == 0) || hdr->size == pf->segment) {
-            	append_data(pf, hdr->data, hdr->data_size);
-            	pf->sendcmd = ACK;
-				if(hdr->size == pf->segment+1) {
-					pf->segment++;
-				}
-			} else {
-				if(hdr->size < pf->segment) {
-					fprintf(stderr, "%s:%d duplicate segment, sending ERROR\n",
-						__func__, __LINE__);
-            		pf->sendcmd = ACK;
-				} else {
-					fprintf(stderr, "%s:%d unexpected segment, sending ERROR\n",
-						__func__, __LINE__);
-					pf->sendcmd = ERROR;
-				}
-			}
+                        if ((hdr->size == 0 && pf->segment == 0) || hdr->size == pf->segment) {
+                append_data(pf, hdr->data, hdr->data_size);
+                pf->sendcmd = ACK;
+                                if(hdr->size == pf->segment+1) {
+                                        pf->segment++;
+                                }
+                        } else {
+                                if(hdr->size < pf->segment) {
+                                        fprintf(stderr, "%s:%d duplicate segment, sending ERROR\n",
+                                                __func__, __LINE__);
+                        pf->sendcmd = ACK;
+                                } else {
+                                        fprintf(stderr, "%s:%d unexpected segment, sending ERROR\n",
+                                                __func__, __LINE__);
+                                        pf->sendcmd = ERROR;
+                                }
+                        }
             break;
         case ACK:
-			fprintf(stderr, "%s:%d got ACK %d segment\n",
-					__func__, __LINE__, hdr->size);
+                        fprintf(stderr, "%s:%d got ACK %d segment\n",
+                                        __func__, __LINE__, hdr->size);
 
-			if (pf->segment == hdr->size) {
-				if (pf->segment == pf->segments_count-1) {	/* if this was the final segment */
-                	pf->sendcmd = COMPLETE;
-				} else {
-					pf->sendcmd = DATA;
-					fprintf(stderr, "%s:%d ACK %d moving segment ptr\n",
-						__func__, __LINE__, hdr->size);
-				}
-			} else {
-				explode(); //differnet ack to sent segment
-			}
+                        if (pf->segment == hdr->size) {
+                                if (pf->segment == pf->segments_count-1) {      /* if this was the final segment */
+                        pf->sendcmd = COMPLETE;
+                                } else {
+                                        pf->sendcmd = DATA;
+                                        fprintf(stderr, "%s:%d ACK %d moving segment ptr\n",
+                                                __func__, __LINE__, hdr->size);
+                                }
+                        } else {
+                                explode(); //differnet ack to sent segment
+                        }
             break;
         case ERROR:
-			fprintf(stderr, "%s:%d Recevice ERROR\n",
-				__func__, __LINE__);
+                        fprintf(stderr, "%s:%d Recevice ERROR\n",
+                                __func__, __LINE__);
             explode();
             break;
         default:
@@ -470,23 +471,23 @@ on_all_written(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-	if (pf->complete) {
-		uv_timer_stop(pf->timer);
+    if (pf->complete) {
+        uv_timer_stop(pf->timer);
         opCB->on_readable = NULL;
         opCB->on_writable = NULL;
         opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
-		neat_close(opCB->ctx, opCB->flow);
-    	return NEAT_OK;
-	}
+                neat_close(opCB->ctx, opCB->flow);
+        return NEAT_OK;
+    }
 
     opCB->on_readable = on_readable;
     opCB->on_writable = NULL;
     opCB->on_all_written = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-	/*start a timer */
-	uv_timer_start(pf->timer, on_timeout, 1*SECOND, 1*SECOND);
+        /*start a timer */
+        uv_timer_start(pf->timer, on_timeout, 1*SECOND, 1*SECOND);
 
     return NEAT_OK;
 }
@@ -510,64 +511,64 @@ on_writable(struct neat_flow_operations *opCB)
     switch(pf->sendcmd) {
 
     case CONNECT:
-		fprintf(stderr, "%s:%d CONNECT'ing with filename: %s\n",
-					__func__, __LINE__, filename);
+                fprintf(stderr, "%s:%d CONNECT'ing with filename: %s\n",
+                                        __func__, __LINE__, filename);
         pf->master = 0;
         pf->segments_count = pf->fi->segments;
 
-		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECT, 0, 
-			pf->segments_count, (unsigned char *)filename, sizeof(filename)); 
+                preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECT, 0, 
+                        pf->segments_count, (unsigned char *)filename, sizeof(filename)); 
 
         break;
     case COMPLETE:
-		fprintf(stderr, "%s:%d Sending COMPLETE%d\n",
-					__func__, __LINE__, pf->segments_count);
-		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, COMPLETE, 
-			0, pf->segments_count, NULL, 0); 
+                fprintf(stderr, "%s:%d Sending COMPLETE%d\n",
+                                        __func__, __LINE__, pf->segments_count);
+                preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, COMPLETE, 
+                        0, pf->segments_count, NULL, 0); 
         break;
     case CONNECTACK:
-		fprintf(stderr, "%s:%d CONNECTACK acking segments %d\n",
-					__func__, __LINE__, pf->segments_count);
-		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECTACK, 
-			0, pf->segments_count, NULL, 0); 
+                fprintf(stderr, "%s:%d CONNECTACK acking segments %d\n",
+                                        __func__, __LINE__, pf->segments_count);
+                preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECTACK, 
+                        0, pf->segments_count, NULL, 0); 
         break;
     case DATA:
-		fprintf(stderr, "%s:%d Sending DATA Segment %d\n",
-					__func__, __LINE__, pf->segment);
-		unsigned char buf[SEGMENT_SIZE];
-		size_t bytes;
-		
-		fprintf(stderr, "%s:%d Sending bytes from %ld plug %d\n",
-					__func__, __LINE__,
-					ftell(pf->fi->stream), SEGMENT_SIZE);
+                fprintf(stderr, "%s:%d Sending DATA Segment %d\n",
+                                        __func__, __LINE__, pf->segment);
+                unsigned char buf[SEGMENT_SIZE];
+                size_t bytes;
+                
+                fprintf(stderr, "%s:%d Sending bytes from %ld plug %d\n",
+                                        __func__, __LINE__,
+                                        ftell(pf->fi->stream), SEGMENT_SIZE);
 
-		bytes = fread(buf, sizeof(unsigned char), SEGMENT_SIZE, pf->fi->stream);
-		if (bytes == 0) {
-			if(feof(pf->fi->stream)) {
-				fprintf(stderr, "%s:%d Sending DATA Segment %d hit EOF\n",
-							__func__, __LINE__, pf->segment);
-				explode();
-			} else {
-				explode();
-			}
-		}
+                bytes = fread(buf, sizeof(unsigned char), SEGMENT_SIZE, pf->fi->stream);
+                if (bytes == 0) {
+                        if(feof(pf->fi->stream)) {
+                                fprintf(stderr, "%s:%d Sending DATA Segment %d hit EOF\n",
+                                                        __func__, __LINE__, pf->segment);
+                                explode();
+                        } else {
+                                explode();
+                        }
+                }
 
-		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, DATA, 
-			0, pf->segment, buf, bytes); 
+                preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, DATA, 
+                        0, pf->segment, buf, bytes); 
         break;
     case ACK:
-		fprintf(stderr, "%s:%d ACK acking segment %d\n",
-					__func__, __LINE__, pf->segment);
-		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, ACK, 
-			0, pf->segment, NULL, 0); 
-		pf->segment++;
+                fprintf(stderr, "%s:%d ACK acking segment %d\n",
+                                        __func__, __LINE__, pf->segment);
+                preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, ACK, 
+                        0, pf->segment, NULL, 0); 
+                pf->segment++;
         break;
     case ERROR:
-		fprintf(stderr, "%s:%d Sending ERROR\n",
-					__func__, __LINE__);
-		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, ERROR, 
-			0, 0, NULL, 0); 
-		pf->complete = 1;
+                fprintf(stderr, "%s:%d Sending ERROR\n",
+                                        __func__, __LINE__);
+                preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, ERROR, 
+                        0, 0, NULL, 0); 
+                pf->complete = 1;
         break;
 
     default:
@@ -591,22 +592,22 @@ on_writable(struct neat_flow_operations *opCB)
 static void 
 on_timeout(uv_timer_t *handle)
 {
-	struct neat_flow_operations *opCB = handle->data;
-	struct peer *pf;
+        struct neat_flow_operations *opCB = handle->data;
+        struct peer *pf;
 
     fprintf(stderr, "%s:%d %s\n", __func__, __LINE__, "timeout firing");
 
-   	pf = opCB->userData;
-	if(pf->retry_count++ > retry_limit) {
-		pf->sendcmd = ERROR;
-	}
+        pf = opCB->userData;
+        if(pf->retry_count++ > retry_limit) {
+                pf->sendcmd = ERROR;
+        }
 
-	opCB->on_readable = NULL;
-	opCB->on_writable = on_writable;
-	opCB->on_all_written = NULL;
-	neat_set_operations(opCB->ctx, opCB->flow, opCB);
+        opCB->on_readable = NULL;
+        opCB->on_writable = on_writable;
+        opCB->on_all_written = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-	return;
+        return;
 }
 
 static neat_error_code
@@ -628,30 +629,30 @@ on_connected(struct neat_flow_operations *opCB)
         exit(EXIT_FAILURE);
     }
 
-   	pf = opCB->userData;
-	uv_timer_init(opCB->ctx->loop, pf->timer);
-	pf->timer->data = opCB;
+        pf = opCB->userData;
+        uv_timer_init(opCB->ctx->loop, pf->timer);
+        pf->timer->data = opCB;
 
     if ((pf->buffer = malloc(config_buffer_size_max)) == NULL) {
         fprintf(stderr, "%s - could not allocate buffer\n", __func__);
         exit(EXIT_FAILURE);
     }
 
-	if(sender) {
-		sender = 0;
+        if(sender) {
+                sender = 0;
 
-		pf->sendcmd = CONNECT;
-		pf->fi = fi;
-	
-		opCB->on_readable = NULL;
-		opCB->on_writable = on_writable;
-		opCB->on_all_written = NULL;
-		opCB->on_connected = NULL;
-	} else {
-		opCB->on_readable = on_readable;
-		opCB->on_writable = NULL;
-		opCB->on_all_written = NULL;
-	}
+                pf->sendcmd = CONNECT;
+                pf->fi = fi;
+        
+                opCB->on_readable = NULL;
+                opCB->on_writable = on_writable;
+                opCB->on_all_written = NULL;
+                opCB->on_connected = NULL;
+        } else {
+                opCB->on_readable = on_readable;
+                opCB->on_writable = NULL;
+                opCB->on_all_written = NULL;
+        }
 
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
@@ -662,21 +663,21 @@ on_close(struct neat_flow_operations *opCB)
 {
     struct peer *pf = NULL;
     fprintf(stderr, "%s:%d\n", __func__, __LINE__);
-   	pf = opCB->userData;
+        pf = opCB->userData;
 
-	opCB->on_readable = NULL;
-	opCB->on_writable = NULL;
-	opCB->on_all_written = NULL;
-	neat_set_operations(opCB->ctx, opCB->flow, opCB);
+        opCB->on_readable = NULL;
+        opCB->on_writable = NULL;
+        opCB->on_all_written = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-	if (pf->master) {
-    	fprintf(stderr, "%s:%d Master, stopping\n", __func__, __LINE__);
-		neat_stop_event_loop(opCB->ctx);
-	}
+        if (pf->master) {
+        fprintf(stderr, "%s:%d Master, stopping\n", __func__, __LINE__);
+                neat_stop_event_loop(opCB->ctx);
+        }
 
-	free(pf->buffer);
-	free(pf);
-	neat_free_flow(opCB->flow);
+        free(pf->buffer);
+        free(pf);
+        neat_free_flow(opCB->flow);
 
     return NEAT_OK;
 }
@@ -725,7 +726,7 @@ main(int argc, char *argv[])
             }
             break;
         case 'm':
-			sender = 1;
+                        sender = 1;
             if (config_log_level >= 1) {
                 printf("option - acting as master(sending): %d\n", config_log_level);
             }
@@ -844,42 +845,42 @@ main(int argc, char *argv[])
     }
 
 
-	if (sender) {
+        if (sender) {
         fprintf(stderr, "%s - opening file %s\n", __func__, filename);
-		/* open the file */
+                /* open the file */
 
 
-		fi = openfile(filename);
-		if (fi == NULL) {
-			fprintf(stderr, "%s - failed to open file\n", __func__);
-			perror("opening file");
-			goto cleanup;
-		}
-		fprintf(stdout, "%s:%d - file sixe %d bytes %d segments\n", __func__, __LINE__,
-			fi->size,fi->segments);
+                fi = openfile(filename);
+                if (fi == NULL) {
+                        fprintf(stderr, "%s - failed to open file\n", __func__);
+                        perror("opening file");
+                        goto cleanup;
+                }
+                fprintf(stdout, "%s:%d - file sixe %d bytes %d segments\n", __func__, __LINE__,
+                        fi->size,fi->segments);
 
         fprintf(stderr, "%s - connecting to %s:%d\n", __func__, "139.133.204.4", 6969);
-	    //if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), NULL, 0) == NEAT_OK) {
-	    if (neat_open(ctx, flow, "139.133.204.4", 6969, NULL, 0) != NEAT_OK) {
-			fprintf(stderr, "%s - neat_accept failed\n", __func__);
-			result = EXIT_FAILURE;
-			goto cleanup;
-		}
-	} else {
-		// wait for on_connected or on_error to be invoked
-		if (neat_accept(ctx, flow, 6969, NULL, 0) != NEAT_OK) {
-			fprintf(stderr, "%s - neat_accept failed\n", __func__);
-			result = EXIT_FAILURE;
-			goto cleanup;
-		}
+            //if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), NULL, 0) == NEAT_OK) {
+            if (neat_open(ctx, flow, "139.133.204.4", 6969, NULL, 0) != NEAT_OK) {
+                        fprintf(stderr, "%s - neat_accept failed\n", __func__);
+                        result = EXIT_FAILURE;
+                        goto cleanup;
+                }
+        } else {
+                // wait for on_connected or on_error to be invoked
+                if (neat_accept(ctx, flow, 6969, NULL, 0) != NEAT_OK) {
+                        fprintf(stderr, "%s - neat_accept failed\n", __func__);
+                        result = EXIT_FAILURE;
+                        goto cleanup;
+                }
 
-	}
+        }
 
     srandom(time(NULL));
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
-	fprintf(stderr, "%s - shutting down...\n", __func__);
+        fprintf(stderr, "%s - shutting down...\n", __func__);
 
     // cleanup
 cleanup:

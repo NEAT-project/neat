@@ -70,17 +70,19 @@ fi
 
 ##############
 
-echo ""
-echo "########################################"
-ARG="python3 ../../policy/pmtests.py"
-echo "Running: $ARG"
-$ARG
-RC=$?
-if [ $RC -ne 0 ]; then
-    RC_GLOBAL=1
-    echo ">> RC $RC - test failed!"
-else
-    echo ">> RC $RC - test succeeded"
+if [ $PREFIX = "" ]; then
+  echo ""
+  echo "########################################"
+  ARG="python3.5 ../../policy/pmtests.py"
+  echo "Running: $ARG"
+  $ARG
+  RC=$?
+  if [ $RC -ne 0 ]; then
+      RC_GLOBAL=1
+      echo ">> RC $RC - test failed!"
+  else
+      echo ">> RC $RC - test succeeded"
+  fi
 fi
 
 echo "########################################"

@@ -208,6 +208,66 @@ NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
 
 #define NEAT_INVALID_STREAM (-1)
 
+#define NEAT_DSCP_BE	0x00
+#define NEAT_DSCP_DF  	0x00
+#define NEAT_DSCP_EF  	0x2E
+#define NEAT_DSCP_AF11	0x0a
+#define NEAT_DSCP_AF12	0x0c
+#define NEAT_DSCP_AF13	0x0e
+#define NEAT_DSCP_AF21	0x12
+#define NEAT_DSCP_AF22	0x14
+#define NEAT_DSCP_AF23	0x16
+#define NEAT_DSCP_AF31	0x1a
+#define NEAT_DSCP_AF32	0x1c
+#define NEAT_DSCP_AF33	0x1e
+#define NEAT_DSCP_AF41	0x22
+#define NEAT_DSCP_AF42	0x24
+#define NEAT_DSCP_AF43	0x26
+#define NEAT_DSCP_CS0 	0x00
+#define NEAT_DSCP_CS1 	0x08
+#define NEAT_DSCP_CS2 	0x10
+#define NEAT_DSCP_CS3 	0x18
+#define NEAT_DSCP_CS4 	0x20
+#define NEAT_DSCP_CS5 	0x28
+#define NEAT_DSCP_CS6 	0x30
+#define NEAT_DSCP_CS7 	0x38
+
+//# Suffix Priority (Very_Low, Low, Medium, High)
+//# Prefix (Interactive,Non_Interactive,Immersive,Admitted)
+#define NEAT_QOS_AUDIO_VL        			CS1
+#define NEAT_QOS_AUDIO_L 					DF
+#define NEAT_QOS_AUDIO_M1        			EF
+#define NEAT_QOS_AUDIO_H1        			EF
+#define NEAT_QOS_INTERACTIVE_VIDEO_VL 		CS1
+#define NEAT_QOS_INTERACTIVE_VIDEO_L   		DF
+#define NEAT_QOS_INTERACTIVE_VIDEO_M1   	AF42
+#define NEAT_QOS_INTERACTIVE_VIDEO_M2    	AF43
+#define NEAT_QOS_INTERACTIVE_VIDEO_H1    	AF41
+#define NEAT_QOS_INTERACTIVE_VIDEO_H2    	AF42
+#define NEAT_QOS_NON_INTERACTIVE_VIDEO_VL 	CS1
+#define NEAT_QOS_NON_INTERACTIVE_VIDEO_L 	DF
+#define NEAT_QOS_NON_INTERACTIVE_VIDEO_M1 	AF32
+#define NEAT_QOS_NON_INTERACTIVE_VIDEO_M2  	AF33
+#define NEAT_QOS_NON_INTERACTIVE_VIDEO_H1   AF31
+#define NEAT_QOS_NON_INTERACTIVE_VIDEO_H2   AF32
+#define NEAT_QOS_DATA_VL 					CS1
+#define NEAT_QOS_DATA_L  					DF
+#define NEAT_QOS_DATA_M1 					AF11
+#define NEAT_QOS_DATA_H1 					AF21
+#define NEAT_QOS_BROADCAST					CS3
+#define NEAT_QOS_REALTIME_INTERACTIVE_DATA 	CS4
+#define NEAT_QOS_IMMERSIVE_AUDIO 			AF41
+#define NEAT_QOS_IMMERSIVE_VIDEO 			AF41
+#define NEAT_QOS_STREAMING 					AF31
+#define NEAT_QOS_BACKGROUND 				CS1
+#define NEAT_QOS_BACKGROUND_SYSTEM 			CS1
+#define NEAT_QOS_ADMITTED_AUDIO 			EF
+#define NEAT_QOS_ADMITTED_VIDEO 			AF42
+#define NEAT_QOS_ADMITTED_IMMERSIVE_AUDIO 	AF42
+#define NEAT_QOS_ADMITTED_IMMERSIVE_VIDEO 	AF42
+#define NEAT_QOS_ADMITTED_DATA 				AF42
+
+
 #define NEAT_OPTARGS (__optional_arguments)
 #define NEAT_OPTARGS_COUNT (__optional_argument_count)
 

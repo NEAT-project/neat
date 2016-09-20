@@ -65,11 +65,6 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
     struct ifa_cacheinfo *ci;
     uint32_t ifa_pref = 0, ifa_valid = 0;
 
-    //On Linux, lo has a fixed index. We have no interest in that interface
-    //TODO: Consider other filters - bridges, ifb, ...
-    if (ifm->ifa_index == LO_DEV_IDX)
-        return;
-
     if (ifm->ifa_scope == RT_SCOPE_LINK)
         return;
 
@@ -102,7 +97,7 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
     //TODO: Should this function be a callback instead? Will we have multiple
     //addresses handlers/types of context?
     neat_addr_update_src_list(nc, &src_addr, ifm->ifa_index,
-            nl_hdr->nlmsg_type == RTM_NEWADDR, ifa_pref, ifa_valid);
+            nl_hdr->nlmsg_type == RTM_NEWADDR, ifm->ifa_prefixlen, ifa_pref, ifa_valid);
 }
 
 //libuv datagram socket alloc function, un-interesting

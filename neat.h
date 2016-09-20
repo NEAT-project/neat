@@ -10,6 +10,11 @@
 extern "C" {
 #endif
 
+// TODO: this __attribute__ feature supposedly works with both clang and
+// modern gcc compilers. Could be moved to a cmake test for better
+// portability.
+#define NEAT_EXTERN __attribute__ ((__visibility__ ("default")))
+
 //Maps directly to libuv contants
 typedef enum {
     NEAT_RUN_DEFAULT = 0,
@@ -20,11 +25,11 @@ typedef enum {
 struct neat_ctx; // global
 struct neat_flow; // one per connection
 
-struct neat_ctx *neat_init_ctx();
-void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
-void neat_stop_event_loop(struct neat_ctx *nc);
-int neat_get_backend_fd(struct neat_ctx *nc);
-void neat_free_ctx(struct neat_ctx *nc);
+NEAT_EXTERN struct neat_ctx *neat_init_ctx();
+NEAT_EXTERN void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
+NEAT_EXTERN void neat_stop_event_loop(struct neat_ctx *nc);
+NEAT_EXTERN int neat_get_backend_fd(struct neat_ctx *nc);
+NEAT_EXTERN void neat_free_ctx(struct neat_ctx *nc);
 
 typedef uint64_t neat_error_code;
 struct neat_flow_operations;
@@ -65,6 +70,43 @@ struct neat_flow_operations
   struct neat_flow *flow;
 };
 
+enum neat_tlv_type {
+    NEAT_TYPE_INTEGER = 0,
+    NEAT_TYPE_FLOAT,
+    NEAT_TYPE_STRING,
+};
+typedef enum neat_tlv_type neat_tlv_type;
+
+enum neat_tlv_tag {
+    NEAT_TAG_STREAM_ID = 0,
+    NEAT_TAG_STREAM_COUNT,
+    NEAT_TAG_LOCAL_NAME,
+    NEAT_TAG_SERVICE_NAME,
+    NEAT_TAG_CONTEXT,
+    NEAT_TAG_PARTIAL_RELIABILITY_METHOD,
+    NEAT_TAG_PARTIAL_RELIABILITY_VALUE,
+    NEAT_TAG_PARTIAL_MESSAGE_RECEIVED,
+    NEAT_TAG_PARTIAL_SEQNUM,
+    NEAT_TAG_UNORDERED,
+    NEAT_TAG_UNORDERED_SEQNUM,
+    NEAT_TAG_DESTINATION_IP_ADDRESS,
+    NEAT_TAG_PRIORITY,
+
+    NEAT_TAG_LAST
+};
+typedef enum neat_tlv_tag neat_tlv_tag;
+
+struct neat_tlv {
+    neat_tlv_tag  tag;
+    neat_tlv_type type;
+
+    union {
+        int   integer;
+        char *string;
+        float real;
+    } value;
+};
+
 // Flags to use for neat_flow_init()
 #define NEAT_PRESERVE_MSG_BOUNDARIES (1 << 0)
 #define NEAT_USE_SECURE_INTERFACE (1 << 1)
@@ -78,42 +120,45 @@ struct neat_flow_security {
     const char** ciphers; // list of ciphers available to use
 };
 
-struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
-neat_error_code neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
+NEAT_EXTERN struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
+NEAT_EXTERN neat_error_code neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
                                  uint64_t flags, int flow_profile, struct neat_flow_security *sec);
-void neat_free_flow(struct neat_flow *flow);
+NEAT_EXTERN void neat_free_flow(struct neat_flow *flow);
 
-neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
                                     struct neat_flow_operations *ops);
 
-neat_error_code neat_get_stats(struct neat_flow *flow, char **neat_stats);
+NEAT_EXTERN neat_error_code neat_get_stats(struct neat_flow *flow, char **neat_stats);
 
-neat_error_code neat_open(struct neat_ctx *ctx, struct neat_flow *flow,
-                          const char *name, uint16_t port);
-neat_error_code neat_open_multistream(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_open(struct neat_ctx *mgr, struct neat_flow *flow,
+                          const char *name, uint16_t port,
+                          struct neat_tlv optional[], unsigned int opt_count);
+NEAT_EXTERN neat_error_code neat_open_multistream(struct neat_ctx *ctx, struct neat_flow *flow,
                           const char *name, uint16_t port, int count);
-neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
-                          unsigned char *buffer, uint32_t amt, uint32_t *actualAmt);
-neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
-                           const unsigned char *buffer, uint32_t amt);
-neat_error_code neat_write_ex(struct neat_ctx *ctx, struct neat_flow *flow,
-                              const unsigned char *buffer, uint32_t amt,
-                              int stream_id);
-neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
+                          unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
+                          struct neat_tlv optional[], unsigned int opt_count);
+NEAT_EXTERN neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *flow,
+                           const unsigned char *buffer, uint32_t amt,
+                           struct neat_tlv optional[], unsigned int opt_count);
+NEAT_EXTERN neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t *outMask);
-neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
-                                  uint64_t inMask);
-neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
-                            const char *name, uint16_t port);
-neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
-neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow);
-neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow);
-neat_error_code neat_change_timeout(struct neat_ctx *ctx, struct neat_flow *flow,
-                                    int seconds);
-neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
+                                              uint64_t inMask);
+NEAT_EXTERN neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
+                            uint16_t port, struct neat_tlv optional[], unsigned int opt_count);
+NEAT_EXTERN neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
+NEAT_EXTERN neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow);
+NEAT_EXTERN neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow);
+NEAT_EXTERN neat_error_code neat_change_timeout(struct neat_ctx *ctx, struct neat_flow *flow,
+                                    unsigned int seconds);
+NEAT_EXTERN neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow,
                                       const char *name);
-neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow,
+NEAT_EXTERN neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow,
                                       int rate, int seconds);
+// The filename should be a PEM file with both cert and key
+NEAT_EXTERN neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct neat_flow *flow,
+                                     const char *filename);
 
 // do we also need a set property with a void * or an int (e.g. timeouts) or should
 // we create higher level named functions for such things?
@@ -154,8 +199,90 @@ neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *fl
 #define NEAT_ERROR_UNABLE (7)
 #define NEAT_ERROR_MESSAGE_TOO_BIG (8)
 #define NEAT_ERROR_REMOTE (9)
+#define NEAT_ERROR_OUT_OF_MEMORY (10)
 
 #define NEAT_INVALID_STREAM (-1)
+
+#define NEAT_OPTARGS (__optional_arguments)
+#define NEAT_OPTARGS_COUNT (__optional_argument_count)
+
+#define NEAT_OPTARGS_MAX (NEAT_TAG_LAST)
+
+#define NEAT_OPTARGS_INIT() \
+    do { \
+        NEAT_OPTARGS_COUNT = 0; \
+    } while (0);
+
+#define NEAT_OPTARGS_RESET NEAT_OPTARGS_INIT
+
+#ifdef assert
+
+#define NEAT_OPTARGS_DECLARE(max) \
+    struct neat_tlv __optargs_buffer[max]; \
+    struct neat_tlv *NEAT_OPTARGS = &__optargs_buffer[0]; \
+    unsigned int NEAT_OPTARGS_COUNT; \
+    unsigned int __optional_arguments_limit = max;
+
+#define NEAT_OPTARG_INT(tagname, val) \
+    do { \
+        assert(NEAT_OPTARGS_COUNT < __optional_arguments_limit);\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.integer = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_INTEGER;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#define NEAT_OPTARG_FLOAT(tagname, val) \
+    do { \
+        assert(NEAT_OPTARGS_COUNT < __optional_arguments_limit);\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.real = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_FLOAT;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#define NEAT_OPTARG_STRING(tagname, val) \
+    do { \
+        assert(NEAT_OPTARGS_COUNT < __optional_arguments_limit);\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.string = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_STRING;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#else
+
+#define NEAT_OPTARGS_DECLARE(max) \
+    struct neat_tlv __optargs_buffer[max]; \
+    struct neat_tlv *NEAT_OPTARGS = &__optargs_buffer[0]; \
+    unsigned int NEAT_OPTARGS_COUNT;
+
+#define NEAT_OPTARG_INT(tagname, val) \
+    do { \
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.integer = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_INTEGER;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#define NEAT_OPTARG_FLOAT(tagname, val) \
+    do { \
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.real = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_FLOAT;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#define NEAT_OPTARG_STRING(tagname, val) \
+    do { \
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].value.string = val;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].type = NEAT_TYPE_STRING;\
+        NEAT_OPTARGS[NEAT_OPTARGS_COUNT].tag = tagname;\
+        NEAT_OPTARGS_COUNT++;\
+    } while (0);
+
+#endif // ifdef assert else
+
 
 // cleanup extern "C"
 #ifdef __cplusplus

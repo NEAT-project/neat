@@ -36,7 +36,7 @@ on_readable(struct neat_flow_operations *opCB)
     uint32_t bytes_read = 0;
     neat_error_code code;
 
-    code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read);
+    code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read, NULL, 0);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
         return 0;
     } else if (code != NEAT_OK) {
@@ -58,7 +58,7 @@ static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
-    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *)request, strlen(request));
+    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *)request, strlen(request), NULL, 0);
     if (code != NEAT_OK) {
         return on_error(opCB);
     }
@@ -145,7 +145,7 @@ main(int argc, char *argv[])
         neat_set_operations(ctx, flows[i], &(ops[i]));
 
         // wait for on_connected or on_error to be invoked
-        if (neat_open(ctx, flows[i], argv[argc - 1], 80) != NEAT_OK) {
+        if (neat_open(ctx, flows[i], argv[argc - 1], 80, NULL, 0) != NEAT_OK) {
             fprintf(stderr, "Could not open flow\n");
             result = EXIT_FAILURE;
         } else {

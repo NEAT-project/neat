@@ -4,12 +4,14 @@ LIST(APPEND neat_programs
     client.c
     client_multi.c
     client_http_get.c
+    client_https_get.c
     server_chargen.c
     server_daytime.c
     server_discard.c
     server_echo.c
     server_echo_multi.c
     tneat.c
+    peer.c
 )
 
 

@@ -16,7 +16,7 @@ ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he bsd10.nplab.de"
 echo "Running: $ARG"
 $ARG
 RC=$?
-if [[ $RC != 0 ]]; then
+if [ $RC -ne 0 ]; then
     RC_GLOBAL=1
     echo ">> test failed!"
 else
@@ -31,7 +31,7 @@ ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he 212.201.121.100"
 echo "Running: $ARG"
 $ARG
 RC=$?
-if [[ $RC != 0 ]]; then
+if [ $RC -ne 0 ]; then
     RC_GLOBAL=1
     echo ">> test failed!"
 else
@@ -46,7 +46,7 @@ ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he 2a02:c6a0:4015:10::100"
 echo "Running: $ARG"
 $ARG
 RC=$?
-if [[ $RC != 0 ]]; then
+if [ $RC -ne 0 ]; then
     RC_GLOBAL=1
     echo ">> test failed!"
 else
@@ -61,7 +61,7 @@ ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he not.resolvable.neat"
 echo "Running: $ARG"
 $ARG
 RC=$?
-if [[ $RC != 1 ]]; then
+if [ $RC -ne 1 ]; then
     RC_GLOBAL=1
     echo ">> RC $RC - test failed!"
 else
@@ -72,15 +72,19 @@ fi
 
 echo ""
 echo "########################################"
-ARG="python3 ../policy/pmtests.py"
+ARG="python3 ../../policy/pmtests.py"
 echo "Running: $ARG"
 $ARG
 RC=$?
-if [[ $RC != 0 ]]; then
+if [ $RC -ne 0 ]; then
     RC_GLOBAL=1
     echo ">> RC $RC - test failed!"
 else
     echo ">> RC $RC - test succeeded"
 fi
+
+echo "########################################"
+echo "All tests finished - RC $RC_GLOBAL"
+echo "########################################"
 
 exit $RC_GLOBAL

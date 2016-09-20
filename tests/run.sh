@@ -70,7 +70,7 @@ fi
 
 ##############
 
-if [ $PREFIX = "" ]; then
+if [ "$PREFIX" == "" ]; then
   echo ""
   echo "########################################"
   ARG="python3.5 ../../policy/pmtests.py"

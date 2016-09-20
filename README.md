@@ -1,4 +1,4 @@
-<img src="https://rawgit.com/NEAT-project/neat/weinrank/api_description/doc/neat_logo.svg" width="350"/>
+<img src="https://cdn.rawgit.com/NEAT-project/neat/master/doc/neat_logo.svg" width="350"/>
 
 **A New, Evolutive API and Transport-Layer Architecture for the Internet**
 

@@ -87,7 +87,7 @@ void neat_log(uint8_t level, const char* format, ...) {
 
     tv_diff.tv_sec = tv_now.tv_sec - tv_init.tv_sec;
 
-    if (tv_init.tv_usec < tv_now.tv_usec) {
+    if (tv_init.tv_usec <= tv_now.tv_usec) {
         tv_diff.tv_usec = tv_now.tv_usec - tv_init.tv_usec;
     } else {
         tv_diff.tv_sec -= 1;

@@ -6,6 +6,7 @@ LIST(APPEND neat_test_programs
 )
 
 LIST(APPEND neat_test_scripts
+    run.sh
     test_echo.sh
 )
 

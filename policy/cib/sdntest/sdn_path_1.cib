@@ -1,0 +1,12 @@
+{
+    "uid": "sdn_path_1",
+    "priority": 2,
+    "description": "SDN controller path information",
+    "link": true,
+    "match" : [{"local_ip": {"value": "10.10.2.1"}}],
+    "properties":{
+        "path_capacity": {"value": 10000, "precedence":1},
+        "path_available_bw": {"value": 8000, "precedence":1},
+		"local_port": {"value": 50001}
+    }
+}

@@ -1,0 +1,12 @@
+{  
+    "name":"set MPTCP subflows",
+    "priority": 20,
+    "match":{
+		"transport": {
+            "value": "MPTCP"
+        }
+    },
+    "properties":{
+        "mptcp_subflows": { "value": 2, "score": 0}
+    }
+}

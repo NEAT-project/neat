@@ -1,0 +1,12 @@
+{
+    "uid": "lte_remote",
+    "priority": 2,
+    "description": "LTE remote information",
+    "link": true,
+    "match" : [
+    	{"interface": {"value": "lte0"}}
+    ],
+    "properties":
+    	{"remote_ip": {"value": "192.168.113.24", "precedence":2, "score": 1},  
+    	 "remote_port": {"value": "8080", "precedence":2, "score": 1}}
+}

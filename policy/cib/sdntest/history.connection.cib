@@ -1,0 +1,15 @@
+{
+    "uid": "historic info",
+    "description": "appended properties to CIB rows matching all match properties.",
+    "priority": 1,
+    "match": [
+    	{"local_ip": {"value": "10.10.2.1"}, 
+         "interface": {"value": "eth0"}, 
+         "remote_ip": {"value": "8.8.8.8"}}        
+     ],
+    "properties": [{
+        "remote_port": {"value": 80, "precedence":1},
+        "local_port": {"value": 56674, "precedence":1},
+        "transport": {"value": "TCP", "precedence":1}
+    }]
+}

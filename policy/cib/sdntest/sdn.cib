@@ -1,0 +1,10 @@
+{
+    "uid": "sdn",
+    "priority": 2,
+    "description": "SDN controller path information",
+    "link": true,
+    "properties":{
+	    "available_paths": {"value": 3}
+    },
+    "match" : [{"local_ip": {"value": "10.10.2.1"}}, {"remote_ip": {"value": "10.10.2.2"}}]
+}

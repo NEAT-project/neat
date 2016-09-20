@@ -1,0 +1,14 @@
+{
+    "uid": "lte0",
+    "timestamp": 1463575512,
+    "root": true,
+    "priority": 4,
+    "properties":{
+        "interface": {"value": "lte0", "precedence":2},
+        "capacity": {"value": 300, "precedence":2},
+        "local_ip": [{"value": "10.10.2.5", "precedence":2}],
+        "is_wired": {"value": false, "precedence":2},
+        "is_lte": {"value": true, "precedence":2},
+        "MTU": {"value": 1500}
+    }
+}

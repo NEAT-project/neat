@@ -100,7 +100,7 @@ static void free_he_handle_cb(uv_handle_t *handle)
 
 static neat_error_code
 he_resolve_cb(struct neat_resolver_results *results,
-              uint8_t code,
+              uint8_t code, // actually a 'neat_resolver_code'
               void *user_data)
 {
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM]; /* We only support SCTP, TCP, UDP, and UDPLite */
@@ -118,7 +118,9 @@ he_resolve_cb(struct neat_resolver_results *results,
 
     nr_of_stacks = neat_property_translate_protocols(flow->propertyMask, stacks);
 
-    assert (results->lh_first);
+    if (!results || !results->lh_first) {
+      return NEAT_ERROR_DNS;
+    }
     assert (!flow->resolver_results);
 
     he_print_results(results);
@@ -145,6 +147,7 @@ he_resolve_cb(struct neat_resolver_results *results,
             case NEAT_STACK_UDP:
             case NEAT_STACK_UDPLITE:
                 he_ctx->ai_socktype = SOCK_DGRAM;
+				break;
             default:
                 he_ctx->ai_socktype = SOCK_STREAM;
             }

@@ -1,0 +1,26 @@
+{
+    "name":"Bulk transfer",
+    "description":"bulk file transfer policy",
+    "priority": 5,
+    "remove_matched": false,
+    "match":{
+        "remote_ip": {
+            "precedence": 1,
+            "value": "10.1.23.45"
+        }
+    },
+    "properties":{
+        "MTU": {
+            "value": [9000, 1500]
+        },
+        "transport": [
+            {"precedence": 1, "value": "UDP"},
+            {"precedence": 1, "value": "TCP", "banned": ["SCTP", "DCTCP"]}
+        ],
+        "capacity": {
+            "precedence": 2,
+            "value": {"start":10000, "end":100000}
+        }
+    }
+}
+

@@ -21,8 +21,14 @@ struct neat_tcp_info *neat_get_tcp_info(neat_flow *flow)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     tcpinfo = (struct neat_tcp_info*)malloc(sizeof(struct neat_tcp_info));
-    linux_get_tcp_info(flow, tcpinfo);
     
+#ifdef __linux__
+    linux_get_tcp_info(flow, tcpinfo);
+#else
+    // TODO: implement error reporting for not-supported OSes
+    tcpinfo = memset(0, tcpinfo, sizeof(struct neat_tcp_info));
+#endif
+
     return tcpinfo;
 }
 

@@ -26,7 +26,7 @@ struct neat_tcp_info *neat_get_tcp_info(neat_flow *flow)
     linux_get_tcp_info(flow, tcpinfo);
 #else
     // TODO: implement error reporting for not-supported OSes
-    tcpinfo = memset(0, tcpinfo, sizeof(struct neat_tcp_info));
+    tcpinfo = memset(tcpinfo, 0, sizeof(struct neat_tcp_info));
 #endif
 
     return tcpinfo;

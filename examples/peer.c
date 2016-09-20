@@ -690,7 +690,7 @@ on_connected(struct neat_flow_operations *opCB)
         exit(EXIT_FAILURE);
     }
 
-	neat_set_qos(opCB->ctx, opCB->flow, 0x2e);
+	neat_set_qos(opCB->ctx, opCB->flow, NEAT_DSCP_EF);
 	neat_set_ecn(opCB->ctx, opCB->flow, 0x00);
 
 	pf = opCB->userData;

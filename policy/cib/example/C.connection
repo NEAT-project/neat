@@ -1,13 +1,11 @@
 {
-  "type": "local",
-  "id": "C",
-  "immutable": {
-    "local_ip": "10.10.2.2",
-    "interface": "ra0",
-    "is_wired": false,
-    "MTU": 890,
-    "remote_ip": "10.1.23.45",
-    "capacity": 60
-  }
+    "uid": "C",
+    "link": true,
+    "description": "SDN controller path information",
+    "priority": 1,
+    "properties":{
+        "utilization": {"value": 0.63},
+        "capacity": {"value": 1000}
+    },
+    "match" : [{"uid": {"value": "A"}}, {"uid": {"value": "B"}}]
 }
-

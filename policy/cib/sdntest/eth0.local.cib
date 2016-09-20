@@ -1,0 +1,13 @@
+{
+    "uid": "eth0",
+    "timestamp": 1463575512,
+    "root": true,
+    "priority": 4,
+    "properties": {
+        "interface": {"value": "eth0", "precedence":2},
+        "MTU": {"value": {"start":50, "end":9000}},
+        "capacity": {"value": 10000, "precedence":2},
+        "local_ip": {"value": "10.10.2.1", "precedence":2},
+        "is_wired": {"value": true, "precedence":2}
+    }
+}

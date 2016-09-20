@@ -1,0 +1,13 @@
+{
+    "uid": "eth0_remote",
+    "description": "remote endpoint information",
+    "priority": 2,
+    "link": true,
+    "match" : [
+    	{"uid": {"value": "eth0"}}
+    ],
+    "properties":	
+        {"remote_ip": {"value": "8.8.8.8", "precedence":2, "score": 2},
+    	 "remote_port": {"value": "80", "precedence":2, "score": 1}
+    	}
+}

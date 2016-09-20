@@ -1,0 +1,22 @@
+{
+    "uid": "sdn_remote",
+    "priority": 2,
+    "description": "SDN remote information",
+    "link": true,
+    "match" : [
+    	{"uid": {"value": "sdn_path_1"}}, 
+   	 	{"uid": {"value": "sdn_path_2"}}, 
+    	{"uid": {"value": "sdn_path_3"}}
+    ],
+    "properties":[
+    	{"remote_ip": [{"value": "8.8.8.8", "precedence":2, "score": 1}, 
+    		           {"value": "8.8.4.4", "precedence":2, "score": 1}], 
+    	 "remote_port": {"value": "80", "precedence":2, "score": 1}
+    	}, 
+    	{"remote_ip": {"value": "203.0.113.23", "precedence":2, "score": 1},  
+    	 "remote_port": [{"value": "873", "precedence":2, "score": 2}, 
+    	                 {"value": "8080", "precedence":2, "score": 1}],
+         "mptcp_subflows": { "value": 3, "precedence":2}
+       }
+    ]
+}

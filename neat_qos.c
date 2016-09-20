@@ -17,7 +17,8 @@ neat_map_qos_to_dscp(uint8_t qos)
 neat_error_code
 neat_set_tos(struct neat_ctx *ctx, struct neat_flow *flow)
 {
-    uint8_t dscp, tos;
+    uint8_t dscp; 
+	int tos;
 
     switch (flow->socket->stack) {
     case NEAT_STACK_UDP:
@@ -47,4 +48,3 @@ neat_set_ecn(struct neat_ctx *ctx, struct neat_flow *flow, uint8_t ecn)
     flow->ecn = 0x03 & ecn;
     return neat_set_tos(ctx, flow);
 }
-

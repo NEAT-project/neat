@@ -393,6 +393,9 @@ class NEATProperty(object):
         if self.banned:
             # strikethrough banned values
             banned_str = ','.join([u'\u0336'.join(i.value) + u'\u0336' for i in self.banned])
+            # fix non UTF environments (TODO there should be a better way to handle this)
+            banned_str = banned_str.encode('ascii', errors='ignore').decode('ascii')
+            print(banned_str)
             if len(val_str) > 0:
                 keyval_str += ','
             keyval_str += banned_str

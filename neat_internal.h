@@ -171,6 +171,8 @@ struct neat_flow
     const char *name;
     char *server_pem;
     uint16_t port;
+	uint8_t qos;
+	uint8_t ecn;
     uint64_t propertyMask;
     uint64_t propertyAttempt;
     uint64_t propertyUsed;

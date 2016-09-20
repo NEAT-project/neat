@@ -658,6 +658,7 @@ on_timeout(uv_timer_t *handle)
 
     fprintf(stderr, "%s:%d %s\n", __func__, __LINE__, "timeout firing");
 
+
 	pf = opCB->userData;
 	if(pf->retry_count++ > retry_limit) {
 			pf->sendcmd = ERROR;
@@ -688,6 +689,9 @@ on_connected(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s - could not allocate peer\n", __func__);
         exit(EXIT_FAILURE);
     }
+
+	neat_set_qos(opCB->ctx, opCB->flow, 0x2e);
+	neat_set_ecn(opCB->ctx, opCB->flow, 0x00);
 
 	pf = opCB->userData;
 	uv_timer_init(opCB->ctx->loop, pf->timer);

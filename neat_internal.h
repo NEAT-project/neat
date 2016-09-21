@@ -415,6 +415,7 @@ struct neat_event_cb {
 };
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);
+neat_error_code neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_list, uv_poll_cb callback_fx);
 
 // Internal routines for hooking up lower-level services/modules with
 // API callbacks:

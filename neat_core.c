@@ -1529,7 +1529,6 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
 
     struct neat_resolver_res *result;
     struct neat_he_candidates *candidates;
-    // struct neat_he_candidate *tmp;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -1547,9 +1546,8 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
 
     candidates = calloc(1, sizeof(*candidates));
 
-    // assert(candidates);
     if (!candidates) {
-        // neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+        neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
         return NEAT_ERROR_OUT_OF_MEMORY;
     }
 
@@ -1557,7 +1555,6 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
 
     size_t prio = 0;
 
-#if 1
     // For each available src/dst pair
     LIST_FOREACH(result, results, next_res) {
         int rc;
@@ -1633,102 +1630,12 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             }
 
             TAILQ_INSERT_TAIL(candidates, candidate, next);
-
-            // neat_log(NEAT_LOG_DEBUG, "[%s] (%d) %s -> %s", iface, candidate->pollable_socket->stack, src_buffer, dst_buffer);
         }
     }
-#endif
 
     neat_he_open(ctx, flow, candidates, he_connected_cb);
 
     return NEAT_OK;
-
-#if 0
-    assert(flow);
-    assert(ctx);
-    assert (results->lh_first);
-
-    candidates = calloc(1, sizeof(*candidates));
-    assert(candidates);
-    TAILQ_INIT(candidates);
-
-    LIST_FOREACH(result, results, next_res) {
-        char dst_buffer[NI_MAXHOST];
-        char src_buffer[NI_MAXHOST];
-        char iface[IF_NAMESIZE];
-        char *iface_ptr;
-        int rc;
-        struct neat_he_candidate *candidate = calloc(1, sizeof(*candidate));
-        assert(candidate);
-        candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket));
-        assert(candidate->pollable_socket);
-
-        rc = getnameinfo((struct sockaddr *)&result->dst_addr,
-                         result->dst_addr_len,
-                         dst_buffer, sizeof(dst_buffer), NULL, 0, NI_NUMERICHOST);
-
-        if (rc != 0) {
-            neat_log(NEAT_LOG_DEBUG, "getnameinfo() failed: %s\n",
-                     gai_strerror(rc));
-            continue;
-        }
-
-        rc = getnameinfo((struct sockaddr *)&result->src_addr,
-                         result->src_addr_len,
-                         src_buffer, sizeof(src_buffer), NULL, 0, NI_NUMERICHOST);
-
-        if (rc != 0) {
-            neat_log(NEAT_LOG_DEBUG, "getnameinfo() failed: %s\n",
-                     gai_strerror(rc));
-            continue;
-        }
-
-        // This ensures we use only one address from each address family for
-        // each interface to reduce the number of candidates.
-        TAILQ_FOREACH(tmp, candidates, next) {
-            if (tmp->if_idx == result->if_idx && tmp->pollable_socket->family == result->ai_family)
-                goto skip;
-        }
-
-        iface_ptr = if_indextoname(result->if_idx, iface);
-
-        if (iface_ptr == NULL)
-            continue;
-
-        candidate->pollable_socket->family      = result->ai_family;
-        candidate->pollable_socket->src_address = strdup(src_buffer);
-        assert(candidate->pollable_socket->src_address);
-        candidate->if_name                      = strdup(iface);
-        candidate->if_idx                       = result->if_idx;
-        assert(candidate->if_name);
-        candidate->pollable_socket->dst_address = strdup(dst_buffer);
-        candidate->pollable_socket->port        = flow->port;
-
-        candidate->pollable_socket->dst_len     = result->src_addr_len;
-        candidate->pollable_socket->src_len     = result->dst_addr_len;
-        memcpy(&candidate->pollable_socket->src_sockaddr, &result->src_addr, result->src_addr_len);
-        memcpy(&candidate->pollable_socket->dst_sockaddr, &result->dst_addr, result->dst_addr_len);
-
-        if (candidate->pollable_socket->family == AF_INET6) {
-            ((struct sockaddr_in6*) &candidate->pollable_socket->dst_sockaddr)->sin6_port =
-                    htons(candidate->pollable_socket->port);
-        } else {
-            ((struct sockaddr_in*) &candidate->pollable_socket->dst_sockaddr)->sin_port =
-                    htons(candidate->pollable_socket->port);
-        }
-
-        TAILQ_INSERT_TAIL(candidates, candidate, next);
-
-        neat_log(NEAT_LOG_DEBUG, "[%s] %s -> %s", iface, src_buffer, dst_buffer);
-        continue;
-skip:
-        neat_log(NEAT_LOG_DEBUG, "[%s] %s -> %s (skipped)", iface, src_buffer, dst_buffer);
-        continue;
-    }
-
-    // neat_candidates_fallback(ctx, flow, candidates);
-    return NEAT_OK;
-#endif
 }
 
 

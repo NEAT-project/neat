@@ -160,6 +160,11 @@ NEAT_EXTERN neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct n
 NEAT_EXTERN neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct neat_flow *flow,
                                      const char *filename);
 
+NEAT_EXTERN neat_error_code neat_set_qos(struct neat_ctx *ctx, 
+					struct neat_flow *flow, uint8_t qos);
+NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx, 
+					struct neat_flow *flow, uint8_t ecn);
+
 // do we also need a set property with a void * or an int (e.g. timeouts) or should
 // we create higher level named functions for such things?
 

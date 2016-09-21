@@ -1,28 +1,55 @@
 # Policy Manager
 
-**INITIAL ALPHA**
+**DRAFT**
+
+# Quick Start
+
+To start the policy manager simply run:
+
+```
+./neatpmd.py --cib ./cib/sdntest/ --pib ./pib/sdntest
+
+```
+
+in the `neat/policy` directory. The `--cib` and `--pib` options specify the respective locations of the CIB and the PIB.
 
 ## NEAT properties
 
-NEAT properties are essentially `key|value` tuples describing attributes used within the NEAT Policy Manager. Properties can function as a constraint, e.g., in a policy, or as a statement, e.g., in the CIB.
+NEAT properties are essentially `key|value` tuples describing attributes used by the components of the NEAT Policy Manager. A property can be used  to describe attributes of the system, e.g., known protocol, interface characteristics in the CIB, or to define constraints through policies.
 
-Each property is associated with a `precedence` or type which identifies the "importance" of the property. Specifically the precedence indicates if the property may be modified by the Policy Manager logic. Currently three property precedence levels are defined in order of decreasing priority:
+Each property has a `key` string and `value`. Currently property values can be
+
+  1. a **single** boolean, integer, float or string value, e.g., `2`, `true`, or `"TCP"`. 
+  2. a **set** of values `[100, 200, 300, "foo"]`. 
+  3. a numeric **range** `{"start":1, "end":10}`.
+
+Each property is further associated with a `precedence` which identifies the "importance" of the property. Specifically, the precedence indicates if the property may be modified by the Policy Manager logic or if it is immutable. Currently two property precedence levels are defined in order of decreasing priority:
 
 + `[immutable]` (precedence 2) these are mandatory properties whose value cannot be changed.
-+ `(requested)` (precedence 1)these are optional properties whose value may be overwritten. A mismatch of such an requested attribute will reduce the `score` of the property (see below).
-+ `<informational>` (precedence 0) these are properties which have an informational nature. NEAT logic may choose to ignore these.
++ `(requested)` (precedence 1) these are optional properties whose value may be overwritten. A mismatch of such properties will result in a penalty in the ranking within the PM. Such penalties are recorded as the `score` of the property.
 
-In the following we indicate a property's precedence by the bracket types shown above.
- 
-<img src="https://rawgit.com/NEAT-project/neat/master/policy/doc/properties.svg" width="220"/>
+In the sequel we use the following notation: we separate the property key/value pair by the `|` character and indicate the property's precedence by the bracket types shown above. We append the score to the brackets and omit it if zero. For example
+
++  `[transport|TCP]+2`: the transport protocol *must* be "TCP"
++   `(MTU|1500,2000,9000)`: one of the specified MTU values *should* be chosen if possible
++   `(capacity|10-1000)+1`: the interface capacity should be within the numeric range specified by the integers
+
+Two NEAT properties are considered 'equal' if their key and value attributes are identical. Precedence and scores are ignored when testing for equality. A comparison of two properties always yields a boolean result.
+
+### Property Operators
+
+Two NEAT properties are considered 'equal' if their key and value attributes are equal. Precedence and scores are ignored when testing for equality. A comparison of two properties yields a boolean result. 
+
+For instance, the comparison `[transport|TCP]+1 == (transport|TCP)+3` is true. Set and range value attributes are also considered equal their values overlap, i.e., `[transport|TCP,UDP,MPTCP] == [transport|TCP]`, or `[latency|1-100]==[latency|55]`.
 
 
-Two NEAT properties are considered 'equal' if their key and value attributes are identical, i.e., precedences and scores are ignored when testing for equality. A comparison of two properties always yields a boolean result.
+
+A property update is considered successful if the ranges overlap - the resulting updated property will contain the intersection of the two ranges.
 
 
 In the course of a lookup in the PM, properties from various sources will be compared and their values may be *updated*. A property's value may *only* be updated by another property whose precedence is greater or equal than itself. A property may only be updated by another property with the same key. When a property is updated it inherits the precedence of the updating property as illustrated below:
 
-  <img src="https://rawgit.com/NEAT-project/neat/master/policy/doc/properties_example.svg" width="380"/>
+
 
 As an example, if an immutable property is requested by an application and this property clashes with the corresponding property in a connection candidate the candidate must be discarded.
 
@@ -30,13 +57,11 @@ As an example, if an immutable property is requested by an application and this 
 
 In addition, each property is associated with a numeric `score` denoting whether, and how often, a property has been matched. Each time a property is updated its score is increased if its value matched the compared property, and decreased otherwise. The property score is used to determine the most suitable NEAT connection `candidate` for a given request (see below).
 
-### Numeric property ranges
 
-In addition to single values (boolean, integer, float, ...) the value of a property may be specified as a numeric two-tuple to indicate a range, e.g. `(5,30.1)` or `(100,inf)`. Single numeric values are viewed as a range with a length of one.
-
-When comparing properties containing range values, two properties are considered "equal" if their ranges overlap. A property update is considered successful if the ranges overlap - the resulting updated property will contain the intersection of the two ranges.
 
 ## NEAT Policies
+
+__This needs to be updated__
 
 Policies are based around NEAT properties. Each policy contains the following entities:
 
@@ -65,33 +90,48 @@ The *N* entries with the larges aggregate score are appended to the candidate li
 
 ## CIB format
 
-The CIB is made up of three repositories
+[See CIB docs](doc/CIB format.md)
 
-+ `local` (L)
-+ `connection` (C)
-+ `remote` (R)
 
-TODO
 
 # Example
  
+ 
+## Jupyter Notebook 
+
+__This needs to be updated__
+
 For a detailed walkthrough example see the [**Policy Manager Jupyter notebook**](neat_policy_example.ipynb).
 
 
-To run the policy manager with the included sample policies run:
+## running the PM
 
-    $ ./neatpmd.py
 
-The PM will create two named pipes (if these don’t already exist) called `pm_json.in` and `pm_json.out` and wait for input. Next, a JSON string containing the requested properties can be passed to the input pipe:
+To start the policy manager run:
 
-    $ JSON=='{"MTU": {"value": [1500, Infinity]}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10.1.23.45"}, "transport_TCP": {"value": true}}'   
-    $ echo $JSON >> pm_json.in
+```
+$ ./neatpmd.py --cib ./cib/sdntest/ --pib ./pib/sdntest
+
+```
+
+in the `neat/policy` directory. The `--cib` and `--pib` options specify the respective locations of the CIB and the PIB. By default the PM will create a Unix domain socket located at `~/.neat/neat_pm_socket`, where it will listen for JSON strings containing application requests, and it will output the list of generated candidates.
+
+We can test `neatpmd.py` using the `socat` utility:
+
+```
+$ JSON='{"MTU": {"value": [1500, Infinity]}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10:54:1.23"}, "transport": {"value": "TCP"}}'
+$ echo $JSON | socat -d - UNIX-CONNECT:$HOME/.neat/neat_pm_socket
+``` 
+or if reading from a file:
+
+``` 
+$ socat -d -d -d  FILE:request.json UNIX-CONNECT:$HOME/.neat/neat_pm_socket
+``` 
 
 
 The PM will output a JSON string containing the connection candidates (two of them for the given example) into the out pipe. 
 
 ```
-$ cat < pm_json.out
 [{"MTU": {"precedence": 2, "score": 2.0, "value": 9600}, "TCP_window_scale": {"precedence": 1, "score": NaN, "value": true}, "capacity": {"precedence": 2, "score": 1.0, "value": 10000}, "dns_name": {"precedence": 0, "score": NaN, "value": "backup.example.com"}, "interface": {"precedence": 2, "score": NaN, "value": "en0"}, "interface_latency": {"precedence": 2, "score": NaN, "value": [0.0, 40.0]}, "is_wired": {"precedence": 2, "score": 1.0, "value": true}, "local_ip": {"precedence": 2, "score": NaN, "value": "10.2.0.1"}, "remote_ip": {"precedence": 2, "score": 1.0, "value": "10.1.23.45"}, "transport": {"precedence": 0, "score": NaN, "value": "TCP"}, "transport_TCP": {"precedence": 1, "score": NaN, "value": true}}, {"MTU": {"precedence": 2, "score": 0.0, "value": 1500}, "TCP_window_scale": {"precedence": 1, "score": NaN, "value": true}, "capacity": {"precedence": 2, "score": 1.0, "value": 40000}, "interface": {"precedence": 2, "score": NaN, "value": "en1"}, "interface_latency": {"precedence": 2, "score": 1.0, "value": 35}, "is_wired": {"precedence": 2, "score": 1.0, "value": true}, "local_ip": {"precedence": 2, "score": NaN, "value": "192.168.1.2"}, "remote_ip": {"precedence": 2, "score": NaN, "value": "10.1.23.45"}, "transport_TCP": {"precedence": 1, "score": 1.0, "value": true}, "transport_UDP": {"precedence": 0, "score": NaN, "value": true}}]
 ```
 

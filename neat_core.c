@@ -436,14 +436,14 @@ void neat_free_flow(neat_flow *flow)
     }
 #endif
 
-    if (flow->isPolling)
-        uv_poll_stop(flow->socket->handle);
-
-    if (flow->socket && flow->socket->handle != NULL &&
-        (flow->socket->handle->type != UV_UNKNOWN_HANDLE))
-        uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
-    else
+	if (!uv_is_closing((uv_handle_t *)(flow->socket->handle)) &&
+		((flow->socket->handle != NULL) &&
+		(flow->socket->handle->type != UV_UNKNOWN_HANDLE)) ) {
+		uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
+	} else {
         synchronous_free(flow);
+	}
+
 }
 
 neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,
@@ -1747,11 +1747,6 @@ accept_resolve_cb(struct neat_resolver_results *results,
                 (neat_base_stack(stacks[i]) == NEAT_STACK_UDP) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_UDPLITE) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_TCP)) {
-
-                if (neat_base_stack(stacks[i]) == NEAT_STACK_UDP ||
-                    (neat_base_stack(stacks[i]) == NEAT_STACK_UDPLITE)) {
-                    recvfrom(fd, NULL, 0, MSG_PEEK, NULL, 0);
-                }
                 uv_poll_start(handle, UV_READABLE, uvpollable_cb);
             } else {
                 // do normal i/o events without accept() for non connected protocols
@@ -2446,8 +2441,6 @@ neat_connect(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx)
         neat_sctp_init_events(he_ctx->fd);
 #endif
         break;
-    case NEAT_STACK_UDP:
-        recvfrom(he_ctx->fd, NULL, 0, MSG_PEEK, NULL, 0);
     default:
         break;
     }

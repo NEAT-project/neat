@@ -1,4 +1,2 @@
-
-# ignore build directory - except README.md
-build/*
-!build/.gitkeep
+# ignore build directory
+build/

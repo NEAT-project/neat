@@ -1,0 +1,15 @@
+{  
+    "name": "reduce MTU for LTE connections",
+    "priority": 20,
+    "match":{
+		"is_lte": {
+            "value": true
+        }
+    },
+    "properties":{
+        "MTU": {
+            "precedence": 1,
+            "value": 1488
+        }
+    }
+}

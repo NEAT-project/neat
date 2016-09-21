@@ -66,11 +66,6 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
     struct ifa_cacheinfo *ci;
     uint32_t ifa_pref = 0, ifa_valid = 0;
 
-    //On Linux, lo has a fixed index. We have no interest in that interface
-    //TODO: Consider other filters - bridges, ifb, ...
-    if (ifm->ifa_index == LO_DEV_IDX)
-        return;
-
     if (ifm->ifa_scope == RT_SCOPE_LINK)
         return;
 

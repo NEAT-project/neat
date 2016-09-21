@@ -1,6 +1,10 @@
+#!/usr/bin/env python3.5
+
 from policy import *
 import sys
+import locale
 
+locale.setlocale(locale.LC_ALL, ('en', 'utf-8'))
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
 
@@ -96,4 +100,5 @@ class PropertyTests(unittest.TestCase):
 if __name__ == "__main__":
     print(sys.stdout.encoding)
     print(sys.stderr.encoding)
+    print(locale.getpreferredencoding())
     unittest.main()

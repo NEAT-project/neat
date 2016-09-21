@@ -2203,6 +2203,10 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             buffer += rv;
         }
     }
+
+    /* Update flow statistics with the sent bytes */
+    flow->flow_stats.bytes_sent += rv;
+
     code = neat_write_fillbuffer(ctx, flow, buffer, amt, stream_id);
     if (code != NEAT_OK) {
         return code;
@@ -2217,6 +2221,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP)
         return NEAT_OK;
 #endif
+
     updatePollHandle(ctx, flow, flow->socket->handle);
     return NEAT_OK;
 }
@@ -2273,6 +2278,11 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     }
     neat_log(NEAT_LOG_DEBUG, "%s %d", __func__, rv);
     *actualAmt = rv;
+
+    /*Update flow statistics */
+    flow->flow_stats.bytes_received += (int)rv;
+    
+
 end:
     // Fill in optional return values if they are requested
     if (optional != NULL && opt_count > 0) {\
@@ -3066,6 +3076,10 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     rv->socket->handle  = (uv_poll_t *) malloc(sizeof(uv_poll_t));
     rv->socket->handle->loop = NULL;
     rv->socket->handle->type = UV_UNKNOWN_HANDLE;
+
+    /* Initialise flow statistics */
+    rv->flow_stats.bytes_sent = 0;
+    rv->flow_stats.bytes_received = 0;
 
     LIST_INSERT_HEAD(&mgr->flows, rv, next_flow);
 

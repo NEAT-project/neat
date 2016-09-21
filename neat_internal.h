@@ -22,6 +22,7 @@
 #endif
 
 #include "neat_log.h"
+#include "neat_stat.h"
 
 #define NEAT_INTERNAL_CTX \
     void (*cleanup)(struct neat_ctx *nc); \
@@ -189,6 +190,7 @@ struct neat_flow
     // The memory buffer for writing.
     struct neat_message_queue_head bufferedMessages;
     size_t buffer_count;
+    struct neat_flow_statistics flow_stats;
 
     size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.

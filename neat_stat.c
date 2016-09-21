@@ -60,6 +60,8 @@ void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
         json_object_set_new( newflow, "port", json_integer( flow->port ));
         json_object_set_new( newflow, "writeSize", json_integer( flow->writeSize));
         json_object_set_new( newflow, "readSize", json_integer( flow->readSize));
+        json_object_set_new( newflow, "bytes sent", json_integer( flow->flow_stats.bytes_sent));
+        json_object_set_new( newflow, "bytes received", json_integer( flow->flow_stats.bytes_received ));
         json_object_set_new(json_root, "flow", newflow);
         /* Gather stack-specific info */
         switch (flow->socket->stack) {

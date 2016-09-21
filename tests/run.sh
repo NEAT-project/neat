@@ -73,7 +73,8 @@ fi
 if [ "$PREFIX" == "" ]; then
   echo ""
   echo "########################################"
-  ARG="PYTHONIOENCODING=utf-8 python3.5 ../../policy/pmtests.py"
+  export PYTHONIOENCODING=utf-8
+  ARG="python3.5 ../../policy/pmtests.py"
   echo "Running: $ARG"
   $ARG
   RC=$?

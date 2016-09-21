@@ -41,6 +41,9 @@
     #include "neat_linux_internal.h"
 #endif
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <net/if.h>
     #include "neat_bsd_internal.h"
 #endif
 

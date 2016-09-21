@@ -1,4 +1,4 @@
-#!/usr/bin/env PYTHONIOENCODING=utf-8 python3.5
+#!/usr/bin/env python3.5
 
 from policy import *
 import sys

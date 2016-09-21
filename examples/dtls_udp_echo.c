@@ -606,13 +606,13 @@ void start_server(int port, char *local_address) {
 	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
 	if (!SSL_CTX_use_certificate_file(ctx, "certs/server-cert.pem", SSL_FILETYPE_PEM))
-		printf("\nERROR: no certificate found!");
+		printf("\n%s:%d: ERROR: 'certs/server-cert.pem' not found!", __func__, __LINE__);
 
 	if (!SSL_CTX_use_PrivateKey_file(ctx, "certs/server-key.pem", SSL_FILETYPE_PEM))
-		printf("\nERROR: no private key found!");
+		printf("\n%s:%d: ERROR: 'certs/server-key.pem' not found!", __func__, __LINE__);
 
 	if (!SSL_CTX_check_private_key (ctx))
-		printf("\nERROR: invalid private key!");
+		printf("\n%s:%d: ERROR: invalid private key!", __func__, __LINE__);
 
 	/* Client has to authenticate */
 	SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, dtls_verify_callback);
@@ -765,13 +765,13 @@ void start_client(char *remote_address, char *local_address, int port, int lengt
 	SSL_CTX_set_cipher_list(ctx, "eNULL:!MD5");
 
 	if (!SSL_CTX_use_certificate_file(ctx, "certs/client-cert.pem", SSL_FILETYPE_PEM))
-		printf("\nERROR: no certificate found!");
+		printf("\n%s:%d: ERROR: 'certs/client-cert.pem' not found!", __func__, __LINE__);
 
 	if (!SSL_CTX_use_PrivateKey_file(ctx, "certs/client-key.pem", SSL_FILETYPE_PEM))
-		printf("\nERROR: no private key found!");
+		printf("\n%s:%d: ERROR: 'certs/client-key.pem' not found!", __func__, __LINE__);
 
 	if (!SSL_CTX_check_private_key (ctx))
-		printf("\nERROR: invalid private key!");
+		printf("\n%s:%d: ERROR: invalid private key!", __func__, __LINE__);
 
 	SSL_CTX_set_verify_depth (ctx, 2);
 	SSL_CTX_set_read_ahead(ctx, 1);

@@ -1534,19 +1534,22 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
-        neat_io_error(ctx, flow, code);
+        // neat_io_error(ctx, flow, code);
         return NEAT_ERROR_INTERNAL;
     }
 
     // Find the enabled stacks based on the properties
     nr_of_stacks = neat_property_translate_protocols(flow->propertyAttempt, stacks);
     assert(nr_of_stacks);
+    assert(results);
+
+    flow->resolver_results = results;
 
     candidates = calloc(1, sizeof(*candidates));
 
     // assert(candidates);
     if (!candidates) {
-        neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+        // neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
         return NEAT_ERROR_OUT_OF_MEMORY;
     }
 

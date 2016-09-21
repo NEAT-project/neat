@@ -7,7 +7,7 @@
 To start the policy manager simply run:
 
 ```
-./neatpmd.py --cib ./cib/sdntest/ --pib ./pib/sdntest
+python3.5 ./neatpmd.py --cib ./cib/sdntest/ --pib ./pib/sdntest
 
 ```
 

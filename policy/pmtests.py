@@ -1,10 +1,12 @@
-#!/usr/bin/env python3.5
+#!/usr/bin/env PYTHONIOENCODING=utf-8 python3.5
 
 from policy import *
 import sys
 import locale
+import codecs
 
 locale.setlocale(locale.LC_ALL, ('en', 'utf-8'))
+
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
 
@@ -96,9 +98,7 @@ class PropertyTests(unittest.TestCase):
             print(pma)
             pma_list.append(pma)
 
-
 if __name__ == "__main__":
     print(sys.stdout.encoding)
-    print(sys.stderr.encoding)
     print(locale.getpreferredencoding())
     unittest.main()

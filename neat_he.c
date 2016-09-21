@@ -78,15 +78,15 @@ static void on_he_connect_req(uv_timer_t *handle)
         } else {
             free(candidate->pollable_socket->handle);
             candidate->pollable_socket->handle = NULL;
-        }  
-        neat_log(NEAT_LOG_DEBUG, "%s:Release candidate", __func__ );
+        }
+        // neat_log(NEAT_LOG_DEBUG, "%s:Release candidate", __func__ );
         (*heConnectAttemptCount)--;
         TAILQ_REMOVE(candidate_list, candidate, next);
         free(candidate->pollable_socket->dst_address);
         free(candidate->pollable_socket->src_address);
         free(candidate->pollable_socket);
         free(candidate->if_name);
-        json_decref(candidate->properties);
+        // json_decref(candidate->properties);
         free(candidate);
 
    } else {
@@ -97,6 +97,8 @@ static void on_he_connect_req(uv_timer_t *handle)
                 candidate->pollable_socket->fd, ret);
 
    }
+
+   neat_log(NEAT_LOG_DEBUG, "he_conn_attempt: %d", *heConnectAttemptCount);
 
    if (*heConnectAttemptCount == 0) {
 
@@ -117,11 +119,13 @@ static void delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_
     candidate->callback_fx = callback_fx;
     candidate->prio_timer->data = (void *) candidate;
 
+#if 0
     neat_log(NEAT_LOG_DEBUG,
              "%s: Priority = %d, Delay = %d ms",
              __func__,
              candidate->priority,
              HE_PRIO_DELAY * candidate->priority);
+#endif
 }
 
 neat_error_code
@@ -187,12 +191,15 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
 #endif
     }
 
+    neat_log(NEAT_LOG_DEBUG, "HE will now commence\n\n");
+
     flow->hefirstConnect = 1;
     flow->heConnectAttemptCount = 0;
     flow->candidate_list = candidate_list;
     candidate = candidate_list->tqh_first;
     while (candidate) {
 
+#if 0
         neat_log(NEAT_LOG_DEBUG, "HE Candidate: %8s [%2d] <saddr %s> <dstaddr %s> port %5d priority %d",
                  candidate->if_name,
                  candidate->if_idx,
@@ -200,6 +207,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
                  candidate->pollable_socket->dst_address,
                  candidate->pollable_socket->port,
                  candidate->priority);
+#endif
 
         candidate->pollable_socket->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
         assert(candidate->pollable_socket->handle != NULL);
@@ -241,7 +249,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
                 } else {
                     free(candidate->pollable_socket->handle);
                     candidate->pollable_socket->handle = NULL;
-                }  
+                }
                 neat_log(NEAT_LOG_DEBUG, "%s:Release candidate", __func__ );
                 next_candidate = TAILQ_NEXT(candidate, next);
                 TAILQ_REMOVE(candidate_list, candidate, next);
@@ -265,9 +273,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     }
 
     if (flow->heConnectAttemptCount == 0) {
-
         neat_io_error(flow->ctx, flow, NEAT_ERROR_IO);
-
     }
 
     return NEAT_ERROR_OK;

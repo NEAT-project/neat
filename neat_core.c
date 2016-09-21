@@ -1534,7 +1534,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
-        // neat_io_error(ctx, flow, code);
+        neat_io_error(ctx, flow, code);
         return NEAT_ERROR_INTERNAL;
     }
 

@@ -1,4 +1,5 @@
 from policy import *
+import sys
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
@@ -93,4 +94,6 @@ class PropertyTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    print(sys.stdout.encoding)
+    print(sys.stderr.encoding)
     unittest.main()

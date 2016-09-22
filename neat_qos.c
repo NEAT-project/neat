@@ -36,18 +36,18 @@ neat_set_tos(struct neat_ctx *ctx, struct neat_flow *flow)
 #if defined(SCTP_PEER_ADDR_PARAMS)
     case NEAT_STACK_SCTP:
     {
-        struct sctp_paddrparms params;
+        struct sctp_paddrparams params;
         params.spp_dscp = dscp;
         params.spp_flags = SPP_DSCP;
 
 #if defined(USRSCTP_SUPPORT)  
         if(usrsctp_setsockopt(flow->socket->usrsctp_socket, 
-            IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(struct sctp_paddrparms)) == -1) {
+            IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params)) == -1) {
             return NEAT_ERROR_UNABLE;
         }
 #else
         if(setsockopt(flow->socket->fd, 
-            IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(struct sctp_paddrparms)) == -1) {
+            IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params)) == -1) {
             return NEAT_ERROR_UNABLE;
         }
 #endif //USRSCTP

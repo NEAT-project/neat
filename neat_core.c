@@ -1546,6 +1546,15 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     assert(nr_of_stacks);
     assert(results);
 
+    for (unsigned int i = 0; i < nr_of_stacks; i++) {
+        if (stacks[i] == NEAT_STACK_SCTP_UDP) {
+            stacks[i] = stacks[nr_of_stacks - 1];
+            nr_of_stacks--;
+            break;
+        }
+
+    }
+
     flow->resolver_results = results;
 
     candidates = calloc(1, sizeof(*candidates));

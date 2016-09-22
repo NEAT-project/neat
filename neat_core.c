@@ -1393,6 +1393,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         newFlow->socket->usrsctp_socket = newFlow->acceptusrsctpfx(ctx, newFlow, listen_socket);
         if (!newFlow->socket->usrsctp_socket) {
             neat_free_flow(newFlow);
+            return NULL;
         } else {
             neat_log(NEAT_LOG_DEBUG, "USRSCTP io_connected");
             io_connected(ctx, newFlow, NEAT_OK);
@@ -1402,6 +1403,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         newFlow->socket->fd = newFlow->acceptfx(ctx, newFlow, listen_socket->fd);
         if (newFlow->socket->fd == -1) {
             neat_free_flow(newFlow);
+            return NULL;
         } else {
             uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
             newFlow->socket->handle->data = newFlow->socket;
@@ -1425,6 +1427,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 
         if (newFlow->socket->fd == -1) {
             neat_free_flow(newFlow);
+            return NULL;
         } else {
             int enable = 1;
 
@@ -1453,6 +1456,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 
         if (newFlow->socket->fd == -1) {
             neat_free_flow(newFlow);
+            return NULL;
         } else {
             int enable = 1;
 
@@ -1477,6 +1481,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         newFlow->socket->fd = newFlow->acceptfx(ctx, newFlow, listen_socket->fd);
         if (newFlow->socket->fd == -1) {
             neat_free_flow(newFlow);
+            return NULL;
         } else {
             uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
 

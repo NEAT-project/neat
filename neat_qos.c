@@ -38,12 +38,12 @@ neat_set_tos(struct neat_ctx *ctx, struct neat_flow *flow)
 
 #if defined(USRSCTP_SUPPORT)  
         if(usrsctp_setsockopt(flow->socket->usrsctp_socket, 
-            IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params)) == -1) {
+            IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(struct sctp_paddrparms)) == -1) {
             return NEAT_ERROR_UNABLE;
         }
 #else
         if(setsockopt(flow->socket->fd, 
-            IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params)) == -1) {
+            IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(struct sctp_paddrparms)) == -1) {
             return NEAT_ERROR_UNABLE;
         }
 #endif //USRSCTP

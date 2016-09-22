@@ -413,7 +413,6 @@ static void synchronous_free(neat_flow *flow)
                      candidate->pollable_socket->port,
                      candidate->priority);
 
-            TAILQ_REMOVE(candidates, TAILQ_FIRST(candidates), next);
             free(candidate->pollable_socket->dst_address);
             free(candidate->pollable_socket->src_address);
             if (candidate->pollable_socket->handle != NULL) {

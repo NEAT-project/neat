@@ -1639,6 +1639,8 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
 
     neat_he_open(ctx, flow, candidates, he_connected_cb);
 
+    neat_resolver_free_results(results);
+
     return NEAT_OK;
 }
 

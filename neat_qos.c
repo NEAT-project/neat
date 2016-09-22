@@ -29,8 +29,9 @@ neat_set_tos(struct neat_ctx *ctx, struct neat_flow *flow)
     tos = dscp | flow->ecn;
 
     switch (flow->socket->stack) {
-#if defined( SCTP_PEER_ADDR_PARAMS)
+#if defined(SCTP_PEER_ADDR_PARAMS)
     case NEAT_STACK_SCTP:
+	{
         struct sctp_paddrparms params;
         params.spp_dscp = dscp;
         params.spp_flags = SPP_DSCP;
@@ -48,13 +49,16 @@ neat_set_tos(struct neat_ctx *ctx, struct neat_flow *flow)
 #endif //USRSCTP
 
         return NEAT_OK;
+	}
 #endif //SCTP_PEER_ADDR_PARAMS
     case NEAT_STACK_UDP:
+	{
         if(setsockopt(flow->socket->fd, 
             IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) == -1) {
             return NEAT_ERROR_UNABLE;
         }
         return NEAT_OK;
+	}
     default:
         return NEAT_OK;
     }

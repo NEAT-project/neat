@@ -87,6 +87,15 @@ static void on_he_connect_req(uv_timer_t *handle)
         free(candidate->pollable_socket);
         free(candidate->if_name);
         // json_decref(candidate->properties);
+
+        neat_log(NEAT_LOG_DEBUG, "he_conn_attempt: %d", *heConnectAttemptCount);
+
+        if (*heConnectAttemptCount == 0) {
+            neat_io_error(candidate->pollable_socket->flow->ctx,
+                          candidate->pollable_socket->flow,
+                          NEAT_ERROR_IO);
+        }
+
         free(candidate);
 
    } else {
@@ -95,16 +104,6 @@ static void on_he_connect_req(uv_timer_t *handle)
                 "%s: Connect successful for fd %d, ret = %d",
                 __func__,
                 candidate->pollable_socket->fd, ret);
-
-   }
-
-   neat_log(NEAT_LOG_DEBUG, "he_conn_attempt: %d", *heConnectAttemptCount);
-
-   if (*heConnectAttemptCount == 0) {
-
-        neat_io_error(candidate->pollable_socket->flow->ctx,
-                      candidate->pollable_socket->flow,
-                      NEAT_ERROR_IO);
 
    }
 }

@@ -1221,6 +1221,10 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         free(candidate->if_name);
         json_decref(candidate->properties);
         free(candidate);
+
+        if (!(--flow->heConnectAttemptCount)) {
+            neat_io_error(flow->ctx, flow, NEAT_ERROR_UNABLE);
+        }
     }
 }
 

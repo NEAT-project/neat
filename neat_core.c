@@ -1676,7 +1676,6 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     flow->propertyAttempt = flow->propertyMask;
     flow->stream_count = stream_count;
     flow->ctx = mgr;
-<<<<<<< HEAD
 
     if (!mgr->resolver)
         mgr->resolver = neat_resolver_init(mgr, "/etc/resolv.conf");
@@ -1684,15 +1683,6 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     if (!mgr->pvd)
         mgr->pvd = neat_pvd_init(mgr);
 
-=======
-
-    if (!mgr->resolver)
-        mgr->resolver = neat_resolver_init(mgr, "/etc/resolv.conf");
-
-    if (!mgr->pvd)
-        mgr->pvd = neat_pvd_init(mgr);
-
->>>>>>> f8bf1c5e061463bd12da5339a0a39416972e2447
     // TODO: Add name resolution call
     neat_resolve(mgr->resolver, AF_UNSPEC, flow->name, flow->port,
                  open_resolve_cb, flow);
@@ -2732,13 +2722,10 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         memset(&init, 0, sizeof(init));
         init.sinit_num_ostreams = candidate->pollable_socket->flow->stream_count;
         init.sinit_max_instreams = candidate->pollable_socket->flow->stream_count; // TODO: May depend on policy
-<<<<<<< HEAD
 
         init.sinit_max_init_timeo = 3000;
         init.sinit_max_attempts = 3;
 
-=======
->>>>>>> f8bf1c5e061463bd12da5339a0a39416972e2447
         if (setsockopt(candidate->pollable_socket->fd,
                        IPPROTO_SCTP,
                        SCTP_INITMSG,

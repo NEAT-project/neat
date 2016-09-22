@@ -2716,6 +2716,10 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         memset(&init, 0, sizeof(init));
         init.sinit_num_ostreams = candidate->pollable_socket->flow->stream_count;
         init.sinit_max_instreams = candidate->pollable_socket->flow->stream_count; // TODO: May depend on policy
+
+        init.sinit_max_init_timeo = 3000;
+        init.sinit_max_attempts = 3;
+
         if (setsockopt(candidate->pollable_socket->fd,
                        IPPROTO_SCTP,
                        SCTP_INITMSG,

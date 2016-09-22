@@ -774,7 +774,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     socklen_t infolen = sizeof(struct sctp_recvv_rn);
 #endif // else !defined(USRSCTP_SUPPORT)
 
-    neat_log(NEAT_LOG_DEBUG, "%s (usrsctp)", __func__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations) {
         neat_log(NEAT_LOG_DEBUG, "No operations");

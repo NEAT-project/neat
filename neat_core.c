@@ -1198,7 +1198,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->writeSize = candidate->writeSize;
         flow->writeLimit = candidate->writeLimit;
         flow->readSize = candidate->readSize;
-        // flow->isSCTPExplicitEOR = he_ctx->isSCTPExplicitEOR;
+        flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
         flow->isPolling = 1;
 
         // Transfer this handle to the "main" polling callback

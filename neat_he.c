@@ -81,12 +81,6 @@ static void on_he_connect_req(uv_timer_t *handle)
         }
         // neat_log(NEAT_LOG_DEBUG, "%s:Release candidate", __func__ );
         (*heConnectAttemptCount)--;
-        TAILQ_REMOVE(candidate_list, candidate, next);
-        free(candidate->pollable_socket->dst_address);
-        free(candidate->pollable_socket->src_address);
-        free(candidate->pollable_socket);
-        free(candidate->if_name);
-        // json_decref(candidate->properties);
 
         neat_log(NEAT_LOG_DEBUG, "he_conn_attempt: %d", *heConnectAttemptCount);
 
@@ -96,6 +90,12 @@ static void on_he_connect_req(uv_timer_t *handle)
                           NEAT_ERROR_IO);
         }
 
+        TAILQ_REMOVE(candidate_list, candidate, next);
+        free(candidate->pollable_socket->dst_address);
+        free(candidate->pollable_socket->src_address);
+        free(candidate->pollable_socket);
+        free(candidate->if_name);
+        // json_decref(candidate->properties);
         free(candidate);
 
    } else {

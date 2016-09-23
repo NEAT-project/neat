@@ -5,6 +5,7 @@
     #include <linux/sctp.h>
 #else
     #include <netinet/sctp.h>
+    #include <netinet/udplite.h>
 #endif
 #endif
 
@@ -2606,6 +2607,34 @@ neat_error_code
 neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow, int rate, int seconds)
 {
     return NEAT_ERROR_UNABLE;
+}
+
+neat_error_code
+neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow, unsigned int coverage)
+{
+#ifdef UDPLITE_SEND_CSCOV
+    int rc;
+    unsigned int val;
+#endif
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (neat_base_stack(flow->socket->stack) != NEAT_STACK_UDPLITE) {
+        neat_log(NEAT_LOG_ERROR, "Checksum coverage available for UDP-Lite only");
+        return NEAT_ERROR_UNABLE;
+    }
+
+#ifdef UDPLITE_SEND_CSCOV
+    rc = setsockopt(flow->socket->fd, IPPROTO_UDP, UDPLITE_SEND_CSCOV, &val, sizeof(unsigned int));
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "Failed to set UDP-Lite checksum coverage");
+        return NEAT_ERROR_UNABLE;
+    }
+
+    return NEAT_OK;
+#else
+    return NEAT_ERROR_UNABLE;
+#endif
+
 }
 
 static neat_error_code

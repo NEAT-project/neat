@@ -1200,11 +1200,19 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
         flow->isPolling = 1;
 
-        // Transfer this handle to the "main" polling callback
-        // TODO: Consider doing this in some other way that directly calling
-        // this callback
-        flow->firstWritePending = 1;
-        uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
+        //  todo NEAT_PROPERTY_OPTIONAL_SECURITY
+        if (flow->propertyMask & NEAT_PROPERTY_REQUIRED_SECURITY) {
+            neat_log(NEAT_LOG_DEBUG, "client required security");
+            if (neat_security_install(flow->ctx, flow) != NEAT_OK) {
+                neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
+            }
+        } else {
+            // Transfer this handle to the "main" polling callback
+            // TODO: Consider doing this in some other way that directly calling
+            // this callback
+            flow->firstWritePending = 1;
+            uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
+        }
     } else {
         // assert(0);
         neat_log(NEAT_LOG_DEBUG, "NOT first connect");

@@ -5,6 +5,7 @@
     #include <linux/sctp.h>
 #else
     #include <netinet/sctp.h>
+    #include <netinet/udplite.h>
 #endif
 #endif
 
@@ -2605,6 +2606,57 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
 neat_error_code
 neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow, int rate, int seconds)
 {
+    return NEAT_ERROR_UNABLE;
+}
+
+neat_error_code
+neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow, unsigned int send_coverage, unsigned int receive_coverage)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    switch (neat_base_stack(flow->socket->stack)) {
+    case NEAT_STACK_UDP:
+        {
+#if defined(__linux__) && defined(SO_NO_CHECK)
+            // Enable udp checksum if receive_coverage is non-zero
+            // send_coverage is ignored in this case
+            const int state = receive_coverage ? 1 : 0;
+
+            if (setsockopt(flow->socket->fd, SOL_SOCKET, SO_NO_CHECK, &state, sizeof(state)) < 0) {
+                neat_log(NEAT_LOG_DEBUG, "Unable to set SO_NO_CHECK to %d", state);
+                return NEAT_ERROR_UNABLE;
+            }
+
+            return NEAT_OK;
+#else
+            neat_log(NEAT_LOG_DEBUG, "Disabling UDP checksum not supported");
+            return NEAT_ERROR_UNABLE;
+#endif
+        }
+    case NEAT_STACK_UDPLITE:
+        {
+#if defined(UDPLITE_SEND_CSCOV) && defined(UDPLITE_RECV_CSCOV)
+        if (setsockopt(flow->socket->fd, IPPROTO_UDPLITE, UDPLITE_SEND_CSCOV, &send_coverage, sizeof(unsigned int)) < 0) {
+            neat_log(NEAT_LOG_DEBUG, "Failed to set UDP-Lite send checksum coverage");
+            return NEAT_ERROR_UNABLE;
+        }
+
+        if (setsockopt(flow->socket->fd, IPPROTO_UDPLITE, UDPLITE_RECV_CSCOV, &receive_coverage, sizeof(unsigned int)) < 0) {
+            neat_log(NEAT_LOG_DEBUG, "Failed to set UDP-Lite receive checksum coverage");
+            return NEAT_ERROR_UNABLE;
+        }
+
+        return NEAT_OK;
+#else
+        neat_log(NEAT_LOG_DEBUG, "Failed to set UDP-Lite checksum coverage, not supported");
+        return NEAT_ERROR_UNABLE;
+#endif
+        }
+    default:
+        break;
+    }
+
+    neat_log(NEAT_LOG_DEBUG, "Failed to set checksum coverage, protocol not supported");
     return NEAT_ERROR_UNABLE;
 }
 

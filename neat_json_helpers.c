@@ -80,7 +80,7 @@ neat_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
 
     assert(json);
     assert(stacks && stack_count);
-    assert(*stack_count >= NEAT_MAX_NUM_PROTO);
+    // assert(*stack_count >= NEAT_MAX_NUM_PROTO);
 
     transports = json_object_get(json, "transport");
 

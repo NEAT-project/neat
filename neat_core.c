@@ -430,6 +430,8 @@ static void synchronous_free(neat_flow *flow)
 
 	LIST_REMOVE(flow, next_flow);
 
+    json_decref(flow->properties);
+
     free_iofilters(flow->iofilters);
     free(flow->readBuffer);
     free(flow->socket->handle);
@@ -507,6 +509,46 @@ neat_error_code neat_set_property(neat_ctx *mgr, neat_flow *flow,
     flow->propertyMask = inMask;
     return NEAT_OK;
 }
+
+neat_error_code
+neat_set_property_json(neat_ctx *mgr, neat_flow *flow, const char *properties)
+{
+    json_t *prop, *props;
+    json_error_t error;
+    const char *key;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    props = json_loads(properties, 0, &error);
+    if (props == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "Error in property string, line %d col %d",
+                 error.line, error.position);
+        neat_log(NEAT_LOG_DEBUG, "%s", error.text);
+
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    json_object_foreach(props, key, prop) {
+
+        // This step is not strictly required, but informs of overwritten keys
+        if (json_object_del(flow->properties, key) == 0) {
+            neat_log(NEAT_LOG_DEBUG, "Existing property %s was overwritten!", key);
+        }
+
+        json_object_set(flow->properties, key, prop);
+    }
+
+    json_decref(props);
+
+#if 0
+    char *buffer = json_dumps(flow->properties, JSON_INDENT(2));
+    neat_log(NEAT_LOG_DEBUG, "Flow properties are now:\n%s\n", buffer);
+    free(buffer);
+#endif
+
+    return NEAT_OK;
+}
+
 
 int neat_get_stack(neat_ctx* mgr, neat_flow* flow)
 {
@@ -3359,6 +3401,8 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 #if defined(USRSCTP_SUPPORT)
     rv->acceptusrsctpfx = neat_accept_via_usrsctp;
 #endif
+
+    rv->properties = json_object();
 
     rv->socket = malloc(sizeof(struct neat_pollable_socket));
     if (!rv->socket)

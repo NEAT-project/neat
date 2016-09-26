@@ -207,6 +207,8 @@ struct neat_flow
     size_t readBufferAllocation;  // size of buffered allocation
     int readBufferMsgComplete;    // it contains a complete user message
 
+    json_t *properties;
+
     neat_read_impl readfx;
     neat_write_impl writefx;
     neat_accept_impl acceptfx;

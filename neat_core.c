@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <uv.h>
 #include <errno.h>
+#include <ifaddrs.h>
 
 #ifdef __linux__
     #include <net/if.h>
@@ -33,6 +34,7 @@
 #include "neat_stat.h"
 #include "neat_resolver_helpers.h"
 #include "neat_json_helpers.h"
+#include "neat_pm_socket.h"
 
 #if defined(USRSCTP_SUPPORT)
     #include "neat_usrsctp_internal.h"
@@ -1684,6 +1686,134 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     return NEAT_OK;
 }
 
+static void
+on_pm_error(struct neat_ctx *ctx, struct neat_flow *flow, int error)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_free_flow(flow);
+    neat_free_ctx(ctx);
+
+    exit(0);
+}
+
+static void
+on_pm_reply_pre_resolve(struct neat_ctx *ctx, struct neat_flow *flow, json_t *json)
+{
+    char *buffer;
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_free_flow(flow);
+    neat_free_ctx(ctx);
+
+    buffer = json_dumps(json, JSON_INDENT(2));
+    neat_log(NEAT_LOG_DEBUG, "%s", buffer);
+    free((void*)buffer);
+
+    json_decref(json);
+
+    exit(0);
+}
+
+static void
+send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
+{
+    int rc = NEAT_ERROR_OUT_OF_MEMORY;
+    char *buffer = NULL;
+    struct ifaddrs *ifaddrs = NULL;
+    json_t *array, *endpoints = NULL, *properties = NULL, *address, *port;
+
+    if ((array = json_array()) == NULL)
+        goto end;
+
+    if ((endpoints = json_array()) == NULL)
+        goto end;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    assert(ctx);
+    assert(flow);
+
+    rc = getifaddrs(&ifaddrs);
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "getifaddrs: %s", strerror(errno));
+        goto end;
+    }
+
+    for (struct ifaddrs *ifaddr = ifaddrs; ifaddr != NULL; ifaddr = ifaddr->ifa_next) {
+        socklen_t addrlen;
+        char namebuf[NI_MAXHOST];
+        json_t *endpoint;
+
+        // Doesn't actually contain any address (?)
+        if (ifaddr->ifa_addr == NULL) {
+            neat_log(NEAT_LOG_DEBUG, "ifaddr entry with no address");
+            continue;
+        }
+
+        if (ifaddr->ifa_addr->sa_family != AF_INET &&
+            ifaddr->ifa_addr->sa_family != AF_INET6)
+            continue;
+
+        addrlen = (ifaddr->ifa_addr->sa_family) == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+
+        rc = getnameinfo(ifaddr->ifa_addr, addrlen, namebuf, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+
+        if (rc != 0) {
+            neat_log(NEAT_LOG_DEBUG, "getnameinfo: %s", gai_strerror(rc));
+            continue;
+        }
+
+        if (strncmp(namebuf, "fe80::", 6) == 0) {
+            neat_log(NEAT_LOG_DEBUG, "%s is a link-local address, skipping", namebuf);
+            continue;
+        }
+
+        endpoint = json_pack("{ss++si}", "value", namebuf, "@", ifaddr->ifa_name, "precedence", 1);
+
+        if (endpoint == NULL)
+            goto end;
+
+        neat_log(NEAT_LOG_DEBUG, "Added endpoint \"%s@%s\" to PM request", namebuf, ifaddr->ifa_name);
+        json_array_append(endpoints, endpoint);
+        json_decref(endpoint);
+    }
+
+    properties = json_copy(flow->properties);
+
+    json_object_set(properties, "local_endpoint", endpoints);
+
+    port = json_pack("{sisi}", "value", flow->port, "precedence", 1);
+    if (port == NULL)
+        goto end;
+
+    json_object_set(properties, "port", port);
+    json_decref(port);
+
+    address = json_pack("{sssi}", "value", flow->name, "precedence", 1);
+    if (address == NULL)
+        goto end;
+
+    json_object_set(properties, "domain_name", address);
+    json_decref(address);
+
+    json_array_append(array, properties);
+
+    buffer = json_dumps(array, JSON_INDENT(2));
+
+end:
+    if (ifaddrs)
+        freeifaddrs(ifaddrs);
+    if (properties)
+        json_decref(properties);
+    if (endpoints)
+        json_decref(endpoints);
+    if (array)
+        json_decref(array);
+
+    if (rc == NEAT_OK)
+        neat_pm_send(ctx, flow, buffer, on_pm_reply_pre_resolve, on_pm_error);
+    else
+        neat_io_error(ctx, flow, rc);
+}
 
 neat_error_code
 neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
@@ -1723,12 +1853,16 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     if (!mgr->pvd)
         mgr->pvd = neat_pvd_init(mgr);
 
+#if 1
+    send_properties_to_pm(mgr, flow);
+#else
     // TODO: Add name resolution call
     neat_resolve(mgr->resolver, AF_UNSPEC, flow->name, flow->port,
                  open_resolve_cb, flow);
     // TODO: Generate candidates
     // TODO: Call HE
     // return neat_he_lookup(mgr, flow, he_connected_cb);
+#endif
     return NEAT_OK;
 }
 

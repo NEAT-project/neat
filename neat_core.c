@@ -482,9 +482,10 @@ void neat_free_flow(neat_flow *flow)
     }
 #endif
 
-	if (!uv_is_closing((uv_handle_t *)(flow->socket->handle)) &&
-		((flow->socket->handle != NULL) &&
-		(flow->socket->handle->type != UV_UNKNOWN_HANDLE)) ) {
+	if (flow->socket->handle != NULL &&
+        flow->socket->handle->type != UV_UNKNOWN_HANDLE &&
+        !uv_is_closing((uv_handle_t *)flow->socket->handle))
+    {
 		uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
         flow->socket->handle = NULL;
 	} else {

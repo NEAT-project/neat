@@ -8,6 +8,7 @@
 #include "neat.h"
 #include "neat_queue.h"
 #include "neat_security.h"
+#include "neat_pm_socket.h"
 #ifdef __linux__
     #include "neat_linux.h"
 #endif
@@ -208,6 +209,8 @@ struct neat_flow
     int readBufferMsgComplete;    // it contains a complete user message
 
     json_t *properties;
+
+    struct neat_pm_context *pm_context;
 
     neat_read_impl readfx;
     neat_write_impl writefx;

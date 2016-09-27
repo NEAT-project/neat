@@ -439,6 +439,7 @@ static void synchronous_free(neat_flow *flow)
     free(flow->readBuffer);
     free(flow->socket->handle);
     free(flow->socket);
+    free(flow->pm_context);
     free(flow);
 }
 
@@ -3541,6 +3542,8 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 #endif
 
     rv->properties = json_object();
+
+    rv->pm_context = malloc(sizeof(struct neat_pm_context));
 
     rv->socket = malloc(sizeof(struct neat_pollable_socket));
     if (!rv->socket)

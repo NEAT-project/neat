@@ -10,126 +10,107 @@
 
 
 // TODO: Store a list of buffers and read JSON from them instead, if possible
-// TODO: Allocate as much as possible in one function, free everything in a single function
-
-struct neat_pm_request_data {
-    struct neat_ctx *ctx;
-    struct neat_flow *flow;
-    uv_pipe_t *pipe;
-    pm_reply_callback on_pm_reply;
-    pm_error_callback on_pm_error;
-    char *output_buffer;
-    char *read_buffer;
-    size_t buffer_size;
-    uv_stream_t *stream;
-    uv_timer_t *timer;
-};
 
 static void
-on_pm_socket_close(uv_handle_t *handle)
+on_timer_close(uv_handle_t *handle)
 {
-    struct neat_pm_request_data *data = handle->data;
-
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    if (data != NULL) {
-        if (data->read_buffer)
-            free(data->read_buffer);
-        if (data->output_buffer)
-            free(data->output_buffer);
-
-        free(data);
-    }
-
     free(handle);
 }
 
-static inline void
-stop(uv_stream_t *stream, int error)
+static void
+on_pipe_close(uv_handle_t *handle)
 {
-    struct neat_pm_request_data *data = stream->data;
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    free(handle);
+}
+
+static void
+on_pm_timeout(uv_timer_t *timer)
+{
+    struct neat_pm_context *pm_context = timer->data;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (data) {
-        if (error != PM_ERROR_OK && data->on_pm_error)
-            data->on_pm_error(data->ctx, data->flow, error);
+    uv_close((uv_handle_t*)timer, on_timer_close);
+    uv_close((uv_handle_t*)pm_context->pipe, on_pipe_close);
 
-        if (data->timer)
-            uv_timer_stop(data->timer);
+    free(pm_context->output_buffer);
 
-    }
+    if (pm_context->read_buffer)
+        free(pm_context->read_buffer);
 
-    uv_close((uv_handle_t*)stream, on_pm_socket_close);
+    pm_context->on_pm_error(pm_context->ctx, pm_context->flow, PM_ERROR_SOCKET);
 }
 
 static void
 on_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 {
-    struct neat_pm_request_data *data = stream->data;
+    int rc = 0;
+    json_t *json;
+    json_error_t error;
+    struct neat_pm_context *pm_context = stream->data;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (nread == UV_EOF) {
-        json_t *json;
-        json_error_t error;
 
         neat_log(NEAT_LOG_DEBUG, "Done reading", nread);
+        uv_timer_stop(pm_context->timer);
 
-        if (data->read_buffer == NULL) {
+        if (pm_context->read_buffer == NULL) {
             neat_log(NEAT_LOG_DEBUG, "Reached EOF with no data");
-
-            stop(stream, PM_ERROR_INVALID_JSON);
+            rc = PM_ERROR_SOCKET;
             goto end;
         }
 
-        json = json_loadb(data->read_buffer, data->buffer_size, 0, &error);
+        json = json_loadb(pm_context->read_buffer, pm_context->buffer_size, 0, &error);
         if (!json) {
             neat_log(NEAT_LOG_DEBUG, "Failed to read JSON reply from PM");
             neat_log(NEAT_LOG_DEBUG, "Error at position %d:", error.position);
             neat_log(NEAT_LOG_DEBUG, error.text);
 
-            stop(stream, PM_ERROR_INVALID_JSON);
+            rc = PM_ERROR_INVALID_JSON;
             goto end;
         }
 
-        data->on_pm_reply(data->ctx, data->flow, json);
-
-        stop(stream, PM_ERROR_OK);
+        // rc == 0
+        goto end;
+    } else if (nread == UV_ENOBUFS) {
+        neat_log(NEAT_LOG_DEBUG, "Out of memory");
+        rc = PM_ERROR_OOM;
         goto end;
     }
 
-    if (nread < 0) {
-        neat_log(NEAT_LOG_DEBUG, "PM interface error: %s", uv_strerror(nread));
+    neat_log(NEAT_LOG_DEBUG, "Received %d bytes", buf->len);
 
-        stop(stream, PM_ERROR_SOCKET);
+    pm_context->read_buffer = realloc(pm_context->read_buffer, pm_context->buffer_size + nread);
+
+    if (pm_context->read_buffer == NULL) {
+        rc = PM_ERROR_OOM;
         goto end;
     }
 
-    neat_log(NEAT_LOG_DEBUG, "Received %d bytes", nread);
+    memcpy(pm_context->read_buffer + pm_context->buffer_size, buf->base, nread);
+    pm_context->buffer_size += nread;
 
-    data->read_buffer = realloc(data->read_buffer, data->buffer_size + nread);
+    if (buf->len && buf->base)
+        free(buf->base);
 
-    if (data->read_buffer == NULL) {
-        stop(stream, PM_ERROR_SOCKET);
-        goto end;
-    }
-
-    memcpy(data->read_buffer + data->buffer_size, buf->base, nread);
-    data->buffer_size += nread;
+    return;
 end:
     if (buf->len && buf->base)
         free(buf->base);
-}
 
-static void
-on_timeout(uv_timer_t* handle)
-{
-    struct neat_pm_request_data *data = handle->data;
+    uv_close((uv_handle_t*)pm_context->pipe, on_pipe_close);
+    uv_close((uv_handle_t*)pm_context->timer, on_timer_close);
+    free(pm_context->read_buffer);
+    free(pm_context->output_buffer);
 
-    neat_log(NEAT_LOG_DEBUG, "PM timeout");
-
-    stop(data->stream, PM_ERROR_SOCKET);
+    if (rc)
+        pm_context->on_pm_error(pm_context->ctx, pm_context->flow, rc);
+    else
+        pm_context->on_pm_reply(pm_context->ctx, pm_context->flow, json);
 }
 
 static void
@@ -143,121 +124,105 @@ on_request_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
 }
 
 static void
-on_shutdown(uv_shutdown_t *req, int status)
+on_shutdown(uv_shutdown_t *shutdown, int status)
 {
     if (status != 0) {
         neat_log(NEAT_LOG_DEBUG, "PM on_shutdown status %d: %s",
                  status, uv_strerror(status));
     }
-    free(req);
+
+    free(shutdown);
 }
 
 static void
 on_written(uv_write_t* wr, int status)
 {
-    struct neat_pm_request_data *data = wr->data;
+    struct neat_pm_context *pm_context = wr->data;
     uv_timer_t *timer;
-    uv_shutdown_t *req;
+    uv_stream_t *stream = wr->handle;
+    uv_shutdown_t *shutdown;
 
-    neat_log(NEAT_LOG_DEBUG, "on_written, status %d", status);
+    neat_log(NEAT_LOG_DEBUG, "%s, status %d", __func__, status);
+
+    free(wr);
 
     timer = malloc(sizeof(*timer));
-    req   = malloc(sizeof(*req));
 
-    if (timer == NULL || req == NULL) {
-        if (timer)
-            free(timer);
-        if (req)
-            free(req);
+    if (timer == NULL) {
+        free(pm_context->output_buffer);
+        uv_close((uv_handle_t*)pm_context->pipe, on_pipe_close);
 
-        if (data->on_pm_error)
-            data->on_pm_error(data->ctx, data->flow, PM_ERROR_SOCKET);
-
-        free(data->output_buffer);
-        free(data);
-
-        goto error;
+        pm_context->on_pm_error(pm_context->ctx, pm_context->flow, PM_ERROR_OOM);
+        return;
     }
 
-    uv_read_start(wr->handle, on_request_alloc, on_read);
-    wr->handle->data = data;
-    data->stream = (uv_stream_t*)wr->handle;
+    shutdown   = malloc(sizeof(*shutdown));
+    if (shutdown == NULL) {
+        free(timer);
+        free(pm_context->output_buffer);
+        uv_close((uv_handle_t*)pm_context->pipe, on_pipe_close);
 
-    uv_shutdown(req, (uv_stream_t*)wr->handle, on_shutdown);
+        pm_context->on_pm_error(pm_context->ctx, pm_context->flow, PM_ERROR_OOM);
+        return;
+    }
 
-    uv_timer_init(data->ctx->loop, timer);
-    timer->data = data;
-    data->timer = timer;
-    uv_timer_start(timer, on_timeout, 3000, 0);
+    stream->data = pm_context;
+    uv_read_start(stream, on_request_alloc, on_read);
 
-error:
-    free(wr);
+    uv_timer_init(pm_context->ctx->loop, timer);
+    timer->data = pm_context;
+    pm_context->timer = timer;
+    uv_timer_start(timer, on_pm_timeout, 1000, 0);
+
+    uv_shutdown(shutdown, stream, on_shutdown);
 }
 
 static void
-on_pm_connected(uv_connect_t* req, int status)
+on_pm_connected(uv_connect_t* connect, int status)
 {
+    int rc;
     uv_write_t *wr;
     uv_buf_t *buf;
-    struct neat_pm_request_data *data = req->data;
-
+    struct neat_pm_context *pm_context = connect->data;
+    uv_stream_t* stream = connect->handle;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    free(connect);
 
     if (status < 0) {
         neat_log(NEAT_LOG_DEBUG, "Failed to connect to PM socket");
-
-        if (data->on_pm_error)
-            data->on_pm_error(data->ctx, data->flow, PM_ERROR_SOCKET_UNAVAILABLE);
-
-        req->handle->data = NULL;
-        stop(req->handle, 0);
-
-        free(data->output_buffer);
-        free(data);
-        free(req);
-
-        return;
+        rc = PM_ERROR_SOCKET_UNAVAILABLE;
+        goto error;
     }
 
-    // Set non-blocking
-    if (uv_stream_set_blocking(req->handle, 0) < 0) {
+    if (uv_stream_set_blocking(stream, 0) < 0) {
         neat_log(NEAT_LOG_DEBUG, "Failed to set PM socket as non-blocking");
-
-        if (data->on_pm_error)
-            data->on_pm_error(data->ctx, data->flow, PM_ERROR_SOCKET);
-
-        free(data->output_buffer);
-        free(data);
-        free(req);
-
-        return;
+        rc = PM_ERROR_SOCKET;
+        goto error;
     }
 
     wr  = malloc(sizeof(*wr));
     buf = malloc(sizeof(*buf));
 
-    if (wr == NULL || buf == NULL) {
-        // TODO: stop()
-        data->on_pm_error(data->ctx, data->flow, PM_ERROR_SOCKET);
-
-        if (wr)
-            free(wr);
-        if (buf)
-            free(buf);
-
-        return;
-    }
-
-    data->stream = (uv_stream_t*)wr;
-
-    buf->base = data->output_buffer;
+    buf->base = pm_context->output_buffer;
     buf->len  = strlen(buf->base);
 
-    wr->data = data;
-    uv_write(wr, req->handle, buf, 1, on_written);
+    wr->data = pm_context;
+
+    uv_write(wr, stream, buf, 1, on_written);
 
     free(buf);
-    free(req);
+
+    return;
+error:
+    uv_close((uv_handle_t*)pm_context->pipe, on_pipe_close);
+
+    free(pm_context->output_buffer);
+
+    if (pm_context->on_pm_error)
+        pm_context->on_pm_error(pm_context->ctx, pm_context->flow, rc);
+
+    return;
 }
 
 neat_error_code
@@ -266,7 +231,6 @@ neat_pm_send(struct neat_ctx *ctx, struct neat_flow *flow, char *buffer, pm_repl
     const char *home_dir;
     char socket_path_buf[128];
     const char *socket_path;
-    struct neat_pm_request_data *data;
     uv_connect_t *connect;
     uv_pipe_t *pipe;
 
@@ -275,34 +239,6 @@ neat_pm_send(struct neat_ctx *ctx, struct neat_flow *flow, char *buffer, pm_repl
     if (ctx == NULL || flow == NULL || buffer == NULL) {
         return NEAT_ERROR_BAD_ARGUMENT;
     }
-
-    pipe    = malloc(sizeof(*pipe));
-    connect = malloc(sizeof(*connect));
-    data    = malloc(sizeof(*data));
-
-    if (pipe == NULL || data == NULL || data == NULL) {
-        if (pipe)
-            free(pipe);
-        if (connect)
-            free(connect);
-        if (data)
-            free(data);
-
-        return NEAT_ERROR_OUT_OF_MEMORY;
-    }
-
-    data->ctx           = ctx;
-    data->flow          = flow;
-    data->output_buffer = buffer;
-    data->on_pm_reply   = cb;
-    data->on_pm_error   = err_cb;
-    data->read_buffer   = NULL;
-    data->buffer_size   = 0;
-    data->timer = NULL;
-
-    connect->data = data;
-
-    uv_pipe_init(ctx->loop, pipe, 1 /* 1 => IPC = TRUE */);
 
     socket_path = getenv("NEAT_PM_SOCKET");
     if (!socket_path) {
@@ -319,13 +255,31 @@ neat_pm_send(struct neat_ctx *ctx, struct neat_flow *flow, char *buffer, pm_repl
         }
     }
 
+    connect = malloc(sizeof(uv_connect_t));
+    if (connect == NULL) {
+        assert(0);
+    }
+
+    struct neat_pm_context *pm_context = flow->pm_context;
+
+    pipe = malloc(sizeof(uv_pipe_t));
+
+    pm_context->pipe = pipe;
+    pm_context->ctx           = ctx;
+    pm_context->flow          = flow;
+    pm_context->on_pm_error   = err_cb;
+    pm_context->output_buffer = buffer;
+    pm_context->on_pm_reply   = cb;
+    pm_context->read_buffer   = NULL;
+    pm_context->buffer_size   = 0;
+
+    connect->data = pm_context;
+
+    uv_pipe_init(ctx->loop, pipe, 1 /* 1 => IPC = TRUE */);
     uv_pipe_connect(connect, pipe, socket_path_buf, on_pm_connected);
 
     return NEAT_OK;
 error:
-    free(pipe);
-    free(connect);
-    free(data);
-
+    free(buffer);
     return NEAT_ERROR_INTERNAL;
 }

@@ -240,10 +240,12 @@ void neat_free_ctx(struct neat_ctx *nc)
 
     free(nc->loop);
 
+#ifndef __clang_analyzer__
     while (!LIST_EMPTY(&nc->flows)) {
         struct neat_flow *f = LIST_FIRST(&nc->flows);
         neat_free_flow(f);
     }
+#endif
 
     neat_security_close(nc);
     free(nc);

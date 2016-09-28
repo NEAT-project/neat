@@ -2104,12 +2104,13 @@ loop_oom:
 loop_error:
         if (candidate->if_name)
             free(candidate->if_name);
-        if (candidate->pollable_socket->src_address)
-            free(candidate->pollable_socket->src_address);
-        if (candidate->pollable_socket->dst_address)
-            free(candidate->pollable_socket->dst_address);
-        if (candidate->pollable_socket)
+        if (candidate->pollable_socket) {
+            if (candidate->pollable_socket->src_address)
+                free(candidate->pollable_socket->src_address);
+            if (candidate->pollable_socket->dst_address)
+                free(candidate->pollable_socket->dst_address);
             free(candidate->pollable_socket);
+        }
         free(candidate);
         if (rc == NEAT_OK)
             continue;

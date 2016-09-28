@@ -1701,18 +1701,104 @@ on_pm_error(struct neat_ctx *ctx, struct neat_flow *flow, int error)
 static void
 on_pm_reply_pre_resolve(struct neat_ctx *ctx, struct neat_flow *flow, json_t *json)
 {
-    char *buffer;
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-    neat_free_flow(flow);
-    neat_free_ctx(ctx);
+    int rc = NEAT_OK;
+    size_t i;
+    json_t *value;
+    struct neat_he_candidates *candidate_list;
 
-    buffer = json_dumps(json, JSON_INDENT(2));
-    neat_log(NEAT_LOG_DEBUG, "%s", buffer);
-    free((void*)buffer);
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+#if 0
+    char *str = json_dumps(json, JSON_INDENT(2));
+    neat_log(NEAT_LOG_DEBUG, "Reply from PM was: %s", str);
+    free(str);
+#else
+    neat_log(NEAT_LOG_DEBUG, "Received reply from PM");
+#endif
+
+    if ((candidate_list = calloc(1, sizeof(*candidate_list))) == NULL) {
+        rc = NEAT_ERROR_OUT_OF_MEMORY;
+        goto error;
+    }
+
+    TAILQ_INIT(candidate_list);
+
+    json_array_foreach(json, i, value) {
+        const char *address = NULL, *interface = NULL, *local_ip  = NULL;
+        struct neat_he_candidate *candidate = NULL;
+
+        if ((candidate = calloc(1, sizeof(*candidate))) == NULL)
+            goto error;
+
+        if ((candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket))) == NULL)
+            goto loop_oom;
+
+        if ((address = json_string_value(get_property(value, "domain_name", JSON_STRING))) == NULL)
+             goto loop_error;
+
+        if ((interface = json_string_value(get_property(value, "interface", JSON_STRING))) == NULL)
+            goto loop_error;
+
+        if ((local_ip = json_string_value(get_property(value, "local_ip", JSON_STRING))) == NULL)
+            goto loop_error;
+
+        if ((candidate->pollable_socket->dst_address = strdup(address)) == NULL)
+            goto loop_oom;
+
+        if ((candidate->if_name = strdup(interface)) == NULL)
+            goto loop_oom;
+
+        if ((candidate->if_idx = if_nametoindex(candidate->if_name)) == 0) {
+            neat_log(NEAT_LOG_DEBUG, "Unknown interface %s", candidate->if_name);
+            goto loop_error;
+        }
+
+        if ((candidate->pollable_socket->src_address = strdup(local_ip)) == NULL)
+            goto loop_oom;
+
+        candidate->pollable_socket->port = flow->port;
+        candidate->properties = value;
+        json_incref(value);
+
+        TAILQ_INSERT_TAIL(candidate_list, candidate, next);
+
+        continue;
+loop_oom:
+        rc = NEAT_ERROR_OUT_OF_MEMORY;
+loop_error:
+        if (candidate->if_name)
+            free(candidate->if_name);
+        if (candidate->pollable_socket->src_address)
+            free(candidate->pollable_socket->src_address);
+        if (candidate->pollable_socket->dst_address)
+            free(candidate->pollable_socket->dst_address);
+        if (candidate->pollable_socket)
+            free(candidate->pollable_socket);
+        free(candidate);
+        if (rc == NEAT_OK)
+            continue;
+        else
+            goto error;
+    }
 
     json_decref(json);
 
+#if 0
+    // Deallocation test
+    neat_free_candidates(candidate_list);
+    neat_free_flow(flow);
+    neat_core_cleanup(ctx);
     exit(0);
+#endif
+
+    // neat_resolve_candidates(ctx, flow, candidate_list);
+
+    return;
+error:
+    json_decref(json);
+    neat_free_candidates(candidate_list);
+
+    neat_io_error(ctx, flow, rc);
 }
 
 static void

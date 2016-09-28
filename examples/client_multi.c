@@ -344,11 +344,11 @@ tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
 int
 main(int argc, char *argv[])
 {
-    uint64_t prop;
+    // uint64_t prop;
     int arg, result;
     char *arg_property = config_property;
-    char *arg_property_ptr = NULL;
-    char arg_property_delimiter[] = ",;";
+    // char *arg_property_ptr = NULL;
+    // char arg_property_delimiter[] = ",;";
 
     NEAT_OPTARGS_DECLARE(NEAT_OPTARGS_MAX);
     NEAT_OPTARGS_INIT();
@@ -433,6 +433,7 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
+#if 0
     // set properties (TCP only etc..)
     if (neat_get_property(ctx, flow, &prop)) {
         fprintf(stderr, "%s - error: neat_get_property\n", __func__);
@@ -502,6 +503,7 @@ main(int argc, char *argv[])
         result = EXIT_FAILURE;
         goto cleanup;
     }
+#endif
 
     // set callbacks
     ops.on_connected = on_connected;

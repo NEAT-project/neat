@@ -144,7 +144,7 @@ NEAT_EXTERN neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *f
 NEAT_EXTERN neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t *outMask);
 NEAT_EXTERN neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
-                                              uint64_t inMask);
+                                              const char* properties);
 NEAT_EXTERN neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                             uint16_t port, struct neat_tlv optional[], unsigned int opt_count);
 NEAT_EXTERN neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
@@ -160,9 +160,9 @@ NEAT_EXTERN neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct n
 NEAT_EXTERN neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct neat_flow *flow,
                                      const char *filename);
 
-NEAT_EXTERN neat_error_code neat_set_qos(struct neat_ctx *ctx, 
+NEAT_EXTERN neat_error_code neat_set_qos(struct neat_ctx *ctx,
 					struct neat_flow *flow, uint8_t qos);
-NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx, 
+NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
 					struct neat_flow *flow, uint8_t ecn);
 
 // do we also need a set property with a void * or an int (e.g. timeouts) or should

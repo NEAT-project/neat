@@ -22,6 +22,7 @@ FOREACH (source_file ${neat_programs})
     ADD_EXECUTABLE (
         ${source_file_we}
         ${source_file}
+        util.c
     )
     TARGET_LINK_LIBRARIES(${source_file_we} neat)
 ENDFOREACH ()

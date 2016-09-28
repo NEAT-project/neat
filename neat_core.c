@@ -32,6 +32,7 @@
 #include "neat_property_helpers.h"
 #include "neat_stat.h"
 #include "neat_resolver_helpers.h"
+#include "neat_json_helpers.h"
 
 #if defined(USRSCTP_SUPPORT)
     #include "neat_usrsctp_internal.h"
@@ -430,6 +431,8 @@ static void synchronous_free(neat_flow *flow)
 
 	LIST_REMOVE(flow, next_flow);
 
+    json_decref(flow->properties);
+
     free_iofilters(flow->iofilters);
     free(flow->readBuffer);
     free(flow->socket->handle);
@@ -490,23 +493,45 @@ void neat_free_flow(neat_flow *flow)
 
 }
 
-neat_error_code neat_get_property(neat_ctx *mgr, struct neat_flow *flow,
-                                  uint64_t *outMask)
+neat_error_code
+neat_set_property(neat_ctx *mgr, neat_flow *flow, const char *properties)
 {
+    json_t *prop, *props;
+    json_error_t error;
+    const char *key;
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    *outMask = flow->propertyUsed;
+    props = json_loads(properties, 0, &error);
+    if (props == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "Error in property string, line %d col %d",
+                 error.line, error.position);
+        neat_log(NEAT_LOG_DEBUG, "%s", error.text);
+
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+
+    json_object_foreach(props, key, prop) {
+
+        // This step is not strictly required, but informs of overwritten keys
+        if (json_object_del(flow->properties, key) == 0) {
+            neat_log(NEAT_LOG_DEBUG, "Existing property %s was overwritten!", key);
+        }
+
+        json_object_set(flow->properties, key, prop);
+    }
+
+    json_decref(props);
+
+#if 0
+    char *buffer = json_dumps(flow->properties, JSON_INDENT(2));
+    neat_log(NEAT_LOG_DEBUG, "Flow properties are now:\n%s\n", buffer);
+    free(buffer);
+#endif
+
     return NEAT_OK;
 }
 
-neat_error_code neat_set_property(neat_ctx *mgr, neat_flow *flow,
-                                  uint64_t inMask)
-{
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    flow->propertyMask = inMask;
-    return NEAT_OK;
-}
 
 int neat_get_stack(neat_ctx* mgr, neat_flow* flow)
 {
@@ -1105,6 +1130,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     struct neat_he_candidate *candidate = handle->data;
     struct neat_flow *flow = candidate->pollable_socket->flow;
     struct neat_he_candidates *candidate_list = flow->candidate_list;
+    json_t *security = NULL, *val = NULL;
 
     c++;
     neat_log(NEAT_LOG_DEBUG, "Invokation count: %d", c);
@@ -1200,8 +1226,10 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
         flow->isPolling = 1;
 
-        //  todo NEAT_PROPERTY_OPTIONAL_SECURITY
-        if (flow->propertyMask & NEAT_PROPERTY_REQUIRED_SECURITY) {
+        if ((security = json_object_get(flow->properties, "security")) != NULL &&
+            (val = json_object_get(security, "value")) != NULL &&
+            json_typeof(val) == JSON_TRUE)
+        {
             neat_log(NEAT_LOG_DEBUG, "client required security");
             if (neat_security_install(flow->ctx, flow) != NEAT_OK) {
                 neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
@@ -1540,7 +1568,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     struct neat_flow *flow = user_data;
     struct neat_ctx *ctx = flow->ctx;
 
-    uint8_t nr_of_stacks = 0;
+    size_t nr_of_stacks = NEAT_STACK_MAX_NUM;
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM];
 
     struct neat_resolver_res *result;
@@ -1554,7 +1582,8 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     }
 
     // Find the enabled stacks based on the properties
-    nr_of_stacks = neat_property_translate_protocols(flow->propertyAttempt, stacks);
+    // nr_of_stacks = neat_property_translate_protocols(flow->propertyAttempt, stacks);
+    neat_find_enabled_stacks(flow->properties, stacks, &nr_of_stacks, NULL);
     assert(nr_of_stacks);
     assert(results);
 
@@ -1851,7 +1880,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
 {
     int sctp_udp_encaps = 0;
     struct neat_pollable_socket *sctp_socket = NULL;
-    uint8_t nr_of_stacks = 0;
+    size_t nr_of_stacks = NEAT_STACK_MAX_NUM;
     unsigned int socket_count = 0;
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM];
     neat_flow *flow = user_data;
@@ -1874,7 +1903,23 @@ accept_resolve_cb(struct neat_resolver_results *results,
 
     // Hack until we support listening for multiple protocols (again?)
     // Assume that a transport protocol is specified with NEAT_PROPERTY_*_REQUIRED
-    nr_of_stacks = neat_property_translate_protocols(flow->propertyAttempt, stacks);
+    // nr_of_stacks = neat_property_translate_protocols(flow->propertyAttempt, stacks);
+    json_t *empty_obj = json_object();
+    if (json_equal(flow->properties, empty_obj)) {
+        // No properties specified, listen to all available protocols
+        neat_log(NEAT_LOG_DEBUG, "No properties specifying protocols to listen for");
+        neat_log(NEAT_LOG_DEBUG, "Listening to all protocols...");
+
+        nr_of_stacks = 0;
+        stacks[nr_of_stacks++] = NEAT_STACK_UDP;
+        stacks[nr_of_stacks++] = NEAT_STACK_UDPLITE;
+        stacks[nr_of_stacks++] = NEAT_STACK_TCP;
+        stacks[nr_of_stacks++] = NEAT_STACK_SCTP;
+        stacks[nr_of_stacks++] = NEAT_STACK_SCTP_UDP;
+    } else {
+        neat_find_enabled_stacks(flow->properties, stacks, &nr_of_stacks, NULL);
+    }
+    json_decref(empty_obj);
     assert(nr_of_stacks > 0);
 
     flow->resolver_results = results;
@@ -3359,6 +3404,8 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 #if defined(USRSCTP_SUPPORT)
     rv->acceptusrsctpfx = neat_accept_via_usrsctp;
 #endif
+
+    rv->properties = json_object();
 
     rv->socket = malloc(sizeof(struct neat_pollable_socket));
     if (!rv->socket)

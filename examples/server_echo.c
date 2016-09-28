@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include "../neat.h"
+#include "util.h"
+#include <errno.h>
 
 /**********************************************************************
 
@@ -19,17 +21,17 @@ A TLS example:
 
 static uint32_t config_buffer_size = 512;
 static uint16_t config_log_level = 1;
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
+static char *config_property = "{\n\
+    \"transport\": [\n\
+        {\n\
+            \"value\": \"SCTP\",\n\
+            \"precedence\": 1\n\
+        },\n\
+        {\n\
+            \"value\": \"TCP\",\n\
+            \"precedence\": 1\n\
+        }\n\
+    ]\n\
 }";
 static char *pem_file = NULL;
 
@@ -46,7 +48,7 @@ print_usage()
     }
 
     printf("server_echo [OPTIONS]\n");
-    printf("\t- P \tneat properties (%s)\n", config_property);
+    printf("\t- P <filename> \tneat properties, default properties:\n%s\n", config_property);
     printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
     printf("\t- p \tpem file (none)\n");
@@ -208,7 +210,7 @@ int
 main(int argc, char *argv[])
 {
     int arg, result;
-    char *arg_property = config_property;
+    char *arg_property = NULL;
     static struct neat_ctx *ctx = NULL;
     static struct neat_flow *flow = NULL;
     static struct neat_flow_operations ops;
@@ -220,7 +222,12 @@ main(int argc, char *argv[])
     while ((arg = getopt(argc, argv, "P:S:p:v:")) != -1) {
         switch(arg) {
         case 'P':
-            arg_property = optarg;
+            if (read_file(optarg, &arg_property) < 0) {
+                fprintf(stderr, "Unable to read properties from %s: %s",
+                        optarg, strerror(errno));
+                result = EXIT_FAILURE;
+                goto cleanup;
+            }
             if (config_log_level >= 1) {
                 printf("option - properties: %s\n", arg_property);
             }
@@ -276,7 +283,7 @@ main(int argc, char *argv[])
     }
 
     // set properties
-    if (neat_set_property(ctx, flow, arg_property)) {
+    if (neat_set_property(ctx, flow, arg_property ? arg_property : config_property)) {
         fprintf(stderr, "%s - neat_set_property failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
@@ -303,6 +310,9 @@ main(int argc, char *argv[])
 
     // cleanup
 cleanup:
+    if (arg_property)
+        free(arg_property);
+
     if (ctx != NULL) {
         neat_free_ctx(ctx);
     }

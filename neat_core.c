@@ -401,10 +401,6 @@ static void synchronous_free(neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    const char *proto;
-    struct neat_he_candidates *candidates = flow->candidate_list;
-    struct neat_he_candidate *candidate, *tmp;
-
     flow->closefx(flow->ctx, flow);
     free((char *)flow->name);
     free((char *)flow->server_pem);

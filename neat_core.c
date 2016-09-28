@@ -1607,8 +1607,10 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
             continue;
 
         candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket));
-        if (!candidate->pollable_socket)
+        if (!candidate->pollable_socket) {
+            free(candidate);
             continue;
+        }
 
         if_idx = if_nametoindex(interface);
         if (!if_idx) {

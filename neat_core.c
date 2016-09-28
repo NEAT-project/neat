@@ -1691,10 +1691,22 @@ static void
 on_pm_error(struct neat_ctx *ctx, struct neat_flow *flow, int error)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-    neat_free_flow(flow);
-    neat_free_ctx(ctx);
 
-    exit(0);
+    switch (error) {
+        case PM_ERROR_SOCKET_UNAVAILABLE:
+        case PM_ERROR_SOCKET:
+        case PM_ERROR_INVALID_JSON:
+            neat_log(NEAT_LOG_DEBUG, "===== Unable to communicate with PM, using fallback =====");
+            neat_resolve(ctx->resolver, AF_UNSPEC, flow->name, flow->port,
+                         open_resolve_cb, flow);
+            break;
+        case PM_ERROR_OOM:
+            break;
+        default:
+            assert(0);
+            break;
+    }
+
 }
 
 static void

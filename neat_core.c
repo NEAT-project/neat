@@ -363,6 +363,40 @@ static void free_iofilters(struct neat_iofilter *filter)
     free (filter);
 }
 
+void
+neat_free_candidate(struct neat_he_candidate *candidate)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    free(candidate->pollable_socket->dst_address);
+    free(candidate->pollable_socket->src_address);
+
+    if (candidate->pollable_socket->handle != NULL) {
+        neat_log(NEAT_LOG_DEBUG,"%s: Release candidate with free()", __func__);
+        free(candidate->pollable_socket->handle);
+    }
+
+    free(candidate->pollable_socket);
+    free(candidate->if_name);
+    json_decref(candidate->properties);
+    free(candidate);
+}
+
+void
+neat_free_candidates(struct neat_he_candidates *candidates)
+{
+    struct neat_he_candidate *candidate, *tmp;
+
+    if (candidates == NULL)
+        return;
+
+    TAILQ_FOREACH_SAFE(candidate, candidates, next, tmp) {
+        neat_free_candidate(candidate);
+    }
+
+    free(candidates);
+}
+
 static void synchronous_free(neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -384,52 +418,7 @@ static void synchronous_free(neat_flow *flow)
         free(flow->operations);
     }
 
-    if (candidates) {
-        TAILQ_FOREACH_SAFE(candidate, candidates, next, tmp) {
-            switch (candidate->pollable_socket->stack) {
-            case NEAT_STACK_UDP:
-                proto = "UDP";
-                break;
-            case NEAT_STACK_TCP:
-                proto = "TCP";
-                break;
-            case NEAT_STACK_SCTP:
-                proto = "SCTP";
-                break;
-            case NEAT_STACK_SCTP_UDP:
-                proto = "SCTP/UDP";
-                break;
-            case NEAT_STACK_UDPLITE:
-                proto = "UDPLite";
-                break;
-            default:
-                proto = "?";
-                break;
-            };
-
-            neat_log(NEAT_LOG_DEBUG,
-                     "%s: candidate released: %s <saddr %s> <dstaddr %s> port %5d priority %d",
-                     __func__,
-                     proto,
-                     candidate->pollable_socket->src_address,
-                     candidate->pollable_socket->dst_address,
-                     candidate->pollable_socket->port,
-                     candidate->priority);
-
-            free(candidate->pollable_socket->dst_address);
-            free(candidate->pollable_socket->src_address);
-            if (candidate->pollable_socket->handle != NULL) {
-                neat_log(NEAT_LOG_DEBUG,"%s: Release candidate with free()", __func__);
-                free(candidate->pollable_socket->handle);
-            }
-            free(candidate->pollable_socket);
-            free(candidate->if_name);
-            json_decref(candidate->properties);
-            free(candidate);
-
-        }
-        free(candidates);
-    }
+    neat_free_candidates(flow->candidate_list);
 
 	LIST_REMOVE(flow, next_flow);
 

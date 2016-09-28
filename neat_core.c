@@ -2123,12 +2123,11 @@ loop_error:
 #if 0
     // Deallocation test
     neat_free_candidates(candidate_list);
-    neat_free_flow(flow);
-    neat_core_cleanup(ctx);
+    neat_free_ctx(ctx);
     exit(0);
 #endif
 
-    // neat_resolve_candidates(ctx, flow, candidate_list);
+    neat_resolve_candidates(ctx, flow, candidate_list);
 
     return;
 error:

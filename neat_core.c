@@ -222,6 +222,7 @@ static void neat_core_cleanup(struct neat_ctx *nc)
 //TODO: Consider adding callback, like for resolver
 void neat_free_ctx(struct neat_ctx *nc)
 {
+    struct neat_flow *f, *prev = NULL;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (nc->resolver) {
@@ -240,12 +241,20 @@ void neat_free_ctx(struct neat_ctx *nc)
 
     free(nc->loop);
 
-// #ifndef __clang_analyzer__
     while (!LIST_EMPTY(&nc->flows)) {
-        struct neat_flow *f = LIST_FIRST(&nc->flows);
+        f = LIST_FIRST(&nc->flows);
+
+        /*
+         * If this assert triggers, it means that a call to neat_free_flow did
+         * not remove the flow pointed to by f from the list of flows. The
+         * assert is present because clang-analyzer somehow doesn't see the fact
+         * that the list is changed in synchronous_free().
+         */
+        assert(f != prev);
+
         neat_free_flow(f);
+        prev = f;
     }
-// #endif
 
     neat_security_close(nc);
     free(nc);

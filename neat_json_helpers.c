@@ -35,8 +35,8 @@ static struct neat_transport_property neat_transports[] = {
     {"SCTP/UDP", NEAT_STACK_SCTP_UDP},
 };
 
-static inline neat_protocol_stack_type
-string_to_stack(const char* str)
+neat_protocol_stack_type
+string_to_stack(const char *str)
 {
     for (size_t i = 0; i < sizeof(neat_transports) / sizeof(*neat_transports); ++i) {
         if (strcmp(str, neat_transports[i].name) == 0) {

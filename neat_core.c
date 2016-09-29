@@ -240,12 +240,12 @@ void neat_free_ctx(struct neat_ctx *nc)
 
     free(nc->loop);
 
-#ifndef __clang_analyzer__
+// #ifndef __clang_analyzer__
     while (!LIST_EMPTY(&nc->flows)) {
         struct neat_flow *f = LIST_FIRST(&nc->flows);
         neat_free_flow(f);
     }
-#endif
+// #endif
 
     neat_security_close(nc);
     free(nc);
@@ -1661,14 +1661,15 @@ out_of_memory:
         rc = NEAT_ERROR_OUT_OF_MEMORY;
 error:
         if (candidate) {
-            if (candidate->pollable_socket->src_address)
-                free(candidate->pollable_socket->src_address);
+            if (candidate->pollable_socket) {
+                if (candidate->pollable_socket->src_address)
+                    free(candidate->pollable_socket->src_address);
+                if (candidate->pollable_socket->dst_address)
+                    free(candidate->pollable_socket->dst_address);
+                free(candidate->pollable_socket);
+            }
             if (candidate->if_name)
                 free(candidate->if_name);
-            if (candidate->pollable_socket->dst_address)
-                free(candidate->pollable_socket->dst_address);
-            if (candidate->pollable_socket)
-                free(candidate->pollable_socket);
             free(candidate);
         }
         if (rc)

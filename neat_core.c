@@ -1862,8 +1862,11 @@ neat_resolve_candidates(neat_ctx *ctx, neat_flow *flow,
 #ifndef __clang_analyzer__
     // Both remaining and status will be freed in on_candidates_resolved
     // TODO: Move these to neat_flow?
-    remaining = calloc(1, sizeof(*remaining));
-    status = calloc(1, sizeof(*status));
+    if ((remaining = calloc(1, sizeof(*remaining))) == NULL)
+        goto error;
+    if ((status = calloc(1, sizeof(*status))) == NULL)
+        goto error;
+
     *status = 0;
 #endif
 
@@ -1892,6 +1895,13 @@ neat_resolve_candidates(neat_ctx *ctx, neat_flow *flow,
         neat_resolve(ctx->resolver, AF_UNSPEC, candidate->pollable_socket->dst_address,
                      candidate->pollable_socket->port, on_candidate_resolved, resolver_data);
     }
+    return;
+#ifdef __clang_analyzer__
+error:
+    if (remaining)
+        free(remaining);
+    neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+#endif
 }
 
 static neat_error_code

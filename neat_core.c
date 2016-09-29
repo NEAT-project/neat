@@ -1851,24 +1851,25 @@ static void
 neat_resolve_candidates(neat_ctx *ctx, neat_flow *flow,
                         struct neat_he_candidates *candidate_list)
 {
-#ifndef __clang_analyzer__
     int *remaining, *status;
-#endif
     struct neat_he_candidate *candidate;
     struct candidate_resolver_data *resolver_data;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-#ifndef __clang_analyzer__
-    // Both remaining and status will be freed in on_candidates_resolved
-    // TODO: Move these to neat_flow?
+    assert(candidate_list);
+
+    if (TAILQ_EMPTY(candidate_list)) {
+        neat_log(NEAT_LOG_WARNING, "neat_resolve_candidates called with an empty candidate list");
+        return;
+    }
+
     if ((remaining = calloc(1, sizeof(*remaining))) == NULL)
         goto error;
     if ((status = calloc(1, sizeof(*status))) == NULL)
         goto error;
 
     *status = 0;
-#endif
 
     // TODO: Should this have been allocated before this point?
     if (!ctx->resolver)
@@ -1885,23 +1886,19 @@ neat_resolve_candidates(neat_ctx *ctx, neat_flow *flow,
         resolver_data->candidate = candidate;
         resolver_data->flow = flow;
 
-#ifndef __clang_analyzer__
         resolver_data->status = status;
         resolver_data->remaining = remaining;
         (*remaining)++;
-#endif
 
         // TODO: Look up ipv4/ipv6 preference in the properties
         neat_resolve(ctx->resolver, AF_UNSPEC, candidate->pollable_socket->dst_address,
                      candidate->pollable_socket->port, on_candidate_resolved, resolver_data);
     }
     return;
-#ifdef __clang_analyzer__
 error:
     if (remaining)
         free(remaining);
     neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
-#endif
 }
 
 static neat_error_code

@@ -328,6 +328,7 @@ struct neat_he_candidate {
 TAILQ_HEAD(neat_he_candidates, neat_he_candidate);
 
 void neat_free_candidates(struct neat_he_candidates *candidates);
+void neat_free_candidate(struct neat_he_candidate *candidate);
 
 // Connect context needed during HE.
 struct he_cb_ctx {

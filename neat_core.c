@@ -1659,7 +1659,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
             ((struct sockaddr*) &candidate->pollable_socket->src_sockaddr)->sa_family = AF_INET;
         } else {
             // Not AF_INET or AF_INET6?...
-            neat_log(NEAT_LOG_DEBUG, "Received candidate with an address that was neither AF_INET nor AF_INET6");
+            neat_log(NEAT_LOG_DEBUG, "Received candidate with address \"%s\" which neither AF_INET nor AF_INET6", candidate->pollable_socket->dst_address);
             rc = NEAT_ERROR_BAD_ARGUMENT;
             goto error;
         }

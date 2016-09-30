@@ -323,6 +323,7 @@ struct neat_he_candidate {
     size_t writeLimit;
     unsigned int isSCTPExplicitEOR : 1;
     TAILQ_ENTRY(neat_he_candidate) next;
+    TAILQ_ENTRY(neat_he_candidate) resolution_list;
 };
 
 TAILQ_HEAD(neat_he_candidates, neat_he_candidate);

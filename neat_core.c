@@ -1778,7 +1778,7 @@ on_candidates_resolved(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates
     buffer = json_dumps(array, JSON_INDENT(2));
     json_decref(array);
     neat_free_candidates(candidate_list);
-#if 1
+#if 0
     neat_log(NEAT_LOG_DEBUG, "Sending post-resolve properties to PM\n%s\n", buffer);
 #else
     neat_log(NEAT_LOG_DEBUG, "Sending post-resolve properties to PM");

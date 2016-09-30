@@ -91,12 +91,7 @@ static void on_he_connect_req(uv_timer_t *handle)
         }
 
         TAILQ_REMOVE(candidate_list, candidate, next);
-        free(candidate->pollable_socket->dst_address);
-        free(candidate->pollable_socket->src_address);
-        free(candidate->pollable_socket);
-        free(candidate->if_name);
-        // json_decref(candidate->properties);
-        free(candidate);
+        neat_free_candidate(candidate);
 
    } else {
 
@@ -252,12 +247,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
                 neat_log(NEAT_LOG_DEBUG, "%s:Release candidate", __func__ );
                 next_candidate = TAILQ_NEXT(candidate, next);
                 TAILQ_REMOVE(candidate_list, candidate, next);
-                free(candidate->pollable_socket->dst_address);
-                free(candidate->pollable_socket->src_address);
-                free(candidate->pollable_socket);
-                free(candidate->if_name);
-                json_decref(candidate->properties);
-                free(candidate);
+                neat_free_candidate(candidate);
                 candidate = next_candidate;
             } else {
 

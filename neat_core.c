@@ -1659,7 +1659,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
             ((struct sockaddr*) &candidate->pollable_socket->src_sockaddr)->sa_family = AF_INET;
         } else {
             // Not AF_INET or AF_INET6?...
-            neat_log(NEAT_LOG_DEBUG, "Received candidate with an address that was neither AF_INET nor AF_INET6");
+            neat_log(NEAT_LOG_DEBUG, "Received candidate with address \"%s\" which neither AF_INET nor AF_INET6", candidate->pollable_socket->dst_address);
             rc = NEAT_ERROR_BAD_ARGUMENT;
             goto error;
         }
@@ -1789,13 +1789,18 @@ on_candidates_resolved(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates
 
 struct candidate_resolver_data
 {
-    // neat_ctx *ctx;
     neat_flow *flow;
     struct neat_he_candidates *candidate_list;
-    struct neat_he_candidate *candidate;
+
+    TAILQ_HEAD(list, neat_he_candidate) resolution_group;
+
+    const char *domain_name;
+    unsigned int port;
 
     int *status;
     int *remaining;
+
+    TAILQ_ENTRY(candidate_resolver_data) next;
 };
 
 static neat_error_code
@@ -1807,7 +1812,7 @@ on_candidate_resolved(struct neat_resolver_results *results,
     struct sockaddr_storage dummy;
     struct neat_resolver_res *result;
     struct candidate_resolver_data *data = user_data;
-    struct neat_he_candidate *candidate = data->candidate;
+    struct neat_he_candidate *candidate, *tmp;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -1825,45 +1830,50 @@ on_candidate_resolved(struct neat_resolver_results *results,
         char ifname1[IF_NAMESIZE];
         char ifname2[IF_NAMESIZE];
 
-        // The interface index must be the same as the interface index of the candidate
-        if (result->if_idx != candidate->if_idx) {
-            neat_log(NEAT_LOG_DEBUG, "Interface did not match, %s [%d] != %s [%d]", if_indextoname(result->if_idx, ifname1), result->if_idx, if_indextoname(candidate->if_idx, ifname2), candidate->if_idx);
-            continue;
-        }
-
         if ((rc = getnameinfo((struct sockaddr*)&result->dst_addr, result->dst_addr_len, namebuf, NI_MAXHOST, NULL, 0, NI_NUMERICHOST)) != 0) {
             neat_log(NEAT_LOG_DEBUG, "getnameinfo error");
             continue;
         }
 
-        // TODO: Move inet_pton out of the loop
-        if (result->ai_family == AF_INET && inet_pton(AF_INET6, candidate->pollable_socket->src_address, &dummy) == 1) {
-            neat_log(NEAT_LOG_DEBUG, "Address family did not match");
-            continue;
-        }
+        TAILQ_FOREACH_SAFE(candidate, &data->resolution_group, resolution_list, tmp) {
 
-        // TODO: Move inet_pton out of the loop
-        if (result->ai_family == AF_INET6 && inet_pton(AF_INET, candidate->pollable_socket->src_address, &dummy) == 1) {
-            neat_log(NEAT_LOG_DEBUG, "Address family did not match");
-            continue;
-        }
+            // The interface index must be the same as the interface index of the candidate
+            if (result->if_idx != candidate->if_idx) {
+                neat_log(NEAT_LOG_DEBUG, "Interface did not match, %s [%d] != %s [%d]", if_indextoname(result->if_idx, ifname1), result->if_idx, if_indextoname(candidate->if_idx, ifname2), candidate->if_idx);
+                continue;
+            }
 
-        break;
+            // TODO: Move inet_pton out of the loop
+            if (result->ai_family == AF_INET && inet_pton(AF_INET6, candidate->pollable_socket->src_address, &dummy) == 1) {
+                neat_log(NEAT_LOG_DEBUG, "Address family did not match");
+                continue;
+            }
+
+            // TODO: Move inet_pton out of the loop
+            if (result->ai_family == AF_INET6 && inet_pton(AF_INET, candidate->pollable_socket->src_address, &dummy) == 1) {
+                neat_log(NEAT_LOG_DEBUG, "Address family did not match");
+                continue;
+            }
+
+            // dst_address was strdup'd in on_pm_reply_pre_resolve, free it
+            free(candidate->pollable_socket->dst_address);
+
+            if ((candidate->pollable_socket->dst_address = strdup(namebuf)) != NULL) {
+                neat_log(NEAT_LOG_DEBUG, "%s -> %s", candidate->pollable_socket->src_address, namebuf);
+            } else {
+                *(data->status) = NEAT_ERROR_OUT_OF_MEMORY;
+            }
+
+            candidate->if_idx = result->if_idx;
+
+            TAILQ_REMOVE(&data->resolution_group, candidate, resolution_list);
+        }
     }
 
-    if (result) {
-        // dst_address was strdup'd in on_pm_reply_pre_resolve, free it
-        free(candidate->pollable_socket->dst_address);
-
-        // We found at least one useable result, set the destination address
-        if ((candidate->pollable_socket->dst_address = strdup(namebuf)) != NULL) {
-            neat_log(NEAT_LOG_DEBUG, "%s -> %s", candidate->pollable_socket->src_address, namebuf);
-        } else {
-            *(data->status) = NEAT_ERROR_OUT_OF_MEMORY;
-        }
-    } else {
-        // No usable results found for this candidate
-        neat_log(NEAT_LOG_DEBUG, "Candidate with no useful resolver result");
+    // The remaining candidates in the resolution group have not been resolved.
+    // Set the interface id to 0 to have them removed before sending them back
+    // to the PM.
+    TAILQ_FOREACH(candidate, &data->resolution_group, resolution_list) {
         candidate->if_idx = 0;
     }
 
@@ -1885,9 +1895,12 @@ static void
 neat_resolve_candidates(neat_ctx *ctx, neat_flow *flow,
                         struct neat_he_candidates *candidate_list)
 {
-    int *remaining, *status;
+    int *remaining, *status = NULL;
     struct neat_he_candidate *candidate;
-    struct candidate_resolver_data *resolver_data;
+    struct candidate_resolver_data *resolver_data, *tmp;
+
+    TAILQ_HEAD(resolution_group_list, candidate_resolver_data) resolutions;
+    TAILQ_INIT(&resolutions);
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -1913,25 +1926,66 @@ neat_resolve_candidates(neat_ctx *ctx, neat_flow *flow,
         ctx->pvd = neat_pvd_init(ctx);
 
     TAILQ_FOREACH(candidate, candidate_list, next) {
-        resolver_data = malloc(sizeof(*resolver_data));
-        assert(resolver_data);
+        struct candidate_resolver_data *existing_resolution;
+
+        TAILQ_FOREACH(existing_resolution, &resolutions, next) {
+            // neat_log(NEAT_LOG_DEBUG, "%s - %s", existing_resolution->domain_name, candidate->pollable_socket->dst_address);
+
+            if (strcmp(existing_resolution->domain_name, candidate->pollable_socket->dst_address) != 0)
+                continue;
+
+            if (existing_resolution->port != candidate->pollable_socket->port)
+                continue;
+
+            // TODO: Split on ipv4/ipv6/no preference
+
+            neat_log(NEAT_LOG_DEBUG, "Adding candidate to existing resolution group for %s:%u",
+                     existing_resolution->domain_name, existing_resolution->port);
+
+            TAILQ_INSERT_TAIL(&existing_resolution->resolution_group, candidate, resolution_list);
+
+            goto next_candidate;
+        }
+
+        if ((resolver_data = malloc(sizeof(*resolver_data))) == NULL)
+            goto error;
+
+        resolver_data->port = candidate->pollable_socket->port;
+        resolver_data->domain_name = candidate->pollable_socket->dst_address;
 
         resolver_data->candidate_list = candidate_list;
-        resolver_data->candidate = candidate;
+        TAILQ_INIT(&resolver_data->resolution_group);
         resolver_data->flow = flow;
 
         resolver_data->status = status;
         resolver_data->remaining = remaining;
         (*remaining)++;
 
-        // TODO: Look up ipv4/ipv6 preference in the properties
-        neat_resolve(ctx->resolver, AF_UNSPEC, candidate->pollable_socket->dst_address,
-                     candidate->pollable_socket->port, on_candidate_resolved, resolver_data);
+        neat_log(NEAT_LOG_DEBUG, "Creating new resolution group for %s:%u", resolver_data->domain_name, resolver_data->port);
+        TAILQ_INSERT_TAIL(&resolver_data->resolution_group, candidate, resolution_list);
+        TAILQ_INSERT_TAIL(&resolutions, resolver_data, next);
+next_candidate:
+        continue;
     }
+
+    struct candidate_resolver_data *resolution;
+    TAILQ_FOREACH(resolution, &resolutions, next) {
+        neat_resolve(ctx->resolver, AF_UNSPEC, resolution->domain_name,
+                     resolution->port, on_candidate_resolved, resolution);
+    }
+
     return;
 error:
+    TAILQ_FOREACH_SAFE(resolver_data, &resolutions, next, tmp) {
+        free(resolver_data);
+    }
+
+    neat_free_candidates(candidate_list);
+
     if (remaining)
         free(remaining);
+    if (status)
+        free(status);
     neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
 }
 

@@ -323,11 +323,13 @@ struct neat_he_candidate {
     size_t writeLimit;
     unsigned int isSCTPExplicitEOR : 1;
     TAILQ_ENTRY(neat_he_candidate) next;
+    TAILQ_ENTRY(neat_he_candidate) resolution_list;
 };
 
 TAILQ_HEAD(neat_he_candidates, neat_he_candidate);
 
 void neat_free_candidates(struct neat_he_candidates *candidates);
+void neat_free_candidate(struct neat_he_candidate *candidate);
 
 // Connect context needed during HE.
 struct he_cb_ctx {

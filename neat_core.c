@@ -1688,7 +1688,6 @@ error:
     }
 }
 
-// TODO: Remove asserts, rewrite for better memory management on errors
 static void
 on_pm_reply_post_resolve(neat_ctx *ctx, neat_flow *flow, json_t *json)
 {
@@ -1799,7 +1798,6 @@ struct candidate_resolver_data
     int *remaining;
 };
 
-// TODO: Improve the handling of status != 0
 static neat_error_code
 on_candidate_resolved(struct neat_resolver_results *results,
                       uint8_t code, void *user_data)

@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <uv.h>
 #include <errno.h>
+#include <ifaddrs.h>
 
 #ifdef __linux__
     #include <net/if.h>
@@ -33,6 +34,7 @@
 #include "neat_stat.h"
 #include "neat_resolver_helpers.h"
 #include "neat_json_helpers.h"
+#include "neat_pm_socket.h"
 
 #if defined(USRSCTP_SUPPORT)
     #include "neat_usrsctp_internal.h"
@@ -220,6 +222,7 @@ static void neat_core_cleanup(struct neat_ctx *nc)
 //TODO: Consider adding callback, like for resolver
 void neat_free_ctx(struct neat_ctx *nc)
 {
+    struct neat_flow *f, *prev = NULL;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (nc->resolver) {
@@ -239,8 +242,18 @@ void neat_free_ctx(struct neat_ctx *nc)
     free(nc->loop);
 
     while (!LIST_EMPTY(&nc->flows)) {
-        struct neat_flow *f = LIST_FIRST(&nc->flows);
+        f = LIST_FIRST(&nc->flows);
+
+        /*
+         * If this assert triggers, it means that a call to neat_free_flow did
+         * not remove the flow pointed to by f from the list of flows. The
+         * assert is present because clang-analyzer somehow doesn't see the fact
+         * that the list is changed in synchronous_free().
+         */
+        assert(f != prev);
+
         neat_free_flow(f);
+        prev = f;
     }
 
     neat_security_close(nc);
@@ -361,13 +374,43 @@ static void free_iofilters(struct neat_iofilter *filter)
     free (filter);
 }
 
-static void synchronous_free(neat_flow *flow)
+void
+neat_free_candidate(struct neat_he_candidate *candidate)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    const char *proto;
-    struct neat_he_candidates *candidates = flow->candidate_list;
+    free(candidate->pollable_socket->dst_address);
+    free(candidate->pollable_socket->src_address);
+
+    if (candidate->pollable_socket->handle != NULL) {
+        neat_log(NEAT_LOG_DEBUG,"%s: Release candidate with free()", __func__);
+        free(candidate->pollable_socket->handle);
+    }
+
+    free(candidate->pollable_socket);
+    free(candidate->if_name);
+    json_decref(candidate->properties);
+    free(candidate);
+}
+
+void
+neat_free_candidates(struct neat_he_candidates *candidates)
+{
     struct neat_he_candidate *candidate, *tmp;
+
+    if (candidates == NULL)
+        return;
+
+    TAILQ_FOREACH_SAFE(candidate, candidates, next, tmp) {
+        neat_free_candidate(candidate);
+    }
+
+    free(candidates);
+}
+
+static void synchronous_free(neat_flow *flow)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     flow->closefx(flow->ctx, flow);
     free((char *)flow->name);
@@ -382,52 +425,7 @@ static void synchronous_free(neat_flow *flow)
         free(flow->operations);
     }
 
-    if (candidates) {
-        TAILQ_FOREACH_SAFE(candidate, candidates, next, tmp) {
-            switch (candidate->pollable_socket->stack) {
-            case NEAT_STACK_UDP:
-                proto = "UDP";
-                break;
-            case NEAT_STACK_TCP:
-                proto = "TCP";
-                break;
-            case NEAT_STACK_SCTP:
-                proto = "SCTP";
-                break;
-            case NEAT_STACK_SCTP_UDP:
-                proto = "SCTP/UDP";
-                break;
-            case NEAT_STACK_UDPLITE:
-                proto = "UDPLite";
-                break;
-            default:
-                proto = "?";
-                break;
-            };
-
-            neat_log(NEAT_LOG_DEBUG,
-                     "%s: candidate released: %s <saddr %s> <dstaddr %s> port %5d priority %d",
-                     __func__,
-                     proto,
-                     candidate->pollable_socket->src_address,
-                     candidate->pollable_socket->dst_address,
-                     candidate->pollable_socket->port,
-                     candidate->priority);
-
-            free(candidate->pollable_socket->dst_address);
-            free(candidate->pollable_socket->src_address);
-            if (candidate->pollable_socket->handle != NULL) {
-                neat_log(NEAT_LOG_DEBUG,"%s: Release candidate with free()", __func__);
-                free(candidate->pollable_socket->handle);
-            }
-            free(candidate->pollable_socket);
-            free(candidate->if_name);
-            json_decref(candidate->properties);
-            free(candidate);
-
-        }
-        free(candidates);
-    }
+    neat_free_candidates(flow->candidate_list);
 
 	LIST_REMOVE(flow, next_flow);
 
@@ -437,6 +435,7 @@ static void synchronous_free(neat_flow *flow)
     free(flow->readBuffer);
     free(flow->socket->handle);
     free(flow->socket);
+    free(flow->pm_context);
     free(flow);
 }
 
@@ -482,9 +481,10 @@ void neat_free_flow(neat_flow *flow)
     }
 #endif
 
-	if (!uv_is_closing((uv_handle_t *)(flow->socket->handle)) &&
-		((flow->socket->handle != NULL) &&
-		(flow->socket->handle->type != UV_UNKNOWN_HANDLE)) ) {
+	if (flow->socket->handle != NULL &&
+        flow->socket->handle->type != UV_UNKNOWN_HANDLE &&
+        !uv_is_closing((uv_handle_t *)flow->socket->handle))
+    {
 		uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
         flow->socket->handle = NULL;
 	} else {
@@ -1560,6 +1560,380 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     return newFlow;
 }
 
+static void on_pm_error(struct neat_ctx *ctx, struct neat_flow *flow, int error);
+
+static void
+build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he_candidates *candidate_list)
+{
+    int rc;
+    size_t i;
+    int if_idx;
+    json_t *value;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    json_array_foreach(json, i, value) {
+        neat_protocol_stack_type stack;
+        const char *interface = NULL, *local_ip  = NULL, *remote_ip = NULL, *transport = NULL;
+        char dummy[sizeof(struct sockaddr_storage)];
+        struct neat_he_candidate *candidate;
+
+        neat_log(NEAT_LOG_DEBUG, "Now processing PM candidate %zu", i);
+
+        interface = json_string_value(get_property(value, "interface", JSON_STRING));
+        if (!interface)
+            continue;
+
+        remote_ip = json_string_value(get_property(value, "remote_ip", JSON_STRING));
+        if (!remote_ip)
+            continue;
+
+        local_ip = json_string_value(get_property(value, "local_ip", JSON_STRING));
+        if (!local_ip)
+            continue;
+
+        transport = json_string_value(get_property(value, "transport", JSON_STRING));
+
+        if ((stack = string_to_stack(transport)) == 0) {
+            neat_log(NEAT_LOG_DEBUG, "Unkown transport stack %s", transport);
+            continue;
+        }
+
+        if ((candidate = calloc(1, sizeof(*candidate))) == NULL)
+            goto out_of_memory;
+
+        if ((candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket))) == NULL)
+            goto out_of_memory;
+
+        if_idx = if_nametoindex(interface);
+        if (!if_idx) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to get interface id for \"%s\"",
+                     interface);
+            if_idx = 0;
+        }
+
+        if ((candidate->pollable_socket->src_address = strdup(local_ip)) == NULL)
+            goto out_of_memory;
+
+        if ((candidate->if_name                      = strdup(interface)) == NULL)
+            goto out_of_memory;
+
+        if ((candidate->pollable_socket->dst_address = strdup(remote_ip)) == NULL)
+            goto out_of_memory;
+
+        candidate->pollable_socket->port        = flow->port;
+        candidate->pollable_socket->stack       = stack;
+        candidate->if_idx                       = if_idx;
+        candidate->priority                     = i; // TODO: Get priority from PM
+        candidate->properties                   = value;
+        json_incref(value);
+
+        memset(dummy, 0, sizeof(dummy));
+
+        // Determine the address family and initialize the sockaddr struct accordingly
+        if (inet_pton(AF_INET6, candidate->pollable_socket->dst_address, &dummy) == 1) {
+            candidate->pollable_socket->family  = AF_INET6;
+            candidate->pollable_socket->src_len = sizeof(struct sockaddr_in6);
+            candidate->pollable_socket->dst_len = sizeof(struct sockaddr_in6);
+
+            memcpy(&((struct sockaddr_in6*) &candidate->pollable_socket->dst_sockaddr)->sin6_addr, dummy, sizeof(struct sockaddr_in6));
+            ((struct sockaddr*) &candidate->pollable_socket->dst_sockaddr)->sa_family = AF_INET6;
+            ((struct sockaddr_in6*) &candidate->pollable_socket->dst_sockaddr)->sin6_port = htons(candidate->pollable_socket->port);
+
+            assert(inet_pton(candidate->pollable_socket->family,
+                             candidate->pollable_socket->src_address,
+                             (void*)&((struct sockaddr_in6*)(&candidate->pollable_socket->src_sockaddr))->sin6_addr) == 1);
+            ((struct sockaddr*) &candidate->pollable_socket->src_sockaddr)->sa_family = AF_INET6;
+        } else if (inet_pton(AF_INET, candidate->pollable_socket->dst_address, &dummy) == 1) {
+            candidate->pollable_socket->family = AF_INET;
+            candidate->pollable_socket->src_len = sizeof(struct sockaddr_in);
+            candidate->pollable_socket->dst_len = sizeof(struct sockaddr_in);
+
+            memcpy(&((struct sockaddr_in*) &candidate->pollable_socket->dst_sockaddr)->sin_addr, dummy, sizeof(struct sockaddr_in));
+            ((struct sockaddr*) &candidate->pollable_socket->dst_sockaddr)->sa_family = AF_INET;
+            ((struct sockaddr_in*) &candidate->pollable_socket->dst_sockaddr)->sin_port = htons(candidate->pollable_socket->port);
+
+            assert(inet_pton(candidate->pollable_socket->family,
+                             candidate->pollable_socket->src_address,
+                             (void*)&((struct sockaddr_in*)(&candidate->pollable_socket->src_sockaddr))->sin_addr) == 1);
+            ((struct sockaddr*) &candidate->pollable_socket->src_sockaddr)->sa_family = AF_INET;
+        } else {
+            // Not AF_INET or AF_INET6?...
+            neat_log(NEAT_LOG_DEBUG, "Received candidate with an address that was neither AF_INET nor AF_INET6");
+            rc = NEAT_ERROR_BAD_ARGUMENT;
+            goto error;
+        }
+
+        TAILQ_INSERT_TAIL(candidate_list, candidate, next);
+        continue;
+out_of_memory:
+        rc = NEAT_ERROR_OUT_OF_MEMORY;
+error:
+        if (candidate) {
+            if (candidate->pollable_socket) {
+                if (candidate->pollable_socket->src_address)
+                    free(candidate->pollable_socket->src_address);
+                if (candidate->pollable_socket->dst_address)
+                    free(candidate->pollable_socket->dst_address);
+                free(candidate->pollable_socket);
+            }
+            if (candidate->if_name)
+                free(candidate->if_name);
+            free(candidate);
+        }
+        if (rc)
+            neat_io_error(ctx, flow, rc);
+        else
+            continue;
+    }
+}
+
+static void
+on_pm_reply_post_resolve(neat_ctx *ctx, neat_flow *flow, json_t *json)
+{
+    struct neat_he_candidates *candidate_list;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+#if 0
+    char *str = json_dumps(json, JSON_INDENT(2));
+    neat_log(NEAT_LOG_DEBUG, "Reply from PM was: %s", str);
+    free(str);
+#else
+    neat_log(NEAT_LOG_DEBUG, "Received second reply from PM");
+#endif
+
+    candidate_list = calloc(1, sizeof(*candidate_list));
+    assert(candidate_list);
+    TAILQ_INIT(candidate_list);
+
+    build_he_candidates(ctx, flow, json, candidate_list);
+
+    struct neat_he_candidate *candidate;
+    TAILQ_FOREACH(candidate, candidate_list, next) {
+        struct sockaddr *sa = (struct sockaddr*) &candidate->pollable_socket->src_sockaddr;
+        struct sockaddr *da = (struct sockaddr*) &candidate->pollable_socket->dst_sockaddr;
+
+        assert(da->sa_family == AF_INET || da->sa_family == AF_INET6);
+        assert(sa->sa_family == AF_INET || sa->sa_family == AF_INET6);
+
+        assert(candidate->pollable_socket->dst_address);
+        assert(candidate->pollable_socket->src_address);
+        assert(candidate->if_idx);
+        assert(candidate->if_name);
+        assert(candidate->pollable_socket->family == AF_INET ||
+               candidate->pollable_socket->family == AF_INET6);
+    }
+
+    json_decref(json);
+
+    neat_he_open(ctx, flow, candidate_list, he_connected_cb);
+}
+
+static void
+on_candidates_resolved(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_list)
+{
+    char *buffer;
+    struct neat_he_candidate *candidate, *tmp;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    // Now that the names in the list are resolved, append the new data to the
+    // json objects and perform a new call to the PM
+
+    json_t *array = json_array();
+
+    TAILQ_FOREACH_SAFE(candidate, candidate_list, next, tmp) {
+        json_t *dst_address, *str;
+
+        if (candidate->if_idx == 0) {
+            neat_log(NEAT_LOG_DEBUG, "Removing...");
+            continue;
+        }
+
+        neat_log(NEAT_LOG_DEBUG, "%s %s", json_string_value(get_property(candidate->properties, "transport", JSON_STRING)), candidate->pollable_socket->dst_address);
+
+        assert(candidate->pollable_socket->dst_address);
+
+        //dst_address = json_pack();
+        str = json_string(candidate->pollable_socket->dst_address);
+        dst_address = json_object();
+
+        json_object_set(dst_address, "value", str);
+        json_object_set(candidate->properties, "remote_ip", dst_address);
+
+        json_array_append(array, candidate->properties);
+
+        // We're done with dst_address and str in this function.
+        json_decref(dst_address);
+        json_decref(str);
+    }
+
+    if (json_array_size(array) == 0) {
+        neat_log(NEAT_LOG_DEBUG, "No usable candidates after name resolution");
+        neat_io_error(ctx, flow, NEAT_ERROR_UNABLE);
+        return;
+    }
+
+    buffer = json_dumps(array, JSON_INDENT(2));
+    json_decref(array);
+    neat_free_candidates(candidate_list);
+#if 0
+    neat_log(NEAT_LOG_DEBUG, "Sending post-resolve properties to PM\n%s\n", buffer);
+#else
+    neat_log(NEAT_LOG_DEBUG, "Sending post-resolve properties to PM");
+    // buffer is freed by the PM interface
+    neat_pm_send(flow->ctx, flow, buffer, on_pm_reply_post_resolve, on_pm_error);
+#endif
+}
+
+struct candidate_resolver_data
+{
+    // neat_ctx *ctx;
+    neat_flow *flow;
+    struct neat_he_candidates *candidate_list;
+    struct neat_he_candidate *candidate;
+
+    int *status;
+    int *remaining;
+};
+
+static neat_error_code
+on_candidate_resolved(struct neat_resolver_results *results,
+                      uint8_t code, void *user_data)
+{
+    int rc;
+    char namebuf[NI_MAXHOST];
+    struct sockaddr_storage dummy;
+    struct neat_resolver_res *result;
+    struct candidate_resolver_data *data = user_data;
+    struct neat_he_candidate *candidate = data->candidate;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (code == NEAT_RESOLVER_TIMEOUT)  {
+        *data->status = -1;
+        // neat_io_error(flow->ctx, flow, NEAT_ERROR_IO);
+        neat_log(NEAT_LOG_DEBUG, "Resolution timed out");
+    } else if ( code == NEAT_RESOLVER_ERROR ) {
+        *data->status = -1;
+        // neat_io_error(flow->ctx, flow, NEAT_ERROR_IO);
+        neat_log(NEAT_LOG_DEBUG, "Resolver error");
+    }
+
+    LIST_FOREACH(result, results, next_res) {
+        char ifname1[IF_NAMESIZE];
+        char ifname2[IF_NAMESIZE];
+
+        // The interface index must be the same as the interface index of the candidate
+        if (result->if_idx != candidate->if_idx) {
+            neat_log(NEAT_LOG_DEBUG, "Interface did not match, %s [%d] != %s [%d]", if_indextoname(result->if_idx, ifname1), result->if_idx, if_indextoname(candidate->if_idx, ifname2), candidate->if_idx);
+            continue;
+        }
+
+        if ((rc = getnameinfo((struct sockaddr*)&result->dst_addr, result->dst_addr_len, namebuf, NI_MAXHOST, NULL, 0, NI_NUMERICHOST)) != 0) {
+            neat_log(NEAT_LOG_DEBUG, "getnameinfo error");
+            continue;
+        }
+
+        // TODO: Move inet_pton out of the loop
+        if (result->ai_family == AF_INET && inet_pton(AF_INET6, candidate->pollable_socket->src_address, &dummy) == 1) {
+            neat_log(NEAT_LOG_DEBUG, "Address family did not match");
+            continue;
+        }
+
+        // TODO: Move inet_pton out of the loop
+        if (result->ai_family == AF_INET6 && inet_pton(AF_INET, candidate->pollable_socket->src_address, &dummy) == 1) {
+            neat_log(NEAT_LOG_DEBUG, "Address family did not match");
+            continue;
+        }
+
+        break;
+    }
+
+    if (result) {
+        // dst_address was strdup'd in on_pm_reply_pre_resolve, free it
+        free(candidate->pollable_socket->dst_address);
+
+        // We found at least one useable result, set the destination address
+        if ((candidate->pollable_socket->dst_address = strdup(namebuf)) != NULL) {
+            neat_log(NEAT_LOG_DEBUG, "%s -> %s", candidate->pollable_socket->src_address, namebuf);
+        } else {
+            *(data->status) = NEAT_ERROR_OUT_OF_MEMORY;
+        }
+    } else {
+        // No usable results found for this candidate
+        neat_log(NEAT_LOG_DEBUG, "Candidate with no useful resolver result");
+        candidate->if_idx = 0;
+    }
+
+    neat_resolver_free_results(results);
+
+    if (!--*data->remaining /*&& *data->status == 0*/) {
+        free(data->status);
+        free(data->remaining);
+        on_candidates_resolved(data->flow->ctx, data->flow, data->candidate_list);
+        free(data);
+    } else {
+        free(data);
+    }
+
+    return NEAT_OK;
+}
+
+static void
+neat_resolve_candidates(neat_ctx *ctx, neat_flow *flow,
+                        struct neat_he_candidates *candidate_list)
+{
+    int *remaining, *status;
+    struct neat_he_candidate *candidate;
+    struct candidate_resolver_data *resolver_data;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    assert(candidate_list);
+
+    if (TAILQ_EMPTY(candidate_list)) {
+        neat_log(NEAT_LOG_WARNING, "neat_resolve_candidates called with an empty candidate list");
+        return;
+    }
+
+    if ((remaining = calloc(1, sizeof(*remaining))) == NULL)
+        goto error;
+    if ((status = calloc(1, sizeof(*status))) == NULL)
+        goto error;
+
+    *status = 0;
+
+    // TODO: Should this have been allocated before this point?
+    if (!ctx->resolver)
+        ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
+
+    if (!ctx->pvd)
+        ctx->pvd = neat_pvd_init(ctx);
+
+    TAILQ_FOREACH(candidate, candidate_list, next) {
+        resolver_data = malloc(sizeof(*resolver_data));
+        assert(resolver_data);
+
+        resolver_data->candidate_list = candidate_list;
+        resolver_data->candidate = candidate;
+        resolver_data->flow = flow;
+
+        resolver_data->status = status;
+        resolver_data->remaining = remaining;
+        (*remaining)++;
+
+        // TODO: Look up ipv4/ipv6 preference in the properties
+        neat_resolve(ctx->resolver, AF_UNSPEC, candidate->pollable_socket->dst_address,
+                     candidate->pollable_socket->port, on_candidate_resolved, resolver_data);
+    }
+    return;
+error:
+    if (remaining)
+        free(remaining);
+    neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+}
 
 static neat_error_code
 open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
@@ -1683,6 +2057,241 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     return NEAT_OK;
 }
 
+static void
+on_pm_error(struct neat_ctx *ctx, struct neat_flow *flow, int error)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    switch (error) {
+        case PM_ERROR_SOCKET_UNAVAILABLE:
+        case PM_ERROR_SOCKET:
+        case PM_ERROR_INVALID_JSON:
+            neat_log(NEAT_LOG_DEBUG, "===== Unable to communicate with PM, using fallback =====");
+            neat_resolve(ctx->resolver, AF_UNSPEC, flow->name, flow->port,
+                         open_resolve_cb, flow);
+            break;
+        case PM_ERROR_OOM:
+            break;
+        default:
+            assert(0);
+            break;
+    }
+
+}
+
+static void
+on_pm_reply_pre_resolve(struct neat_ctx *ctx, struct neat_flow *flow, json_t *json)
+{
+    int rc = NEAT_OK;
+    size_t i;
+    json_t *value;
+    struct neat_he_candidates *candidate_list;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+#if 1
+    char *str = json_dumps(json, JSON_INDENT(2));
+    neat_log(NEAT_LOG_DEBUG, "Reply from PM was: %s", str);
+    free(str);
+#else
+    neat_log(NEAT_LOG_DEBUG, "Received reply from PM");
+#endif
+
+    if ((candidate_list = calloc(1, sizeof(*candidate_list))) == NULL) {
+        rc = NEAT_ERROR_OUT_OF_MEMORY;
+        goto error;
+    }
+
+    TAILQ_INIT(candidate_list);
+
+    json_array_foreach(json, i, value) {
+        const char *address = NULL, *interface = NULL, *local_ip  = NULL;
+        struct neat_he_candidate *candidate = NULL;
+
+        if ((candidate = calloc(1, sizeof(*candidate))) == NULL)
+            goto error;
+
+        if ((candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket))) == NULL)
+            goto loop_oom;
+
+        if ((address = json_string_value(get_property(value, "domain_name", JSON_STRING))) == NULL)
+             goto loop_error;
+
+        if ((interface = json_string_value(get_property(value, "interface", JSON_STRING))) == NULL)
+            goto loop_error;
+
+        if ((local_ip = json_string_value(get_property(value, "local_ip", JSON_STRING))) == NULL)
+            goto loop_error;
+
+        if ((candidate->pollable_socket->dst_address = strdup(address)) == NULL)
+            goto loop_oom;
+
+        if ((candidate->if_name = strdup(interface)) == NULL)
+            goto loop_oom;
+
+        if ((candidate->if_idx = if_nametoindex(candidate->if_name)) == 0) {
+            neat_log(NEAT_LOG_DEBUG, "Unknown interface %s", candidate->if_name);
+            goto loop_error;
+        }
+
+        if ((candidate->pollable_socket->src_address = strdup(local_ip)) == NULL)
+            goto loop_oom;
+
+        candidate->pollable_socket->port = flow->port;
+        candidate->properties = value;
+        json_incref(value);
+
+        TAILQ_INSERT_TAIL(candidate_list, candidate, next);
+
+        continue;
+loop_oom:
+        rc = NEAT_ERROR_OUT_OF_MEMORY;
+loop_error:
+        if (candidate->if_name)
+            free(candidate->if_name);
+        if (candidate->pollable_socket) {
+            if (candidate->pollable_socket->src_address)
+                free(candidate->pollable_socket->src_address);
+            if (candidate->pollable_socket->dst_address)
+                free(candidate->pollable_socket->dst_address);
+            free(candidate->pollable_socket);
+        }
+        free(candidate);
+        if (rc == NEAT_OK)
+            continue;
+        else
+            goto error;
+    }
+
+    json_decref(json);
+
+#if 0
+    // Deallocation test
+    neat_free_candidates(candidate_list);
+    neat_free_ctx(ctx);
+    exit(0);
+#endif
+
+    struct neat_he_candidate *tmp;
+    TAILQ_FOREACH(tmp, candidate_list, next) {
+        neat_log(NEAT_LOG_DEBUG, "%s %s", json_string_value(get_property(tmp->properties, "transport", JSON_STRING)), tmp->pollable_socket->dst_address);
+    }
+
+    neat_resolve_candidates(ctx, flow, candidate_list);
+
+    return;
+error:
+    json_decref(json);
+    neat_free_candidates(candidate_list);
+
+    neat_io_error(ctx, flow, rc);
+}
+
+static void
+send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
+{
+    int rc = NEAT_ERROR_OUT_OF_MEMORY;
+    char *buffer = NULL;
+    struct ifaddrs *ifaddrs = NULL;
+    json_t *array, *endpoints = NULL, *properties = NULL, *address, *port;
+
+    if ((array = json_array()) == NULL)
+        goto end;
+
+    if ((endpoints = json_array()) == NULL)
+        goto end;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    assert(ctx);
+    assert(flow);
+
+    rc = getifaddrs(&ifaddrs);
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "getifaddrs: %s", strerror(errno));
+        goto end;
+    }
+
+    for (struct ifaddrs *ifaddr = ifaddrs; ifaddr != NULL; ifaddr = ifaddr->ifa_next) {
+        socklen_t addrlen;
+        char namebuf[NI_MAXHOST];
+        json_t *endpoint;
+
+        // Doesn't actually contain any address (?)
+        if (ifaddr->ifa_addr == NULL) {
+            neat_log(NEAT_LOG_DEBUG, "ifaddr entry with no address");
+            continue;
+        }
+
+        if (ifaddr->ifa_addr->sa_family != AF_INET &&
+            ifaddr->ifa_addr->sa_family != AF_INET6)
+            continue;
+
+        addrlen = (ifaddr->ifa_addr->sa_family) == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+
+        rc = getnameinfo(ifaddr->ifa_addr, addrlen, namebuf, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+
+        if (rc != 0) {
+            neat_log(NEAT_LOG_DEBUG, "getnameinfo: %s", gai_strerror(rc));
+            continue;
+        }
+
+        if (strncmp(namebuf, "fe80::", 6) == 0) {
+            neat_log(NEAT_LOG_DEBUG, "%s is a link-local address, skipping", namebuf);
+            continue;
+        }
+
+        endpoint = json_pack("{ss++si}", "value", namebuf, "@", ifaddr->ifa_name, "precedence", 1);
+
+        if (endpoint == NULL)
+            goto end;
+
+        neat_log(NEAT_LOG_DEBUG, "Added endpoint \"%s@%s\" to PM request", namebuf, ifaddr->ifa_name);
+        json_array_append(endpoints, endpoint);
+        json_decref(endpoint);
+    }
+
+    properties = json_copy(flow->properties);
+
+    json_object_set(properties, "local_endpoint", endpoints);
+
+    port = json_pack("{sisi}", "value", flow->port, "precedence", 1);
+    if (port == NULL)
+        goto end;
+
+    json_object_set(properties, "port", port);
+    json_decref(port);
+
+    address = json_pack("{sssi}", "value", flow->name, "precedence", 1);
+    if (address == NULL)
+        goto end;
+
+    json_object_set(properties, "domain_name", address);
+    json_decref(address);
+
+    json_array_append(array, properties);
+
+    buffer = json_dumps(array, JSON_INDENT(2));
+
+#if 1
+    neat_log(NEAT_LOG_DEBUG, "Sending properties to PM: %s", buffer);
+#endif
+
+end:
+    if (ifaddrs)
+        freeifaddrs(ifaddrs);
+    if (properties)
+        json_decref(properties);
+    if (endpoints)
+        json_decref(endpoints);
+    if (array)
+        json_decref(array);
+
+    if (rc == NEAT_OK)
+        neat_pm_send(ctx, flow, buffer, on_pm_reply_pre_resolve, on_pm_error);
+    else
+        neat_io_error(ctx, flow, rc);
+}
 
 neat_error_code
 neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
@@ -1722,12 +2331,16 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     if (!mgr->pvd)
         mgr->pvd = neat_pvd_init(mgr);
 
+#if 1
+    send_properties_to_pm(mgr, flow);
+#else
     // TODO: Add name resolution call
     neat_resolve(mgr->resolver, AF_UNSPEC, flow->name, flow->port,
                  open_resolve_cb, flow);
     // TODO: Generate candidates
     // TODO: Call HE
     // return neat_he_lookup(mgr, flow, he_connected_cb);
+#endif
     return NEAT_OK;
 }
 
@@ -3406,6 +4019,8 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 #endif
 
     rv->properties = json_object();
+
+    rv->pm_context = malloc(sizeof(struct neat_pm_context));
 
     rv->socket = malloc(sizeof(struct neat_pollable_socket));
     if (!rv->socket)

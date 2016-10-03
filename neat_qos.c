@@ -4,16 +4,16 @@
 #include "neat.h"
 #include "neat_qos.h"
 
-#if defined(USRSCTP_SUPPORT)          
+#if defined(USRSCTP_SUPPORT)
     #include "neat_usrsctp_internal.h"
-    #include <usrsctp.h>              
-#endif                                
+    #include <usrsctp.h>
+#endif
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
     #include "neat_bsd_internal.h"
 #endif
 
 
-uint8_t 
+uint8_t
 neat_map_qos_to_dscp(uint8_t qos)
 {
     /*
@@ -26,7 +26,7 @@ neat_map_qos_to_dscp(uint8_t qos)
 neat_error_code
 neat_set_tos(struct neat_ctx *ctx, struct neat_flow *flow)
 {
-    uint8_t dscp; 
+    uint8_t dscp;
     int tos;
 
     dscp = neat_map_qos_to_dscp(flow->qos);
@@ -40,13 +40,13 @@ neat_set_tos(struct neat_ctx *ctx, struct neat_flow *flow)
         params.spp_dscp = dscp;
         params.spp_flags = SPP_DSCP;
 
-#if defined(USRSCTP_SUPPORT)  
-        if(usrsctp_setsockopt(flow->socket->usrsctp_socket, 
+#if defined(USRSCTP_SUPPORT)
+        if(usrsctp_setsockopt(flow->socket->usrsctp_socket,
             IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params)) == -1) {
             return NEAT_ERROR_UNABLE;
         }
 #else
-        if(setsockopt(flow->socket->fd, 
+        if(setsockopt(flow->socket->fd,
             IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params)) == -1) {
             return NEAT_ERROR_UNABLE;
         }
@@ -55,9 +55,10 @@ neat_set_tos(struct neat_ctx *ctx, struct neat_flow *flow)
         return NEAT_OK;
     }
 #endif //SCTP_PEER_ADDR_PARAMS
+    case NEAT_STACK_TCP:
     case NEAT_STACK_UDP:
     {
-        if(setsockopt(flow->socket->fd, 
+        if(setsockopt(flow->socket->fd,
             IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) == -1) {
             return NEAT_ERROR_UNABLE;
         }

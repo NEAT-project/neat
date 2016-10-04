@@ -1738,6 +1738,10 @@ on_pm_reply_post_resolve(neat_ctx *ctx, neat_flow *flow, json_t *json)
 static void
 on_candidates_resolved(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_list)
 {
+    int rc;
+    const char *home_dir;
+    const char *socket_path;
+    char socket_path_buf[128];
     char *buffer;
     struct neat_he_candidate *candidate, *tmp;
 
@@ -1786,9 +1790,28 @@ on_candidates_resolved(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates
 #if 0
     neat_log(NEAT_LOG_DEBUG, "Sending post-resolve properties to PM\n%s\n", buffer);
 #else
+
+    socket_path = getenv("NEAT_PM_SOCKET");
+    if (!socket_path) {
+        if ((home_dir = getenv("HOME")) == NULL) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");
+            neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
+            return;
+        }
+
+        rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_pm_socket", home_dir);
+        if (rc < 0 || rc >= 128) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
+            neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
+            return;
+        }
+
+        socket_path = socket_path_buf;
+    }
+
     neat_log(NEAT_LOG_DEBUG, "Sending post-resolve properties to PM");
     // buffer is freed by the PM interface
-    neat_pm_send(flow->ctx, flow, buffer, on_pm_reply_post_resolve, on_pm_error);
+    neat_pm_send(flow->ctx, flow, socket_path, buffer, on_pm_reply_post_resolve, on_pm_error);
 #endif
 }
 
@@ -2252,15 +2275,35 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
     int rc = NEAT_ERROR_OUT_OF_MEMORY;
     char *buffer = NULL;
     struct ifaddrs *ifaddrs = NULL;
-    json_t *array, *endpoints = NULL, *properties = NULL, *address, *port;
+    json_t *array = NULL, *endpoints = NULL, *properties = NULL, *address, *port;
+    const char *home_dir;
+    const char *socket_path;
+    char socket_path_buf[128];
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    socket_path = getenv("NEAT_PM_SOCKET");
+    if (!socket_path) {
+        if ((home_dir = getenv("HOME")) == NULL) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");
+
+            goto end;
+        }
+
+        rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_pm_socket", home_dir);
+        if (rc < 0 || rc >= 128) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
+            goto end;
+        }
+
+        socket_path = socket_path_buf;
+    }
 
     if ((array = json_array()) == NULL)
         goto end;
 
     if ((endpoints = json_array()) == NULL)
         goto end;
-
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     assert(ctx);
     assert(flow);
@@ -2347,7 +2390,7 @@ end:
         json_decref(array);
 
     if (rc == NEAT_OK)
-        neat_pm_send(ctx, flow, buffer, on_pm_reply_pre_resolve, on_pm_error);
+        neat_pm_send(ctx, flow, socket_path, buffer, on_pm_reply_pre_resolve, on_pm_error);
     else
         neat_io_error(ctx, flow, rc);
 }

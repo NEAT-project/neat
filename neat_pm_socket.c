@@ -226,43 +226,27 @@ error:
 }
 
 neat_error_code
-neat_pm_send(struct neat_ctx *ctx, struct neat_flow *flow, char *buffer, pm_reply_callback cb, pm_error_callback err_cb)
+neat_pm_send(struct neat_ctx *ctx, struct neat_flow *flow, const char *path, char *buffer, pm_reply_callback cb, pm_error_callback err_cb)
 {
-    const char *home_dir;
-    char socket_path_buf[128];
-    const char *socket_path;
+    struct neat_pm_context *pm_context = flow->pm_context;
     uv_connect_t *connect;
     uv_pipe_t *pipe;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (ctx == NULL || flow == NULL || buffer == NULL) {
+    neat_log(NEAT_LOG_DEBUG, "Opening UNIX socket %s", path);
+
+    if (ctx == NULL || flow == NULL || path == NULL || buffer == NULL) {
         return NEAT_ERROR_BAD_ARGUMENT;
     }
 
-    socket_path = getenv("NEAT_PM_SOCKET");
-    if (!socket_path) {
-        if ((home_dir = getenv("HOME")) == NULL) {
-            neat_log(NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");
+    if ((connect = malloc(sizeof(uv_connect_t))) == NULL)
+        return NEAT_ERROR_OUT_OF_MEMORY;
 
-            goto error;
-        }
-
-        if (snprintf(socket_path_buf, 128, "%s/.neat/neat_pm_socket", home_dir) < 0) {
-            neat_log(NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
-
-            goto error;
-        }
+    if ((pipe = malloc(sizeof(uv_pipe_t))) == NULL) {
+        free(connect);
+        return NEAT_ERROR_OUT_OF_MEMORY;
     }
-
-    connect = malloc(sizeof(uv_connect_t));
-    if (connect == NULL) {
-        assert(0);
-    }
-
-    struct neat_pm_context *pm_context = flow->pm_context;
-
-    pipe = malloc(sizeof(uv_pipe_t));
 
     pm_context->pipe = pipe;
     pm_context->ctx           = ctx;
@@ -276,10 +260,7 @@ neat_pm_send(struct neat_ctx *ctx, struct neat_flow *flow, char *buffer, pm_repl
     connect->data = pm_context;
 
     uv_pipe_init(ctx->loop, pipe, 1 /* 1 => IPC = TRUE */);
-    uv_pipe_connect(connect, pipe, socket_path_buf, on_pm_connected);
+    uv_pipe_connect(connect, pipe, path, on_pm_connected);
 
     return NEAT_OK;
-error:
-    free(buffer);
-    return NEAT_ERROR_INTERNAL;
 }

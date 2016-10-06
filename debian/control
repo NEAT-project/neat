@@ -1,0 +1,41 @@
+Source: libneat
+Maintainer: NEAT Project <neat@neat-project.org>
+Section: libs
+Priority: optional
+Build-Depends: debhelper (>= 9),
+               cmake,
+               libuv1-dev,
+               libldns-dev,
+               libjansson-dev,
+               libmnl-dev,
+               libsctp-dev
+Standards-Version: 3.9.8
+Vcs-Browser: https://github.com/NEAT-project/neat
+Vcs-Git: https://github.com/NEAT-project/neat.git
+Homepage: https://github.com/NEAT-project/neat
+
+Package: libneat
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends}
+Description: NEAT Sockets API
+ NEAT is a callback based library and everything revovles around the neat_ctx
+ struct. This struct has to be initialized before anything else can be done.
+ NEAT uses libuv as event library, and this loop is available to users so that
+ they can hook in and add their own callbacks.
+ .
+ This package contains the shared library.
+
+Package: libneat-dev
+Section: libdevel
+Architecture: any
+Depends: libneat (= ${binary:Version}),
+         ${shlibs:Depends},
+         ${misc:Depends}
+Description: NEAT Sockets API (Development Files)
+ NEAT is a callback based library and everything revovles around the neat_ctx
+ struct. This struct has to be initialized before anything else can be done.
+ NEAT uses libuv as event library, and this loop is available to users so that
+ they can hook in and add their own callbacks.
+ .
+ This package contains the development files.

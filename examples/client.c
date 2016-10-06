@@ -93,12 +93,12 @@ on_error(struct neat_flow_operations *opCB)
 }
 
 static void
-print_neat_stats(neat_flow *flow)
+print_neat_stats(neat_ctx *mgr)
 {
     neat_error_code error;
 
     char* stats = NULL;
-    error = neat_get_stats(flow, &stats);
+    error = neat_get_stats(mgr, &stats);
     if (error != NEAT_OK){
         printf("NEAT ERROR: %i\n", (int)error);
         return;
@@ -214,7 +214,7 @@ on_writable(struct neat_flow_operations *opCB)
     }
 
     if (config_json_stats){
-       print_neat_stats(opCB->flow);
+       print_neat_stats(ctx);
     }
 
     if (config_log_level >= 1) {

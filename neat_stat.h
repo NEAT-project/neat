@@ -6,20 +6,34 @@
 #include <jansson.h>
 #include "neat_internal.h"
 
-void neat_stats_build_json(struct neat_flow *flow, char **json_stats);
+/* Stats to provide to NEAT about a given TCP flow.
+ * TODO: Choose the right subset of stats */
+struct neat_tcp_info {
+    uint8_t retransmits;
 
-/*Struct for collecting global statistics*/
-struct neat_stat{
-  uint32_t num_flows;
+    /* Metrics from the TCP_INFO struct */
+    uint32_t tcpi_pmtu;
+    uint32_t tcpi_rcv_ssthresh;
+    uint32_t tcpi_rtt;
+    uint32_t tcpi_rttvar;
+    uint32_t tcpi_snd_ssthresh;
+    uint32_t tcpi_snd_cwnd;
+    uint32_t tcpi_advmss;
+    uint32_t tcpi_reordering;
 
-  /* List of active flows. This should maybe be kept somewhere else ?*/
-
-  /* This is a data structure to keep global stats and pointers for
-     collecting stats if we want to implement this instead of per-flow
-     stats only.Gathering statistics periodically might be useful 
-     for the policy manager? Use a timed callback for this? */ 
+    uint32_t tcpi_rcv_rtt;
+    uint32_t tcpi_rcv_space;
+    uint32_t tcpi_total_retrans;
 };
 
-typedef struct neat_stat neat_stat;
+/* Struct to keep flow statistics
+ * These stats could well be kept in the neat_flow struct */
+struct neat_flow_statistics {
+    uint64_t bytes_sent;
+    uint64_t bytes_received;
+};
+
+void neat_stats_build_json(struct neat_ctx *ctx, char **json_stats);
+
 
 #endif

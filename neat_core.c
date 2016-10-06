@@ -35,6 +35,7 @@
 #include "neat_stat.h"
 #include "neat_resolver_helpers.h"
 #include "neat_json_helpers.h"
+#include "neat_unix_json_socket.h"
 #include "neat_pm_socket.h"
 
 #if defined(USRSCTP_SUPPORT)
@@ -441,7 +442,6 @@ static void synchronous_free(neat_flow *flow)
     free(flow->readBuffer);
     free(flow->socket->handle);
     free(flow->socket);
-    free(flow->pm_context);
     free(flow);
 }
 
@@ -1743,7 +1743,6 @@ on_candidates_resolved(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates
     const char *home_dir;
     const char *socket_path;
     char socket_path_buf[128];
-    char *buffer;
     struct neat_he_candidate *candidate, *tmp;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1757,11 +1756,11 @@ on_candidates_resolved(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates
         json_t *dst_address, *str;
 
         if (candidate->if_idx == 0) {
-            neat_log(NEAT_LOG_DEBUG, "Removing...");
+            // neat_log(NEAT_LOG_DEBUG, "Removing...");
             continue;
         }
 
-        neat_log(NEAT_LOG_DEBUG, "%s %s", json_string_value(get_property(candidate->properties, "transport", JSON_STRING)), candidate->pollable_socket->dst_address);
+        // neat_log(NEAT_LOG_DEBUG, "%s %s", json_string_value(get_property(candidate->properties, "transport", JSON_STRING)), candidate->pollable_socket->dst_address);
 
         assert(candidate->pollable_socket->dst_address);
 
@@ -1785,9 +1784,8 @@ on_candidates_resolved(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates
         return;
     }
 
-    buffer = json_dumps(array, JSON_INDENT(2));
-    json_decref(array);
     neat_free_candidates(candidate_list);
+
 #if 0
     neat_log(NEAT_LOG_DEBUG, "Sending post-resolve properties to PM\n%s\n", buffer);
 #else
@@ -1812,7 +1810,8 @@ on_candidates_resolved(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates
 
     neat_log(NEAT_LOG_DEBUG, "Sending post-resolve properties to PM");
     // buffer is freed by the PM interface
-    neat_pm_send(flow->ctx, flow, socket_path, buffer, on_pm_reply_post_resolve, on_pm_error);
+    neat_json_send_once(flow->ctx, flow, socket_path, array, on_pm_reply_post_resolve, on_pm_error);
+    json_decref(array);
 #endif
 }
 
@@ -2172,7 +2171,7 @@ on_pm_reply_pre_resolve(struct neat_ctx *ctx, struct neat_flow *flow, json_t *js
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-#if 1
+#if 0
     char *str = json_dumps(json, JSON_INDENT(2));
     neat_log(NEAT_LOG_DEBUG, "Reply from PM was: %s", str);
     free(str);
@@ -2249,16 +2248,16 @@ loop_error:
     json_decref(json);
 
 #if 0
+    struct neat_he_candidate *tmp;
+    TAILQ_FOREACH(tmp, candidate_list, next) {
+        neat_log(NEAT_LOG_DEBUG, "%s %s", json_string_value(get_property(tmp->properties, "transport", JSON_STRING)), tmp->pollable_socket->dst_address);
+    }
+
     // Deallocation test
     neat_free_candidates(candidate_list);
     neat_free_ctx(ctx);
     exit(0);
 #endif
-
-    struct neat_he_candidate *tmp;
-    TAILQ_FOREACH(tmp, candidate_list, next) {
-        neat_log(NEAT_LOG_DEBUG, "%s %s", json_string_value(get_property(tmp->properties, "transport", JSON_STRING)), tmp->pollable_socket->dst_address);
-    }
 
     neat_resolve_candidates(ctx, flow, candidate_list);
 
@@ -2274,7 +2273,6 @@ static void
 send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
 {
     int rc = NEAT_ERROR_OUT_OF_MEMORY;
-    char *buffer = NULL;
     struct ifaddrs *ifaddrs = NULL;
     json_t *array = NULL, *endpoints = NULL, *properties = NULL, *address, *port;
     const char *home_dir;
@@ -2374,11 +2372,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
 
     json_array_append(array, properties);
 
-    buffer = json_dumps(array, JSON_INDENT(2));
-
-#if 1
-    neat_log(NEAT_LOG_DEBUG, "Sending properties to PM: %s", buffer);
-#endif
+    neat_json_send_once(ctx, flow, socket_path, array, on_pm_reply_pre_resolve, on_pm_error);
 
 end:
     if (ifaddrs)
@@ -2390,9 +2384,7 @@ end:
     if (array)
         json_decref(array);
 
-    if (rc == NEAT_OK)
-        neat_pm_send(ctx, flow, socket_path, buffer, on_pm_reply_pre_resolve, on_pm_error);
-    else
+    if (rc != NEAT_OK)
         neat_io_error(ctx, flow, rc);
 }
 
@@ -4222,8 +4214,6 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 #endif
 
     rv->properties = json_object();
-
-    rv->pm_context = malloc(sizeof(struct neat_pm_context));
 
     rv->socket = malloc(sizeof(struct neat_pollable_socket));
     if (!rv->socket)

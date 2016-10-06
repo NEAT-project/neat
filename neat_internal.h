@@ -215,8 +215,6 @@ struct neat_flow
 
     json_t *properties;
 
-    struct neat_pm_context *pm_context;
-
     neat_read_impl readfx;
     neat_write_impl writefx;
     neat_accept_impl acceptfx;

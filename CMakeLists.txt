@@ -27,6 +27,7 @@ LIST(APPEND neat_sources
     neat_resolver_helpers.c
     neat_security.c
     neat_pm_socket.c
+    neat_unix_json_socket.c
     tls-trust.c
 )
 

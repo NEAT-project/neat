@@ -2610,12 +2610,8 @@ neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow, int rate, in
 }
 
 neat_error_code
-neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow, unsigned int coverage)
+neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow, unsigned int send_coverage, unsigned int receive_coverage)
 {
-#ifdef UDPLITE_SEND_CSCOV
-    int rc;
-    unsigned int val;
-#endif
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (neat_base_stack(flow->socket->stack) != NEAT_STACK_UDPLITE) {
@@ -2623,10 +2619,14 @@ neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow, unsigne
         return NEAT_ERROR_UNABLE;
     }
 
-#ifdef UDPLITE_SEND_CSCOV
-    rc = setsockopt(flow->socket->fd, IPPROTO_UDP, UDPLITE_SEND_CSCOV, &val, sizeof(unsigned int));
-    if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "Failed to set UDP-Lite checksum coverage");
+#if defined(UDPLITE_SEND_CSCOV) && defined(UDPLITE_RECV_CSCOV)
+    if (setsockopt(flow->socket->fd, IPPROTO_UDPLITE, UDPLITE_SEND_CSCOV, &send_coverage, sizeof(unsigned int)) < 0) {
+        neat_log(NEAT_LOG_DEBUG, "Failed to set UDP-Lite send checksum coverage");
+        return NEAT_ERROR_UNABLE;
+    }
+
+    if (setsockopt(flow->socket->fd, IPPROTO_UDPLITE, UDPLITE_RECV_CSCOV, &receive_coverage, sizeof(unsigned int)) < 0) {
+        neat_log(NEAT_LOG_DEBUG, "Failed to set UDP-Lite receive checksum coverage");
         return NEAT_ERROR_UNABLE;
     }
 

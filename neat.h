@@ -159,7 +159,7 @@ NEAT_EXTERN neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct n
 NEAT_EXTERN neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow,
                                       int rate, int seconds);
 NEAT_EXTERN neat_error_code neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow,
-                                      unsigned int coverage);
+                                      unsigned int send_coverage, unsigned int receive_coverage);
 // The filename should be a PEM file with both cert and key
 NEAT_EXTERN neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct neat_flow *flow,
                                      const char *filename);

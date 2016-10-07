@@ -13,7 +13,6 @@
 static void
 on_unix_json_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 {
-    void *tmp;
     json_t *json;
     json_error_t error;
     struct neat_ipc_context *context = stream->data;
@@ -44,14 +43,80 @@ on_unix_json_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
         neat_log(NEAT_LOG_DEBUG, "UNIX socket error: %s", uv_strerror(nread));
         context->on_error(context->ctx, context->flow, PM_ERROR_SOCKET, context->data);
     } else {
+        char *new_buffer;
+
         neat_log(NEAT_LOG_DEBUG, "Received %d bytes", buf->len);
 
-        if ((tmp = realloc(context->read_buffer, context->buffer_size + nread)) == NULL) {
+        if ((new_buffer = realloc(context->read_buffer, context->buffer_size + nread)) == NULL) {
             context->on_error(context->ctx, context->flow, PM_ERROR_OOM, context->data);
         } else {
-            context->read_buffer = tmp;
-            memcpy(context->read_buffer + context->buffer_size, buf->base, nread);
-            context->buffer_size += nread;
+            size_t old_buffer_size = context->buffer_size;
+            size_t new_buffer_size = context->buffer_size + nread;
+            size_t offset = 0;
+
+            memcpy(new_buffer + old_buffer_size, buf->base, nread);
+
+            for (size_t i = old_buffer_size;
+                 i < new_buffer_size;
+                 i++)
+            {
+                const char *ptr = new_buffer + i;
+                switch (*ptr) {
+                case '{':
+                case '[':
+                    context->json_nesting_count++;
+                    break;
+                case '}':
+                case ']':
+                    context->json_nesting_count--;
+                    break;
+                case ' ':
+                case '\n':
+                case '\t':
+                    // Skip whitespace at the start and end
+                    continue;
+                default:
+                    break;
+                }
+
+                if (context->json_nesting_count == 0) {
+                    if ((json = json_loadb(new_buffer + offset, i + 1 - offset, 0, &error)) == NULL) {
+                        neat_log(NEAT_LOG_DEBUG, "Failed to read JSON reply from PM");
+                        neat_log(NEAT_LOG_DEBUG, "Error at position %d:", error.position);
+                        neat_log(NEAT_LOG_DEBUG, error.text);
+
+                        context->on_error(context->ctx, context->flow, PM_ERROR_INVALID_JSON, context->data);
+                    } else {
+                        context->on_reply(context->ctx, context->flow, json, context->data);
+                        neat_log(NEAT_LOG_DEBUG, "new %d old %d i %d", new_buffer_size, old_buffer_size, i);
+                    }
+
+                    offset = i;
+                }
+            }
+
+            if (context->json_nesting_count == 0) {
+                // There's no partial JSON object in the buffer, so just free it
+                context->buffer_size = 0;
+                free(new_buffer);
+                context->read_buffer = NULL;
+
+            } else if (offset != 0) {
+                // One or more JSON objects have been delivered.
+                // Move the remaining, incomplete JSON object to the start of
+                // the buffer.
+
+                memcpy(new_buffer, new_buffer + offset, new_buffer_size - offset);
+                context->read_buffer = new_buffer;
+                neat_log(NEAT_LOG_DEBUG, "\n%s", context->read_buffer);
+                context->buffer_size = new_buffer_size - offset;
+
+                context->read_buffer = realloc(context->read_buffer, context->buffer_size);
+            } else {
+                // Nothing delivered, leave the buffer as-is
+                context->read_buffer = new_buffer;
+                context->buffer_size = new_buffer_size;
+            }
         }
     }
 
@@ -222,6 +287,7 @@ neat_unix_json_socket_open(struct neat_ctx *ctx, struct neat_flow *flow,
     context->read_buffer  = NULL;
     context->buffer_size  = 0;
     context->data         = data;
+    context->json_nesting_count = 0;
 
     connect->data = context;
 

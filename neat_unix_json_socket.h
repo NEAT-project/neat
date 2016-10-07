@@ -29,6 +29,8 @@ struct neat_ipc_context {
     reply_callback on_reply;
     error_callback on_error;
     close_callback on_close;
+
+    size_t json_nesting_count;
 };
 
 neat_error_code neat_unix_json_socket_open(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_ipc_context *context, const char *path, connected_callback conn_cb, reply_callback reply_cb, error_callback err_cb, void *data);

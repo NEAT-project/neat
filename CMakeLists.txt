@@ -20,11 +20,14 @@ LIST(APPEND neat_sources
     neat_qos.c
     neat_stat.c
     neat_property_helpers.c
+    neat_json_helpers.c
     neat_pvd.c
     neat_resolver.c
     neat_resolver_conf.c
     neat_resolver_helpers.c
     neat_security.c
+    neat_pm_socket.c
+    neat_unix_json_socket.c
     tls-trust.c
 )
 
@@ -118,6 +121,11 @@ ENDIF()
 OPTION(NEAT_LOG "enable NEAT log module" 1)
 IF (NEAT_LOG)
     ADD_DEFINITIONS(-DNEAT_LOG)
+ENDIF()
+
+OPTION(FLOW_GROUPS "Include support for flow grouping" 0)
+IF (FLOW_GROUPS)
+    ADD_DEFINITIONS(-DFLOW_GROUPS)
 ENDIF()
 
 # REQUIREMENTS

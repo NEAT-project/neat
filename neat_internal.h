@@ -3,10 +3,12 @@
 
 #include <stdint.h>
 #include <uv.h>
+#include <jansson.h>
 
 #include "neat.h"
 #include "neat_queue.h"
 #include "neat_security.h"
+#include "neat_pm_socket.h"
 #ifdef __linux__
     #include "neat_linux.h"
 #endif
@@ -22,6 +24,7 @@
 #endif
 
 #include "neat_log.h"
+#include "neat_stat.h"
 
 #define NEAT_INTERNAL_CTX \
     void (*cleanup)(struct neat_ctx *nc); \
@@ -71,7 +74,7 @@ struct neat_ctx
     NEAT_INTERNAL_USRSCTP
 };
 
-struct he_cb_ctx;
+struct neat_he_candidate;
 struct neat_pollable_socket;
 
 typedef struct neat_ctx neat_ctx;
@@ -84,7 +87,7 @@ typedef int (*neat_accept_impl)(struct neat_ctx *ctx, struct neat_flow *flow, in
 #if defined(USRSCTP_SUPPORT)
 typedef struct socket * (*neat_accept_usrsctp_impl)(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_pollable_socket *listen_socket);
 #endif
-typedef int (*neat_connect_impl)(struct he_cb_ctx *he_ctx, uv_poll_cb callback_fx);
+typedef int (*neat_connect_impl)(struct neat_he_candidate *candidate, uv_poll_cb callback_fx);
 typedef int (*neat_listen_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_close_impl)(struct neat_ctx *ctx, struct neat_flow *flow);
 typedef int (*neat_close2_impl)(int fd);
@@ -149,10 +152,19 @@ struct neat_pollable_socket
     struct socket *usrsctp_socket;
 #endif
 
-    int fd;
-    uint8_t family;
-    int type;
-    int stack;
+    int          fd;
+    uint8_t      family;
+    int          type;
+    int          stack;
+    unsigned int port;
+
+    char                    *dst_address;
+    struct sockaddr_storage dst_sockaddr;
+    socklen_t               dst_len;
+
+    char                    *src_address;
+    struct sockaddr_storage src_sockaddr;
+    socklen_t               src_len;
 
     struct sockaddr srcAddr;
     struct sockaddr dstAddr;
@@ -182,6 +194,11 @@ struct neat_flow
     struct neat_ctx *ctx; // raw convenience pointer
     struct neat_iofilter *iofilters;
 
+    uint32_t group;
+    float priority;
+
+    const char *cc_algorithm;
+
     // TODO: Move more socket-specific values to neat_pollable_socket
 
     size_t writeLimit;  // maximum to write if the socket supports partial writes
@@ -189,6 +206,7 @@ struct neat_flow
     // The memory buffer for writing.
     struct neat_message_queue_head bufferedMessages;
     size_t buffer_count;
+    struct neat_flow_statistics flow_stats;
 
     size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.
@@ -196,6 +214,8 @@ struct neat_flow
     size_t readBufferSize;        // amount of received data
     size_t readBufferAllocation;  // size of buffered allocation
     int readBufferMsgComplete;    // it contains a complete user message
+
+    json_t *properties;
 
     neat_read_impl readfx;
     neat_write_impl writefx;
@@ -222,8 +242,8 @@ struct neat_flow
     unsigned int isSCTPExplicitEOR : 1;
     unsigned int isServer : 1; // i.e. created via accept()
 
-    //List with all non-freed HE contexts.
-    LIST_HEAD(he_cb_ctxs, he_cb_ctx) he_cb_ctx_list;
+    struct neat_he_candidates *candidate_list;
+
     LIST_ENTRY(neat_flow) next_flow;
 };
 
@@ -291,6 +311,30 @@ struct neat_resolver_res {
     uint8_t internal;
     LIST_ENTRY(neat_resolver_res) next_res;
 };
+
+// Linked list passed to HE after the first PM call.
+// The list contains each candidate HE should get resolved.
+struct neat_he_candidate {
+    struct neat_pollable_socket *pollable_socket;
+    uv_timer_t *prio_timer;
+    uv_poll_cb callback_fx;
+    uint32_t if_idx;
+    char *if_name;
+    int32_t priority;
+    json_t *properties;
+    struct neat_ctx *ctx;
+    size_t writeSize;
+    size_t readSize;
+    size_t writeLimit;
+    unsigned int isSCTPExplicitEOR : 1;
+    TAILQ_ENTRY(neat_he_candidate) next;
+    TAILQ_ENTRY(neat_he_candidate) resolution_list;
+};
+
+TAILQ_HEAD(neat_he_candidates, neat_he_candidate);
+
+void neat_free_candidates(struct neat_he_candidates *candidates);
+void neat_free_candidate(struct neat_he_candidate *candidate);
 
 // Connect context needed during HE.
 struct he_cb_ctx {
@@ -383,6 +427,7 @@ struct neat_event_cb {
 };
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);
+neat_error_code neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_list, uv_poll_cb callback_fx);
 
 // Internal routines for hooking up lower-level services/modules with
 // API callbacks:

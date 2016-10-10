@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include "../neat.h"
+#include "util.h"
+#include <errno.h>
 
 /**********************************************************************
 
@@ -16,7 +18,18 @@
 
 static uint32_t config_buffer_size = 128;
 static uint16_t config_log_level = 1;
-static char config_property[] = "NEAT_PROPERTY_UDP_BANNED,NEAT_PROPERTY_UDPLITE_BANNED";
+static char *config_property = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";
 
 static unsigned char *buffer = NULL;
 static uint32_t buffer_filled = 0;
@@ -32,7 +45,7 @@ print_usage()
     }
 
     printf("server_discard [OPTIONS]\n");
-    printf("\t- P \tneat properties (%s)\n", config_property);
+    printf("\t- P <filename> \tneat properties, default properties:\n%s\n", config_property);
     printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
 }
@@ -115,11 +128,9 @@ on_connected(struct neat_flow_operations *opCB)
 int
 main(int argc, char *argv[])
 {
-    uint64_t prop;
+    // uint64_t prop;
     int arg, result;
-    char *arg_property = config_property;
-    char *arg_property_ptr = NULL;
-    char arg_property_delimiter[] = ",;";
+    char *arg_property = NULL;
     struct neat_ctx *ctx = NULL;
     struct neat_flow *flow = NULL;
     struct neat_flow_operations ops;
@@ -131,7 +142,12 @@ main(int argc, char *argv[])
     while ((arg = getopt(argc, argv, "P:S:v:")) != -1) {
         switch(arg) {
         case 'P':
-            arg_property = optarg;
+            if (read_file(optarg, &arg_property) < 0) {
+                fprintf(stderr, "Unable to read properties from %s: %s",
+                        optarg, strerror(errno));
+                result = EXIT_FAILURE;
+                goto cleanup;
+            }
             if (config_log_level >= 1) {
                 printf("option - properties: %s\n", arg_property);
             }
@@ -180,71 +196,8 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-    // set properties (TCP only etc..)
-    if (neat_get_property(ctx, flow, &prop)) {
-        fprintf(stderr, "%s - neat_get_property failed\n", __func__);
-        result = EXIT_FAILURE;
-        goto cleanup;
-    }
-
-    // read property arguments
-    arg_property_ptr = strtok(arg_property, arg_property_delimiter);
-
-    while (arg_property_ptr != NULL) {
-        if (config_log_level >= 1) {
-            printf("setting property: %s\n", arg_property_ptr);
-        }
-
-        if (strcmp(arg_property_ptr,"NEAT_PROPERTY_OPTIONAL_SECURITY") == 0) {
-            prop |= NEAT_PROPERTY_TCP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_REQUIRED_SECURITY") == 0) {
-            prop |= NEAT_PROPERTY_REQUIRED_SECURITY;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_MESSAGE") == 0) {
-            prop |= NEAT_PROPERTY_MESSAGE;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_IPV4_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_IPV4_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_IPV6_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_IPV6_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_SCTP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_SCTP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_TCP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_TCP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_UDP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_UDP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_UDPLITE_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_UDPLITE_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_CONGESTION_CONTROL_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_RETRANSMISSIONS_BANNED;
-        } else {
-            printf("error - unknown property: %s\n", arg_property_ptr);
-            print_usage();
-            goto cleanup;
-        }
-
-        // get next property
-        arg_property_ptr = strtok(NULL, arg_property_delimiter);
-    }
-
     // set properties
-    if (neat_set_property(ctx, flow, prop)) {
+    if (neat_set_property(ctx, flow, arg_property ? arg_property : config_property)) {
         fprintf(stderr, "%s - neat_set_property failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
@@ -271,6 +224,9 @@ main(int argc, char *argv[])
 
     // cleanup
 cleanup:
+    if (arg_property)
+        free(arg_property);
+
     free(buffer);
     if (ctx != NULL) {
         neat_free_ctx(ctx);

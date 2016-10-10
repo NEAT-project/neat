@@ -5,6 +5,7 @@
 #include <uv.h>
 #include "../neat.h"
 #include "../neat_internal.h"
+#include "util.h"
 
 /**********************************************************************
 
@@ -31,7 +32,18 @@ static uint16_t config_log_level = 1;
 static uint16_t config_json_stats = 0;
 static uint16_t config_timeout = 0;
 static char *config_primary_dest_addr = NULL;
-static char config_property[] = "NEAT_PROPERTY_UDP_BANNED,NEAT_PROPERTY_UDPLITE_BANNED";
+static char *config_property = "{\n\
+    \"transport\": [\n\
+        {\n\
+            \"value\": \"SCTP\",\n\
+            \"precedence\": 1\n\
+        },\n\
+        {\n\
+            \"value\": \"TCP\",\n\
+            \"precedence\": 1\n\
+        }\n\
+    ]\n\
+}";
 
 struct std_buffer {
     unsigned char *buffer;
@@ -60,7 +72,7 @@ print_usage()
     }
 
     printf("client [OPTIONS] HOST PORT\n");
-    printf("\t- P \tneat properties (%s)\n", config_property);
+    printf("\t- P <filename>\tneat properties, default properties:\n%s\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- S \tsend buffer in byte (%d)\n", config_snd_buffer_size);
     printf("\t- J \tprint json stats for each time data is sent\n");
@@ -81,12 +93,12 @@ on_error(struct neat_flow_operations *opCB)
 }
 
 static void
-print_neat_stats(neat_flow *flow)
+print_neat_stats(neat_ctx *mgr)
 {
     neat_error_code error;
 
     char* stats = NULL;
-    error = neat_get_stats(flow, &stats);
+    error = neat_get_stats(mgr, &stats);
     if (error != NEAT_OK){
         printf("NEAT ERROR: %i\n", (int)error);
         return;
@@ -202,7 +214,7 @@ on_writable(struct neat_flow_operations *opCB)
     }
 
     if (config_json_stats){
-       print_neat_stats(opCB->flow);
+       print_neat_stats(ctx);
     }
 
     if (config_log_level >= 1) {
@@ -345,11 +357,8 @@ tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
 int
 main(int argc, char *argv[])
 {
-    uint64_t prop;
     int arg, result;
-    char *arg_property = config_property;
-    char *arg_property_ptr = NULL;
-    char arg_property_delimiter[] = ",;";
+    char *arg_property = NULL;
 
     memset(&ops, 0, sizeof(ops));
     memset(&stdin_buffer, 0, sizeof(stdin_buffer));
@@ -359,7 +368,13 @@ main(int argc, char *argv[])
     while ((arg = getopt(argc, argv, "P:R:S:T:Jv:A:")) != -1) {
         switch(arg) {
         case 'P':
-            arg_property = optarg;
+            // arg_property = optarg;
+            if (read_file(optarg, &arg_property) < 0) {
+                fprintf(stderr, "Unable to read properties from %s: %s",
+                        optarg, strerror(errno));
+                result = EXIT_FAILURE;
+                goto cleanup;
+            }
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - properties: %s\n", __func__, arg_property);
             }
@@ -442,71 +457,8 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-    // set properties (TCP only etc..)
-    if (neat_get_property(ctx, flow, &prop)) {
-        fprintf(stderr, "%s - error: neat_get_property\n", __func__);
-        result = EXIT_FAILURE;
-        goto cleanup;
-    }
-
-    // read property arguments
-    arg_property_ptr = strtok(arg_property, arg_property_delimiter);
-
-    while (arg_property_ptr != NULL) {
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - setting property: %s\n", __func__, arg_property_ptr);
-        }
-
-        if (strcmp(arg_property_ptr,"NEAT_PROPERTY_OPTIONAL_SECURITY") == 0) {
-            prop |= NEAT_PROPERTY_TCP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_REQUIRED_SECURITY") == 0) {
-            prop |= NEAT_PROPERTY_REQUIRED_SECURITY;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_MESSAGE") == 0) {
-            prop |= NEAT_PROPERTY_MESSAGE;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_IPV4_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_IPV4_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_IPV6_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_IPV6_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_SCTP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_SCTP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_TCP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_TCP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_UDP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_UDP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_UDPLITE_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_UDPLITE_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_CONGESTION_CONTROL_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_RETRANSMISSIONS_BANNED;
-        } else {
-            fprintf(stderr, "%s - error: unknown property: %s\n", __func__, arg_property_ptr);
-            print_usage();
-            goto cleanup;
-        }
-
-        // get next property
-        arg_property_ptr = strtok(NULL, arg_property_delimiter);
-    }
-
     // set properties
-    if (neat_set_property(ctx, flow, prop)) {
+    if (neat_set_property(ctx, flow, arg_property ? arg_property : config_property)) {
         fprintf(stderr, "%s - error: neat_set_property\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
@@ -539,6 +491,9 @@ cleanup:
     free(buffer_rcv);
     free(buffer_snd);
     free(stdin_buffer.buffer);
+
+    if (arg_property)
+        free(arg_property);
 
     // cleanup
     if (flow != NULL) {

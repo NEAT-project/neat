@@ -91,6 +91,8 @@ enum neat_tlv_tag {
     NEAT_TAG_UNORDERED_SEQNUM,
     NEAT_TAG_DESTINATION_IP_ADDRESS,
     NEAT_TAG_PRIORITY,
+    NEAT_TAG_FLOW_GROUP,
+    NEAT_TAG_CC_ALGORITHM,
 
     NEAT_TAG_LAST
 };
@@ -128,7 +130,7 @@ NEAT_EXTERN void neat_free_flow(struct neat_flow *flow);
 NEAT_EXTERN neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
                                     struct neat_flow_operations *ops);
 
-NEAT_EXTERN neat_error_code neat_get_stats(struct neat_flow *flow, char **neat_stats);
+NEAT_EXTERN neat_error_code neat_get_stats(struct neat_ctx *ctx, char **neat_stats);
 
 NEAT_EXTERN neat_error_code neat_open(struct neat_ctx *mgr, struct neat_flow *flow,
                           const char *name, uint16_t port,
@@ -144,7 +146,7 @@ NEAT_EXTERN neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *f
 NEAT_EXTERN neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                   uint64_t *outMask);
 NEAT_EXTERN neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
-                                              uint64_t inMask);
+                                              const char* properties);
 NEAT_EXTERN neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                             uint16_t port, struct neat_tlv optional[], unsigned int opt_count);
 NEAT_EXTERN neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow);
@@ -156,13 +158,15 @@ NEAT_EXTERN neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct n
                                       const char *name);
 NEAT_EXTERN neat_error_code neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow,
                                       int rate, int seconds);
+NEAT_EXTERN neat_error_code neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow,
+                                      unsigned int send_coverage, unsigned int receive_coverage);
 // The filename should be a PEM file with both cert and key
 NEAT_EXTERN neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct neat_flow *flow,
                                      const char *filename);
 
-NEAT_EXTERN neat_error_code neat_set_qos(struct neat_ctx *ctx, 
+NEAT_EXTERN neat_error_code neat_set_qos(struct neat_ctx *ctx,
 					struct neat_flow *flow, uint8_t qos);
-NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx, 
+NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
 					struct neat_flow *flow, uint8_t ecn);
 
 // do we also need a set property with a void * or an int (e.g. timeouts) or should

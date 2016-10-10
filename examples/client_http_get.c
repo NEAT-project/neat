@@ -20,6 +20,18 @@ static uint32_t config_rcv_buffer_size = 65536;
 static uint32_t config_max_flows = 50;
 static char request[512];
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
+static char *config_property = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";\
 
 static neat_error_code
 on_error(struct neat_flow_operations *opCB)
@@ -83,7 +95,6 @@ main(int argc, char *argv[])
     struct neat_ctx *ctx = NULL;
     struct neat_flow *flows[config_max_flows];
     struct neat_flow_operations ops[config_max_flows];
-    uint64_t prop = 0;
     int result = 0;
     int arg = 0;
     uint32_t num_flows = 1;
@@ -135,10 +146,12 @@ main(int argc, char *argv[])
             goto cleanup;
         }
 
-        neat_get_property(ctx, flows[i], &prop);
-        prop |= NEAT_PROPERTY_OPTIONAL_SECURITY;
-        prop |= NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED;
-        neat_set_property(ctx, flows[i], prop);
+        // neat_get_property(ctx, flows[i], &prop);
+        // prop |= NEAT_PROPERTY_OPTIONAL_SECURITY;
+        // prop |= NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED;
+        // neat_set_property(ctx, flows[i], prop);
+        // TODO: Make config_property reflect the above
+        neat_set_property(ctx, flows[i], config_property);
 
         ops[i].on_connected = on_connected;
         ops[i].on_error = on_error;

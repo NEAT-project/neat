@@ -12,24 +12,18 @@
 #endif
 
 /* This function assumes it is only called when the flow is a TCP flow */
-struct neat_tcp_info *neat_get_tcp_info(neat_flow *flow)
+void neat_get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
 {
-    struct neat_tcp_info *tcpinfo;
-    
-    /* Call the os-specific TCP-info-gathering function and copy the outputs into the 
+    /* Call the os-specific TCP-info-gathering function and copy the outputs into the
      * relevant fields of the neat-generic tcp-info struct */
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    tcpinfo = (struct neat_tcp_info*)malloc(sizeof(struct neat_tcp_info));
-    
 #ifdef __linux__
     linux_get_tcp_info(flow, tcpinfo);
 #else
     // TODO: implement error reporting for not-supported OSes
-    tcpinfo = memset(tcpinfo, 0, sizeof(struct neat_tcp_info));
+    memset(tcpinfo, 0, sizeof(struct neat_tcp_info));
 #endif
-
-    return tcpinfo;
 }
 
 /* Traverse the relevant subsystems of NEAT and gather the stats
@@ -50,9 +44,9 @@ void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
         flowcount++;
 
         /* Create entries for flow#n in a separate object */
-        newflow = json_object();; 
-        
-        json_object_set_new( newflow, "flow number", json_integer(flowcount)); 
+        newflow = json_object();;
+
+        json_object_set_new( newflow, "flow number", json_integer(flowcount));
         json_object_set_new( newflow, "remote_host", json_string( flow->name ));
         json_object_set_new( newflow, "socket type", json_integer( flow->socket->type ));
         json_object_set_new( newflow, "sock_protocol",
@@ -68,27 +62,29 @@ void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
             case NEAT_STACK_UDP:
                 break;
             case NEAT_STACK_TCP:
-                neat_tcpi = neat_get_tcp_info(flow);
-                
-                protostat = json_object();
-                
-                json_object_set_new(protostat, "retransmits", json_integer(neat_tcpi->retransmits));
-                json_object_set_new(protostat, "pmtu", json_integer(neat_tcpi->tcpi_pmtu));
-                json_object_set_new(protostat, "rcv_ssthresh", json_integer(neat_tcpi->tcpi_rcv_ssthresh));
-                json_object_set_new(protostat, "rtt", json_integer(neat_tcpi->tcpi_rtt));
-                json_object_set_new(protostat, "rttvar", json_integer(neat_tcpi->tcpi_rttvar));
-                json_object_set_new(protostat, "ssthresh", json_integer(neat_tcpi->tcpi_snd_ssthresh));
-                json_object_set_new(protostat, "snd_cwnd", json_integer(neat_tcpi->tcpi_snd_cwnd));
-                json_object_set_new(protostat, "advmss", json_integer(neat_tcpi->tcpi_advmss));
-                json_object_set_new(protostat, "reordering", json_integer(neat_tcpi->tcpi_reordering));
-                json_object_set_new(protostat, "rcv_rtt", json_integer(neat_tcpi->tcpi_rcv_rtt));
-                json_object_set_new(protostat, "rcv_space", json_integer(neat_tcpi->tcpi_rcv_space));
-                json_object_set_new(protostat, "total retrans", json_integer(neat_tcpi->tcpi_total_retrans));
-                
-                free(neat_tcpi);
-                
-                json_object_set_new(newflow, "tcpstats", protostat);
-                break;
+                {
+                    struct neat_tcp_info info;
+                    neat_get_tcp_info(flow, &info);
+                    neat_tcpi = &info;
+
+                    protostat = json_object();
+
+                    json_object_set_new(protostat, "retransmits", json_integer(neat_tcpi->retransmits));
+                    json_object_set_new(protostat, "pmtu", json_integer(neat_tcpi->tcpi_pmtu));
+                    json_object_set_new(protostat, "rcv_ssthresh", json_integer(neat_tcpi->tcpi_rcv_ssthresh));
+                    json_object_set_new(protostat, "rtt", json_integer(neat_tcpi->tcpi_rtt));
+                    json_object_set_new(protostat, "rttvar", json_integer(neat_tcpi->tcpi_rttvar));
+                    json_object_set_new(protostat, "ssthresh", json_integer(neat_tcpi->tcpi_snd_ssthresh));
+                    json_object_set_new(protostat, "snd_cwnd", json_integer(neat_tcpi->tcpi_snd_cwnd));
+                    json_object_set_new(protostat, "advmss", json_integer(neat_tcpi->tcpi_advmss));
+                    json_object_set_new(protostat, "reordering", json_integer(neat_tcpi->tcpi_reordering));
+                    json_object_set_new(protostat, "rcv_rtt", json_integer(neat_tcpi->tcpi_rcv_rtt));
+                    json_object_set_new(protostat, "rcv_space", json_integer(neat_tcpi->tcpi_rcv_space));
+                    json_object_set_new(protostat, "total retrans", json_integer(neat_tcpi->tcpi_total_retrans));
+
+                    json_object_set_new(newflow, "tcpstats", protostat);
+                    break;
+                }
             case NEAT_STACK_SCTP:
                 break;
             case NEAT_STACK_UDPLITE:
@@ -97,7 +93,7 @@ void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
                 break;
         }
     }
-    json_object_set_new( json_root, "Number of flows", json_integer( flowcount )); 
+    json_object_set_new( json_root, "Number of flows", json_integer( flowcount ));
 
 	/* Callers must remember to free the output */
 	*json_stats = json_dumps(json_root, 0);

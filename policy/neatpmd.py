@@ -78,6 +78,9 @@ def process_request(json_str, num_candidates=10):
             interface.value = eth
             r.add(interface)
 
+        p_cached = policy.NEATProperty(('is_cached',True),precedence=policy.NEATProperty.OPTIONAL,score=1.0)
+        r.add(p_cached)
+
     print('Received %d NEAT requests' % len(requests))
     for i, request in enumerate(requests):
         print("%d: " % i, request)
@@ -101,7 +104,7 @@ def process_request(json_str, num_candidates=10):
         cib_candidates.sort(key=attrgetter('score'), reverse=True)
         logging.debug('CIB lookup returned %d candidates:' % len(cib_candidates))
         for c in cib_candidates:
-            logging.debug('   %s %.1f' % (c, c.score))
+            logging.debug('   %s %.1f %.1f' % (c, *c.score))
 
         print('PIB lookup...')
         for j, candidate in enumerate(cib_candidates):

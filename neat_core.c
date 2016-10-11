@@ -599,9 +599,16 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     const int stream_id = NEAT_INVALID_STREAM;
+#if defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
+    unsigned int optlen;
+    int rc;
+    struct sctp_status status;
+#endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
 
 #ifdef NEAT_LOG
     char proto[16];
+
+    flow->stream_count = 1;
 
     switch (flow->socket->stack) {
         case NEAT_STACK_UDP:
@@ -612,6 +619,18 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             break;
         case NEAT_STACK_SCTP:
             snprintf(proto, 16, "SCTP");
+#if defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
+            optlen = sizeof(status);
+            rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &optlen);
+            if (rc < 0) {
+                neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
+                flow->stream_count = 1;
+            } else {
+                flow->stream_count = status.sstat_outstrms;
+            }
+            // number of outbound streams == number of inbound streams
+            neat_log(NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->stream_count);
+#endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
             break;
         case NEAT_STACK_UDPLITE:
             snprintf(proto, 16, "UDPLite");
@@ -624,7 +643,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             break;
     }
 
-    neat_log(NEAT_LOG_INFO, "Connected: %s/%s", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6" ));
+    neat_log(NEAT_LOG_INFO, "Connected: %s/%s - %d streams", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6" ), flow->stream_count);
 #endif // NEAT_LOG
 
 
@@ -1448,8 +1467,8 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 
 #if defined(SCTP_INITMSG)
         memset(&initmsg, 0, sizeof(struct sctp_initmsg));
-        initmsg.sinit_num_ostreams = 2048;
-        initmsg.sinit_max_instreams = 2048; // TODO: May depend on policy
+        initmsg.sinit_num_ostreams = flow->stream_count;
+        initmsg.sinit_max_instreams = flow->stream_count; // TODO: May depend on policy
 
         if (setsockopt(listen_socket->fd, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(struct sctp_initmsg)) < 0) {
             neat_log(NEAT_LOG_ERROR, "Unable to set inbound/outbound stream count");
@@ -1457,7 +1476,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             return NULL;
         }
 #endif // defined(SCTP_INITMSG)
-
+        neat_log(NEAT_LOG_DEBUG, "Creating new SCTP socket - in-/out-streams offered : %d", flow->stream_count);
         newFlow->socket->fd = newFlow->acceptfx(ctx, newFlow, listen_socket->fd);
         if (newFlow->socket->fd == -1) {
             neat_free_flow(newFlow);
@@ -1572,7 +1591,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         }
 
         // number of outbound streams == number of inbound streams
-        neat_log(NEAT_LOG_DEBUG, "inbound streams: %d\n", newFlow->stream_count);
+        neat_log(NEAT_LOG_DEBUG, "%s - SCTP - number of streams: %d", __func__, newFlow->stream_count);
         break;
 #endif
     default:
@@ -2888,6 +2907,7 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     const char *local_name = NULL;
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM]; /* We only support SCTP, TCP, UDP, and UDPLite */
     uint8_t nr_of_stacks;
+    int stream_count = 1;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     nr_of_stacks = neat_property_translate_protocols(flow->propertyMask, stacks);
@@ -2900,8 +2920,15 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 
     HANDLE_OPTIONAL_ARGUMENTS_START()
         OPTIONAL_STRING(NEAT_TAG_LOCAL_NAME, local_name)
+        OPTIONAL_INTEGER(NEAT_TAG_STREAM_COUNT, stream_count)
         // OPTIONAL_STRING(NEAT_TAG_SERVICE_NAME, service_name)
     HANDLE_OPTIONAL_ARGUMENTS_END();
+
+    if (stream_count < 1) {
+        neat_log(NEAT_LOG_ERROR, "Stream count must be 1 or more");
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+    flow->stream_count = stream_count;
 
     if (!local_name)
         local_name = "0.0.0.0";

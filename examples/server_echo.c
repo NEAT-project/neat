@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "../neat.h"
+#include "../neat_internal.h"
 #include "util.h"
 #include <errno.h>
 
@@ -21,6 +22,7 @@ A TLS example:
 
 static uint32_t config_buffer_size = 512;
 static uint16_t config_log_level = 1;
+static uint16_t config_number_of_streams = 1988;
 static char *config_property = "{\n\
     \"transport\": [\n\
         {\n\
@@ -179,12 +181,8 @@ on_connected(struct neat_flow_operations *opCB)
 {
     struct echo_flow *ef = NULL;
 
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
-
     if (config_log_level >= 1) {
-        printf("peer connected\n");
+        printf("%s - available streams : %d\n", __func__, opCB->flow->stream_count);
     }
 
     if ((opCB->userData = calloc(1, sizeof(struct echo_flow))) == NULL) {
@@ -214,6 +212,9 @@ main(int argc, char *argv[])
     static struct neat_ctx *ctx = NULL;
     static struct neat_flow *flow = NULL;
     static struct neat_flow_operations ops;
+
+    NEAT_OPTARGS_DECLARE(NEAT_OPTARGS_MAX);
+    NEAT_OPTARGS_INIT();
 
     memset(&ops, 0, sizeof(ops));
 
@@ -293,6 +294,9 @@ main(int argc, char *argv[])
     ops.on_connected = on_connected;
     ops.on_error = on_error;
 
+    // set number of streams
+    NEAT_OPTARG_INT(NEAT_TAG_STREAM_COUNT, config_number_of_streams);
+
     if (neat_set_operations(ctx, flow, &ops)) {
         fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
         result = EXIT_FAILURE;
@@ -300,7 +304,7 @@ main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, 8080, NULL, 0)) {
+    if (neat_accept(ctx, flow, 8080, NEAT_OPTARGS, NEAT_OPTARGS_COUNT)) {
         fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;

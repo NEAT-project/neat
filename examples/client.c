@@ -31,6 +31,7 @@ static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
 static uint16_t config_json_stats = 0;
 static uint16_t config_timeout = 0;
+static uint16_t config_number_of_streams = 1207;
 static char *config_primary_dest_addr = NULL;
 static char *config_property = "{\n\
     \"transport\": [\n\
@@ -79,6 +80,7 @@ print_usage()
     printf("\t- T \twrite timeout in seconds (where available) (%d)\n", config_timeout);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
     printf("\t- A \tprimary dest. addr. (auto)\n");
+    printf("\t- N \tnumber of requested streams (SCTP only) (%d)\n", config_number_of_streams);
 }
 
 // Error handler
@@ -244,8 +246,8 @@ on_connected(struct neat_flow_operations *opCB)
 {
     int rc;
 
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
+    if (config_log_level >= 1) {
+        printf("%s - available streams : %d\n", __func__, opCB->flow->stream_count);
     }
 
     uv_tty_init(ctx->loop, &tty, 0, 1);
@@ -363,6 +365,9 @@ main(int argc, char *argv[])
     memset(&ops, 0, sizeof(ops));
     memset(&stdin_buffer, 0, sizeof(stdin_buffer));
 
+    NEAT_OPTARGS_DECLARE(NEAT_OPTARGS_MAX);
+    NEAT_OPTARGS_INIT();
+
     result = EXIT_SUCCESS;
 
     while ((arg = getopt(argc, argv, "P:R:S:T:Jv:A:")) != -1) {
@@ -413,6 +418,12 @@ main(int argc, char *argv[])
             config_primary_dest_addr = optarg;
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - primary dest. address: %s\n", __func__, config_primary_dest_addr);
+            }
+            break;
+        case 'N':
+            config_number_of_streams = atoi(optarg);
+            if (config_log_level >= 1) {
+                fprintf(stderr, "%s - option - number of streams: %d\n", __func__, config_number_of_streams);
             }
             break;
         default:
@@ -478,8 +489,11 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
+    // set number of streams
+    NEAT_OPTARG_INT(NEAT_TAG_STREAM_COUNT, config_number_of_streams);
+
     // wait for on_connected or on_error to be invoked
-    if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), NULL, 0) == NEAT_OK) {
+    if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), NEAT_OPTARGS, NEAT_OPTARGS_COUNT) == NEAT_OK) {
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     } else {
         fprintf(stderr, "%s - error: neat_open\n", __func__);

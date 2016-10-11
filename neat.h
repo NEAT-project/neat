@@ -169,6 +169,14 @@ NEAT_EXTERN neat_error_code neat_set_qos(struct neat_ctx *ctx,
 NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
 					struct neat_flow *flow, uint8_t ecn);
 
+// Used by neat_request_capacity_profile
+typedef enum {
+    CAPACITY_LBE = 0,
+    CAPACITY_CONSERVATIVE,
+    CAPACITY_NORMAL,
+    CAPACITY_AGGRESSIVE
+} capacity_t;
+
 // do we also need a set property with a void * or an int (e.g. timeouts) or should
 // we create higher level named functions for such things?
 

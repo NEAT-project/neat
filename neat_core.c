@@ -2652,6 +2652,63 @@ neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow, unsigne
     return NEAT_ERROR_UNABLE;
 }
 
+neat_error_code
+neat_request_capacity_profile(neat_ctx *ctx, neat_flow *flow, capacity_t profile, float factor)
+{
+#ifdef TCP_CONGESTION
+    const char *algorithm;
+#endif
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (flow->name == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "Flow is not connected");
+        return NEAT_ERROR_UNABLE;
+    }
+
+    if (flow->socket->stack != NEAT_STACK_TCP) {
+        neat_log(NEAT_LOG_DEBUG, "Setting capacity profile only supported for TCP");
+        return NEAT_ERROR_UNABLE;
+    }
+
+#ifdef TCP_CONGESTION
+    switch (profile) {
+    case CAPACITY_LBE:
+        algorithm = "ledbat";
+    case CAPACITY_CONSERVATIVE:
+        algorithm = "caia";
+        break;
+    case CAPACITY_NORMAL:
+        algorithm = "reno";
+        break;
+    case CAPACITY_AGGRESSIVE:
+        algorithm = "cubic";
+        break;
+    }
+
+    if (setsockopt(flow->socket->fd, IPPROTO_TCP, TCP_CONGESTION, algorithm, strlen(algorithm)) != 0) {
+        neat_log(NEAT_LOG_DEBUG, "Unable to set CC algorithm: %s", strerror(errno));
+
+        // Return OK, since this is a purely advisory request
+        return NEAT_OK;
+    }
+
+    // TODO: Apply LBE-ness factor where appliccable
+
+    if (flow->cc_algorithm)
+        free((void*)flow->cc_algorithm);
+
+    if ((flow->cc_algorithm = strdup(algorithm)) == NULL)
+        return NEAT_ERROR_OUT_OF_MEMORY;
+
+    return NEAT_OK;
+
+#else
+    return NEAT_ERROR_UNABLE;
+#endif
+
+}
+
 static neat_error_code
 accept_resolve_cb(struct neat_resolver_results *results,
                   uint8_t code,

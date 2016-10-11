@@ -1356,9 +1356,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 #if defined(IPPROTO_SCTP)
-#if defined(SCTP_INITMSG)
+#if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
     struct sctp_initmsg initmsg;
-#endif //defined(SCTP_INITMSG)
+#endif //defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
 #if defined(SCTP_RECVRCVINFO) && !defined(USRSCTP_SUPPORT)
     int optval;
 #endif

@@ -1356,7 +1356,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 #if defined(IPPROTO_SCTP)
+#if defined(SCTP_INITMSG)
     struct sctp_initmsg initmsg;
+#endif //defined(SCTP_INITMSG)
 #if defined(SCTP_RECVRCVINFO) && !defined(USRSCTP_SUPPORT)
     int optval;
 #endif
@@ -1443,6 +1445,8 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             newFlow->acceptPending = 0;
         }
 #else
+
+#if defined(SCTP_INITMSG)
         memset(&initmsg, 0, sizeof(struct sctp_initmsg));
         initmsg.sinit_num_ostreams = 2048;
         initmsg.sinit_max_instreams = 2048; // TODO: May depend on policy
@@ -1452,6 +1456,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             neat_free_flow(newFlow);
             return NULL;
         }
+#endif // defined(SCTP_INITMSG)
 
         newFlow->socket->fd = newFlow->acceptfx(ctx, newFlow, listen_socket->fd);
         if (newFlow->socket->fd == -1) {

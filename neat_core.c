@@ -4255,16 +4255,6 @@ error:
     return NULL;
 }
 
-neat_error_code
-neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
-                               uint64_t flags, int capacity_profile,
-                               struct neat_flow_security *sec)
-{
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    return NEAT_ERROR_UNABLE;
-}
-
 // Notify application about congestion via callback
 // Set ecn to true if ECN signalled congestion.
 // Set rate to non-zero if wanting to signal a new *maximum* bitrate

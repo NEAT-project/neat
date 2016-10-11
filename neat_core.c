@@ -3345,7 +3345,7 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
     /*Update flow statistics */
     flow->flow_stats.bytes_received += (int)rv;
-    
+
 
 end:
     // Fill in optional return values if they are requested
@@ -3607,6 +3607,8 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             neat_log(NEAT_LOG_ERROR, "Unable to set inbound/outbound stream count");
             return -1;
         }
+
+        neat_log(NEAT_LOG_DEBUG, "SCTP stream negotiation - offering : %d in / %d out", init.sinit_max_instreams, init.sinit_num_ostreams);
     }
 #endif
 
@@ -4222,6 +4224,8 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 #if defined(USRSCTP_SUPPORT)
     rv->acceptusrsctpfx = neat_accept_via_usrsctp;
 #endif
+
+    TAILQ_INIT(&rv->bufferedMessages);
 
     rv->properties = json_object();
 

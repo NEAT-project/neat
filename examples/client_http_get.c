@@ -62,8 +62,17 @@ on_readable(struct neat_flow_operations *opCB)
         fflush(stdout);
         opCB->on_writable = NULL;
         opCB->on_readable = NULL; // do not read more
+        opCB->on_close = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
         neat_free_flow(opCB->flow);
+        
+        // stop event loop if all flows are closed
+        flows_active--;
+        fprintf(stderr, "%s - active flows left : %d\n", __func__, flows_active);
+        if (flows_active == 0) {
+            fprintf(stderr, "%s - stopping event loop\n", __func__);
+            neat_stop_event_loop(opCB->ctx);
+        }
     } else if (bytes_read > 0) {
         fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
         fwrite(buffer, sizeof(char), bytes_read, stdout);

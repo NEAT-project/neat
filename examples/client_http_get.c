@@ -60,6 +60,7 @@ on_readable(struct neat_flow_operations *opCB)
     if (!bytes_read) { // eof
         fprintf(stderr, "%s - neat_read() got 0 bytes - connection closed\n", __func__);
         fflush(stdout);
+        opCB->on_writable = NULL;
         opCB->on_readable = NULL; // do not read more
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
         neat_close(opCB->ctx, opCB->flow);

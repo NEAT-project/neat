@@ -392,7 +392,6 @@ neat_free_candidate(struct neat_he_candidate *candidate)
     if (candidate->pollable_socket->handle != NULL) {
         neat_log(NEAT_LOG_DEBUG,"%s: Release candidate with free()", __func__);
         free(candidate->pollable_socket->handle);
-        candidate->pollable_socket->handle = NULL;
     }
 
     free(candidate->pollable_socket);

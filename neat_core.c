@@ -443,7 +443,7 @@ static void synchronous_free(neat_flow *flow)
 
     free_iofilters(flow->iofilters);
     free(flow->readBuffer);
-    //free(flow->socket->handle);
+    free(flow->socket->handle);
     free(flow->socket);
     free(flow);
 }
@@ -452,12 +452,6 @@ static void free_cb(uv_handle_t *handle)
 {
     struct neat_pollable_socket *pollable_socket = handle->data;
     synchronous_free(pollable_socket->flow);
-}
-
-static void close_cb(uv_handle_t *handle)
-{
-    struct neat_pollable_socket *pollable_socket = handle->data;
-    neat_notify_close(pollable_socket->flow);
 }
 
 static int neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
@@ -4467,14 +4461,12 @@ neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
 
     // This code is copied from neat_free_flow
     // TODO consider a refactor...
-    if (flow->isPolling) {
+    if (flow->isPolling)
         uv_poll_stop(flow->socket->handle);
-    }
 
-
-    if ((flow->socket->handle != NULL) && (flow->socket->handle->type != UV_UNKNOWN_HANDLE)) {
-        uv_close((uv_handle_t *)(flow->socket->handle), close_cb);
-    }
+    if ((flow->socket->handle != NULL) &&
+        (flow->socket->handle->type != UV_UNKNOWN_HANDLE))
+        uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
 
     return NEAT_OK;
 }

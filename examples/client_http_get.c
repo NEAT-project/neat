@@ -62,7 +62,9 @@ on_readable(struct neat_flow_operations *opCB)
         fflush(stdout);
         opCB->on_readable = NULL; // do not read more
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
+        neat_close(opCB->ctx, opCB->flow);
     } else if (bytes_read > 0) {
+        fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
         fwrite(buffer, sizeof(char), bytes_read, stdout);
     }
     return 0;
@@ -126,7 +128,7 @@ main(int argc, char *argv[])
     struct neat_flow_operations ops[config_max_flows];
     int result = 0;
     int arg = 0;
-    uint32_t num_flows = 2;
+    uint32_t num_flows = 1;
     uint32_t i = 0;
     result = EXIT_SUCCESS;
 
@@ -166,7 +168,6 @@ main(int argc, char *argv[])
         result = EXIT_FAILURE;
         goto cleanup;
     }
-
 
     for (i = 0; i < num_flows; i++) {
         if ((flows[i] = neat_new_flow(ctx)) == NULL) {

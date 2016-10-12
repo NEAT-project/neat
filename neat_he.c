@@ -185,7 +185,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
 #endif
     }
 
-    neat_log(NEAT_LOG_DEBUG, "HE will now commence\n\n");
+    neat_log(NEAT_LOG_DEBUG, "HE will now commence");
 
     flow->hefirstConnect = 1;
     flow->heConnectAttemptCount = 0;

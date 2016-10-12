@@ -661,8 +661,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_connected(flow->operations);
 }
 
-static void io_writable(neat_ctx *ctx, neat_flow *flow, int stream_id,
-                        neat_error_code code)
+static void io_writable(neat_ctx *ctx, neat_flow *flow, int stream_id, neat_error_code code)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -847,7 +846,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 {
     struct sockaddr_storage peerAddr;
     socklen_t peerAddrLen = sizeof(struct sockaddr_storage);
-    int stream_id = NEAT_INVALID_STREAM;
+    int stream_id = 0;
     ssize_t n;
     //Not used when notifications aren't available:
     int flags __attribute__((unused));
@@ -1084,9 +1083,11 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     return READ_OK;
 }
 
-static void io_all_written(neat_ctx *ctx, neat_flow *flow, int stream_id)
+static void
+io_all_written(neat_ctx *ctx, neat_flow *flow, int stream_id)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    stream_id = NEAT_INVALID_STREAM;
 
     if (!flow->operations || !flow->operations->on_all_written) {
         return;
@@ -1096,7 +1097,9 @@ static void io_all_written(neat_ctx *ctx, neat_flow *flow, int stream_id)
     flow->operations->on_all_written(flow->operations);
 }
 
-static void io_timeout(neat_ctx *ctx, neat_flow *flow) {
+static void
+io_timeout(neat_ctx *ctx, neat_flow *flow)
+{
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     const int stream_id = NEAT_INVALID_STREAM;
 
@@ -2978,7 +2981,6 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 #endif
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    // neat_log(NEAT_LOG_DEBUG, "stream_id: %d - isDraining: %d", stream_id, flow->isDraining);
     if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         return NEAT_OK;
     }
@@ -3345,7 +3347,7 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                      unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
                       struct neat_tlv optional[], unsigned int opt_count)
 {
-    int stream_id = NEAT_INVALID_STREAM;
+    int stream_id = 0;
     ssize_t rv;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 

@@ -70,7 +70,7 @@ fi
 
 ##############
 
-if [ "x$PREFIX" == "x" ]; then
+if [ ! -n "$PREFIX" ]; then
     echo ""
     echo "########################################"
     export PYTHONIOENCODING=utf-8

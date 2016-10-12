@@ -274,14 +274,18 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
-
     fprintf(stderr, "%s - flow closed OK!\n", __func__);
 
+    // cleanup
+    ops.on_close = NULL;
+    ops.on_readable = NULL;
+    ops.on_writable = NULL;
+    neat_set_operations(ctx, flow, &ops);
+    neat_free_flow(opCB->flow);
+    neat_stop_event_loop(opCB->ctx);
+
     return NEAT_OK;
-    }
+}
 
 /*
     Read from stdin
@@ -492,13 +496,10 @@ cleanup:
     free(buffer_snd);
     free(stdin_buffer.buffer);
 
-    if (arg_property)
+    if (arg_property) {
         free(arg_property);
-
-    // cleanup
-    if (flow != NULL) {
-        neat_free_flow(flow);
     }
+
     if (ctx != NULL) {
         neat_free_ctx(ctx);
     }

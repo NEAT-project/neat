@@ -48,6 +48,7 @@ on_readable(struct neat_flow_operations *opCB)
     uint32_t bytes_read = 0;
     neat_error_code code;
 
+    fprintf(stderr, "%s - reading from flow\n", __func__);
     code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read, NULL, 0);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
         return 0;
@@ -56,6 +57,7 @@ on_readable(struct neat_flow_operations *opCB)
     }
 
     if (!bytes_read) { // eof
+        fprintf(stderr, "%s - connection closed\n", __func__);
         fflush(stdout);
         opCB->on_readable = NULL; // do not read more
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
@@ -70,6 +72,7 @@ static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
+    fprintf(stderr, "%s - writing to flow\n", __func__);
     code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *)request, strlen(request), NULL, 0);
     if (code != NEAT_OK) {
         return on_error(opCB);
@@ -83,6 +86,7 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     // now we can start writing
+    fprintf(stderr, "%s - connection established\n", __func__);
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);

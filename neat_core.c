@@ -763,19 +763,19 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 	break;
 #endif // else HAVE_SCTP_SEND_FAILED_EVENT
     case SCTP_PEER_ADDR_CHANGE:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP peer address change event\n");
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP peer address change event");
 	break;
     case SCTP_REMOTE_ERROR:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP remote error event\n");
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP remote error event");
 	break;
     case SCTP_SHUTDOWN_EVENT:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP shutdown event\n");
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP shutdown event");
 	break;
     case SCTP_ADAPTATION_INDICATION:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP adaption indication event\n");
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP adaption indication event");
 	break;
     case SCTP_PARTIAL_DELIVERY_EVENT:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP partial delivery event\n");
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP partial delivery event");
 	break;
     default:
 	neat_log(NEAT_LOG_WARNING, "Got unhandled SCTP event type %d",
@@ -852,7 +852,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations) {
-        neat_log(NEAT_LOG_DEBUG, "No operations");
+        neat_log(NEAT_LOG_DEBUG, "%s - No operations", __func__);
         return READ_WITH_ERROR;
     }
 
@@ -901,7 +901,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 neat_flow *newFlow = neat_find_flow(ctx, &socket->srcAddr, (struct sockaddr *)&peerAddr);
 
                 if (!newFlow) {
-                    neat_log(NEAT_LOG_DEBUG, "Creating new UDP flow");
+                    neat_log(NEAT_LOG_DEBUG, "%s - Creating new UDP flow", __func__);
 
                     memcpy(&socket->dstAddr, (struct sockaddr *)&peerAddr, sizeof(struct sockaddr));
                     newFlow = do_accept(ctx, flow, socket);
@@ -961,7 +961,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 #if (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
         for (cmsg = CMSG_FIRSTHDR(&msghdr); cmsg != NULL; cmsg = CMSG_NXTHDR(&msghdr, cmsg)) {
             if (cmsg->cmsg_len == 0) {
-                neat_log(NEAT_LOG_DEBUG, "Error in ancilliary data from recvmsg");
+                neat_log(NEAT_LOG_DEBUG, "%s - Error in ancilliary data from recvmsg", __func__);
                 break;
             }
 #ifdef IPPROTO_SCTP
@@ -969,13 +969,13 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 #if defined (SCTP_RCVINFO)
                 if (cmsg->cmsg_type == SCTP_RCVINFO) {
                     rcvinfo = (struct sctp_rcvinfo *)CMSG_DATA(cmsg);
-                    neat_log(NEAT_LOG_DEBUG, "Received data on stream %d", rcvinfo->rcv_sid);
+                    neat_log(NEAT_LOG_DEBUG, "%s - Received data on SCTP stream %d", __func__, rcvinfo->rcv_sid);
                     stream_id = rcvinfo->rcv_sid;
                 }
 #elif defined (SCTP_SNDRCV)
                 if (cmsg->cmsg_type == SCTP_SNDRCV) {
                     sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
-                    neat_log(NEAT_LOG_DEBUG, "Received data on stream %d", sndrcvinfo->sinfo_stream);
+                    neat_log(NEAT_LOG_DEBUG, "%s - Received data on SCTP stream %d", __func__, sndrcvinfo->sinfo_stream);
                     stream_id = sndrcvinfo->sinfo_stream;
                 }
 #endif

@@ -27,7 +27,18 @@ static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
 static char *config_primary_dest_addr = NULL;
-static char config_property[] = "NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED";
+static char *config_property = "{\n\
+    \"transport\": [\n\
+        {\n\
+            \"value\": \"SCTP\",\n\
+            \"precedence\": 1\n\
+        },\n\
+        {\n\
+            \"value\": \"TCP\",\n\
+            \"precedence\": 1\n\
+        }\n\
+    ]\n\
+}";
 
 struct std_buffer {
     unsigned char *buffer;
@@ -57,7 +68,7 @@ print_usage()
     }
 
     printf("client [OPTIONS] HOST PORT\n");
-    printf("\t- P \tneat properties (%s)\n", config_property);
+    printf("\t- P <filename>\tneat properties, default properties:\n%s\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- S \tsend buffer in byte (%d)\n", config_snd_buffer_size);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
@@ -496,15 +507,15 @@ main(int argc, char *argv[])
         // get next property
         arg_property_ptr = strtok(NULL, arg_property_delimiter);
     }
+#endif
 
     // set properties
-    if (neat_set_property(ctx, flow, prop)) {
+    if (neat_set_property(ctx, flow, arg_property ? arg_property : config_property)) {
         fprintf(stderr, "%s - error: neat_set_property\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
-#endif
-
+    
     // set callbacks
     ops.on_connected = on_connected;
     ops.on_error = on_error;

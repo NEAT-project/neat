@@ -782,19 +782,19 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 	break;
 #endif // else HAVE_SCTP_SEND_FAILED_EVENT
     case SCTP_PEER_ADDR_CHANGE:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP peer address change event\n");
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP peer address change event");
 	break;
     case SCTP_REMOTE_ERROR:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP remote error event\n");
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP remote error event");
 	break;
     case SCTP_SHUTDOWN_EVENT:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP shutdown event\n");
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP shutdown event");
 	break;
     case SCTP_ADAPTATION_INDICATION:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP adaption indication event\n");
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP adaption indication event");
 	break;
     case SCTP_PARTIAL_DELIVERY_EVENT:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP partial delivery event\n");
+	neat_log(NEAT_LOG_DEBUG, "Got SCTP partial delivery event");
 	break;
     default:
 	neat_log(NEAT_LOG_WARNING, "Got unhandled SCTP event type %d",
@@ -1464,7 +1464,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             newFlow->acceptPending = 0;
         }
 #else
-
 #if defined(SCTP_INITMSG)
         memset(&initmsg, 0, sizeof(struct sctp_initmsg));
         initmsg.sinit_num_ostreams = flow->stream_count;
@@ -3247,8 +3246,9 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
             memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
 
-            if (stream_id)
+            if (stream_id) {
                 sndinfo->snd_sid = stream_id;
+            }
 
 #if defined(SCTP_EOR)
             if ((flow->isSCTPExplicitEOR) && (len == amt)) {
@@ -3265,8 +3265,9 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
             memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
 
-            if (stream_id)
+            if (stream_id) {
                 sndrcvinfo->sinfo_stream = stream_id;
+            }
 #if defined(SCTP_EOR)
             if ((flow->isSCTPExplicitEOR) && (len == amt)) {
                 sndrcvinfo->sinfo_flags |= SCTP_EOR;
@@ -3632,8 +3633,20 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         break;
     }
 
-#if defined(IPPROTO_SCTP) && defined(SCTP_INITMSG)
+#if defined(IPPROTO_SCTP)
     if (candidate->pollable_socket->stack == NEAT_STACK_SCTP) {
+#if defined(SCTP_RECVRCVINFO)
+        // Enable anciliarry data when receiving data from SCTP
+        if (setsockopt(candidate->pollable_socket->fd,
+                        IPPROTO_SCTP,
+                        SCTP_RECVRCVINFO,
+                        &enable,
+                        sizeof(int)) < 0) {
+            neat_log(NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
+            return -1;
+        }
+#endif // defined(SCTP_RECVRCVINFO)
+#if defined(SCTP_INITMSG)
         struct sctp_initmsg init;
         memset(&init, 0, sizeof(init));
         init.sinit_num_ostreams = candidate->pollable_socket->flow->stream_count;
@@ -3647,13 +3660,14 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                        SCTP_INITMSG,
                        &init,
                        sizeof(struct sctp_initmsg)) < 0) {
-            neat_log(NEAT_LOG_ERROR, "Unable to set inbound/outbound stream count");
+            neat_log(NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INITMSG) failed - Unable to set inbound/outbound stream count");
             return -1;
         }
 
         neat_log(NEAT_LOG_DEBUG, "SCTP stream negotiation - offering : %d in / %d out", init.sinit_max_instreams, init.sinit_num_ostreams);
+#endif //defined(SCTP_INITMSG)
     }
-#endif
+#endif //defined(IPPROTO_SCTP)
 
     candidate->pollable_socket->handle->data = candidate;
     assert(candidate->ctx);

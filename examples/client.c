@@ -28,15 +28,15 @@
 
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
-static uint16_t config_log_level = 1;
-static uint16_t config_json_stats = 0;
+static uint16_t config_log_level = 2;
+static uint16_t config_json_stats = 1;
 static uint16_t config_timeout = 0;
 static uint16_t config_number_of_streams = 1207;
 static char *config_primary_dest_addr = NULL;
 static char *config_property = "{\n\
     \"transport\": [\n\
         {\n\
-            \"value\": \"SCTP\",\n\
+            \"value\": \"TCP\",\n\
             \"precedence\": 1\n\
         },\n\
         {\n\
@@ -58,6 +58,7 @@ static struct neat_flow *flow = NULL;
 static unsigned char *buffer_rcv = NULL;
 static unsigned char *buffer_snd= NULL;
 static uv_tty_t tty;
+static uint16_t last_stream = 0;
 
 void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
 void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
@@ -181,7 +182,7 @@ on_readable(struct neat_flow_operations *opCB)
     // all fine
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
-            fprintf(stderr, "%s - received %d bytes\n", __func__, buffer_filled);
+            fprintf(stderr, "%s - received %d bytes on stream %d of %d\n", __func__, buffer_filled, opCB->stream_id, opCB->flow->stream_count);
         }
         fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
         fflush(stdout);
@@ -204,12 +205,18 @@ static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
+    struct neat_tlv options[1];
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_write(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled, NULL, 0);
+    last_stream = (last_stream + 1) % opCB->flow->stream_count;
+    options[0].tag           = NEAT_TAG_STREAM_ID;
+    options[0].type          = NEAT_TYPE_INTEGER;
+    options[0].value.integer = last_stream;
+
+    code = neat_write(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled, options, 1);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
         return on_error(opCB);
@@ -220,7 +227,7 @@ on_writable(struct neat_flow_operations *opCB)
     }
 
     if (config_log_level >= 1) {
-        fprintf(stderr, "%s - sent %d bytes\n", __func__, stdin_buffer.buffer_filled);
+        fprintf(stderr, "%s - sent %d bytes on stream %d\n", __func__, stdin_buffer.buffer_filled, last_stream);
     }
 
     // stop writing
@@ -249,6 +256,8 @@ on_connected(struct neat_flow_operations *opCB)
     if (config_log_level >= 1) {
         printf("%s - available streams : %d\n", __func__, opCB->flow->stream_count);
     }
+
+    last_stream = 0;
 
     uv_tty_init(ctx->loop, &tty, 0, 1);
     uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);

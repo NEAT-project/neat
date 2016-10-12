@@ -291,6 +291,7 @@ on_close(struct neat_flow_operations *opCB)
     ops.on_close = NULL;
     ops.on_readable = NULL;
     ops.on_writable = NULL;
+    ops.on_error = NULL;
     neat_set_operations(ctx, flow, &ops);
     neat_free_flow(opCB->flow);
     neat_stop_event_loop(opCB->ctx);

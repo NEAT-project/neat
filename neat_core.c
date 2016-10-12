@@ -451,6 +451,12 @@ static void free_cb(uv_handle_t *handle)
     synchronous_free(pollable_socket->flow);
 }
 
+static void close_cb(uv_handle_t *handle)
+{
+    struct neat_pollable_socket *pollable_socket = handle->data;
+    neat_notify_close(pollable_socket->flow);
+}
+
 static int neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     struct neat_pollable_socket *s;
@@ -3710,11 +3716,11 @@ neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         // kernel and userspace.. same for connect read and write
         close(flow->socket->fd);
 
-	// KAH: AFAIK the socket API provides no way of knowing any
-	// further status of the close op for TCP.
-	// taps-transports-usage does not specify CLOSE-EVENT.TCP,
-	// maybe it should be dropped from the implementation?
-	neat_notify_close(flow);
+        // KAH: AFAIK the socket API provides no way of knowing any
+        // further status of the close op for TCP.
+        // taps-transports-usage does not specify CLOSE-EVENT.TCP,
+        // maybe it should be dropped from the implementation?
+        neat_notify_close(flow);
     }
     return 0;
 }
@@ -4456,12 +4462,14 @@ neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
 
     // This code is copied from neat_free_flow
     // TODO consider a refactor...
-    if (flow->isPolling)
+    if (flow->isPolling) {
         uv_poll_stop(flow->socket->handle);
+    }
 
-    if ((flow->socket->handle != NULL) &&
-        (flow->socket->handle->type != UV_UNKNOWN_HANDLE))
-        uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
+
+    if ((flow->socket->handle != NULL) && (flow->socket->handle->type != UV_UNKNOWN_HANDLE)) {
+        uv_close((uv_handle_t *)(flow->socket->handle), close_cb);
+    }
 
     return NEAT_OK;
 }

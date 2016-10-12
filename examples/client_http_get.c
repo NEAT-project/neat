@@ -63,7 +63,7 @@ on_readable(struct neat_flow_operations *opCB)
         opCB->on_writable = NULL;
         opCB->on_readable = NULL; // do not read more
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_close(opCB->ctx, opCB->flow);
+        neat_free_flow(opCB->flow);
     } else if (bytes_read > 0) {
         fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
         fwrite(buffer, sizeof(char), bytes_read, stdout);

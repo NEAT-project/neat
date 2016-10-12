@@ -191,11 +191,14 @@ static void neat_walk_cb(uv_handle_t *handle, void *arg)
     //HACK: Can't stop the IDLE handle used by resolver. Should probably do
     //something more advanced in case we use other idle handles
     if (handle->type == UV_IDLE) {
+        neat_log(NEAT_LOG_DEBUG, "%s - handle->type == UV_IDLE - skipping", __func__);
         return;
     }
 
-    if (!uv_is_closing(handle))
+    if (!uv_is_closing(handle)) {
+        neat_log(NEAT_LOG_DEBUG, "%s - closing handle", __func__);
         uv_close(handle, NULL);
+    }
 }
 
 static void neat_close_loop(struct neat_ctx *nc)

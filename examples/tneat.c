@@ -366,7 +366,7 @@ on_close(struct neat_flow_operations *opCB)
     fprintf(stderr, "%s - flow closed OK!\n", __func__);
 
     // stop event loop if we are active part
-    if (!config_active) {
+    if (config_active) {
         fprintf(stderr, "%s - stopping event loop\n", __func__);
         neat_stop_event_loop(opCB->ctx);
     }

@@ -123,8 +123,6 @@ struct neat_flow_security {
 };
 
 NEAT_EXTERN struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
-NEAT_EXTERN neat_error_code neat_flow_init(struct neat_ctx *ctx, struct neat_flow* flow,
-                                 uint64_t flags, int flow_profile, struct neat_flow_security *sec);
 NEAT_EXTERN void neat_free_flow(struct neat_flow *flow);
 
 NEAT_EXTERN neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
@@ -135,8 +133,6 @@ NEAT_EXTERN neat_error_code neat_get_stats(struct neat_ctx *ctx, char **neat_sta
 NEAT_EXTERN neat_error_code neat_open(struct neat_ctx *mgr, struct neat_flow *flow,
                           const char *name, uint16_t port,
                           struct neat_tlv optional[], unsigned int opt_count);
-NEAT_EXTERN neat_error_code neat_open_multistream(struct neat_ctx *ctx, struct neat_flow *flow,
-                          const char *name, uint16_t port, int count);
 NEAT_EXTERN neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
                           struct neat_tlv optional[], unsigned int opt_count);

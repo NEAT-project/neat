@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "../neat.h"
+#include "../neat_internal.h"
 #include "util.h"
 #include <errno.h>
 
@@ -20,7 +21,8 @@ A TLS example:
 **********************************************************************/
 
 static uint32_t config_buffer_size = 512;
-static uint16_t config_log_level = 1;
+static uint16_t config_log_level = 2;
+static uint16_t config_number_of_streams = 1988;
 static char *config_property = "{\n\
     \"transport\": [\n\
         {\n\
@@ -36,6 +38,12 @@ static char *config_property = "{\n\
 static char *pem_file = NULL;
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
+
+struct echo_flow {
+    unsigned char *buffer;
+    uint32_t bytes;
+    int stream_id;
+};
 
 /*
     print usage and exit
@@ -53,11 +61,6 @@ print_usage()
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
     printf("\t- p \tpem file (none)\n");
 }
-
-struct echo_flow {
-    unsigned char *buffer;
-    uint32_t bytes;
-};
 
 /*
     Error handler
@@ -102,13 +105,17 @@ on_readable(struct neat_flow_operations *opCB)
     // we got some data
     if (ef->bytes > 0) {
         if (config_log_level >= 1) {
-            printf("received data - %d byte\n", ef->bytes);
+            printf("received data - %d bytes on stream %d of %d\n", ef->bytes, opCB->stream_id, opCB->flow->stream_count);
         }
         if (config_log_level >= 2) {
             fwrite(ef->buffer, sizeof(char), ef->bytes, stdout);
             printf("\n");
             fflush(stdout);
         }
+
+        // remember stream_id
+        ef->stream_id = opCB->stream_id;
+
         // echo data
         opCB->on_readable = NULL;
         opCB->on_writable = on_writable;
@@ -149,10 +156,16 @@ on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
     struct echo_flow *ef = opCB->userData;
+    struct neat_tlv options[1];
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
+
+    options[0].tag           = NEAT_TAG_STREAM_ID;
+    options[0].type          = NEAT_TYPE_INTEGER;
+    options[0].value.integer = ef->stream_id;
+
 
     // set callbacks
     opCB->on_readable = NULL;
@@ -160,14 +173,14 @@ on_writable(struct neat_flow_operations *opCB)
     opCB->on_all_written = on_all_written;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-    code = neat_write(opCB->ctx, opCB->flow, ef->buffer, ef->bytes, NULL, 0);
+    code = neat_write(opCB->ctx, opCB->flow, ef->buffer, ef->bytes, options, 1);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: %d\n", __func__, (int)code);
         return on_error(opCB);
     }
 
     if (config_log_level >= 1) {
-        printf("sent data - %d byte\n", ef->bytes);
+        printf("sent data - %d byte on stream %d\n", ef->bytes, ef->stream_id);
     }
 
     return NEAT_OK;
@@ -179,12 +192,8 @@ on_connected(struct neat_flow_operations *opCB)
 {
     struct echo_flow *ef = NULL;
 
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
-
     if (config_log_level >= 1) {
-        printf("peer connected\n");
+        printf("%s - available streams : %d\n", __func__, opCB->flow->stream_count);
     }
 
     if ((opCB->userData = calloc(1, sizeof(struct echo_flow))) == NULL) {
@@ -214,6 +223,9 @@ main(int argc, char *argv[])
     static struct neat_ctx *ctx = NULL;
     static struct neat_flow *flow = NULL;
     static struct neat_flow_operations ops;
+
+    NEAT_OPTARGS_DECLARE(NEAT_OPTARGS_MAX);
+    NEAT_OPTARGS_INIT();
 
     memset(&ops, 0, sizeof(ops));
 
@@ -293,6 +305,9 @@ main(int argc, char *argv[])
     ops.on_connected = on_connected;
     ops.on_error = on_error;
 
+    // set number of streams
+    NEAT_OPTARG_INT(NEAT_TAG_STREAM_COUNT, config_number_of_streams);
+
     if (neat_set_operations(ctx, flow, &ops)) {
         fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
         result = EXIT_FAILURE;
@@ -300,7 +315,7 @@ main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, 8080, NULL, 0)) {
+    if (neat_accept(ctx, flow, 8080, NEAT_OPTARGS, NEAT_OPTARGS_COUNT)) {
         fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;

@@ -36,7 +36,7 @@ static char *config_primary_dest_addr = NULL;
 static char *config_property = "{\n\
     \"transport\": [\n\
         {\n\
-            \"value\": \"TCP\",\n\
+            \"value\": \"SCTP\",\n\
             \"precedence\": 1\n\
         },\n\
         {\n\
@@ -388,7 +388,6 @@ main(int argc, char *argv[])
     while ((arg = getopt(argc, argv, "P:R:S:T:Jv:A:")) != -1) {
         switch(arg) {
         case 'P':
-            // arg_property = optarg;
             if (read_file(optarg, &arg_property) < 0) {
                 fprintf(stderr, "Unable to read properties from %s: %s",
                         optarg, strerror(errno));

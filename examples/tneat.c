@@ -23,7 +23,7 @@
 /*
     default values
 */
-static uint32_t config_rcv_buffer_size = 512;
+static uint32_t config_rcv_buffer_size = 1024;
 static uint32_t config_snd_buffer_size = 1024;
 static uint32_t config_message_count = 32;
 static uint32_t config_runtime_max = 0;

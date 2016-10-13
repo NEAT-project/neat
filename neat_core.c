@@ -382,6 +382,14 @@ static void free_iofilters(struct neat_iofilter *filter)
 }
 
 void
+on_handle_closed(uv_handle_t *handle)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    free(handle);
+}
+
+void
 neat_free_candidate(struct neat_he_candidate *candidate)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -390,8 +398,13 @@ neat_free_candidate(struct neat_he_candidate *candidate)
     free(candidate->pollable_socket->src_address);
 
     if (candidate->pollable_socket->handle != NULL) {
-        neat_log(NEAT_LOG_DEBUG,"%s: Release candidate with free()", __func__);
-        //free(candidate->pollable_socket->handle);
+        if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
+            neat_log(NEAT_LOG_DEBUG,"%s: Release candidate after closing", __func__);
+            uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed);
+        } else {
+            neat_log(NEAT_LOG_DEBUG,"%s: Release candidate with free()", __func__);
+            free(candidate->pollable_socket->handle);
+        }
     }
 
     free(candidate->pollable_socket);

@@ -21,10 +21,11 @@
 
 static uint32_t config_buffer_size_max = 1400;
 static uint16_t config_log_level = 0;
-static char config_property[] = "NEAT_PROPERTY_UDP_REQUIRED";
+static char config_property[] = "NEAT_PROPERTY_REQUIRED_SECURITY,NEAT_PROPERTY_UDP_REQUIRED";
 static uint32_t config_drop_randomly= 0;
 static uint32_t config_drop_rate= 80;
 static uint32_t config_port=6969;
+static char *pem_file = NULL;
 
 #define SEGMENT_SIZE 1024
 #define SECOND 1000
@@ -758,7 +759,7 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:S:v:h:p:f:D:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:S:v:h:p:f:D:c:")) != -1) {
         switch(arg) {
         case 'P':
             arg_property = optarg;
@@ -795,6 +796,12 @@ main(int argc, char *argv[])
             }
 			filename = strdup(optarg);
             break;
+         case 'c':
+             pem_file = optarg;
+             if (config_log_level >= 1) {
+                 printf("option - pem file: %s\n", pem_file);
+             }
+             break;
         default:
             print_usage();
             goto cleanup;
@@ -827,6 +834,12 @@ main(int argc, char *argv[])
         result = EXIT_FAILURE;
         goto cleanup;
     }
+
+	if (pem_file && neat_secure_identity(ctx, flow, pem_file)) {            
+		fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
+		result = EXIT_FAILURE;                                              
+		goto cleanup;                                                       
+	}                                                                       
 
     // read property arguments
     arg_property_ptr = strtok(arg_property, arg_property_delimiter);

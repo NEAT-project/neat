@@ -564,7 +564,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 static void io_writable(neat_ctx *ctx, neat_flow *flow, int stream_id,
                         neat_error_code code)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (flow->isDraining) {
         neat_write_flush(ctx, flow);
@@ -774,7 +774,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     socklen_t infolen = sizeof(struct sctp_recvv_rn);
 #endif // else !defined(USRSCTP_SUPPORT)
 
-    neat_log(NEAT_LOG_DEBUG, "%s (usrsctp)", __func__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations) {
         neat_log(NEAT_LOG_DEBUG, "No operations");
@@ -807,6 +807,9 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 
             if ((n = recvfrom(socket->fd, flow->readBuffer,
                 flow->readBufferAllocation, 0, (struct sockaddr *)&peerAddr, &peerAddrLen)) < 0)  {
+
+                neat_log(NEAT_LOG_DEBUG, "flow fd:%d errno: %d", socket->fd, errno);
+				perror("recvfrom");
                 neat_log(NEAT_LOG_DEBUG, "Exit 4");
                 return READ_WITH_ERROR;
             }
@@ -814,6 +817,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             flow->readBufferSize = n;
             flow->readBufferMsgComplete = 1;
 
+            neat_log(NEAT_LOG_DEBUG, "Read %d bytes", n);
             if (n == 0) {
                 flow->readBufferMsgComplete = 0;
                 neat_log(NEAT_LOG_DEBUG, "Exit 5");
@@ -1013,7 +1017,8 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s: fd: %d", __func__, flow->socket->fd);
 
     if (flow->socket->handle != NULL) {
         if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->socket->handle)) {
@@ -1034,6 +1039,7 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     }
 
     if (newEvents) {
+    //	neat_log(NEAT_LOG_DEBUG, "%s: events mask: %d", __func__, newEvents);
         flow->isPolling = 1;
         if (flow->socket->handle != NULL) {
             uv_poll_start(handle, newEvents, uvpollable_cb);
@@ -1213,6 +1219,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         io_writable(ctx, flow, 0, NEAT_OK); // TODO: Remove stream param
     }
     if (events & UV_READABLE) {
+		neat_log(NEAT_LOG_DEBUG, "%s: Calling io_readable cause we have a read", __func__);
         io_readable(ctx, flow, pollable_socket, NEAT_OK);
     }
     updatePollHandle(ctx, flow, handle);

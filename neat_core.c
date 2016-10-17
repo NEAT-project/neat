@@ -94,6 +94,8 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
     TAG_STRING(NEAT_TAG_CC_ALGORITHM),
 };
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
 struct neat_ctx *neat_init_ctx()
@@ -642,7 +644,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
                 neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
                 flow->stream_count = 1;
             } else {
-                flow->stream_count = status.sstat_outstrms;
+                flow->stream_count = MIN(status.sstat_outstrms, status.sstat_outstrms);
             }
             // number of outbound streams == number of inbound streams
             neat_log(NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->stream_count);
@@ -1605,7 +1607,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
             newFlow->stream_count = 1;
         } else {
-            newFlow->stream_count = status.sstat_instrms;
+            newFlow->stream_count = MIN(status.sstat_instrms, status.sstat_outstrms);
         }
 
         // number of outbound streams == number of inbound streams

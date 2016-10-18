@@ -617,7 +617,6 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     const int stream_id = NEAT_INVALID_STREAM;
-#ifdef NEAT_LOG
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
     unsigned int optlen;
     int rc;
@@ -663,7 +662,6 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
     }
 
     neat_log(NEAT_LOG_INFO, "Connected: %s/%s - %d streams", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6" ), flow->stream_count);
-#endif // NEAT_LOG
 
 
     if (!flow->operations || !flow->operations->on_connected) {

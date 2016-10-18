@@ -617,13 +617,14 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     const int stream_id = NEAT_INVALID_STREAM;
+#ifdef NEAT_LOG
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
     unsigned int optlen;
     int rc;
     struct sctp_status status;
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
 
-#ifdef NEAT_LOG
+
     char proto[16];
 
     flow->stream_count = 1;

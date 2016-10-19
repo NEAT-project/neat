@@ -3812,7 +3812,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
         // Fallthrough
     case NEAT_STACK_SCTP:
-#if defined(SCTP_INITMSG)
+#if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
         memset(&initmsg, 0, sizeof(struct sctp_initmsg));
         initmsg.sinit_num_ostreams = flow->stream_count;
         initmsg.sinit_max_instreams = flow->stream_count;

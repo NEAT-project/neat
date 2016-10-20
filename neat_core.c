@@ -94,6 +94,8 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
     TAG_STRING(NEAT_TAG_CC_ALGORITHM),
 };
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
 struct neat_ctx *neat_init_ctx()
@@ -621,7 +623,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
     struct sctp_status status;
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
 
-#ifdef NEAT_LOG
+
     char proto[16];
 
     flow->stream_count = 1;
@@ -642,7 +644,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
                 neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
                 flow->stream_count = 1;
             } else {
-                flow->stream_count = status.sstat_outstrms;
+                flow->stream_count = MIN(status.sstat_outstrms, status.sstat_outstrms);
             }
             // number of outbound streams == number of inbound streams
             neat_log(NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->stream_count);
@@ -660,7 +662,6 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
     }
 
     neat_log(NEAT_LOG_INFO, "Connected: %s/%s - %d streams", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6" ), flow->stream_count);
-#endif // NEAT_LOG
 
 
     if (!flow->operations || !flow->operations->on_connected) {
@@ -1394,9 +1395,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 #if defined(IPPROTO_SCTP)
-#if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
-    struct sctp_initmsg initmsg;
-#endif //defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
 #if defined(SCTP_RECVRCVINFO) && !defined(USRSCTP_SUPPORT)
     int optval;
 #endif
@@ -1483,18 +1481,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             newFlow->acceptPending = 0;
         }
 #else
-#if defined(SCTP_INITMSG)
-        memset(&initmsg, 0, sizeof(struct sctp_initmsg));
-        initmsg.sinit_num_ostreams = flow->stream_count;
-        initmsg.sinit_max_instreams = flow->stream_count; // TODO: May depend on policy
-
-        if (setsockopt(listen_socket->fd, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(struct sctp_initmsg)) < 0) {
-            neat_log(NEAT_LOG_ERROR, "Unable to set inbound/outbound stream count");
-            neat_free_flow(newFlow);
-            return NULL;
-        }
-#endif // defined(SCTP_INITMSG)
-        neat_log(NEAT_LOG_DEBUG, "Creating new SCTP socket - in-/out-streams offered : %d", flow->stream_count);
+        neat_log(NEAT_LOG_DEBUG, "Creating new SCTP socket");
         newFlow->socket->fd = newFlow->acceptfx(ctx, newFlow, listen_socket->fd);
         if (newFlow->socket->fd == -1) {
             neat_free_flow(newFlow);
@@ -1605,7 +1592,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
             newFlow->stream_count = 1;
         } else {
-            newFlow->stream_count = status.sstat_instrms;
+            newFlow->stream_count = MIN(status.sstat_instrms, status.sstat_outstrms);
         }
 
         // number of outbound streams == number of inbound streams
@@ -2471,6 +2458,8 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
         return NEAT_ERROR_BAD_ARGUMENT;
     }
 
+    neat_log(NEAT_LOG_DEBUG, "%s - %d streams", __func__, stream_count);
+
     if (priority > 1.0f || priority < 0.1f) {
         neat_log(NEAT_LOG_ERROR, "Priority must be between 0.1 and 1.0");
         return NEAT_ERROR_BAD_ARGUMENT;
@@ -2947,6 +2936,7 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
         return NEAT_ERROR_BAD_ARGUMENT;
     }
     flow->stream_count = stream_count;
+    neat_log(NEAT_LOG_DEBUG, "%s - %d streams", __func__, flow->stream_count);
 
     if (!local_name)
         local_name = "0.0.0.0";
@@ -3759,6 +3749,9 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
     const int enable = 1;
     int fd, protocol, size;
     socklen_t len;
+#if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
+    struct sctp_initmsg initmsg;
+#endif //defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
 
     const socklen_t slen = (family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
 
@@ -3819,6 +3812,16 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
         // Fallthrough
     case NEAT_STACK_SCTP:
+#if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
+        memset(&initmsg, 0, sizeof(struct sctp_initmsg));
+        initmsg.sinit_num_ostreams = flow->stream_count;
+        initmsg.sinit_max_instreams = flow->stream_count;
+
+        if (setsockopt(fd, IPPROTO_SCTP, SCTP_INITMSG, (char*) &initmsg, sizeof(struct sctp_initmsg)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "Unable to set inbound/outbound stream count");
+        }
+        neat_log(NEAT_LOG_DEBUG, "Offering %d SCTP streams in/out", flow->stream_count);
+#endif // defined(SCTP_INITMSG)
         flow->writeLimit = flow->writeSize / 4;
 #ifdef SCTP_NODELAY
         if (setsockopt(fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int)) != 0)

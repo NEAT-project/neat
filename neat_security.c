@@ -122,21 +122,7 @@ neat_security_filter_read(struct neat_ctx *ctx, struct neat_flow *flow,
 
 static neat_error_code neat_security_handshake_write(struct neat_flow_operations *opCB);
 static neat_error_code neat_security_handshake_read(struct neat_flow_operations *opCB);
-/*
-static neat_error_code
-neat_security_handshake_write(struct neat_ctx *ctx, struct neat_flow *flow,
-                          struct neat_iofilter *filter,
-                          unsigned char *buffer, uint32_t amt,
-                          uint32_t *actualAmt,
-                          struct neat_tlv optional[], unsigned int opt_count);
 
-static neat_error_code
-neat_security_handshake_read(struct neat_ctx *ctx, struct neat_flow *flow,
-                          struct neat_iofilter *filter,
-                          unsigned char *buffer, uint32_t amt,
-                          uint32_t *actualAmt,
-                          struct neat_tlv optional[], unsigned int opt_count);
-*/
 static neat_error_code neat_security_handshake_write(struct neat_flow_operations *opCB)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -168,14 +154,6 @@ static neat_error_code neat_security_handshake_write(struct neat_flow_operations
     return handshake(opCB->ctx, opCB->flow, filter, NULL, 0);
 }
 
-/*
-static neat_error_code
-neat_security_handshake_read(struct neat_ctx *ctx, struct neat_flow *flow,
-                          struct neat_iofilter *filter,
-                          unsigned char *buffer, uint32_t amt,
-                          uint32_t *actualAmt,
-                          struct neat_tlv options[], unsigned int opt_count)
-*/
 static neat_error_code neat_security_handshake_read(struct neat_flow_operations *opCB)
 {
     // It is possible we have some TLS data from the server (e.g. a server hello) that
@@ -235,7 +213,6 @@ handshake(struct neat_ctx *ctx, struct neat_flow *flow,
     struct security_data *private;
     private = (struct security_data *) filter->userData;
     if (SSL_is_init_finished(private->ssl)) {
-
 	/* 
 	 * Put the applications callbacks back in place. Install filters for
 	 * neat_read and neat_write so they we can decrypt data coming to and going
@@ -258,12 +235,10 @@ handshake(struct neat_ctx *ctx, struct neat_flow *flow,
 				opCB->on_connected =  private->pushed_on_connected;
 				neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-				// call on_connected
-//				if (rv == NEAT_OK) {
 				flow->socket->handle->data = opCB->flow->socket;
 				flow->firstWritePending = 1;
 				uvpollable_cb(opCB->flow->socket->handle, NEAT_OK, UV_WRITABLE);
-//				}
+
 				break;
 			}
 		}
@@ -292,7 +267,6 @@ handshake(struct neat_ctx *ctx, struct neat_flow *flow,
     } else if (err != SSL_ERROR_NONE) {
 		neat_log(NEAT_LOG_DEBUG, "%s: ssl error %d", __func__, err);
         ERR_print_errors_fp(stderr);
-		exit(0);
         return NEAT_ERROR_SECURITY;
     }
 
@@ -464,6 +438,7 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
 		}
 		break;
 	default:
+		neat_log(NEAT_LOG_ERROR, "security on unsupported stack: %d", flow->socket->stack);
 		return NEAT_ERROR_SECURITY;	
 	}
 
@@ -495,11 +470,13 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
 	private->pushed_on_writable = flow->operations->on_writable;
 	private->pushed_on_connected = flow->operations->on_connected;
 
+/*
 	flow->operations->on_writable = neat_security_handshake_write;
 	flow->operations->on_readable = NULL;
 	flow->operations->on_connected = NULL;
 	neat_set_operations(ctx, flow, flow->operations);
-
+*/
+	handshake(ctx, flow, flow->iofilters, NULL, 0);
 	flow->socket->handle->data = flow->socket;
 
 	if (isClient) {

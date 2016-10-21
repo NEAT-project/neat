@@ -1257,8 +1257,8 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         if (newFlow->server_pem == NULL) {
             neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
             return NULL;
-        }
-    }
+        } 
+	}
 
     newFlow->port = flow->port;
     newFlow->propertyMask = flow->propertyMask;
@@ -1432,6 +1432,11 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         newFlow->stream_count = 1;
     }
 
+	neat_log(NEAT_LOG_DEBUG, "server required security");
+	if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
+		neat_log(NEAT_LOG_DEBUG, "ERROR installing cert");
+		neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
+	}
     return newFlow;
 }
 

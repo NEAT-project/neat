@@ -5,6 +5,7 @@
 #include <uv.h>
 #include "../neat.h"
 #include "../neat_internal.h"
+#include "util.h"
 
 /**********************************************************************
 
@@ -27,11 +28,23 @@
 
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
-static uint16_t config_log_level = 1;
-static uint16_t config_json_stats = 0;
+static uint16_t config_log_level = 2;
+static uint16_t config_json_stats = 1;
 static uint16_t config_timeout = 0;
+static uint16_t config_number_of_streams = 1207;
 static char *config_primary_dest_addr = NULL;
-static char config_property[] = "NEAT_PROPERTY_UDP_BANNED,NEAT_PROPERTY_UDPLITE_BANNED";
+static char *config_property = "{\n\
+    \"transport\": [\n\
+        {\n\
+            \"value\": \"SCTP\",\n\
+            \"precedence\": 1\n\
+        },\n\
+        {\n\
+            \"value\": \"TCP\",\n\
+            \"precedence\": 1\n\
+        }\n\
+    ]\n\
+}";
 
 struct std_buffer {
     unsigned char *buffer;
@@ -45,6 +58,7 @@ static struct neat_flow *flow = NULL;
 static unsigned char *buffer_rcv = NULL;
 static unsigned char *buffer_snd= NULL;
 static uv_tty_t tty;
+static uint16_t last_stream = 0;
 
 void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
 void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
@@ -60,13 +74,14 @@ print_usage()
     }
 
     printf("client [OPTIONS] HOST PORT\n");
-    printf("\t- P \tneat properties (%s)\n", config_property);
+    printf("\t- P <filename>\tneat properties, default properties:\n%s\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- S \tsend buffer in byte (%d)\n", config_snd_buffer_size);
     printf("\t- J \tprint json stats for each time data is sent\n");
     printf("\t- T \twrite timeout in seconds (where available) (%d)\n", config_timeout);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
     printf("\t- A \tprimary dest. addr. (auto)\n");
+    printf("\t- N \tnumber of requested streams (SCTP only) (%d)\n", config_number_of_streams);
 }
 
 // Error handler
@@ -81,12 +96,12 @@ on_error(struct neat_flow_operations *opCB)
 }
 
 static void
-print_neat_stats(neat_flow *flow)
+print_neat_stats(neat_ctx *mgr)
 {
     neat_error_code error;
 
     char* stats = NULL;
-    error = neat_get_stats(flow, &stats);
+    error = neat_get_stats(mgr, &stats);
     if (error != NEAT_OK){
         printf("NEAT ERROR: %i\n", (int)error);
         return;
@@ -167,19 +182,15 @@ on_readable(struct neat_flow_operations *opCB)
     // all fine
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
-            fprintf(stderr, "%s - received %d bytes\n", __func__, buffer_filled);
+            fprintf(stderr, "%s - received %d bytes on stream %d of %d\n", __func__, buffer_filled, opCB->stream_id, opCB->flow->stream_count);
         }
         fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
         fflush(stdout);
 
     } else {
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - disconnected\n", __func__);
-        }
+        fprintf(stderr, "%s - nothing more to read\n", __func__);
         ops.on_readable = NULL;
-        ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
-        neat_stop_event_loop(opCB->ctx);
     }
 
     return NEAT_OK;
@@ -190,23 +201,29 @@ static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
     neat_error_code code;
+    struct neat_tlv options[1];
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_write(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled, NULL, 0);
+    last_stream = (last_stream + 1) % opCB->flow->stream_count;
+    options[0].tag           = NEAT_TAG_STREAM_ID;
+    options[0].type          = NEAT_TYPE_INTEGER;
+    options[0].value.integer = last_stream;
+
+    code = neat_write(opCB->ctx, opCB->flow, stdin_buffer.buffer, stdin_buffer.buffer_filled, options, 1);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
         return on_error(opCB);
     }
 
     if (config_json_stats){
-       print_neat_stats(opCB->flow);
+       print_neat_stats(ctx);
     }
 
     if (config_log_level >= 1) {
-        fprintf(stderr, "%s - sent %d bytes\n", __func__, stdin_buffer.buffer_filled);
+        fprintf(stderr, "%s - sent %d bytes on stream %d\n", __func__, stdin_buffer.buffer_filled, last_stream);
     }
 
     // stop writing
@@ -232,9 +249,11 @@ on_connected(struct neat_flow_operations *opCB)
 {
     int rc;
 
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
+    if (config_log_level >= 1) {
+        printf("%s - available streams : %d\n", __func__, opCB->flow->stream_count);
     }
+
+    last_stream = 0;
 
     uv_tty_init(ctx->loop, &tty, 0, 1);
     uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
@@ -262,14 +281,19 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
+    fprintf(stderr, "%s - flow closed OK! - %s\n", __func__, opCB->flow->name);
 
-    fprintf(stderr, "%s - flow closed OK!\n", __func__);
+    // cleanup
+    ops.on_close = NULL;
+    ops.on_readable = NULL;
+    ops.on_writable = NULL;
+    ops.on_error = NULL;
+    neat_set_operations(ctx, flow, &ops);
+    neat_free_flow(opCB->flow);
+    neat_stop_event_loop(opCB->ctx);
 
     return NEAT_OK;
-    }
+}
 
 /*
     Read from stdin
@@ -293,6 +317,7 @@ tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
         uv_read_stop(stream);
         ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
+        uv_close((uv_handle_t*) &tty, NULL);
         neat_shutdown(ctx, flow);
     } else if (strncmp(buffer->base, "close\n", buffer_filled) == 0) {
         if (config_log_level >= 1) {
@@ -301,6 +326,7 @@ tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
         uv_read_stop(stream);
         ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
+        uv_close((uv_handle_t*) &tty, NULL);
         neat_close(ctx, flow);
         buffer_filled = UV_EOF;
     } else if (strncmp(buffer->base, "abort\n", buffer_filled) == 0) {
@@ -310,12 +336,15 @@ tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
         uv_read_stop(stream);
         ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
+        uv_close((uv_handle_t*) &tty, NULL);
         neat_abort(ctx, flow);
         buffer_filled = UV_EOF;
     }
 
+    fprintf(stderr, "%s - felix - marker\n", __func__);
+
     // all fine
-    if (buffer_filled > 0) {
+    if (buffer_filled > 0 && buffer_filled != UV_EOF) {
         // copy input to app buffer
         stdin_buffer.buffer_filled = buffer_filled;
         memcpy(stdin_buffer.buffer, buffer->base, buffer_filled);
@@ -345,21 +374,26 @@ tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
 int
 main(int argc, char *argv[])
 {
-    uint64_t prop;
     int arg, result;
-    char *arg_property = config_property;
-    char *arg_property_ptr = NULL;
-    char arg_property_delimiter[] = ",;";
+    char *arg_property = NULL;
 
     memset(&ops, 0, sizeof(ops));
     memset(&stdin_buffer, 0, sizeof(stdin_buffer));
+
+    NEAT_OPTARGS_DECLARE(NEAT_OPTARGS_MAX);
+    NEAT_OPTARGS_INIT();
 
     result = EXIT_SUCCESS;
 
     while ((arg = getopt(argc, argv, "P:R:S:T:Jv:A:")) != -1) {
         switch(arg) {
         case 'P':
-            arg_property = optarg;
+            if (read_file(optarg, &arg_property) < 0) {
+                fprintf(stderr, "Unable to read properties from %s: %s",
+                        optarg, strerror(errno));
+                result = EXIT_FAILURE;
+                goto cleanup;
+            }
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - properties: %s\n", __func__, arg_property);
             }
@@ -398,6 +432,12 @@ main(int argc, char *argv[])
             config_primary_dest_addr = optarg;
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - primary dest. address: %s\n", __func__, config_primary_dest_addr);
+            }
+            break;
+        case 'N':
+            config_number_of_streams = atoi(optarg);
+            if (config_log_level >= 1) {
+                fprintf(stderr, "%s - option - number of streams: %d\n", __func__, config_number_of_streams);
             }
             break;
         default:
@@ -442,71 +482,8 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-    // set properties (TCP only etc..)
-    if (neat_get_property(ctx, flow, &prop)) {
-        fprintf(stderr, "%s - error: neat_get_property\n", __func__);
-        result = EXIT_FAILURE;
-        goto cleanup;
-    }
-
-    // read property arguments
-    arg_property_ptr = strtok(arg_property, arg_property_delimiter);
-
-    while (arg_property_ptr != NULL) {
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - setting property: %s\n", __func__, arg_property_ptr);
-        }
-
-        if (strcmp(arg_property_ptr,"NEAT_PROPERTY_OPTIONAL_SECURITY") == 0) {
-            prop |= NEAT_PROPERTY_TCP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_REQUIRED_SECURITY") == 0) {
-            prop |= NEAT_PROPERTY_REQUIRED_SECURITY;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_MESSAGE") == 0) {
-            prop |= NEAT_PROPERTY_MESSAGE;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_IPV4_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV4_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_IPV4_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_IPV6_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_IPV6_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_IPV6_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_SCTP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_SCTP_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_SCTP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_TCP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_TCP_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_TCP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_UDP_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDP_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_UDP_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_UDPLITE_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_UDPLITE_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_UDPLITE_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_CONGESTION_CONTROL_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_CONGESTION_CONTROL_BANNED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED") == 0) {
-            prop |= NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED;
-        } else if (strcmp(arg_property_ptr,"NEAT_PROPERTY_RETRANSMISSIONS_BANNED") == 0) {
-            prop |= NEAT_PROPERTY_RETRANSMISSIONS_BANNED;
-        } else {
-            fprintf(stderr, "%s - error: unknown property: %s\n", __func__, arg_property_ptr);
-            print_usage();
-            goto cleanup;
-        }
-
-        // get next property
-        arg_property_ptr = strtok(NULL, arg_property_delimiter);
-    }
-
     // set properties
-    if (neat_set_property(ctx, flow, prop)) {
+    if (neat_set_property(ctx, flow, arg_property ? arg_property : config_property)) {
         fprintf(stderr, "%s - error: neat_set_property\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
@@ -526,8 +503,11 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
+    // set number of streams
+    NEAT_OPTARG_INT(NEAT_TAG_STREAM_COUNT, config_number_of_streams);
+
     // wait for on_connected or on_error to be invoked
-    if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), NULL, 0) == NEAT_OK) {
+    if (neat_open(ctx, flow, argv[argc - 2], strtoul (argv[argc - 1], NULL, 0), NEAT_OPTARGS, NEAT_OPTARGS_COUNT) == NEAT_OK) {
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     } else {
         fprintf(stderr, "%s - error: neat_open\n", __func__);
@@ -540,10 +520,10 @@ cleanup:
     free(buffer_snd);
     free(stdin_buffer.buffer);
 
-    // cleanup
-    if (flow != NULL) {
-        neat_free_flow(flow);
+    if (arg_property) {
+        free(arg_property);
     }
+
     if (ctx != NULL) {
         neat_free_ctx(ctx);
     }

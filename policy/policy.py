@@ -362,8 +362,9 @@ class NEATProperty(object):
             self.precedence = max(self.precedence, other.precedence)
         else:
             if other.precedence == NEATProperty.IMMUTABLE and self.precedence == NEATProperty.IMMUTABLE:
-                logging.debug("%s + %s -> immutable!" % (self, other))
-                raise ImmutablePropertyError('immutable property: %s vs. %s' % (self, other))
+                err_str = "%s <-- %s: immutable property" % (self, other)
+                logging.debug(err_str)
+                raise ImmutablePropertyError(err_str)
             elif other.precedence >= self.precedence:
                 self.score = other.score
                 self.value = other.value
@@ -378,6 +379,8 @@ class NEATProperty(object):
         return repr(self)
 
     def __repr__(self):
+        """Pretty print NEAT properties
+        """
         if self._value.is_range:
             # min-max range
             val_str = '%s-%s' % self.value
@@ -394,7 +397,6 @@ class NEATProperty(object):
             # strikethrough banned values
             banned_str = ','.join([u'\u0336'.join(i.value) + u'\u0336' for i in self.banned])
             # fix non UTF environments (TODO there should be a better way to handle this)
-            #banned_str = banned_str.encode('ascii', errors='ignore').decode('ascii')
             if len(val_str) > 0:
                 keyval_str += ','
             keyval_str += banned_str
@@ -462,7 +464,7 @@ class PropertyArray(dict):
 
     @property
     def score(self):
-        return sum((s.score for s in self.values()))  # FIXME only if s.evaluated?
+        return sum((s.score for s in self.values() if s.evaluated)), sum((s.score for s in self.values() if not s.evaluated))  # FIXME only if s.evaluated?
 
     def dict(self):
         """ Return a dictionary containing all contained NEAT property attributes"""

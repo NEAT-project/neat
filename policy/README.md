@@ -34,20 +34,19 @@ In the sequel we use the following notation: we separate the property key/value 
 +   `(MTU|1500,2000,9000)`: one of the specified MTU values *should* be chosen if possible
 +   `(capacity|10-1000)+1`: the interface capacity should be within the numeric range specified by the integers
 
-Two NEAT properties are considered 'equal' if their key and value attributes are identical. Precedence and scores are ignored when testing for equality. A comparison of two properties always yields a boolean result.
 
 ### Property Operators
 
-Two NEAT properties are considered 'equal' if their key and value attributes are equal. Precedence and scores are ignored when testing for equality. A comparison of two properties yields a boolean result. 
+Two NEAT properties are considered 'equal' if their key and value attributes are identical. Precedence and scores are ignored when testing for equality. A comparison of two properties yields a boolean result. 
 
-For instance, the comparison `[transport|TCP]+1 == (transport|TCP)+3` is true. Set and range value attributes are also considered equal their values overlap, i.e., `[transport|TCP,UDP,MPTCP] == [transport|TCP]`, or `[latency|1-100]==[latency|55]`.
-
-
-
-A property update is considered successful if the ranges overlap - the resulting updated property will contain the intersection of the two ranges.
+For instance, the comparison `[transport|TCP]+1 == (transport|TCP)+3` is true. Set and range value attributes are also considered equal if their values overlap, i.e., `[transport|TCP,UDP,MPTCP] == [transport|TCP]`, or `[latency|1-100]==[latency|55]`.
 
 
-In the course of a lookup in the PM, properties from various sources will be compared and their values may be *updated*. A property's value may *only* be updated by another property whose precedence is greater or equal than itself. A property may only be updated by another property with the same key. When a property is updated it inherits the precedence of the updating property as illustrated below:
+
+A property update is considered successful if the ranges overlap -- the resulting updated property will contain the intersection of the two ranges.
+
+
+In the course of a lookup in the PM, properties from various sources will be compared and their values may be *updated*. A property's value may *only* be updated by another property whose precedence is greater or equal than itself. A property may only be updated by another property with the same key. When a property is updated it inherits the precedence of the updating property as explained below:
 
 
 
@@ -83,7 +82,7 @@ Each NEAT request is processed in three steps:
 1. **Profile Lookup**: the request properties are compared to all profile entries in the PIB. Whenever a profile entry is matched, the corresponding match property in the request is *replaced* with the associated profile properties. Profiles are specified using the same format as policies.
  
 2. **CIB Lookup**: the request properties are compared against each entry in the CIB. The properties of a candidate are the union of the request and CIB entry property sets. Specifically, the properties are obtained by overlaying the request properties with the properties of a single CIB entry and updating the *intersection* of the two property sets with corresponding the values from the CIB entry properties.
-The *N* entries with the larges aggregate score are appended to the candidate list.
+The *N* entries with the largest aggregate score are appended to the candidate list.
 
 3. **PIB Lookup**: For each candidate the PM iterates through all PIB policies and compares the match properties with the candidates properties. A policy is said to *match* a candidate whenever *all* of its match properties are found in the candidate properties. PIB entries are matched with a *shortest match first* strategy, i.e., policies with the smallest number of `match` properties are applied first. Subsequent, policies will *overwrite* any perviously applied policy properties. Conflicting policies must be identified by the NEAT logic.
 

@@ -1,0 +1,29 @@
+{
+    "transport": [
+        {
+            "value": "SCTP",
+            "precedence": 1,
+            "score": 6.0
+        },
+        {
+            "value": "TCP",
+            "precedence": 1,
+            "score": 5.0
+        },
+        {
+            "value": "SCTP/UDP",
+            "precedence": 1,
+            "score": 4.0
+        },
+        {
+            "value": "UDP",
+            "precedence": 1,
+            "score": 1.0
+        },
+        {
+            "value": "UDP-Lite",
+            "precedence": 1,
+            "score": 1.0
+        }
+    ]
+}

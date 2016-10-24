@@ -12,7 +12,7 @@
 
 /**********************************************************************
 
-    peer 
+    peer
 
         TODO Tidy up code, client() and server() should be functions
         TODO Write receved file to disk
@@ -81,7 +81,7 @@ struct peer {
     struct fileinfo *fi;
 };
 
-struct fileinfo 
+struct fileinfo
 {
     uint32_t size;
     uint32_t segments;
@@ -93,8 +93,8 @@ static neat_error_code on_writable(struct neat_flow_operations *opCB);
 static void on_timeout(uv_timer_t *);
 
 int parsemsg(struct header *, unsigned char *, size_t);
-int preparemsg(unsigned char *, uint32_t, uint32_t * ,uint8_t, uint8_t, 
-        uint32_t, unsigned char *, uint32_t ); 
+int preparemsg(unsigned char *, uint32_t, uint32_t * ,uint8_t, uint8_t,
+        uint32_t, unsigned char *, uint32_t );
 
 struct peer * alloc_peer();
 void free_peer(struct peer *);
@@ -106,7 +106,7 @@ void freefileinfo(struct fileinfo *);
 
 int random_loss();
 
-int 
+int
 random_loss()
 {
     if (!config_drop_randomly)
@@ -116,7 +116,7 @@ random_loss()
 }
 
 struct fileinfo *
-openfile(const char *filename, const char *mode) 
+openfile(const char *filename, const char *mode)
 {
     struct fileinfo *fi;
     struct stat st;
@@ -176,7 +176,7 @@ freefileinfo( struct fileinfo *fi)
 
 int
 preparemsg(unsigned char *buf, uint32_t bufsz, uint32_t *actualsz, uint8_t cmd,
-        uint8_t flags, uint32_t size, unsigned char *data, uint32_t data_size) 
+        uint8_t flags, uint32_t size, unsigned char *data, uint32_t data_size)
 {
     size_t headsz = sizeof(cmd) + sizeof(flags) + sizeof(size);
 
@@ -282,11 +282,11 @@ parsemsg(struct header *hdr, unsigned char *buffer, size_t buffersize)
     }
 
     hdr->cmd = buffer[0];
-    hdr->flags = buffer[1]; 
+    hdr->flags = buffer[1];
 
     memcpy(&nsize, buffer+2, sizeof(uint32_t));
 
-    hdr->size = ntohl(nsize); 
+    hdr->size = ntohl(nsize);
 
     if (buffersize > headsz) {
         hdr->data = buffer+headsz;
@@ -378,7 +378,7 @@ on_readable(struct neat_flow_operations *opCB)
 			}
 		}
 
-        struct header *hdr = pf->hdr; 
+        struct header *hdr = pf->hdr;
         if (!parsemsg(hdr, pf->buffer, pf->buffer_size)) {
             explode();
         }
@@ -421,7 +421,7 @@ on_readable(struct neat_flow_operations *opCB)
 				fprintf(stderr, "%s:%d got DATA %d segment\n",
 					__func__, __LINE__, hdr->size);
 			}
-			
+
 			if ((hdr->size == 0 && pf->segment == 0) || hdr->size == pf->segment+1) {
 
                 append_data(pf, hdr->data, hdr->data_size);
@@ -567,8 +567,8 @@ on_writable(struct neat_flow_operations *opCB)
         //pf->master = 0;
         pf->segments_count = pf->fi->segments;
 
-                preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECT, 0, 
-                        pf->segments_count, (unsigned char *)filename, sizeof(filename)); 
+                preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECT, 0,
+                        pf->segments_count, (unsigned char *)filename, sizeof(filename));
 
         break;
     case COMPLETE:
@@ -576,16 +576,16 @@ on_writable(struct neat_flow_operations *opCB)
 			fprintf(stderr, "%s:%d Sending COMPLETE%d\n",
 									__func__, __LINE__, pf->segments_count);
 		}
-		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, COMPLETE, 
-				0, pf->segments_count, NULL, 0); 
+		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, COMPLETE,
+				0, pf->segments_count, NULL, 0);
         break;
     case CONNECTACK:
     	if (config_log_level >= 3) {
 			fprintf(stderr, "%s:%d CONNECTACK acking segments %d\n",
 									__func__, __LINE__, pf->segments_count);
 		}
-		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECTACK, 
-				0, pf->segments_count, NULL, 0); 
+		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECTACK,
+				0, pf->segments_count, NULL, 0);
         break;
     case DATA:
     	if (config_log_level >= 3) {
@@ -597,7 +597,7 @@ on_writable(struct neat_flow_operations *opCB)
 		}
 		unsigned char buf[SEGMENT_SIZE];
 		size_t bytes;
-		
+
 		fseek(pf->fi->stream, pf->segment*SEGMENT_SIZE, SEEK_SET);
 		bytes = fread(buf, sizeof(unsigned char), SEGMENT_SIZE, pf->fi->stream);
 		if (bytes == 0) {
@@ -612,24 +612,24 @@ on_writable(struct neat_flow_operations *opCB)
 			}
 		}
 
-		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, DATA, 
-				0, pf->segment, buf, bytes); 
+		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, DATA,
+				0, pf->segment, buf, bytes);
         break;
     case ACK:
     	if (config_log_level >= 3) {
 			fprintf(stderr, "%s:%d ACK acking segment %d\n",
 									__func__, __LINE__, pf->segment);
 		}
-		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, ACK, 
-				0, pf->segment, NULL, 0); 
+		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, ACK,
+				0, pf->segment, NULL, 0);
         break;
     case ERROR:
     	if (config_log_level >= 3) {
 			fprintf(stderr, "%s:%d Sending ERROR\n",
 									__func__, __LINE__);
 		}
-		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, ERROR, 
-				0, 0, NULL, 0); 
+		preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, ERROR,
+				0, 0, NULL, 0);
 		pf->complete = 1;
         break;
 
@@ -651,7 +651,7 @@ on_writable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-static void 
+static void
 on_timeout(uv_timer_t *handle)
 {
 	struct neat_flow_operations *opCB = handle->data;
@@ -745,11 +745,8 @@ on_close(struct neat_flow_operations *opCB)
 int
 main(int argc, char *argv[])
 {
-    uint64_t prop;
     int arg, result;
     char *arg_property = config_property;
-    char *arg_property_ptr = NULL;
-    char arg_property_delimiter[] = ",;";
     char *target_addr = NULL;
     static struct neat_ctx *ctx = NULL;
     static struct neat_flow *flow = NULL;
@@ -897,12 +894,14 @@ main(int argc, char *argv[])
        arg_property_ptr = strtok(NULL, arg_property_delimiter);
     }
 
+#if 0
     // set properties
     if (neat_set_property(ctx, flow, prop)) {
         fprintf(stderr, "%s - neat_set_property failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
+#endif
 
     // set callbacks
     ops.on_connected = on_connected;

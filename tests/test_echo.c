@@ -10,7 +10,7 @@
 #include <netinet/in.h>
 
 
-void
+int
 test_protocol(int protocol, int socktype)
 {
     int rc, sock;
@@ -26,60 +26,70 @@ test_protocol(int protocol, int socktype)
     rc = getaddrinfo("localhost", "8080", &hints, &info);
     if (rc != 0) {
         fprintf(stderr, "getaddrinfo failed - %s", gai_strerror(rc));
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     sock = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
     if (sock < 0) {
         perror("socket");
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     rc = connect(sock, info->ai_addr, info->ai_addrlen);
     if (rc < 0) {
         perror("connect");
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     rc = send(sock, "TEST", 4, MSG_WAITALL);
     if (rc != 4) {
         perror("send");
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     rc = recv(sock, buffer, 4, MSG_WAITALL);
     if (rc != 4) {
         perror("recv");
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     buffer[4] = 0;
 
     if (strcmp(buffer, "TEST") != 0) {
         fprintf(stderr, "Expected \"TEST\", received: \"%s\"\n", buffer);
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     close(sock);
 
     freeaddrinfo(info);
+
+    return 0;
 }
 
 int
 main(int argc, char *argv[])
 {
+    int rc = 0;
+
     printf("Testing TCP\n");
-    test_protocol(IPPROTO_TCP, SOCK_STREAM);
+    if (test_protocol(IPPROTO_TCP, SOCK_STREAM)) {
+        rc = -1;
+    }
     printf("Testing UDP\n");
-    test_protocol(IPPROTO_UDP, SOCK_DGRAM);
+    if (test_protocol(IPPROTO_UDP, SOCK_DGRAM)) {
+        rc = -1;
+    }
 #ifdef HAVE_NETINET_SCTP_H
     printf("Testing SCTP\n");
-    test_protocol(IPPROTO_SCTP, SOCK_STREAM);
+    if (test_protocol(IPPROTO_SCTP, SOCK_STREAM)) {
+        rc = -1;
+    }
 #endif
 
 #if defined(__FreeBSD__)
     // test_protocol(IPPROTO_UDPLITE, SOCK_DGRAM);
 #endif
 
-    return 0;
+    return rc;
 }

@@ -1411,8 +1411,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     struct sctp_status status;
 #endif
 #endif
-
+    json_t *security = NULL, *val = NULL;
     neat_flow *newFlow = neat_new_flow(ctx);
+
     if (newFlow == NULL) {
         neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
         return NULL;
@@ -1436,8 +1437,14 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->propertyMask = flow->propertyMask;
     newFlow->propertyAttempt = flow->propertyAttempt;
     newFlow->propertyUsed = flow->propertyUsed;
-    newFlow->everConnected = 1;
+	newFlow->properties = json_deep_copy(flow->properties);
 
+    if (newFlow->properties == NULL) {
+        neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+        return NULL;
+    }
+
+    newFlow->everConnected = 1;
     newFlow->socket->stack   = listen_socket->stack;
     newFlow->socket->srcAddr = listen_socket->srcAddr;
     newFlow->socket->dstAddr = listen_socket->dstAddr;
@@ -1577,7 +1584,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             newFlow->socket->handle->data = newFlow->socket;
 
             newFlow->acceptPending = 0;
-            if ((newFlow->propertyMask & NEAT_PROPERTY_REQUIRED_SECURITY) &&
+			if ((security = json_object_get(newFlow->properties, "security")) != NULL &&
+				(val = json_object_get(security, "value")) != NULL &&
+				json_typeof(val) == JSON_TRUE && 
                 (newFlow->socket->stack == NEAT_STACK_TCP)) {
                 neat_log(NEAT_LOG_DEBUG, "TCP Server Security");
                 if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
@@ -1609,6 +1618,19 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     default:
         newFlow->stream_count = 1;
     }
+
+	/* If we have security we can set it up now */
+	if ((security = json_object_get(newFlow->properties, "security")) != NULL &&
+		(val = json_object_get(security, "value")) != NULL &&
+		json_typeof(val) == JSON_TRUE) {
+		neat_log(NEAT_LOG_DEBUG, "server required security");
+		if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
+			neat_log(NEAT_LOG_DEBUG, "ERROR installing cert");
+			neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
+		}
+	} else {
+		neat_log(NEAT_LOG_DEBUG, "server required security not set ");
+	}
 
     return newFlow;
 }
@@ -2399,11 +2421,6 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
         json_decref(endpoint);
     }
 
-	neat_log(NEAT_LOG_DEBUG, "server required security");
-	if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
-		neat_log(NEAT_LOG_DEBUG, "ERROR installing cert");
-		neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
-	}
 
     properties = json_copy(flow->properties);
 
@@ -2426,8 +2443,6 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
     json_array_append(array, properties);
 
     neat_json_send_once(ctx, flow, socket_path, array, on_pm_reply_pre_resolve, on_pm_error);
-
-    return newFlow;
 
 end:
     if (ifaddrs)

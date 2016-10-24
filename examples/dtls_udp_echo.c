@@ -417,7 +417,10 @@ void* connection_handle(void *info) {
 	BIO_ctrl(SSL_get_rbio(ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0, &pinfo->client_addr.ss);
 
 	/* Finish handshake */
-	do { ret = SSL_accept(ssl); }
+	do { 
+		ret = SSL_accept(ssl); 
+		printf("%s:%d: SSL_accpent\n", __func__, __LINE__);
+	}
 	while (ret == 0);
 	if (ret < 0) {
 		perror("SSL_accept");

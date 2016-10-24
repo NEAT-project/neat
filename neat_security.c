@@ -164,6 +164,7 @@ static neat_error_code neat_security_handshake_read(struct neat_flow_operations 
     if (!avail) {
         return NEAT_ERROR_WOULD_BLOCK;
     }
+
     neat_error_code rv = opCB->flow->readfx(opCB->ctx, opCB->flow, 
 						private->inCipherBuffer + private->inCipherBufferUsed,
                         avail, &actualAmt, NULL, 0);
@@ -173,9 +174,7 @@ static neat_error_code neat_security_handshake_read(struct neat_flow_operations 
 
     if (rv == NEAT_OK && actualAmt) {
         private->inCipherBufferUsed += actualAmt;
-    } else if (rv == NEAT_OK && !(actualAmt)) {
-        rv = NEAT_ERROR_IO;
-    }
+    } 
 
 	/* Append read data into the BIO */
     if (private->inCipherBufferUsed - private->inCipherBufferSent) {

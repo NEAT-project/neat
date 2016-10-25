@@ -269,7 +269,7 @@ static uint32_t neat_resolver_literal_populate_results(struct neat_resolver_requ
 
         address_name = strtok(NULL, ",");
     }
-
+    free (tmp);
     return num_resolved_addrs;
 }
 

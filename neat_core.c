@@ -2286,6 +2286,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     }
                     address_name = strtok(NULL, ",");
                 }
+                free (tmp);
                 if (!srcfound) {
                     free (candidate);
                     continue;
@@ -3714,6 +3715,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             }
             address_name = strtok(NULL, ",");
         }
+        free (tmp);
 
         if (sctp_bindx(candidate->pollable_socket->fd, (struct sockaddr *)candidate->pollable_socket->local_addr, candidate->pollable_socket->nr_local_addr, SCTP_BINDX_ADD_ADDR)) {
             neat_log(NEAT_LOG_ERROR,

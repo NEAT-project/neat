@@ -62,6 +62,7 @@ neat_resolver_helpers_check_for_literal(uint8_t *family,
             }
             address_name = strtok(NULL, ",");
         }
+        free (tmp);
     }
 
     //These are the two possible error cases:

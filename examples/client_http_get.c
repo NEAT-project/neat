@@ -40,7 +40,6 @@ static neat_error_code
 on_error(struct neat_flow_operations *opCB)
 {
     fprintf(stderr, "%s\n", __func__);
-    neat_free_ctx(opCB->ctx);
     exit(EXIT_FAILURE);
 }
 

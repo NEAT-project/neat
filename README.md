@@ -1,5 +1,9 @@
 <img src="https://cdn.rawgit.com/NEAT-project/neat/master/doc/neat_logo.svg" width="350"/>
 
+<a href="http://neat.readthedocs.io/en/latest">
+    <img src="https://readthedocs.org/projects/neat/badge/?version=latest"/>
+</a>
+
 **A New, Evolutive API and Transport-Layer Architecture for the Internet**
 
 NEAT supports **FreeBSD**, **Linux**, **OS X** and **NetBSD**
@@ -49,7 +53,9 @@ $ cmake --build .
 This will generate makefiles and compile the library and the samples.
 You will find the shared and the static library in the `build` directory and the samples in `build/examples` directory.
 
-For an easy entry to NEAT, have a look at `neat_http_get.c` in the samples folder.
+For an easy introduction to NEAT, have a look at our [tutorial](http://neat.readthedocs.io/en/latest/tutorial.html).
+
+You may also look at `neat_http_get.c` in the `samples` directory for a practical example.
 ```shell
 $ ./client_http_get www.neat-project.org
 ```
@@ -61,7 +67,7 @@ $ sudo make install
 Don't forget to run ldconfig after installing neat the first time.
 
 ## Read the docs :bulb:
-Have a look at our [documentation](doc/README.md)!
+Have a look at our [documentation](http://neat.readthedocs.io)!
 
 ## Buildbots :fire:
 We are running [buildbots](http://buildbot.nplab.de:28010/waterfall) to support our continuous integration process.

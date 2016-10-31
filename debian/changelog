@@ -1,5 +1,5 @@
-libneat (0-1) UNRELEASED; urgency=medium
+libneat (0) UNRELEASED; urgency=medium
 
-  * Initial release. (Closes: #XXXXXX)
+  * Initial release.
 
  -- NEAT Project <neat@neat-project.org>  Tue, 20 Sep 2016 14:47:26 +0100

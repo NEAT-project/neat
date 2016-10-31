@@ -1,2 +1,0 @@
-version=3
-https://github.com/NEAT-project/neat/tags .*/v?(\d.*)\.(?:tgz|tbz2|txz|tar\.(?:gz|bz2|xz))

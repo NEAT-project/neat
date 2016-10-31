@@ -1,6 +1,11 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(neat)
 
+set(BUILD_MAJOR "0")
+set(BUILD_MINOR "0")
+set(BUILD_VERSION "1")
+set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_VERSION})
+
 INCLUDE(CheckIncludeFile)
 INCLUDE(CheckStructHasMember)
 SET(CMAKE_MACOSX_RPATH 1)
@@ -233,6 +238,12 @@ IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 ENDIF()
 
 ADD_LIBRARY(neat SHARED ${neat_sources})
+
+set_target_properties(neat PROPERTIES
+    VERSION ${BUILD_VERSION}
+    SOVERSION ${BUILD_MAJOR}
+    )
+
 ADD_LIBRARY(neat-static STATIC ${neat_sources})
 
 TARGET_LINK_LIBRARIES (neat ${neat_libs})

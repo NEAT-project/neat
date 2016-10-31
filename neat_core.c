@@ -4475,16 +4475,10 @@ void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code)
 // CLOSE, D1.2 sect. 3.2.4
 neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
 {
-    // KAH: free_cb actually does the closefx() call
-
-    // This code is copied from neat_free_flow
-    // TODO consider a refactor...
-    if (flow->isPolling)
+    if (flow->isPolling && uv_is_active((uv_handle_t*)flow->socket->handle))
         uv_poll_stop(flow->socket->handle);
 
-    if ((flow->socket->handle != NULL) &&
-        (flow->socket->handle->type != UV_UNKNOWN_HANDLE))
-        uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
+    neat_free_flow(flow);
 
     return NEAT_OK;
 }

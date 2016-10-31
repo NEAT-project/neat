@@ -14,7 +14,7 @@ Vcs-Browser: https://github.com/NEAT-project/neat
 Vcs-Git: https://github.com/NEAT-project/neat.git
 Homepage: https://github.com/NEAT-project/neat
 
-Package: libneat
+Package: libneat0
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
@@ -29,7 +29,7 @@ Description: NEAT Sockets API
 Package: libneat-dev
 Section: libdevel
 Architecture: any
-Depends: libneat (= ${binary:Version}),
+Depends: libneat0 (= ${binary:Version}),
          ${shlibs:Depends},
          ${misc:Depends}
 Description: NEAT Sockets API (Development Files)

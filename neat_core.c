@@ -401,13 +401,18 @@ neat_free_candidate(struct neat_he_candidate *candidate)
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
 
+    // We should close the handle of this candidate asynchronously, but only if
+    // this handle is not being used by the flow.
     if (candidate->pollable_socket->handle != NULL) {
-        if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
-            neat_log(NEAT_LOG_DEBUG,"%s: Release candidate after closing", __func__);
-            uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed);
+        if (candidate->pollable_socket->handle == candidate->pollable_socket->flow->socket->handle) {
+            neat_log(NEAT_LOG_DEBUG,"%s: Handle used by flow, flow should release it", __func__);
         } else {
-            neat_log(NEAT_LOG_DEBUG,"%s: Release candidate with free()", __func__);
-            free(candidate->pollable_socket->handle);
+            if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
+                neat_log(NEAT_LOG_DEBUG,"%s: Release candidate after closing", __func__);
+                uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed);
+            } else {
+                neat_log(NEAT_LOG_DEBUG,"%s: Candidate handle is already closing", __func__);
+            }
         }
     }
 

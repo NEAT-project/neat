@@ -7,15 +7,15 @@ Build-Depends: debhelper (>= 9),
                libuv1-dev,
                libldns-dev,
                libjansson-dev,
-               libmnl-dev,
-               libsctp-dev
+               libmnl-dev [linux-any],
+               libsctp-dev [linux-any]
 Standards-Version: 3.9.8
 Vcs-Browser: https://github.com/NEAT-project/neat
 Vcs-Git: https://github.com/NEAT-project/neat.git
 Homepage: https://github.com/NEAT-project/neat
 
 Package: libneat0
-Architecture: any
+Architecture: linux-any kfreebsd-any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
 Description: NEAT Sockets API
@@ -27,8 +27,8 @@ Description: NEAT Sockets API
  This package contains the shared library.
 
 Package: libneat-dev
+Architecture: linux-any kfreebsd-any
 Section: libdevel
-Architecture: any
 Depends: libneat0 (= ${binary:Version}),
          ${shlibs:Depends},
          ${misc:Depends}

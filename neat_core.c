@@ -72,6 +72,8 @@ static void neat_sctp_init_events(struct socket *sock);
 static void neat_sctp_init_events(int sock);
 #endif
 
+static void neat_free_flow(struct neat_flow *flow);
+
 static neat_flow * do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket);
 neat_flow * neat_find_flow(neat_ctx *, struct sockaddr *, struct sockaddr *);
 

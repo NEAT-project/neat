@@ -361,7 +361,6 @@ on_close(struct neat_flow_operations *opCB)
     free(tnf);
 
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
-    neat_free_flow(opCB->flow);
 
     fprintf(stderr, "%s - flow closed OK!\n", __func__);
 

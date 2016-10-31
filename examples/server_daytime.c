@@ -102,7 +102,7 @@ on_readable(struct neat_flow_operations *opCB)
         opCB->on_writable = NULL;
         opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_free_flow(opCB->flow);
+        neat_close(opCB->ctx, opCB->flow);
     }
     return NEAT_OK;
 }
@@ -256,9 +256,6 @@ cleanup:
     if (arg_property)
         free(arg_property);
 
-    if (flow != NULL) {
-        neat_free_flow(flow);
-    }
     if (ctx != NULL) {
         neat_free_ctx(ctx);
     }

@@ -3720,10 +3720,13 @@ neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     if (flow->socket->fd != -1) {
-        neat_log(NEAT_LOG_DEBUG, "%s: Close fd %d", __func__, flow->socket->fd);
         // we might want a fx callback here to split between
         // kernel and userspace.. same for connect read and write
-        close(flow->socket->fd);
+
+        if (flow->socket->fd != 0) {
+            neat_log(NEAT_LOG_DEBUG, "%s: Close fd %d", __func__, flow->socket->fd);
+            close(flow->socket->fd);
+        }
 
         // KAH: AFAIK the socket API provides no way of knowing any
         // further status of the close op for TCP.

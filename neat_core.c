@@ -468,6 +468,7 @@ static void synchronous_free(neat_flow *flow)
 
 static void free_cb(uv_handle_t *handle)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     struct neat_pollable_socket *pollable_socket = handle->data;
     synchronous_free(pollable_socket->flow);
 }

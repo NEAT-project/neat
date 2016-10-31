@@ -1170,6 +1170,7 @@ static void
 he_connected_cb(uv_poll_t *handle, int status, int events)
 {
     static unsigned int c = 0;
+    
     const char *proto;
     const char *family;
     struct neat_he_candidate *candidate = handle->data;
@@ -1224,6 +1225,18 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
              candidate->pollable_socket->dst_address,
              candidate->pollable_socket->port,
              candidate->priority);
+
+    int so_error = 0;
+    unsigned int len = sizeof(so_error);
+    if (getsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
+    
+        neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed: %s", strerror(errno));
+        neat_io_error(candidate->ctx, flow, NEAT_ERROR_INTERNAL);
+        return;
+    }
+    status = so_error;
+    neat_log(NEAT_LOG_DEBUG,
+             "Connection status: %d", status);
 
     // TODO: In which circumstances do we end up in the three different cases?
     if (flow->firstWritePending) {

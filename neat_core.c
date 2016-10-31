@@ -240,18 +240,6 @@ void neat_free_ctx(struct neat_ctx *nc)
         neat_resolver_release(nc->resolver);
     }
 
-    neat_core_cleanup(nc);
-
-    if (nc->event_cbs)
-        free(nc->event_cbs);
-
-    if (nc->pvd) {
-        neat_pvd_release(nc->pvd);
-        free(nc->pvd);
-    }
-
-    free(nc->loop);
-
     while (!LIST_EMPTY(&nc->flows)) {
         f = LIST_FIRST(&nc->flows);
 
@@ -266,6 +254,18 @@ void neat_free_ctx(struct neat_ctx *nc)
         neat_free_flow(f);
         prev = f;
     }
+
+    neat_core_cleanup(nc);
+
+    if (nc->event_cbs)
+        free(nc->event_cbs);
+
+    if (nc->pvd) {
+        neat_pvd_release(nc->pvd);
+        free(nc->pvd);
+    }
+
+    free(nc->loop);
 
     neat_security_close(nc);
     free(nc);
@@ -457,10 +457,6 @@ static void synchronous_free(neat_flow *flow)
         free(flow->operations);
     }
 
-    neat_free_candidates(flow->candidate_list);
-
-	LIST_REMOVE(flow, next_flow);
-
     json_decref(flow->properties);
 
     free_iofilters(flow->iofilters);
@@ -511,17 +507,21 @@ void neat_free_flow(neat_flow *flow)
         return;
     }
 #endif
+    LIST_REMOVE(flow, next_flow);
 
-	if (flow->socket->handle != NULL &&
-        flow->socket->handle->type != UV_UNKNOWN_HANDLE &&
-        !uv_is_closing((uv_handle_t *)flow->socket->handle))
+    neat_free_candidates(flow->candidate_list);
+
+    if (flow->socket->handle != NULL &&
+        flow->socket->handle->type != UV_UNKNOWN_HANDLE)
     {
-		uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
-        flow->socket->handle = NULL;
-	} else {
+        if (!uv_is_closing((uv_handle_t *)flow->socket->handle))
+            uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
+        else {
+            neat_log(NEAT_LOG_DEBUG, "handle is closing");
+        }
+    } else {
         synchronous_free(flow);
-	}
-
+    }
 }
 
 neat_error_code

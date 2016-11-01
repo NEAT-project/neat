@@ -39,7 +39,7 @@ source_parsers = {
 html_context = {
     'github_user': 'NEAT-project',
     'github_repo': 'neat',
-    'github_version': 'oystedal/readthedocs',
+    'github_version': 'master',
     'display_github': True,
     'conf_py_path': '/docs/',
 }

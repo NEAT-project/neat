@@ -44,6 +44,10 @@ Specifies an array of transport protocols that may be used. An application may
 specify either one protocol with precedence 2, or multiple protocols with
 precedence 1.
 
+**Note**: May not be queried with `neat_get_property` before execution of the
+`on_connected` callback. When querying this property, the returned value is a
+string describing the actual transport in use.
+
 **Note**: Applications should avoid specifying the protocol(s) to use directly,
 and instead rely on the Policy Manager to make a decision on what protocol(s)
 to use based on other properties. The `transport` property should only be used

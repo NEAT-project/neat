@@ -23,6 +23,7 @@ Welcome to the NEAT documentation!
     neat_init_ctx <neat_init_ctx>
     neat_new_flow <neat_new_flow>
     neat_set_property <neat_set_property>
+    neat_get_property <neat_get_property>
     neat_open <neat_open>
     neat_accept <neat_accept>
     neat_read <neat_read>

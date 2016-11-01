@@ -139,7 +139,7 @@ NEAT_EXTERN neat_error_code neat_write(struct neat_ctx *ctx, struct neat_flow *f
                            const unsigned char *buffer, uint32_t amt,
                            struct neat_tlv optional[], unsigned int opt_count);
 NEAT_EXTERN neat_error_code neat_get_property(struct neat_ctx *ctx, struct neat_flow *flow,
-                                  uint64_t *outMask);
+                                              const char* name, void *ptr, size_t *size);
 NEAT_EXTERN neat_error_code neat_set_property(struct neat_ctx *ctx, struct neat_flow *flow,
                                               const char* properties);
 NEAT_EXTERN neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,

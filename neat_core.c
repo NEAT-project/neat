@@ -565,6 +565,77 @@ neat_set_property(neat_ctx *mgr, neat_flow *flow, const char *properties)
     return NEAT_OK;
 }
 
+neat_error_code
+neat_get_property(neat_ctx *ctx, neat_flow *flow, const char* name, void *ptr, size_t *size)
+{
+    json_t *prop;
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (flow->properties == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "Flow has no properties (properties == NULL)");
+        return NEAT_ERROR_UNABLE;
+    }
+
+    prop = json_object_get(flow->properties, name);
+
+    if (prop == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "Flow has no property named %s");
+        return NEAT_ERROR_UNABLE;
+    }
+
+    prop = json_object_get(prop, "value");
+    if (prop == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "Flow has property %s, but it contains no \"value\" key!");
+        return NEAT_ERROR_UNABLE;
+    }
+
+    switch (json_typeof(prop)) {
+    case JSON_STRING:
+        {
+            size_t str_len = json_string_length(prop);
+            if (str_len + 1 > *size) {
+                *size = str_len + 1;
+                return NEAT_ERROR_MESSAGE_TOO_BIG;
+            }
+
+            strncpy(ptr, json_string_value(prop), *size);
+            *size = str_len;
+
+            break;
+
+        }
+    case JSON_INTEGER:
+        {
+            if (sizeof(json_int_t) > *size) {
+                *size = sizeof(json_int_t);
+                return NEAT_ERROR_MESSAGE_TOO_BIG;
+            }
+
+            *((json_int_t*)ptr) = json_integer_value(prop);
+            *size = sizeof(json_int_t);
+
+            break;
+        }
+    case JSON_TRUE:
+    case JSON_FALSE:
+        {
+            if (sizeof(json_int_t) > *size) {
+                *size = sizeof(json_int_t);
+                return NEAT_ERROR_MESSAGE_TOO_BIG;
+            }
+
+            *((json_int_t*)ptr) = json_is_true(prop);
+            *size = sizeof(json_int_t);
+
+            break;
+        }
+    default:
+        return NEAT_ERROR_UNABLE;
+    }
+
+    return NEAT_OK;
+}
+
 
 int neat_get_stack(neat_ctx* mgr, neat_flow* flow)
 {

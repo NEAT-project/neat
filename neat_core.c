@@ -1266,6 +1266,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->socket->family = candidate->pollable_socket->family;
         flow->socket->type = candidate->pollable_socket->type;
         flow->socket->stack = candidate->pollable_socket->stack;
+        json_decref(flow->properties);
+        json_incref(candidate->properties);
+        flow->properties = candidate->properties;
         flow->everConnected = 1;
 
 #if defined(USRSCTP_SUPPORT)

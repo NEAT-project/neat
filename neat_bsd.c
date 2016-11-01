@@ -246,7 +246,9 @@ static void neat_bsd_cleanup(struct neat_ctx *ctx)
     if (ctx->udp6_fd >= 0) {
         close(ctx->udp6_fd);
     }
-    free(ctx->route_buf);
+    if (ctx->route_buf) {
+        free(ctx->route_buf);
+    }
     return;
 }
 
@@ -266,14 +268,14 @@ struct neat_ctx *neat_bsd_init_ctx(struct neat_ctx *ctx)
     if ((ctx->route_buf = malloc(NEAT_ROUTE_BUFFER_SIZE)) == NULL) {
         neat_log(NEAT_LOG_ERROR,
                 "%s: can't allocate buffer");
-        neat_free_ctx(ctx);
+        neat_bsd_cleanup(ctx);
         return NULL;
     }
     if ((ctx->route_fd = socket(AF_ROUTE, SOCK_RAW, 0)) < 0) {
         neat_log(NEAT_LOG_ERROR,
                 "%s: can't open routing socket (%s)", __func__,
                 strerror(errno));
-        neat_free_ctx(ctx);
+        neat_bsd_cleanup(ctx);
         return NULL;
     }
     /* routing sockets can be handled like UDP sockets by uv */
@@ -281,7 +283,7 @@ struct neat_ctx *neat_bsd_init_ctx(struct neat_ctx *ctx)
         neat_log(NEAT_LOG_ERROR,
                 "%s: can't initialize routing handle (%s)", __func__,
                 uv_strerror(ret));
-        neat_free_ctx(ctx);
+        neat_bsd_cleanup(ctx);
         return NULL;
     }
     ctx->uv_route_handle.data = ctx;
@@ -289,7 +291,7 @@ struct neat_ctx *neat_bsd_init_ctx(struct neat_ctx *ctx)
         neat_log(NEAT_LOG_ERROR,
                 "%s: can't add routing handle (%s)", __func__,
                 uv_strerror(ret));
-        neat_free_ctx(ctx);
+        neat_bsd_cleanup(ctx);
         return NULL;
     }
     if ((ret = uv_udp_recv_start(&(ctx->uv_route_handle),
@@ -298,7 +300,7 @@ struct neat_ctx *neat_bsd_init_ctx(struct neat_ctx *ctx)
         neat_log(NEAT_LOG_ERROR,
                 "%s: can't start receiving route changes (%s)", __func__,
                 uv_strerror(ret));
-        neat_free_ctx(ctx);
+        neat_bsd_cleanup(ctx);
         return NULL;
     }
     neat_bsd_get_addresses(ctx);

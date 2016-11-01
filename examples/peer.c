@@ -10,6 +10,8 @@
 #include "../neat.h"
 #include "../neat_internal.h"
 
+#include "util.h"
+
 /**********************************************************************
 
     peer
@@ -21,10 +23,23 @@
 
 static uint32_t config_buffer_size_max = 1400;
 static uint16_t config_log_level = 0;
-static char config_property[] = "NEAT_PROPERTY_UDP_REQUIRED";
+//static char config_property[] = "NEAT_PROPERTY_REQUIRED_SECURITY,NEAT_PROPERTY_UDP_REQUIRED";
+static char *config_property = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"UDP\",\
+            \"precedence\": 1\
+        }\
+    ],\
+    \"security\": {\
+        \"value\": true,\
+        \"precedence\": 2\
+    }\
+}";\
 static uint32_t config_drop_randomly= 0;
 static uint32_t config_drop_rate= 80;
 static uint32_t config_port=6969;
+static char *pem_file = NULL;
 
 #define SEGMENT_SIZE 1024
 #define SECOND 1000
@@ -519,6 +534,8 @@ on_all_written(struct neat_flow_operations *opCB)
 			if (fi == NULL) {
 				fprintf(stderr, "%s:%d could not open file %s\n",
 					__func__, __LINE__, pf->file_name);
+				neat_close(opCB->ctx, opCB->flow);
+				return NEAT_ERROR_OK;
 			}
 
 			fwrite(pf->file_buffer, sizeof(char), pf->file_buffer_size, fi->stream);
@@ -755,14 +772,20 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:S:v:h:p:f:D:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:S:v:h:p:f:D:c:")) != -1) {
         switch(arg) {
         case 'P':
-            arg_property = optarg;
-            if (config_log_level >= 1) {
-                printf("option - properties: %s\n", arg_property);
-            }
-            break;
+		   if (read_file(optarg, &arg_property) < 0) {
+						fprintf(stderr, "Unable to read properties from %s: %s",
+								optarg, strerror(errno));
+						result = EXIT_FAILURE;
+						goto cleanup;
+					}
+					if (config_log_level >= 1) {
+						fprintf(stderr, "%s - option - properties: %s\n", 
+							__func__, arg_property);
+					}
+			break;
         case 'S':
             config_buffer_size_max = atoi(optarg);
             if (config_log_level >= 1) {
@@ -792,6 +815,12 @@ main(int argc, char *argv[])
             }
 			filename = strdup(optarg);
             break;
+         case 'c':
+             pem_file = optarg;
+             if (config_log_level >= 1) {
+                 printf("option - pem file: %s\n", pem_file);
+             }
+             break;
         default:
             print_usage();
             goto cleanup;
@@ -818,14 +847,18 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-#if 0
+	if (pem_file && neat_secure_identity(ctx, flow, pem_file)) {            
+		fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
+		result = EXIT_FAILURE;                                              
+		goto cleanup;                                                       
+	}                                                                       
+
     // set properties
-    if (neat_set_property(ctx, flow, prop)) {
-        fprintf(stderr, "%s - neat_set_property failed\n", __func__);
+    if (neat_set_property(ctx, flow, arg_property ? arg_property : config_property)) {
+        fprintf(stderr, "%s - error: neat_set_property\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
-    }
-#endif
+	}
 
     // set callbacks
     ops.on_connected = on_connected;

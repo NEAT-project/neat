@@ -674,7 +674,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 
 static void io_writable(neat_ctx *ctx, neat_flow *flow, int stream_id, neat_error_code code)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (flow->isDraining) {
         neat_write_flush(ctx, flow);
@@ -917,6 +917,9 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 
             if ((n = recvfrom(socket->fd, flow->readBuffer,
                 flow->readBufferAllocation, 0, (struct sockaddr *)&peerAddr, &peerAddrLen)) < 0)  {
+
+                neat_log(NEAT_LOG_DEBUG, "flow fd:%d errno: %d", socket->fd, errno);
+				perror("recvfrom");
                 neat_log(NEAT_LOG_DEBUG, "Exit 4");
                 return READ_WITH_ERROR;
             }
@@ -924,6 +927,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             flow->readBufferSize = n;
             flow->readBufferMsgComplete = 1;
 
+            neat_log(NEAT_LOG_DEBUG, "Read %d bytes", n);
             if (n == 0) {
                 flow->readBufferMsgComplete = 0;
                 neat_log(NEAT_LOG_DEBUG, "Exit 5");
@@ -1127,7 +1131,8 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s: fd: %d", __func__, flow->socket->fd);
 
     if (flow->socket->handle != NULL) {
         if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->socket->handle)) {
@@ -1148,6 +1153,7 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     }
 
     if (newEvents) {
+    //	neat_log(NEAT_LOG_DEBUG, "%s: events mask: %d", __func__, newEvents);
         flow->isPolling = 1;
         if (flow->socket->handle != NULL) {
             uv_poll_start(handle, newEvents, uvpollable_cb);
@@ -1385,6 +1391,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         io_writable(ctx, flow, 0, NEAT_OK); // TODO: Remove stream param
     }
     if (events & UV_READABLE) {
+		neat_log(NEAT_LOG_DEBUG, "%s: Calling io_readable cause we have a read", __func__);
         io_readable(ctx, flow, pollable_socket, NEAT_OK);
     }
     updatePollHandle(ctx, flow, handle);
@@ -1404,8 +1411,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     struct sctp_status status;
 #endif
 #endif
-
+    json_t *security = NULL, *val = NULL;
     neat_flow *newFlow = neat_new_flow(ctx);
+
     if (newFlow == NULL) {
         neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
         return NULL;
@@ -1422,15 +1430,21 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         if (newFlow->server_pem == NULL) {
             neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
             return NULL;
-        }
-    }
+        } 
+	}
 
     newFlow->port = flow->port;
     newFlow->propertyMask = flow->propertyMask;
     newFlow->propertyAttempt = flow->propertyAttempt;
     newFlow->propertyUsed = flow->propertyUsed;
-    newFlow->everConnected = 1;
+	newFlow->properties = json_deep_copy(flow->properties);
 
+    if (newFlow->properties == NULL) {
+        neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+        return NULL;
+    }
+
+    newFlow->everConnected = 1;
     newFlow->socket->stack   = listen_socket->stack;
     newFlow->socket->srcAddr = listen_socket->srcAddr;
     newFlow->socket->dstAddr = listen_socket->dstAddr;
@@ -1570,7 +1584,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             newFlow->socket->handle->data = newFlow->socket;
 
             newFlow->acceptPending = 0;
-            if ((newFlow->propertyMask & NEAT_PROPERTY_REQUIRED_SECURITY) &&
+			if ((security = json_object_get(newFlow->properties, "security")) != NULL &&
+				(val = json_object_get(security, "value")) != NULL &&
+				json_typeof(val) == JSON_TRUE && 
                 (newFlow->socket->stack == NEAT_STACK_TCP)) {
                 neat_log(NEAT_LOG_DEBUG, "TCP Server Security");
                 if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
@@ -1602,6 +1618,19 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     default:
         newFlow->stream_count = 1;
     }
+
+	/* If we have security we can set it up now */
+	if ((security = json_object_get(newFlow->properties, "security")) != NULL &&
+		(val = json_object_get(security, "value")) != NULL &&
+		json_typeof(val) == JSON_TRUE) {
+		neat_log(NEAT_LOG_DEBUG, "server required security");
+		if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
+			neat_log(NEAT_LOG_DEBUG, "ERROR installing cert");
+			neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
+		}
+	} else {
+		neat_log(NEAT_LOG_DEBUG, "server required security not set ");
+	}
 
     return newFlow;
 }
@@ -2391,6 +2420,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
         json_array_append(endpoints, endpoint);
         json_decref(endpoint);
     }
+
 
     properties = json_copy(flow->properties);
 

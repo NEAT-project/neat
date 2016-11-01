@@ -1,4 +1,4 @@
-<img src="https://cdn.rawgit.com/NEAT-project/neat/master/doc/neat_logo.svg" width="350"/>
+<img src="https://cdn.rawgit.com/NEAT-project/neat/master/docs/_static/neat_logo.svg" width="350"/>
 
 <a href="http://neat.readthedocs.io/en/latest">
     <img src="https://readthedocs.org/projects/neat/badge/?version=latest"/>

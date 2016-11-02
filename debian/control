@@ -8,7 +8,10 @@ Build-Depends: debhelper (>= 9),
                libldns-dev,
                libjansson-dev,
                libmnl-dev [linux-any],
-               libsctp-dev [linux-any]
+               libsctp-dev [linux-any],
+               python-sphinx,
+               python-recommonmark,
+               python-sphinx-rtd-theme
 Standards-Version: 3.9.8
 Vcs-Browser: https://github.com/NEAT-project/neat
 Vcs-Git: https://github.com/NEAT-project/neat.git
@@ -39,3 +42,16 @@ Description: NEAT Sockets API (Development Files)
  they can hook in and add their own callbacks.
  .
  This package contains the development files.
+
+Package: libneat-docs
+Architecture: all
+Section: doc
+Depends: ${sphinx:Depends},
+         ${misc:Depends}
+Description: NEAT Sockets API (Documentation)
+ NEAT is a callback based library and everything revovles around the neat_ctx
+ struct. This struct has to be initialized before anything else can be done.
+ NEAT uses libuv as event library, and this loop is available to users so that
+ they can hook in and add their own callbacks.
+ .
+ This package contains the common documentation.

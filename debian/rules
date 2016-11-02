@@ -3,4 +3,8 @@
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
-	dh $@
+	dh $@ --with sphinx
+
+override_dh_auto_build:
+	PYTHONPATH=. http_proxy='127.0.0.1:9' sphinx-build -N -bhtml docs/ docs/_build/html # HTML generator
+	dh_auto_build

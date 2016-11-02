@@ -140,9 +140,6 @@ int main(int argc, char *argv[])
     }
 
 cleanup:
-    if (flow != NULL) {
-        neat_free_flow(flow);
-    }
     if (ctx != NULL) {
         neat_free_ctx(ctx);
     }

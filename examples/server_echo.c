@@ -132,7 +132,7 @@ on_readable(struct neat_flow_operations *opCB)
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
         free(ef->buffer);
         free(ef);
-        neat_free_flow(opCB->flow);
+        neat_close(opCB->ctx, opCB->flow);
     }
     return NEAT_OK;
 }

@@ -72,6 +72,8 @@ static void neat_sctp_init_events(struct socket *sock);
 static void neat_sctp_init_events(int sock);
 #endif
 
+static void neat_free_flow(struct neat_flow *flow);
+
 static neat_flow * do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket);
 neat_flow * neat_find_flow(neat_ctx *, struct sockaddr *, struct sockaddr *);
 
@@ -231,11 +233,16 @@ static void neat_core_cleanup(struct neat_ctx *nc)
 //TODO: Consider adding callback, like for resolver
 void neat_free_ctx(struct neat_ctx *nc)
 {
-    struct neat_flow *f, *prev = NULL;
+    struct neat_flow *f;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (nc->resolver) {
         neat_resolver_release(nc->resolver);
+    }
+
+    while (!LIST_EMPTY(&nc->flows)) {
+        f = LIST_FIRST(&nc->flows);
+        neat_free_flow(f);
     }
 
     neat_core_cleanup(nc);
@@ -249,21 +256,6 @@ void neat_free_ctx(struct neat_ctx *nc)
     }
 
     free(nc->loop);
-
-    while (!LIST_EMPTY(&nc->flows)) {
-        f = LIST_FIRST(&nc->flows);
-
-        /*
-         * If this assert triggers, it means that a call to neat_free_flow did
-         * not remove the flow pointed to by f from the list of flows. The
-         * assert is present because clang-analyzer somehow doesn't see the fact
-         * that the list is changed in synchronous_free().
-         */
-        assert(f != prev);
-
-        neat_free_flow(f);
-        prev = f;
-    }
 
     neat_security_close(nc);
     free(nc);
@@ -399,13 +391,18 @@ neat_free_candidate(struct neat_he_candidate *candidate)
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
 
+    // We should close the handle of this candidate asynchronously, but only if
+    // this handle is not being used by the flow.
     if (candidate->pollable_socket->handle != NULL) {
-        if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
-            neat_log(NEAT_LOG_DEBUG,"%s: Release candidate after closing", __func__);
-            uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed);
+        if (candidate->pollable_socket->handle == candidate->pollable_socket->flow->socket->handle) {
+            neat_log(NEAT_LOG_DEBUG,"%s: Handle used by flow, flow should release it", __func__);
         } else {
-            neat_log(NEAT_LOG_DEBUG,"%s: Release candidate with free()", __func__);
-            free(candidate->pollable_socket->handle);
+            if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
+                neat_log(NEAT_LOG_DEBUG,"%s: Release candidate after closing", __func__);
+                uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed);
+            } else {
+                neat_log(NEAT_LOG_DEBUG,"%s: Candidate handle is already closing", __func__);
+            }
         }
     }
 
@@ -450,10 +447,6 @@ static void synchronous_free(neat_flow *flow)
         free(flow->operations);
     }
 
-    neat_free_candidates(flow->candidate_list);
-
-	LIST_REMOVE(flow, next_flow);
-
     json_decref(flow->properties);
 
     free_iofilters(flow->iofilters);
@@ -465,6 +458,7 @@ static void synchronous_free(neat_flow *flow)
 
 static void free_cb(uv_handle_t *handle)
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     struct neat_pollable_socket *pollable_socket = handle->data;
     synchronous_free(pollable_socket->flow);
 }
@@ -504,17 +498,21 @@ void neat_free_flow(neat_flow *flow)
         return;
     }
 #endif
+    LIST_REMOVE(flow, next_flow);
 
-	if (flow->socket->handle != NULL &&
-        flow->socket->handle->type != UV_UNKNOWN_HANDLE &&
-        !uv_is_closing((uv_handle_t *)flow->socket->handle))
+    neat_free_candidates(flow->candidate_list);
+
+    if (flow->socket->handle != NULL &&
+        flow->socket->handle->type != UV_UNKNOWN_HANDLE)
     {
-		uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
-        flow->socket->handle = NULL;
-	} else {
+        if (!uv_is_closing((uv_handle_t *)flow->socket->handle))
+            uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
+        else {
+            neat_log(NEAT_LOG_DEBUG, "handle is closing");
+        }
+    } else {
         synchronous_free(flow);
-	}
-
+    }
 }
 
 neat_error_code
@@ -3713,10 +3711,13 @@ neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     if (flow->socket->fd != -1) {
-        neat_log(NEAT_LOG_DEBUG, "%s: Close fd %d", __func__, flow->socket->fd);
         // we might want a fx callback here to split between
         // kernel and userspace.. same for connect read and write
-        close(flow->socket->fd);
+
+        if (flow->socket->fd != 0) {
+            neat_log(NEAT_LOG_DEBUG, "%s: Close fd %d", __func__, flow->socket->fd);
+            close(flow->socket->fd);
+        }
 
         // KAH: AFAIK the socket API provides no way of knowing any
         // further status of the close op for TCP.
@@ -4473,16 +4474,10 @@ void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code)
 // CLOSE, D1.2 sect. 3.2.4
 neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
 {
-    // KAH: free_cb actually does the closefx() call
-
-    // This code is copied from neat_free_flow
-    // TODO consider a refactor...
-    if (flow->isPolling)
+    if (flow->isPolling && uv_is_active((uv_handle_t*)flow->socket->handle))
         uv_poll_stop(flow->socket->handle);
 
-    if ((flow->socket->handle != NULL) &&
-        (flow->socket->handle->type != UV_UNKNOWN_HANDLE))
-        uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
+    neat_free_flow(flow);
 
     return NEAT_OK;
 }

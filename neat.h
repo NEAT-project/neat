@@ -123,7 +123,6 @@ struct neat_flow_security {
 };
 
 NEAT_EXTERN struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
-NEAT_EXTERN void neat_free_flow(struct neat_flow *flow);
 
 NEAT_EXTERN neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
                                     struct neat_flow_operations *ops);

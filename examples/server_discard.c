@@ -104,7 +104,7 @@ on_readable(struct neat_flow_operations *opCB)
         }
         opCB->on_readable = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_free_flow(opCB->flow);
+        neat_close(opCB->ctx, opCB->flow);
     }
     return NEAT_OK;
 }

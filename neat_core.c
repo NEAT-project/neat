@@ -1476,6 +1476,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
 static neat_flow *
 do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_socket)
 {
+    const char *proto = NULL;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 #if defined(IPPROTO_SCTP)
 #if defined(SCTP_RECVRCVINFO) && !defined(USRSCTP_SUPPORT)
@@ -1513,6 +1514,37 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->propertyAttempt = flow->propertyAttempt;
     newFlow->propertyUsed = flow->propertyUsed;
     newFlow->everConnected = 1;
+
+    switch (listen_socket->stack) {
+    case NEAT_STACK_UDP:
+        proto = "UDP";
+        break;
+    case NEAT_STACK_TCP:
+        proto = "TCP";
+        break;
+    case NEAT_STACK_SCTP:
+        proto = "SCTP";
+        break;
+    case NEAT_STACK_SCTP_UDP:
+        proto = "SCTP/UDP";
+        break;
+    case NEAT_STACK_UDPLITE:
+        proto = "UDPLite";
+        break;
+    default:
+        proto = "?";
+        break;
+    };
+
+    json_decref(newFlow->properties);
+    newFlow->properties = json_pack("{"\
+                 /* "transport" */  "s{ss}"\
+                 /* "port"      */  "s{si}"\
+                 /* "interface" */  "s{ss}"\
+                                    "}",
+                                    "transport", "value", proto,
+                                    "port", "value", flow->port,
+                                    "interface", "value", "(unknown)");
 
     newFlow->socket->stack   = listen_socket->stack;
     newFlow->socket->srcAddr = listen_socket->srcAddr;

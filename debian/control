@@ -46,7 +46,7 @@ Description: NEAT Sockets API (Development Files)
 Package: libneat-docs
 Architecture: all
 Section: doc
-Depends: ${sphinx:Depends},
+Depends: ${sphinxdoc:Depends},
          ${misc:Depends}
 Description: NEAT Sockets API (Documentation)
  NEAT is a callback based library and everything revovles around the neat_ctx

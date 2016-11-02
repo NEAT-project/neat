@@ -1574,14 +1574,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->operations->ctx = ctx;
     newFlow->operations->flow = flow;
 
-    // TODO: Should this be allocated here?
-    newFlow->socket->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
-    if (newFlow->socket->handle == NULL) {
-        neat_io_error(ctx, newFlow, NEAT_ERROR_OUT_OF_MEMORY);
-        return NULL;
-    }
-    newFlow->socket->handle->type = UV_UNKNOWN_HANDLE;
-
     switch (newFlow->socket->stack) {
     case NEAT_STACK_SCTP_UDP:
     case NEAT_STACK_SCTP:

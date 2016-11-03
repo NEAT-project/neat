@@ -1170,7 +1170,6 @@ static void
 he_connected_cb(uv_poll_t *handle, int status, int events)
 {
     static unsigned int c = 0;
-    
     const char *proto;
     const char *family;
     struct neat_he_candidate *candidate = handle->data;

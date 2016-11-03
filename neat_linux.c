@@ -126,7 +126,7 @@ static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
     while (mnl_nlmsg_ok(nl_hdr, numbytes)) {
         if (nl_hdr->nlmsg_type == RTM_NEWADDR ||
             nl_hdr->nlmsg_type == RTM_DELADDR)
-            neat_linux_handle_addr(nc, nl_hdr);
+            neat_ctx_fail_on_error(nc, neat_linux_handle_addr(nc, nl_hdr));
 
         nl_hdr = mnl_nlmsg_next(nl_hdr, &numbytes);
     }

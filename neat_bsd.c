@@ -189,6 +189,7 @@ static void neat_bsd_route_recv(uv_udp_t *handle,
     time_t now;
     struct in6_addrlifetime *lifetime;
     uint32_t preferred_lifetime, valid_lifetime;
+    neat_error_code rc;
 
     ctx = (struct neat_ctx *)handle->data;
     ifa = (struct ifa_msghdr *)buf->base;
@@ -233,14 +234,16 @@ static void neat_bsd_route_recv(uv_udp_t *handle,
             valid_lifetime = 0;
         }
     }
-    return
-      neat_addr_update_src_list(ctx,
-                                (struct sockaddr_storage *)rti_info[RTAX_IFA],
-                                ifa->ifam_index,
-                                ifa->ifam_type == RTM_NEWADDR ? 1 : 0,
-                                0,
-                                preferred_lifetime,
-                                valid_lifetime);
+
+    rc = neat_addr_update_src_list(ctx,
+                                   (struct sockaddr_storage *)rti_info[RTAX_IFA],
+                                   ifa->ifam_index,
+                                   ifa->ifam_type == RTM_NEWADDR ? 1 : 0,
+                                   0,
+                                   preferred_lifetime,
+                                   valid_lifetime);
+
+    neat_ctx_fail_on_error(ctx, rc);
 }
 
 static void neat_bsd_cleanup(struct neat_ctx *ctx)

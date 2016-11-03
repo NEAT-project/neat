@@ -311,6 +311,9 @@ struct neat_ctx *neat_bsd_init_ctx(struct neat_ctx *ctx)
         neat_bsd_cleanup(ctx);
         return NULL;
     }
-    neat_bsd_get_addresses(ctx);
+    if (neat_bsd_get_addresses(ctx) != NEAT_OK) {
+        neat_log(NEAT_LOG_ERROR, "%s: cannot get src addresses", __func__);
+        return NULL;
+    }
     return ctx;
 }

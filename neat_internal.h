@@ -68,11 +68,15 @@ struct neat_ctx
     // PvD
     struct neat_pvd* pvd;
 
+    neat_error_code error;
+
     // resolver
     NEAT_INTERNAL_CTX;
     NEAT_INTERNAL_OS;
     NEAT_INTERNAL_USRSCTP
 };
+
+void neat_ctx_fail_on_error(struct neat_ctx *nc, neat_error_code error);
 
 struct neat_he_candidate;
 struct neat_pollable_socket;

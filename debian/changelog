@@ -1,5 +1,5 @@
-neat (0.0.1-1ubuntu1) xenial; urgency=high
+neatproject (0.0.1-1ubuntu1) xenial; urgency=high
 
   * Initial release.
 
- -- NEAT Project <neat@neat-project.org>  Tue, 20 Sep 2016 14:47:26 +0100
+ -- NEAT Project <neat@neat-project.org>  Tue, 08 Nov 2016 14:47:26 +0100

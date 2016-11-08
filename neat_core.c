@@ -10,6 +10,7 @@
 #endif
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1247,6 +1248,96 @@ static void free_he_handle_cb(uv_handle_t *handle)
 }
 
 static void
+send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool result)
+{
+    int rc;
+    const char *home_dir;
+    const char *socket_path;
+    char socket_path_buf[128];
+    //json_t *interface_value = NULL;
+    //json_t *interface_object = NULL;
+    //json_t *match_value = NULL;
+    //json_t *match_object = NULL;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    assert(candidate);
+
+    socket_path = getenv("NEAT_PM_SOCKET");
+    if (!socket_path) {
+        if ((home_dir = getenv("HOME")) == NULL) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");
+            //goto end;
+        }
+
+        rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_pm_socket", home_dir);
+        if (rc < 0 || rc >= 128) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
+            //goto end;
+        }
+
+        socket_path = socket_path_buf;
+    }
+
+#if 0
+
+    if ((interface_value = json_pack("{ss}", "value", candidate->if_name)) == NULL) {
+        goto end;
+    }
+  
+    if ((interface_object = json_object()) == NULL) {
+        goto end;
+    }
+
+    rc = json_object_set(interface_object, "interface", interface_value);
+    json_decref(interface_value);
+    if (rc < 0) {
+        goto end;
+    }
+
+    if ((match_value = json_array()) == NULL) {
+        goto end;
+    }
+
+    rc = json_array_append(match_value, interface_object);
+    if (rc < 0) {
+        goto end;
+    }
+
+    rc = json_object_set(match_object, "match", match_value);
+    json_decref(match_value);
+    if (rc < 0) {
+        goto end;
+    }  
+ 
+
+end:
+   // TODO: Remove.
+{
+    char strMsg[500];
+    char *json_str = json_dumps(match_object, JSON_ENSURE_ASCII);
+    strcpy(strMsg, "JSON: ");
+    strcat(strMsg, json_str);
+    neat_log(NEAT_LOG_DEBUG, strMsg);
+    free(json_str);
+}
+
+    if (interface_value) {
+        json_decref(interface_value);
+    }
+    if (interface_object) {
+        json_decref(interface_object);
+    }
+    if (match_value) {
+        json_decref(match_value);
+    }
+    if (match_object) {
+        json_decref(match_object);
+    }
+#endif
+}
+
+static void
 he_connected_cb(uv_poll_t *handle, int status, int events)
 {
     static unsigned int c = 0;
@@ -1324,6 +1415,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         assert(flow->socket);
 
+        send_result_connection_attempt_to_pm(candidate, true);
+
         // Transfer this handle to the "main" polling callback
         // TODO: Consider doing this in some other way that directly calling
         // this callback
@@ -1333,7 +1426,6 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         //neat_log(NEAT_LOG_DEBUG, "?");
         neat_log(NEAT_LOG_DEBUG, "First successful connect");
-
 
         assert(flow->socket);
 
@@ -1366,6 +1458,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
         flow->isPolling = 1;
 
+        send_result_connection_attempt_to_pm(candidate, true);
+
         if ((security = json_object_get(flow->properties, "security")) != NULL &&
             (val = json_object_get(security, "value")) != NULL &&
             json_typeof(val) == JSON_TRUE)
@@ -1384,6 +1478,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     } else {
         // assert(0);
         neat_log(NEAT_LOG_DEBUG, "NOT first connect");
+
+        send_result_connection_attempt_to_pm(candidate, false);
 
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);

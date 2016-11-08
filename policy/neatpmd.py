@@ -1,6 +1,8 @@
 #!/usr/bin/env python3.5
 import argparse
 import asyncio
+import hashlib
+import json
 import logging
 import os
 from copy import deepcopy
@@ -23,12 +25,19 @@ if args.sock:
     DOMAIN_SOCK = args.sock
 else:
     DOMAIN_SOCK = os.environ['HOME'] + '/.neat/neat_pm_socket'
+
+PIB_SOCK = os.environ['HOME'] + '/.neat/neat_pib_socket'
+CIB_SOCK = os.environ['HOME'] + '/.neat/neat_cib_socket'
+
+
 PIB_DIR = args.pib
 CIB_DIR = args.cib
 
 # Make sure the socket does not already exist
 try:
     os.unlink(DOMAIN_SOCK)
+    os.unlink(PIB_SOCK)
+    os.unlink(CIB_SOCK)
 except OSError:
     if os.path.exists(DOMAIN_SOCK):
         raise
@@ -120,6 +129,74 @@ def process_request(json_str, num_candidates=10):
     return candidates[:num_candidates]
 
 
+class PIBProtocol(asyncio.Protocol):
+    def connection_made(self, transport):
+        peername = transport.get_extra_info('sockname')
+        self.transport = transport
+        self.slim = ''
+
+    def data_received(self, data):
+        self.slim += data.decode()
+
+    def eof_received(self):
+        logging.info("New PIB object received (%dB)." % len(self.slim))
+        # TODO do a sanity check
+        try:
+            json_slim = json.loads(self.slim)
+        except json.decoder.JSONDecodeError:
+            logging.warning('invalid PIB file format')
+            return
+
+        filename = json_slim.get('name')
+        if not filename:
+            # generate hash policy filename
+            filename = hashlib.md5('json_slim'.encode('utf-8')).hexdigest()
+
+        filename = filename.lower()
+
+        f = open(os.path.join(CIB_DIR, '%s.slim' % filename ),'w')
+        f.write(self.slim)
+        f.close()
+        logging.info("Policy saved as \"%s\"." % filename)
+
+        self.transport.close()
+
+
+
+class CIBProtocol(asyncio.Protocol):
+    def connection_made(self, transport):
+        peername = transport.get_extra_info('sockname')
+        self.transport = transport
+        self.slim = ''
+
+    def data_received(self, data):
+        self.slim += data.decode()
+
+    def eof_received(self):
+        logging.info("New CIB object received (%dB)" % len(self.slim))
+
+        # TODO do a sanity check
+        try:
+            json_slim = json.loads(self.slim)
+        except json.decoder.JSONDecodeError:
+            logging.warning('invalid CIB file format')
+            return
+
+        filename = json_slim.get('name')
+        if not filename:
+            # generate hash policy filename
+            filename = hashlib.md5('json_slim'.encode('utf-8')).hexdigest()
+
+        filename = filename.lower()
+
+        f = open(os.path.join(CIB_DIR, '%s.slim' % filename ),'w')
+        f.write(self.slim)
+        f.close()
+        logging.info("CIB entry saved as \"%s\"." % filename)
+        cib.reload_files()
+        self.transport.close()
+
+
 class PMProtocol(asyncio.Protocol):
     def connection_made(self, transport):
         peername = transport.get_extra_info('sockname')
@@ -177,7 +254,12 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     # Each client connection creates a new protocol instance
     coro = loop.create_unix_server(PMProtocol, DOMAIN_SOCK)
+    coro_pib = loop.create_unix_server(PIBProtocol, PIB_SOCK)
+    coro_cib = loop.create_unix_server(CIBProtocol, CIB_SOCK)
+
     server = loop.run_until_complete(coro)
+    pib_server = loop.run_until_complete(coro_pib)
+    cib_server = loop.run_until_complete(coro_cib)
 
     print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))
     try:
@@ -188,6 +270,8 @@ if __name__ == "__main__":
 
     # Close the server
     server.close()
+    pib_server.close()
+
     loop.run_until_complete(server.wait_closed())
     loop.close()
     exit(0)

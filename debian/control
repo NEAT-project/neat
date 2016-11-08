@@ -9,7 +9,6 @@ Build-Depends: cmake,
                libmnl-dev,
                libsctp-dev,
                libuv1-dev,
-               python-recommonmark,
                python-sphinx,
                python-sphinx-rtd-theme
 Recommends: rsplib-tools
@@ -20,7 +19,8 @@ Homepage: https://github.com/NEAT-project/neat
 
 Package: libneat0
 Architecture: linux-any
-Depends: ${misc:Depends}, ${shlibs:Depends}
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
 Description: NEAT Sockets API
  NEAT is a callback based library and everything revovles around the neat_ctx
  struct. This struct has to be initialized before anything else can be done.
@@ -32,7 +32,9 @@ Description: NEAT Sockets API
 Package: libneat-dev
 Architecture: linux-any
 Section: libdevel
-Depends: libneat0 (= ${binary:Version}), ${misc:Depends}, ${shlibs:Depends}
+Depends: libneat0 (= ${binary:Version}),
+         ${misc:Depends},
+         ${shlibs:Depends}
 Description: NEAT Sockets API (Development Files)
  NEAT is a callback based library and everything revovles around the neat_ctx
  struct. This struct has to be initialized before anything else can be done.
@@ -44,7 +46,8 @@ Description: NEAT Sockets API (Development Files)
 Package: libneat-docs
 Architecture: all
 Section: doc
-Depends: ${misc:Depends}, ${sphinxdoc:Depends}
+Depends: ${misc:Depends},
+         ${sphinxdoc:Depends}
 Description: NEAT Sockets API (Documentation)
  NEAT is a callback based library and everything revovles around the neat_ctx
  struct. This struct has to be initialized before anything else can be done.

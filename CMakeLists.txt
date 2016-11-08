@@ -3,8 +3,23 @@ PROJECT(neat)
 
 set(BUILD_MAJOR "0")
 set(BUILD_MINOR "0")
-set(BUILD_VERSION "1")
-set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_VERSION})
+set(BUILD_PATCH "1")
+set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
+
+# PACKAGING
+#################################################
+# set(CPACK_PACKAGE_VERSION_MAJOR "0")
+# set(CPACK_PACKAGE_VERSION_MINOR "0")
+# set(CPACK_PACKAGE_VERSION_PATCH "1")
+set(CPACK_SOURCE_GENERATOR "TGZ")
+set(CPACK_SOURCE_PACKAGE_FILE_NAME
+  "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
+set(CPACK_SOURCE_IGNORE_FILES
+  "/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;.cmake$;.tar.gz$;~$;${CPACK_SOURCE_IGNORE_FILES}")
+include(CPack)
+
+add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
+
 
 INCLUDE(CheckIncludeFile)
 INCLUDE(CheckStructHasMember)

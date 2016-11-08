@@ -99,8 +99,8 @@ blocking reads.
 
 #### on_writable
 
-Called whenever the flow can be read from without blocking. NEAT does not permit
-blocking reads.
+Called whenever the flow can be written to without blocking. NEAT does not
+permit blocking writes.
 
 #### on_all_written
 

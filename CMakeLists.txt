@@ -13,9 +13,9 @@ set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 # set(CPACK_PACKAGE_VERSION_PATCH "1")
 set(CPACK_SOURCE_GENERATOR "TGZ")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME
-  "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
+   "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
 set(CPACK_SOURCE_IGNORE_FILES
-  "/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;.cmake$;.tar.gz$;~$;${CPACK_SOURCE_IGNORE_FILES}")
+   "/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;/${CMAKE_PROJECT_NAME}-.*orig/;/${CMAKE_PROJECT_NAME}-[0-9]*.[0-9]*.*/;.cmake$;.tar.gz$;/Makefile$;~$;${CPACK_SOURCE_IGNORE_FILES}")
 include(CPack)
 
 add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)

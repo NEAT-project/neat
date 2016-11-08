@@ -1,5 +1,5 @@
 #!/bin/bash
 
 ./clean-deb && \
-./make-deb wily vivid xenial yakkety zesty && \
+./make-deb wily xenial yakkety zesty && \
 dput ppa *.changes

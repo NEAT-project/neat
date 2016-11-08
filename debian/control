@@ -11,7 +11,9 @@ Build-Depends: cmake,
                libuv1-dev,
                python-sphinx,
                python-sphinx-rtd-theme
-Recommends: rsplib-tools, tsctp, netperfmeter
+Recommends: netperfmeter,
+            rsplib-tools,
+            tsctp
 Standards-Version: 3.9.8
 Vcs-Browser: https://github.com/NEAT-project/neat
 Vcs-Git: https://github.com/NEAT-project/neat.git

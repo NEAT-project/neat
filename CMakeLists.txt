@@ -18,7 +18,7 @@ set(CPACK_SOURCE_IGNORE_FILES
    "/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;/${CMAKE_PROJECT_NAME}-.*orig/;/${CMAKE_PROJECT_NAME}-[0-9]*.[0-9]*.*/;.cmake$;.tar.gz$;/Makefile$;~$;${CPACK_SOURCE_IGNORE_FILES}")
 include(CPack)
 
-add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
+add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
 
 
 INCLUDE(CheckIncludeFile)

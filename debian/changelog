@@ -1,4 +1,4 @@
-libneat (0) UNRELEASED; urgency=medium
+neat (0.0.1-1ubuntu1) xenial; urgency=high
 
   * Initial release.
 

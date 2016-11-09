@@ -8,7 +8,8 @@ Build-Depends: cmake,
                libldns-dev,
                libmnl-dev,
                libsctp-dev,
-               libuv1-dev,
+               libssl-dev,
+               libuv1-dev (>= 1.0.2),
                python-sphinx,
                python-sphinx-rtd-theme
 Standards-Version: 3.9.8
@@ -17,7 +18,7 @@ Vcs-Git: https://github.com/NEAT-project/neat.git
 Homepage: https://github.com/NEAT-project/neat
 
 Package: libneat0
-Architecture: linux-any
+Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends}
 Recommends: netperfmeter,
@@ -32,7 +33,7 @@ Description: NEAT Sockets API
  This package contains the shared library.
 
 Package: libneat-dev
-Architecture: linux-any
+Architecture: any
 Section: libdevel
 Depends: libneat0 (= ${binary:Version}),
          ${misc:Depends},

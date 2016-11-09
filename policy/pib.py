@@ -9,6 +9,7 @@ from policy import PropertyArray, PropertyMultiArray, dict_to_properties, Immuta
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
 POLICY_DIR = "pib/examples/"
+PIB_EXTENSIONS = ('.policy', '.profile', '.pib')
 
 
 def load_policy_json(filename):
@@ -31,10 +32,11 @@ def load_policy_json(filename):
 class NEATPolicy(object):
     """NEAT policy representation"""
 
-    def __init__(self, policy_dict, name='NA'):
+    def __init__(self, policy_dict, policy_file=None):
         # set default values
-        self.idx = id(self)
-        self.name = policy_dict.get('name', name)
+
+        self.uid = policy_dict.get('uid', id(self))
+        self.name = policy_dict.get('name', self.uid)
 
         for k, v in policy_dict.items():
             if isinstance(v, str):
@@ -43,12 +45,14 @@ class NEATPolicy(object):
         self.priority = int(policy_dict.get('priority', 0))
         self.replace_matched = policy_dict.get('replace_matched', False)
 
+        self.file = {'name': None, 'time': -1}
+
         # parse match fields
         match = policy_dict.get('match', {})
         self.match = PropertyArray()
         self.match.add(*dict_to_properties(match))
 
-        # parse properties
+        # parse augment properties
         properties = policy_dict.get('properties', {})
         self.properties = PropertyMultiArray()
         self.properties.add(*dict_to_properties(properties))
@@ -74,7 +78,7 @@ class NEATPolicy(object):
         if not self.match.items() <= input_properties.items():
             return
 
-        ## find intersection
+        # find intersection
         matching_props = self.match.items() & input_properties.items()
 
         if strict:
@@ -97,23 +101,67 @@ class NEATPolicy(object):
 
 
 class PIB(list):
-    def __init__(self, policy_dir=None, file_extension=('.policy', '.profile')):
+    def __init__(self, policy_dir, file_extension=('.policy', '.profile')):
         super().__init__()
-        self.file_extension = file_extension
         self.policies = self
         self.index = {}
 
-        if policy_dir:
-            self.load_policies(policy_dir)
+        self.file_extension = file_extension
+        # track PIB files
 
-    def load_policies(self, policy_dir=POLICY_DIR):
+        self.policy_dir = policy_dir
+        self.load_policies(self.policy_dir)
+
+    @property
+    def files(self):
+        return {v.file.get('name'): v for uid, v in self.index.items()}
+
+    def load_policies(self, policy_dir=None):
         """Load all policies in policy directory."""
+        if not policy_dir:
+            policy_dir = self.policy_dir;
+
         for filename in os.listdir(policy_dir):
             if filename.endswith(self.file_extension) and not filename.startswith(('.', '#')):
-                print('loading policy %s' % filename)
-                p = load_policy_json(os.path.join(policy_dir, filename))
-                if p:
-                    self.register(p)
+                self.load_policy(os.path.join(policy_dir, filename))
+
+    def load_policy(self, filename):
+        """Load policy.
+        """
+        if not filename.endswith(self.file_extension) and filename.startswith(('.', '#')):
+            return
+        stat = os.stat(filename)
+
+        t = stat.st_mtime_ns
+        if filename not in self.files or self.files[filename].file['time'] != t:
+            logging.info("Loading policy %s...", filename)
+            p = load_policy_json(filename)
+            p.file['name'] = filename
+            p.file['time'] = t
+            if p:
+                self.register(p)
+        else:
+            logging.info("Policy %s is up-to-date", filename)
+
+    def reload(self):
+        """
+        Reload PIB files
+        """
+        current_files = set()
+
+        for dir_path, dir_names, filenames in os.walk(self.policy_dir):
+            for f in filenames:
+                full_name = os.path.join(dir_path, f)
+                current_files.add(full_name)
+                self.load_policy(full_name)
+
+        # check if any files were deleted
+        deleted_files = self.files.keys() - current_files
+
+        for f in deleted_files:
+            logging.info("Policy file %s has been deleted", f)
+            # unregister policy
+            del self.index[self.files[f].uid]
 
     def register(self, policy):
         """Register new policy
@@ -123,14 +171,14 @@ class PIB(list):
         # check for existing policies with identical match properties
         if policy.match in [p.match for p in self.policies]:
             logging.warning("Policy match fields for policy %s already registered. " % (policy.name))
-            #return
+            # return
 
         # TODO tie breaker using match_len?
-        idx = bisect.bisect([p.priority for p in self.policies], policy.priority)
-        self.policies.insert(idx, policy)
+        uid = bisect.bisect([p.priority for p in self.policies], policy.priority)
+        self.policies.insert(uid, policy)
 
         # self.policies.sort(key=operator.methodcaller('match_len'))
-        self.index[policy.idx] = policy
+        self.index[policy.uid] = policy
 
     def lookup(self, input_properties, apply=True, cand_id=None):
         """
@@ -151,7 +199,7 @@ class PIB(list):
         for p in self.policies:
             if p.match_query(input_properties):
                 tmp_candidates = []
-                policy_info  = str(p.name)
+                policy_info = str(p.name)
                 if hasattr(p, "description"):
                     policy_info += ': %s' % p.description
                 logging.info("    " + policy_info)
@@ -169,11 +217,11 @@ class PIB(list):
                                 new_candidate = candidate + policy_properties
                             except ImmutablePropertyError:
                                 continue
-                            #  TODO copy policies from candidate and policy_properties for debugging
+                            # TODO copy policies from candidate and policy_properties for debugging
                             #  if hasattr(new_candidate, 'policies'):
-                            #      new_candidate.policies.append(p.idx)
+                            #      new_candidate.policies.append(p.uid)
                             #  else:
-                            #      new_candidate.policies = [p.idx]
+                            #      new_candidate.policies = [p.uid]
                             tmp_candidates.append(new_candidate)
                 candidates.extend(tmp_candidates)
         return candidates
@@ -193,4 +241,5 @@ if __name__ == "__main__":
     pib.dump()
 
     import code
+
     code.interact(local=locals(), banner='PIB loaded:')

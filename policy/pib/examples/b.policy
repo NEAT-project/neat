@@ -1,6 +1,6 @@
 {  
-  "name":"TCP options",
-  "description":"optimize TCP stuff",
+  "uid": "TCP_opt",
+  "description":"TCP options to optimize TCP stuff",
   "match":{
             "MTU": {
               "precedence": 1,

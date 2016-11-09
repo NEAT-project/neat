@@ -154,18 +154,19 @@ class PIBProtocol(asyncio.Protocol):
 
         filename = filename.lower()
 
-        f = open(os.path.join(CIB_DIR, '%s.slim' % filename ),'w')
+        filename = os.path.join(PIB_DIR, '%s.policy' % filename )
+
+        f = open(filename,'w')
         f.write(self.slim)
         f.close()
         logging.info("Policy saved as \"%s\"." % filename)
 
         self.transport.close()
-
+        pib.reload()
 
 
 class CIBProtocol(asyncio.Protocol):
     def connection_made(self, transport):
-        peername = transport.get_extra_info('sockname')
         self.transport = transport
         self.slim = ''
 
@@ -199,7 +200,6 @@ class CIBProtocol(asyncio.Protocol):
 
 class PMProtocol(asyncio.Protocol):
     def connection_made(self, transport):
-        peername = transport.get_extra_info('sockname')
         self.transport = transport
         self.request = ''
 

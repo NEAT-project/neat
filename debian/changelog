@@ -1,4 +1,4 @@
-neatproject (0.0.1-1ubuntu1) xenial; urgency=high
+libneat (0.0.1~td1-1ubuntu1) xenial; urgency=high
 
   * Initial release.
 

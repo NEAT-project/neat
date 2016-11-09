@@ -1,4 +1,4 @@
-Source: neatproject
+Source: libneat
 Maintainer: NEAT Project <neat@neat-project.org>
 Section: net
 Priority: optional
@@ -11,9 +11,6 @@ Build-Depends: cmake,
                libuv1-dev,
                python-sphinx,
                python-sphinx-rtd-theme
-Recommends: netperfmeter,
-            rsplib-tools,
-            tsctp
 Standards-Version: 3.9.8
 Vcs-Browser: https://github.com/NEAT-project/neat
 Vcs-Git: https://github.com/NEAT-project/neat.git
@@ -23,6 +20,9 @@ Package: libneat0
 Architecture: linux-any
 Depends: ${misc:Depends},
          ${shlibs:Depends}
+Recommends: netperfmeter,
+            rsplib-tools,
+            tsctp
 Description: NEAT Sockets API
  NEAT is a callback based library and everything revovles around the neat_ctx
  struct. This struct has to be initialized before anything else can be done.

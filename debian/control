@@ -21,9 +21,6 @@ Package: libneat0
 Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends}
-Recommends: netperfmeter,
-            rsplib-tools,
-            tsctp
 Description: NEAT Sockets API
  NEAT is a callback based library and everything revovles around the neat_ctx
  struct. This struct has to be initialized before anything else can be done.
@@ -34,7 +31,6 @@ Description: NEAT Sockets API
 
 Package: libneat-dev
 Architecture: any
-Section: libdevel
 Depends: libneat0 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
@@ -58,3 +54,21 @@ Description: NEAT Sockets API (Documentation)
  they can hook in and add their own callbacks.
  .
  This package contains the common documentation.
+
+Package: neat-tools
+Architecture: any
+Depends: libneat0 (= ${binary:Version}),
+         ${misc:Depends},
+         ${shlibs:Depends}
+Recommends: netperfmeter,
+            rsplib-tools,
+            subnetcalc,
+            tsctp,
+            tshark
+Description: NEAT Tools
+ NEAT is a callback based library and everything revovles around the neat_ctx
+ struct. This struct has to be initialized before anything else can be done.
+ NEAT uses libuv as event library, and this loop is available to users so that
+ they can hook in and add their own callbacks.
+ .
+ This package contains the shared library.

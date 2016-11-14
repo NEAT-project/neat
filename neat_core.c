@@ -1316,7 +1316,12 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
     if ((remote_ip_value = json_pack("{ss}", "value", candidate->pollable_socket->src_address)) == NULL) {
         neat_log(NEAT_LOG_DEBUG, "remote_ip_value = json_pack({ss}, value, candidate->pollable_socket->src_address)");
         goto end;
-    }   
+    }
+
+    if ((properties_value = json_object()) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "properties_value = json_object()");
+        goto end;
+    } 
 
     rc = json_object_set(properties_value, "remote_ip", remote_ip_value);
     json_decref(remote_ip_value);

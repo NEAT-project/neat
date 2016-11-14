@@ -1257,7 +1257,12 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
     json_t *interface_value = NULL;
     json_t *interface_object = NULL;
     json_t *match_value = NULL;
-    json_t *match_object = NULL;
+    json_t *remote_ip_value = NULL;
+    json_t *properties_value = NULL;
+    json_t *remote_port_value = NULL;
+    json_t *transport_value = NULL;
+    json_t *cached_value = NULL;
+    json_t *result_object = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 

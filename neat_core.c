@@ -1280,7 +1280,7 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
     }
 
     if ((interface_value = json_pack("{ss}", "value", candidate->if_name)) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "interface_value = json_pack({ss}, value, candidate->if_name))");
+        neat_log(NEAT_LOG_DEBUG, "interface_value = json_pack({ss}, value, candidate->if_name)");
         goto end;
     }
    
@@ -1307,22 +1307,72 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
         neat_log(NEAT_LOG_DEBUG, "json_array_append(match_value, interface_object)");
         goto end;
     }
+  
+    if ((remote_ip_value = json_pack("{ss}", "value", candidate->pollable_socket->src_address)) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "remote_ip_value = json_pack({ss}, value, candidate->pollable_socket->src_address)");
+        goto end;
+    }   
 
-    if ((match_object = json_object()) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "if ((match_object = json_object()) == NULL)");
+    rc = json_object_set(properties_value, "remote_ip", remote_ip_value);
+    json_decref(remote_ip_value);
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "json_object_set(properties_value, remote_ip, remote_ip_value)");
         goto end;
     }
 
-    rc = json_object_set(match_object, "match", match_value);
-    json_decref(match_value);
-    if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "json_object_set(match_object, match, match_value)");
+    if ((remote_port_value = json_pack("{si}", "value", candidate->pollable_socket->port)) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "remote_port_value = json_pack({si}, value, candidate->pollable_socket->port)");
         goto end;
-    }  
- 
+    }   
+
+    rc = json_object_set(properties_value, "remote_port", remote_port_value);
+    json_decref(remote_port_value);
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "json_object_set(properties_value, remote_port, remote_port_value)");
+        goto end;
+    }         
+
+    if ((transport_value = json_pack("{ss}", "value", stack_to_string(candidate->pollable_socket->stack))) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "transport_value = json_pack({ss}, value, stack_to_string(candidate->pollable_socket->stack)");
+        goto end;
+    }   
+
+    rc = json_object_set(properties_value, "transport", transport_value);
+    json_decref(transport_value);
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "json_object_set(properties_value, transport, transport_value)");
+        goto end;
+    }
+
+    if ((cached_value = json_pack("{sbsisi}", "value", 1 /* true */, "precedence", 2, "score", 5)) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "cached_value = json_pack({sbsisi}, value, 1, precedence, 2, score, 5)");
+        goto end;
+    }
+
+    rc = json_object_set(properties_value, "cached", cached_value);
+    json_decref(transport_value);
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "json_object_set(properties_value, cached, cached_value)");
+        goto end;
+    }
+
+    rc = json_object_set(result_object, "match", match_value);
+    json_decref(cached_value);
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "json_object_set(result_object, match, match_value)");
+        goto end;
+    } 
+
+    rc = json_object_set(result_object, "properties", properties_value);
+    json_decref(cached_value);
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "json_object_set(result_object, properties, properties_value)");
+        goto end;
+    } 
+
     // TODO: Remove.
-    char strMsg[500];
-    char *json_str = json_dumps(match_object, JSON_ENSURE_ASCII);
+    char strMsg[1000];
+    char *json_str = json_dumps(result_object, JSON_ENSURE_ASCII);
     strcpy(strMsg, "JSON: ");
     strcat(strMsg, json_str);
     neat_log(NEAT_LOG_DEBUG, strMsg);

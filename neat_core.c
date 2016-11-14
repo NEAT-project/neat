@@ -1366,6 +1366,11 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
         goto end;
     }
 
+    if ((result_object = json_object()) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "result_object = json_object()");
+        goto end;
+    } 
+
     rc = json_object_set(result_object, "match", match_value);
     json_decref(cached_value);
     if (rc < 0) {

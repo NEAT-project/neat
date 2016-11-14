@@ -1393,8 +1393,23 @@ end:
     if (match_value) {
         json_decref(match_value);
     }
-    if (match_object) {
-        json_decref(match_object);
+    if (remote_ip_value) {
+        json_decref(remote_ip_value);
+    }
+    if (remote_port_value) {
+        json_decref(remote_port_value);
+    }
+    if (transport_value) {
+        json_decref(transport_value);
+    } 
+    if (cached_value) {
+        json_decref(cached_value);
+    }      
+    if (properties_value) {
+        json_decref(properties_value);
+    }
+    if (result_object) {
+        json_decref(result_object);
     }
 }
 

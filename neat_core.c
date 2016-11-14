@@ -1576,7 +1576,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     } else {
         neat_log(NEAT_LOG_DEBUG, "NOT first connect");
 
-        //send_result_connection_attempt_to_pm(he_res, false);
+        send_result_connection_attempt_to_pm(he_res, false);
 
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);

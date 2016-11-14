@@ -333,6 +333,14 @@ struct neat_he_candidate {
 
 TAILQ_HEAD(neat_he_candidates, neat_he_candidate);
 
+// Connection attempt result sent by HE to PM.
+struct cib_he_res {
+    char *interface;
+    char *remote_ip;
+    unsigned int remote_port;
+    int transport;
+};
+
 void neat_free_candidates(struct neat_he_candidates *candidates);
 void neat_free_candidate(struct neat_he_candidate *candidate);
 

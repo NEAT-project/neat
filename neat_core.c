@@ -1248,7 +1248,7 @@ static void free_he_handle_cb(uv_handle_t *handle)
 }
 
 static void
-send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool result)
+send_result_connection_attempt_to_pm(struct cib_he_res *candidate, _Bool result)
 {
     int rc;
     const char *home_dir;
@@ -1284,8 +1284,8 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
         socket_path = socket_path_buf;
     }
 
-    if ((interface_value = json_pack("{ss}", "value", candidate->if_name)) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "interface_value = json_pack({ss}, value, candidate->if_name)");
+    if ((interface_value = json_pack("{ss}", "value", he_res->interface)) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "interface_value = json_pack({ss}, value, he_res->interface)");
         goto end;
     }
    
@@ -1313,8 +1313,8 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
         goto end;
     }
   
-    if ((remote_ip_value = json_pack("{ss}", "value", candidate->pollable_socket->src_address)) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "remote_ip_value = json_pack({ss}, value, candidate->pollable_socket->src_address)");
+    if ((remote_ip_value = json_pack("{ss}", "value", he_res->remote_ip)) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "remote_ip_value = json_pack({ss}, value, he_res->remote_ip)");
         goto end;
     }
 
@@ -1330,8 +1330,8 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
         goto end;
     }
 
-    if ((remote_port_value = json_pack("{si}", "value", candidate->pollable_socket->port)) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "remote_port_value = json_pack({si}, value, candidate->pollable_socket->port)");
+    if ((remote_port_value = json_pack("{si}", "value", he_res->remote_port)) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "remote_port_value = json_pack({si}, value, he_res->remote_port)");
         goto end;
     }   
 
@@ -1342,8 +1342,8 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
         goto end;
     }         
 
-    if ((transport_value = json_pack("{ss}", "value", stack_to_string(candidate->pollable_socket->stack))) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "transport_value = json_pack({ss}, value, stack_to_string(candidate->pollable_socket->stack)");
+    if ((transport_value = json_pack("{ss}", "value", stack_to_string(he_res->transport ))) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "transport_value = json_pack({ss}, value, stack_to_string(he_res->transport )");
         goto end;
     }   
 
@@ -1354,7 +1354,7 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
         goto end;
     }
 
-    if ((cached_value = json_pack("{sbsisi}", "value", 1 /* true */, "precedence", 2, "score", 5)) == NULL) {
+    if ((cached_value = json_pack("{sbsisi}", "value", (result)?1:0, "precedence", 2, "score", 5)) == NULL) {
         neat_log(NEAT_LOG_DEBUG, "cached_value = json_pack({sbsisi}, value, 1, precedence, 2, score, 5)");
         goto end;
     }
@@ -1394,6 +1394,10 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
     free(json_str);
 
 end:
+    free(he_res->interface);
+    free(he_res->remote_ip);
+    free(he_res);
+
     if (interface_value) {
         json_decref(interface_value);
     }
@@ -1433,6 +1437,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     struct neat_flow *flow = candidate->pollable_socket->flow;
     struct neat_he_candidates *candidate_list = flow->candidate_list;
     json_t *security = NULL, *val = NULL;
+    struct cib_he_res *he_res = NULL;
 
     c++;
     neat_log(NEAT_LOG_DEBUG, "Invokation count: %d", c);
@@ -1494,6 +1499,13 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     neat_log(NEAT_LOG_DEBUG,
              "Connection status: %d", status);
 
+    he_res = malloc(sizeof(struct cib_he_res));
+    assert(he_res);
+    he_res->interface = strdup(candidate->if_name);
+    he_res->remote_ip = strdup(candidate->pollable_socket->dst_address);
+    he_res->remote_port = candidate->pollable_socket->port;
+    he_res->transport = candidate->pollable_socket->stack;
+
     // TODO: In which circumstances do we end up in the three different cases?
     if (flow->firstWritePending) {
         // assert(0);
@@ -1501,7 +1513,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         assert(flow->socket);
 
-        send_result_connection_attempt_to_pm(candidate, true);
+        send_result_connection_attempt_to_pm(he_res, true);
 
         // Transfer this handle to the "main" polling callback
         // TODO: Consider doing this in some other way that directly calling
@@ -1544,7 +1556,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
         flow->isPolling = 1;
 
-        send_result_connection_attempt_to_pm(candidate, true);
+        send_result_connection_attempt_to_pm(he_res, true);
 
         if ((security = json_object_get(flow->properties, "security")) != NULL &&
             (val = json_object_get(security, "value")) != NULL &&
@@ -1562,10 +1574,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
             uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
         }
     } else {
-        // assert(0);
         neat_log(NEAT_LOG_DEBUG, "NOT first connect");
 
-        //send_result_connection_attempt_to_pm(candidate, false);
+        //send_result_connection_attempt_to_pm(he_res, false);
 
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);

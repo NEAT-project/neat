@@ -1266,7 +1266,7 @@ send_result_connection_attempt_to_pm(struct cib_he_res *he_res, _Bool result)
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    assert(candidate);
+    assert(he_res);
 
     socket_path = getenv("NEAT_PM_SOCKET");
     if (!socket_path) {

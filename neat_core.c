@@ -1360,7 +1360,7 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
     }
 
     rc = json_object_set(properties_value, "cached", cached_value);
-    json_decref(transport_value);
+    json_decref(cached_value);
     if (rc < 0) {
         neat_log(NEAT_LOG_DEBUG, "json_object_set(properties_value, cached, cached_value)");
         goto end;
@@ -1372,14 +1372,14 @@ send_result_connection_attempt_to_pm(struct neat_he_candidate *candidate, _Bool 
     } 
 
     rc = json_object_set(result_object, "match", match_value);
-    json_decref(cached_value);
+    json_decref(match_value);
     if (rc < 0) {
         neat_log(NEAT_LOG_DEBUG, "json_object_set(result_object, match, match_value)");
         goto end;
     } 
 
     rc = json_object_set(result_object, "properties", properties_value);
-    json_decref(cached_value);
+    json_decref(properties_value);
     if (rc < 0) {
         neat_log(NEAT_LOG_DEBUG, "json_object_set(result_object, properties, properties_value)");
         goto end;

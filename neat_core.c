@@ -1248,7 +1248,7 @@ static void free_he_handle_cb(uv_handle_t *handle)
 }
 
 static void
-send_result_connection_attempt_to_pm(struct cib_he_res *candidate, _Bool result)
+send_result_connection_attempt_to_pm(struct cib_he_res *he_res, _Bool result)
 {
     int rc;
     const char *home_dir;

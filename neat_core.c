@@ -1509,7 +1509,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     // TODO: In which circumstances do we end up in the three different cases?
     if (flow->firstWritePending) {
         // assert(0);
-        neat_log(NEAT_LOG_DEBUG, "First successful connect");
+        neat_log(NEAT_LOG_DEBUG, "First successful connect (flow->firstWritePending)");
 
         assert(flow->socket);
 
@@ -1523,7 +1523,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->hefirstConnect = 0;
 
         //neat_log(NEAT_LOG_DEBUG, "?");
-        neat_log(NEAT_LOG_DEBUG, "First successful connect");
+        neat_log(NEAT_LOG_DEBUG, "First successful connect (flow->hefirstConnect)");
 
         assert(flow->socket);
 

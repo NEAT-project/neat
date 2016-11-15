@@ -1389,7 +1389,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
 
     // TODO: Remove.
     char *json_str = json_dumps(result_object, JSON_ENSURE_ASCII);
-    char strMsg[strlen(json_str) + 20];
+    char strMsg[1000];
     strcpy(strMsg, "JSON: ");
     strcat(strMsg, json_str);
     neat_log(NEAT_LOG_DEBUG, strMsg);

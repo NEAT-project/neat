@@ -1247,8 +1247,10 @@ static void free_he_handle_cb(uv_handle_t *handle)
     free(handle);
 }
 
+static void on_pm_he_error(struct neat_ctx *ctx, struct neat_flow *flow, int error);
+
 static void
-send_result_connection_attempt_to_pm(struct cib_he_res *he_res, _Bool result)
+send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_he_res *he_res, _Bool result)
 {
     int rc;
     const char *home_dir;
@@ -1393,6 +1395,8 @@ send_result_connection_attempt_to_pm(struct cib_he_res *he_res, _Bool result)
     neat_log(NEAT_LOG_DEBUG, strMsg);
     free(json_str);
 
+    neat_json_send_once(ctx, flow, socket_path, result_object, on_pm_he_error, on_pm_he_error);
+
 end:
     free(he_res->interface);
     free(he_res->remote_ip);
@@ -1513,7 +1517,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         assert(flow->socket);
 
-        send_result_connection_attempt_to_pm(he_res, true);
+        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
 
         // Transfer this handle to the "main" polling callback
         // TODO: Consider doing this in some other way that directly calling
@@ -1556,7 +1560,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
         flow->isPolling = 1;
 
-        send_result_connection_attempt_to_pm(he_res, true);
+        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
 
         if ((security = json_object_get(flow->properties, "security")) != NULL &&
             (val = json_object_get(security, "value")) != NULL &&
@@ -1576,7 +1580,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     } else {
         neat_log(NEAT_LOG_DEBUG, "NOT first connect");
 
-        send_result_connection_attempt_to_pm(he_res, false);
+        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
 
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);
@@ -2503,6 +2507,26 @@ on_pm_error(struct neat_ctx *ctx, struct neat_flow *flow, int error)
             neat_log(NEAT_LOG_DEBUG, "===== Unable to communicate with PM, using fallback =====");
             neat_resolve(ctx->resolver, AF_UNSPEC, flow->name, flow->port,
                          open_resolve_cb, flow);
+            break;
+        case PM_ERROR_OOM:
+            break;
+        default:
+            assert(0);
+            break;
+    }
+
+}
+
+static void
+on_pm_he_error(struct neat_ctx *ctx, struct neat_flow *flow, int error)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    switch (error) {
+        case PM_ERROR_SOCKET_UNAVAILABLE:
+        case PM_ERROR_SOCKET:
+        case PM_ERROR_INVALID_JSON:
+            neat_log(NEAT_LOG_DEBUG, "===== Unable to communicate with PM =====");
             break;
         case PM_ERROR_OOM:
             break;

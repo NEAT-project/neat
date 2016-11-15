@@ -2516,7 +2516,7 @@ on_pm_error(struct neat_ctx *ctx, struct neat_flow *flow, int error)
         case PM_ERROR_SOCKET_UNAVAILABLE:
         case PM_ERROR_SOCKET:
         case PM_ERROR_INVALID_JSON:
-            neat_log(NEAT_LOG_DEBUG, "===== Unable to communicate with PM, using fallback =====");
+            neat_log(NEAT_LOG_DEBUG, "===== Unable to communicate with PM, using fallback =====, error code = %d", error);
             neat_resolve(ctx->resolver, AF_UNSPEC, flow->name, flow->port,
                          open_resolve_cb, flow);
             break;

@@ -1388,8 +1388,8 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     } 
 
     // TODO: Remove.
-    char strMsg[1000];
     char *json_str = json_dumps(result_object, JSON_ENSURE_ASCII);
+    char strMsg[strlen(json_str) + 20];
     strcpy(strMsg, "JSON: ");
     strcat(strMsg, json_str);
     neat_log(NEAT_LOG_DEBUG, strMsg);
@@ -1401,7 +1401,7 @@ end:
     free(he_res->interface);
     free(he_res->remote_ip);
     free(he_res);
-    
+
     if (interface_value) {
         json_decref(interface_value);
     }

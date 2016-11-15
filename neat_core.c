@@ -1265,6 +1265,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     json_t *transport_value = NULL;
     json_t *cached_value = NULL;
     json_t *result_object = NULL;
+    jsot_t *result_array = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -1385,17 +1386,28 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     if (rc < 0) {
         neat_log(NEAT_LOG_DEBUG, "json_object_set(result_object, properties, properties_value)");
         goto end;
-    } 
+    }
+
+    if ((result_array = json_array()) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "if ((result_array = json_array()) == NULL)");
+        goto end;
+    }
+
+    rc = json_array_append(result_array, result_object);
+    if (rc < 0) {
+        neat_log(NEAT_LOG_DEBUG, "json_array_append(result_array, result_object)");
+        goto end;
+    }
 
     // TODO: Remove.
-    char *json_str = json_dumps(result_object, JSON_ENSURE_ASCII);
+    char *json_str = json_dumps(result_array, JSON_ENSURE_ASCII);
     char strMsg[1000];
     strcpy(strMsg, "JSON: ");
     strcat(strMsg, json_str);
     neat_log(NEAT_LOG_DEBUG, strMsg);
     free(json_str);
 
-    neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_object, on_pm_he_error);
+    neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
 
 end:
     free(he_res->interface);

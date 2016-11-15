@@ -1013,12 +1013,15 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             if (flow->acceptPending) {
                 flow->readBufferMsgComplete = 0;
 
-                neat_flow *newFlow = neat_find_flow(ctx, &socket->srcAddr, (struct sockaddr *)&peerAddr);
+                neat_flow *newFlow = neat_find_flow(ctx, (struct sockaddr*)&socket->src_sockaddr, (struct sockaddr *)&peerAddr);
 
                 if (!newFlow) {
                     neat_log(NEAT_LOG_DEBUG, "%s - Creating new UDP flow", __func__);
 
-                    memcpy(&socket->dstAddr, (struct sockaddr *)&peerAddr, sizeof(struct sockaddr));
+                    // Use socket->dst_sockaddr as temporary storage for
+                    // the remote socket address of the datagram.
+                    socket->dst_len = peerAddrLen;
+                    memcpy((struct sockaddr*)&socket->dst_sockaddr, (struct sockaddr *)&peerAddr, peerAddrLen);
                     newFlow = do_accept(ctx, flow, socket);
                 }
 
@@ -1559,10 +1562,12 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                                     "interface", "value", "(unknown)");
 
     newFlow->socket->stack   = listen_socket->stack;
-    newFlow->socket->srcAddr = listen_socket->srcAddr;
-    newFlow->socket->dstAddr = listen_socket->dstAddr;
     newFlow->socket->type    = listen_socket->type;
     newFlow->socket->family  = listen_socket->family;
+    newFlow->socket->dst_len = listen_socket->dst_len;
+    newFlow->socket->src_len = listen_socket->src_len;
+    memcpy(&newFlow->socket->dst_sockaddr, &listen_socket->dst_sockaddr, listen_socket->dst_len);
+    memcpy(&newFlow->socket->src_sockaddr, &listen_socket->src_sockaddr, listen_socket->src_len);
 
     newFlow->ctx = ctx;
     newFlow->writeLimit = flow->writeLimit;
@@ -1635,8 +1640,8 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
             setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
 
-            bind(newFlow->socket->fd, &newFlow->socket->srcAddr, sizeof(struct sockaddr));
-            connect(newFlow->socket->fd, &newFlow->socket->dstAddr, sizeof(struct sockaddr));
+            bind(newFlow->socket->fd, (struct sockaddr*)&newFlow->socket->src_sockaddr, newFlow->socket->src_len);
+            connect(newFlow->socket->fd, (struct sockaddr*)&newFlow->socket->dst_sockaddr, newFlow->socket->dst_len);
 
             newFlow->everConnected = 1;
 
@@ -1664,8 +1669,8 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
             setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
 
-            bind(newFlow->socket->fd, &newFlow->socket->srcAddr, sizeof(struct sockaddr));
-            connect(newFlow->socket->fd, &newFlow->socket->dstAddr, sizeof(struct sockaddr));
+            bind(newFlow->socket->fd, (struct sockaddr*)&newFlow->socket->src_sockaddr, newFlow->socket->src_len);
+            connect(newFlow->socket->fd, (struct sockaddr*)&newFlow->socket->dst_sockaddr, newFlow->socket->dst_len);
 
             newFlow->everConnected = 1;
 
@@ -2949,9 +2954,14 @@ accept_resolve_cb(struct neat_resolver_results *results,
         listen_socket->stack = neat_base_stack(stacks[i]);
         listen_socket->family = results->lh_first->ai_family;
         listen_socket->type = socket_type;
+        listen_socket->port = flow->port;
+        listen_socket->src_address = NULL;
+        listen_socket->dst_address = NULL;
 
-        memcpy(&listen_socket->srcAddr, (struct sockaddr *) &(results->lh_first->dst_addr), sizeof(struct sockaddr));
-        memset(&listen_socket->dstAddr, 0, sizeof(struct sockaddr));
+        listen_socket->src_len = results->lh_first->dst_addr_len;
+        listen_socket->dst_len = 0;
+        memcpy(&listen_socket->src_sockaddr, (struct sockaddr *) &(results->lh_first->dst_addr), results->lh_first->dst_addr_len);
+        memset(&listen_socket->dst_sockaddr, 0, sizeof(struct sockaddr_storage));
 #endif
         listen_socket->fd = fd;
 
@@ -4429,7 +4439,7 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 
     rv->properties = json_object();
 
-    rv->socket = malloc(sizeof(struct neat_pollable_socket));
+    rv->socket = calloc(1, sizeof(struct neat_pollable_socket));
     if (!rv->socket)
         goto error;
 
@@ -4635,8 +4645,8 @@ neat_find_flow(neat_ctx *ctx, struct sockaddr *src, struct sockaddr *dst)
         if (flow->acceptPending == 1)
             continue;
 
-        if ((sockaddr_cmp(&flow->socket->dstAddr, dst) != 0) &&
-               (sockaddr_cmp(&flow->socket->srcAddr, src) != 0)) {
+        if ((sockaddr_cmp((struct sockaddr*)&flow->socket->dst_sockaddr, dst) != 0) &&
+               (sockaddr_cmp((struct sockaddr*)&flow->socket->src_sockaddr, src) != 0)) {
                        return flow;
         }
     }

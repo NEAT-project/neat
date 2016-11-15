@@ -166,9 +166,6 @@ struct neat_pollable_socket
     struct sockaddr_storage src_sockaddr;
     socklen_t               src_len;
 
-    struct sockaddr srcAddr;
-    struct sockaddr dstAddr;
-
     uv_poll_t *handle;
 
     TAILQ_ENTRY(neat_pollable_socket) next;

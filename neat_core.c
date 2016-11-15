@@ -1294,108 +1294,90 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
    
   
     if ((interface_object = json_object()) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "interface_object = json_object()");
         goto end;
     }
 
     rc = json_object_set(interface_object, "interface", interface_value);
     json_decref(interface_value);
     if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "json_object_set(interface_object, interface, interface_value)");
         goto end;
     }
 
     if ((match_value = json_array()) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "if ((match_value = json_array()) == NULL)");
         goto end;
     }
 
     rc = json_array_append(match_value, interface_object);
     if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "json_array_append(match_value, interface_object)");
         goto end;
     }
   
     if ((remote_ip_value = json_pack("{ss}", "value", he_res->remote_ip)) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "remote_ip_value = json_pack({ss}, value, he_res->remote_ip)");
         goto end;
     }
 
     if ((properties_value = json_object()) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "properties_value = json_object()");
         goto end;
     } 
 
     rc = json_object_set(properties_value, "remote_ip", remote_ip_value);
     json_decref(remote_ip_value);
     if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "json_object_set(properties_value, remote_ip, remote_ip_value)");
         goto end;
     }
 
     if ((remote_port_value = json_pack("{si}", "value", he_res->remote_port)) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "remote_port_value = json_pack({si}, value, he_res->remote_port)");
         goto end;
     }   
 
     rc = json_object_set(properties_value, "remote_port", remote_port_value);
     json_decref(remote_port_value);
     if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "json_object_set(properties_value, remote_port, remote_port_value)");
         goto end;
     }         
 
     if ((transport_value = json_pack("{ss}", "value", stack_to_string(he_res->transport ))) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "transport_value = json_pack({ss}, value, stack_to_string(he_res->transport )");
         goto end;
     }   
 
     rc = json_object_set(properties_value, "transport", transport_value);
     json_decref(transport_value);
     if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "json_object_set(properties_value, transport, transport_value)");
         goto end;
     }
 
     if ((cached_value = json_pack("{sbsisi}", "value", (result)?1:0, "precedence", 2, "score", 5)) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "cached_value = json_pack({sbsisi}, value, 1, precedence, 2, score, 5)");
         goto end;
     }
 
     rc = json_object_set(properties_value, "cached", cached_value);
     json_decref(cached_value);
     if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "json_object_set(properties_value, cached, cached_value)");
         goto end;
     }
 
     if ((result_object = json_object()) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "result_object = json_object()");
         goto end;
     } 
 
     rc = json_object_set(result_object, "match", match_value);
     json_decref(match_value);
     if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "json_object_set(result_object, match, match_value)");
         goto end;
     } 
 
     rc = json_object_set(result_object, "properties", properties_value);
     json_decref(properties_value);
     if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "json_object_set(result_object, properties, properties_value)");
         goto end;
     }
 
     if ((result_array = json_array()) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "if ((result_array = json_array()) == NULL)");
         goto end;
     }
 
     rc = json_array_append(result_array, result_object);
     if (rc < 0) {
-        neat_log(NEAT_LOG_DEBUG, "json_array_append(result_array, result_object)");
         goto end;
     }
 

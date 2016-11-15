@@ -1265,7 +1265,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     json_t *transport_value = NULL;
     json_t *cached_value = NULL;
     json_t *result_object = NULL;
-    jsot_t *result_array = NULL;
+    json_t *result_array = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 

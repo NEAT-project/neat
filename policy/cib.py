@@ -15,6 +15,10 @@ from policy import dict_to_properties
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
 
+class CIBEntryError(Exception):
+    pass
+
+
 def load_json(filename):
     """
     Read CIB source from JSON file
@@ -34,6 +38,11 @@ class CIBSource(object):
     cib = None
 
     def __init__(self, source_dict):
+
+        if not isinstance(source_dict, dict):
+            raise CIBEntryError("received invalid CIB object")
+
+        # FIXME generate persistent UIDs
         self.uid = source_dict.get('uid', str(uuid.uuid4()))
         self.root = source_dict.get('root', False)
         # otherwise chain matched CIBs
@@ -48,7 +57,7 @@ class CIBSource(object):
         # convert to PropertyMultiArray with NEATProperties
         properties = source_dict.get('properties')
         if not isinstance(properties, list):
-            #logging.warning("properties should be in a list [NEW STYLE]")
+            # logging.warning("properties should be in a list [NEW STYLE]")
             properties = [properties]
 
         self.properties = []
@@ -204,7 +213,7 @@ class CIB(object):
     """
 
     cib_dir = './cib/example/'
-    CIB_EXTENSIONS = ('.cib', '.local', '.connection', '.remote')
+    CIB_EXTENSIONS = ('.cib', '.local', '.connection', '.remote', '.slim')
 
     def __init__(self, cib_dir=None):
         self.uid = {}
@@ -251,6 +260,8 @@ class CIB(object):
         cib_dir = self.cib_dir if not cib_dir else cib_dir
         full_names = set()
 
+        logging.info("checking for CIB updates...")
+
         for dirpath, dirnames, filenames in os.walk(cib_dir):
             for filename in filenames:
                 if not filename.endswith(CIB.CIB_EXTENSIONS) or filename.startswith(('.', '#')):
@@ -287,7 +298,12 @@ class CIB(object):
         if not cs:
             logging.warning("CIB source file %s was invalid" % filename)
             return
-        cib_source = CIBSource(cs)
+        try:
+            cib_source = CIBSource(cs)
+        except CIBEntryError as e:
+            logging.error("Unable to load CIB source %s" % filename)
+            return
+
         cib_source.filename = filename
         self.register(cib_source)
 

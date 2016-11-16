@@ -186,17 +186,26 @@ class CIBProtocol(asyncio.Protocol):
             logging.warning('invalid CIB file format')
             return
 
-        filename = json_slim.get('uid')
-        if not filename:
-            # generate CIB filename
-            filename = hashlib.md5('json_slim'.encode('utf-8')).hexdigest()
+        # make sure we always get a list of CIB entries
+        if not isinstance(json_slim, list):
+            json_slim = [json_slim]
 
-        filename = filename.lower()
+        for cib_entry in json_slim:
+            filename = cib_entry.get('uid')
+            slim = json.dumps(cib_entry)
 
-        f = open(os.path.join(CIB_DIR, '%s.slim' % filename), 'w')
-        f.write(self.slim)
-        f.close()
-        logging.info("CIB entry saved as \"%s\"." % filename)
+            if not filename:
+                logging.warning("CIB entry has no UID")
+                # generate CIB filename
+                filename = hashlib.md5(slim.encode('utf-8')).hexdigest()
+
+            filename = filename.lower() + '.slim'
+
+            f = open(os.path.join(CIB_DIR, '%s' % filename), 'w')
+            f.write(slim)
+            f.close()
+            logging.info("CIB entry saved as \"%s\"." % filename)
+
         cib.reload_files()
         self.transport.close()
 

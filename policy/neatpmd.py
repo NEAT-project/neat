@@ -8,6 +8,8 @@ import os
 from copy import deepcopy
 from operator import attrgetter
 
+from aiohttp import web
+
 import policy
 from cib import CIB
 from pib import PIB
@@ -28,7 +30,7 @@ else:
 
 PIB_SOCK = os.environ['HOME'] + '/.neat/neat_pib_socket'
 CIB_SOCK = os.environ['HOME'] + '/.neat/neat_cib_socket'
-
+REST_PORT = 45888
 
 PIB_DIR = args.pib
 CIB_DIR = args.cib
@@ -87,7 +89,8 @@ def process_request(json_str, num_candidates=10):
             interface.value = eth
             r.add(interface)
 
-        p_cached = policy.NEATProperty(('is_cached',True),precedence=policy.NEATProperty.OPTIONAL,score=1.0)
+        # FIXME
+        p_cached = policy.NEATProperty(('is_cached', False), precedence=policy.NEATProperty.OPTIONAL, score=1.0)
         r.add(p_cached)
 
     print('Received %d NEAT requests' % len(requests))
@@ -147,16 +150,16 @@ class PIBProtocol(asyncio.Protocol):
             logging.warning('invalid PIB file format')
             return
 
-        filename = json_slim.get('name')
+        filename = json_slim.get('uid')
         if not filename:
             # generate hash policy filename
             filename = hashlib.md5('json_slim'.encode('utf-8')).hexdigest()
 
         filename = filename.lower()
 
-        filename = os.path.join(PIB_DIR, '%s.policy' % filename )
+        filename = os.path.join(PIB_DIR, '%s.policy' % filename)
 
-        f = open(filename,'w')
+        f = open(filename, 'w')
         f.write(self.slim)
         f.close()
         logging.info("Policy saved as \"%s\"." % filename)
@@ -183,14 +186,14 @@ class CIBProtocol(asyncio.Protocol):
             logging.warning('invalid CIB file format')
             return
 
-        filename = json_slim.get('name')
+        filename = json_slim.get('uid')
         if not filename:
-            # generate hash policy filename
+            # generate CIB filename
             filename = hashlib.md5('json_slim'.encode('utf-8')).hexdigest()
 
         filename = filename.lower()
 
-        f = open(os.path.join(CIB_DIR, '%s.slim' % filename ),'w')
+        f = open(os.path.join(CIB_DIR, '%s.slim' % filename), 'w')
         f.write(self.slim)
         f.close()
         logging.info("CIB entry saved as \"%s\"." % filename)
@@ -224,6 +227,12 @@ class PMProtocol(asyncio.Protocol):
         self.transport.close()
 
 
+async def handle(request):
+    name = request.match_info.get('name', "Anonymous")
+    text = "Hello, " + name
+    return web.Response(text=text)
+
+
 def no_loop_test():
     """
     Dummy JSON request for testing
@@ -232,7 +241,7 @@ def no_loop_test():
 
     test_request_str = '{"remote_ip": {"value": "192.168.113.24", "precedence": 2}, "transport": {"value": "reliable", "precedence": 2}}'
 
-    #SDN
+    # SDN
     test_request_str = '{"remote_ip": {"value": "203.0.113.23", "precedence": 2}, "transport": {"value": "reliable", "precedence": 2}, "remote_port": {"value": 80}}'
     process_request(test_request_str)
 
@@ -249,13 +258,21 @@ if __name__ == "__main__":
     pib = PIB(PIB_DIR, file_extension='.policy')
 
     # FIXME: REMOVE only for local testing
-    #no_loop_test()
+    # no_loop_test()
+
+    app = web.Application()
+    app.router.add_get('/', handle)
+    app.router.add_get('/{name}', handle)
+    handler = app.make_handler()
 
     loop = asyncio.get_event_loop()
     # Each client connection creates a new protocol instance
     coro = loop.create_unix_server(PMProtocol, DOMAIN_SOCK)
     coro_pib = loop.create_unix_server(PIBProtocol, PIB_SOCK)
     coro_cib = loop.create_unix_server(CIBProtocol, CIB_SOCK)
+
+    f = loop.create_server(handler, '0.0.0.0', REST_PORT)
+    srv = loop.run_until_complete(f)
 
     server = loop.run_until_complete(coro)
     pib_server = loop.run_until_complete(coro_pib)

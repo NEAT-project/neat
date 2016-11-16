@@ -1,5 +1,5 @@
 {  
-    "name": "reduce MTU for LTE connections",
+    "uid": "reduce MTU for LTE connections",
     "priority": 20,
     "match":{
 		"is_lte": {

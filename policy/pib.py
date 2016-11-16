@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import shutil
+import time
 
 from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError
 
@@ -36,6 +37,8 @@ class NEATPolicy(object):
         # set default values
 
         self.uid = policy_dict.get('uid', id(self))
+
+        # deprecated
         self.name = policy_dict.get('name', self.uid)
 
         for k, v in policy_dict.items():
@@ -45,7 +48,8 @@ class NEATPolicy(object):
         self.priority = int(policy_dict.get('priority', 0))
         self.replace_matched = policy_dict.get('replace_matched', False)
 
-        self.file = {'name': None, 'time': -1}
+        self.filename = None
+        self.time = time.time()
 
         # parse match fields
         match = policy_dict.get('match', {})
@@ -94,14 +98,14 @@ class NEATPolicy(object):
             properties.add(*p)
 
     def __str__(self):
-        return "%d POLICY %s: %s   ==>   %s" % (self.priority, self.name, self.match, self.properties)
+        return "%d POLICY %s: %s   ==>   %s" % (self.priority, self.uid, self.match, self.properties)
 
     def __repr__(self):
-        return repr({a: getattr(self, a) for a in ['name', 'match', 'properties', 'priority']})
+        return repr({a: getattr(self, a) for a in ['uid', 'match', 'properties', 'priority']})
 
 
 class PIB(list):
-    def __init__(self, policy_dir, file_extension=('.policy', '.profile')):
+    def __init__(self, policy_dir, file_extension=('.policy', '.profile'), policy_type='policy'):
         super().__init__()
         self.policies = self
         self.index = {}
@@ -109,12 +113,13 @@ class PIB(list):
         self.file_extension = file_extension
         # track PIB files
 
+        self.policy_type = policy_type
         self.policy_dir = policy_dir
         self.load_policies(self.policy_dir)
 
     @property
     def files(self):
-        return {v.file.get('name'): v for uid, v in self.index.items()}
+        return {v.filename: v for uid, v in self.index.items()}
 
     def load_policies(self, policy_dir=None):
         """Load all policies in policy directory."""
@@ -133,15 +138,17 @@ class PIB(list):
         stat = os.stat(filename)
 
         t = stat.st_mtime_ns
-        if filename not in self.files or self.files[filename].file['time'] != t:
+        if filename not in self.files or self.files[filename].timestamp != t:
             logging.info("Loading policy %s...", filename)
             p = load_policy_json(filename)
-            p.file['name'] = filename
-            p.file['time'] = t
+            # update filename and timestamp
+            p.filename = filename
+            p.timestamp = t
             if p:
                 self.register(p)
         else:
-            logging.info("Policy %s is up-to-date", filename)
+            pass
+            # logging.debug("Policy %s is up-to-date", filename)
 
     def reload(self):
         """
@@ -161,7 +168,7 @@ class PIB(list):
         for f in deleted_files:
             logging.info("Policy file %s has been deleted", f)
             # unregister policy
-            del self.index[self.files[f].uid]
+            self.unregister(self.files[f].uid)
 
     def register(self, policy):
         """Register new policy
@@ -170,7 +177,7 @@ class PIB(list):
         """
         # check for existing policies with identical match properties
         if policy.match in [p.match for p in self.policies]:
-            logging.warning("Policy match fields for policy %s already registered. " % (policy.name))
+            logging.debug("Policy match fields for policy %s already registered. " % (policy.uid))
             # return
 
         # TODO tie breaker using match_len?
@@ -179,6 +186,9 @@ class PIB(list):
 
         # self.policies.sort(key=operator.methodcaller('match_len'))
         self.index[policy.uid] = policy
+
+    def unregister(self, policy_uid):
+        del self.index[policy_uid]
 
     def lookup(self, input_properties, apply=True, cand_id=None):
         """
@@ -199,7 +209,7 @@ class PIB(list):
         for p in self.policies:
             if p.match_query(input_properties):
                 tmp_candidates = []
-                policy_info = str(p.name)
+                policy_info = str(p.uid)
                 if hasattr(p, "description"):
                     policy_info += ': %s' % p.description
                 logging.info("    " + policy_info)

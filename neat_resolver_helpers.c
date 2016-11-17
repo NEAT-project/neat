@@ -47,8 +47,24 @@ neat_resolver_helpers_check_for_literal(uint8_t *family,
 
     //The only time inet_pton fails is if the system lacks v4/v6 support. This
     //should rather be handled with an ifdef + check at compile time
-    v4_literal = inet_pton(AF_INET, node, &dummy_addr);
-    v6_literal = inet_pton(AF_INET6, node, &dummy_addr);
+    if (strchr(node, ',') == NULL) {
+        v4_literal = inet_pton(AF_INET, node, &dummy_addr);
+        v6_literal = inet_pton(AF_INET6, node, &dummy_addr);
+    } else {
+        // More than one destination address provided
+        char *tmp = strdup(node);
+        char *address_name = strtok((char *)tmp, ",");
+        while (address_name != NULL) {
+            v4_literal = inet_pton(AF_INET, address_name, &dummy_addr);
+            v6_literal = inet_pton(AF_INET6, address_name, &dummy_addr);
+            if (!(v4_literal | v6_literal)) {
+                free (tmp);
+                return v4_literal | v6_literal;
+            }
+            address_name = strtok(NULL, ",");
+        }
+        free (tmp);
+    }
 
     //These are the two possible error cases:
     //if family is v4 and address is v6 (or opposite), then user has made a

@@ -25,3 +25,5 @@ FOREACH (neat_test ${neat_test_scripts})
     MESSAGE(STATUS "copy script ${neat_test}")
     CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/${neat_test} ${CMAKE_CURRENT_BINARY_DIR}/${neat_test} COPYONLY)
 ENDFOREACH()
+
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/valgrind.suppressions ${CMAKE_CURRENT_BINARY_DIR}/valgrind.suppressions COPYONLY)

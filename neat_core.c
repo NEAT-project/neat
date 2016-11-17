@@ -416,6 +416,8 @@ neat_free_candidate(struct neat_he_candidate *candidate)
         }
     }
 
+    free(candidate->pollable_socket->src_address);
+    free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket);
     free(candidate->if_name);
     json_decref(candidate->properties);
@@ -2322,19 +2324,23 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     if (!dstfound) {
                         memcpy(&(candidate->pollable_socket->local_addr[0]), &tmpsrc, result->src_addr_len);
                         candidate->pollable_socket->nr_local_addr++;
+                        free(candidate->pollable_socket->src_address);
                         candidate->pollable_socket->src_address = strdup(src_buffer);
                     }
                 }
             } else {
+                free(candidate->pollable_socket->src_address);
                 candidate->pollable_socket->src_address = strdup(src_buffer);
                 candidate->pollable_socket->src_len     = result->src_addr_len;
                 memcpy(&candidate->pollable_socket->src_sockaddr, &result->src_addr, result->src_addr_len);
             }
 #else
+            free(candidate->pollable_socket->src_address);
             candidate->pollable_socket->src_address = strdup(src_buffer);
             candidate->pollable_socket->src_len     = result->src_addr_len;
             memcpy(&candidate->pollable_socket->src_sockaddr, &result->src_addr, result->src_addr_len);
 #endif
+            free(candidate->pollable_socket->dst_address);
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
             candidate->pollable_socket->dst_len     = result->dst_addr_len;
             // assert(candidate->if_name);

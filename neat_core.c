@@ -416,8 +416,6 @@ neat_free_candidate(struct neat_he_candidate *candidate)
         }
     }
 
-    free(candidate->pollable_socket->src_address);
-    free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket);
     free(candidate->if_name);
     json_decref(candidate->properties);

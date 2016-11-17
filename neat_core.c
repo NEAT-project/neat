@@ -1169,8 +1169,12 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         }
 #endif // else !defined(USRSCTP_SUPPORT)
     }
-    READYCALLBACKSTRUCT;
-    flow->operations->on_readable(flow->operations);
+
+    if (flow->operations->on_readable) {
+        READYCALLBACKSTRUCT;
+        flow->operations->on_readable(flow->operations);
+    }
+
     return READ_OK;
 }
 
@@ -1216,11 +1220,26 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     }
 
     int newEvents = 0;
-    if (flow->operations && flow->operations->on_readable) {
-        newEvents |= UV_READABLE;
-    }
-    if (flow->operations && flow->operations->on_writable) {
-        newEvents |= UV_WRITABLE;
+    if (flow->operations) {
+#if !defined(MSG_NOTIFICATION)
+        if (flow->operations->on_readable)
+#else
+        // If a flow has on_readable set, poll for reading.
+        // If a flow is using SCTP for transport, also poll for reading if we're
+        // interested in various SCTP events that is reported via SCTP_EVENT etc.
+        if (flow->operations->on_readable ||
+            (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP &&
+            (flow->operations->on_close ||
+            flow->operations->on_network_status_changed ||
+            flow->operations->on_send_failure)))
+#endif
+        {
+            newEvents |= UV_READABLE;
+        }
+
+        if (flow->operations->on_writable) {
+            newEvents |= UV_WRITABLE;
+        }
     }
 
     if (flow->isDraining) {

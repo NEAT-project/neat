@@ -219,6 +219,7 @@ class CIB(object):
         self.uid = {}
         # track CIB files
         self.files = dict()
+
         CIBSource.cib = self
 
         self.graph = {}
@@ -344,14 +345,12 @@ class CIB(object):
     def dump(self, show_all=False):
         ts = shutil.get_terminal_size()
         tcol = ts.columns
-        if show_all:
-            items = self.uid.items()
-        else:
-            items = self.roots.items()
 
         print("=" * int((tcol - 11) / 2) + " CIB START " + "=" * int((tcol - 11) / 2))
+        # ============================================================================
         for e in self.rows:
             print(str(e) + '\n')
+        # ============================================================================
         print("=" * int((tcol - 9) / 2) + " CIB END " + "=" * int((tcol - 9) / 2))
 
     def __repr__(self):

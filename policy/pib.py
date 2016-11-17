@@ -1,4 +1,5 @@
 import bisect
+import hashlib
 import json
 import logging
 import os
@@ -36,7 +37,14 @@ class NEATPolicy(object):
     def __init__(self, policy_dict, policy_file=None):
         # set default values
 
-        self.uid = policy_dict.get('uid', id(self))
+        self.policy_dict = policy_dict
+
+        self.uid = policy_dict.get('uid')
+        if self.uid is None:
+            # TODO make unique
+            self.uid = hashlib.md5(str(policy_dict).encode('utf-8')).hexdigest()
+        else:
+            self.uid = str(self.uid)
 
         # deprecated
         self.name = policy_dict.get('name', self.uid)
@@ -96,6 +104,10 @@ class NEATPolicy(object):
         for p in self.properties.values():
             logging.info("applying property %s" % p)
             properties.add(*p)
+
+    def json(self):
+        # FIXME
+        return str(self.policy_dict)
 
     def __str__(self):
         return "%d POLICY %s: %s   ==>   %s" % (self.priority, self.uid, self.match, self.properties)

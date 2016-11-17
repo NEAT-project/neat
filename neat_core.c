@@ -1606,6 +1606,10 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             neat_free_flow(newFlow);
             return NULL;
         } else {
+#ifndef USRSCTP_SUPPORT
+            // Subscribe to events needed for callbacks
+            neat_sctp_init_events(newFlow->socket->fd);
+#endif
             uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
             newFlow->socket->handle->data = newFlow->socket;
             io_connected(ctx, newFlow, NEAT_OK);
@@ -3996,6 +4000,8 @@ static void neat_sctp_init_events(struct socket *sock)
 static void neat_sctp_init_events(int sock)
 #endif
 {
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
 #if defined(IPPROTO_SCTP)
 #if defined(SCTP_EVENT)
     // Set up SCTP event subscriptions using RFC6458 API

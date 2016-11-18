@@ -85,9 +85,12 @@ class CIBSource(object):
         for m in self.match:
             d['match'].append(m.dict())
 
-        d['properties'] = []
-        for p in self.properties:
-            d['properties'].append(p.dict())
+        if len(self.properties) == 1:
+            d['properties'] = self.properties[0].dict()
+        else:
+            d['properties'] = []
+            for p in self.properties:
+                d['properties'].append(p.dict())
 
         return d
 
@@ -117,8 +120,6 @@ class CIBSource(object):
     def match_entry(self, entry):
         for match_properties in self.match:
             if set(match_properties.values()) <= set(entry.values()):
-                #                import code
-                #                code.interact(local=locals(), banner='here')
                 return True
         return False
 

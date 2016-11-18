@@ -11,6 +11,10 @@ STRIKETHROUGH_START = '\033[9m'
 FORMAT_END = '\033[0m'
 SUB = str.maketrans("0123456789+-", "₀₁₂₃₄₅₆₇₈₉₊₋")
 
+DEFAULT_SCORE = 0.0
+DEFAULT_PRECEDENCE = 1
+DEFAULT_EVALUATED = False
+
 
 class NEATPropertyError(Exception):
     pass
@@ -246,15 +250,14 @@ class NEATProperty(object):
     """
     The basic unit for representing properties in NEAT. NEATProperties are (key,value) tuples.
 
-
     """
 
     IMMUTABLE = 2
     OPTIONAL = 1
 
-    def __init__(self, keyval, precedence=OPTIONAL, score=0, banned=None):
-        self.key = keyval[0]
-        self._value = PropertyValue(keyval[1])
+    def __init__(self, key_val, precedence=OPTIONAL, score=0, banned=None):
+        self.key = key_val[0]
+        self._value = PropertyValue(key_val[1])
 
         self.precedence = precedence
         self.score = score
@@ -277,35 +280,35 @@ class NEATProperty(object):
     def value(self, value):
         self._value = PropertyValue(value)
 
-        # if new_value.is_numeric and self._value.is_numeric:
-        #     overlap =  self._range_overlap(new_value.value)
-        #     self._value = PropertyValue()
-        #
-        # old_value = self._value
-        # self._value = value
-        #
-        #
-        # if isinstance(old_value, (tuple, numbers.Number)) and isinstance(value, (tuple, numbers.Number)):
-        #     # FIXME ensure that tuple values are numeric
-        #     new_value = self._range_overlap(old_value)
-        #     if new_value:
-        #         self._value = new_value
-
     @property
     def property(self):
         return self.key, self.value
 
-    def dict(self):
-        """Return a dict for JSON export"""
+    def dict(self, extended=False):
+        """
+        Return a dict representation of the NEATProperty e.g. for JSON export. If extended is set also include default values.
+        """
 
-        json_dict = {self.key: dict(precedence=self.precedence,
-                                    score=self.score,
-                                    evaluated=self.evaluated)}
+        d = dict()
 
-        # sets are not supported in JSON so convert these to lists
-        json_dict[self.key]['value'] = self.value if not isinstance(self.value, set) else list(self.value)
+        if isinstance(self.value, tuple):
+            d['value'] = {'start':  self.value[0], 'end':  self.value[1]}
+        elif isinstance(self.value, set):
+            # sets are not supported in JSON so convert these to a list
+            d['value'] = list(self.value)
+        else:
+            d['value'] = self.value
 
-        return json_dict
+        if extended:
+            d['precedence'] = self.precedence
+            d['score'] = self.score
+            d['evaluated'] = self.evaluated
+        else:
+            if self.precedence != DEFAULT_PRECEDENCE: d['precedence'] = self.precedence
+            if self.score != DEFAULT_SCORE: d['score'] = self.score
+            if self.evaluated != DEFAULT_EVALUATED: d['evaluated'] = self.evaluated
+
+        return {self.key: d}
 
     def __iter__(self):
         for p in self.property:

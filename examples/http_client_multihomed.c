@@ -224,7 +224,7 @@ main(int argc, char *argv[])
         ops[i].userData = &result; // allow on_error to modify the result variable
         neat_set_operations(ctx, flows[i], &(ops[i]));
 
-        NEAT_OPTARG_STRING(NEAT_TAG_LOCAL_NAME, "10.1.1.1,10.1.2.1");
+        NEAT_OPTARG_STRING(NEAT_TAG_LOCAL_ADDRESS, "10.1.1.1,10.1.2.1");
 
         // wait for on_connected or on_error to be invoked
         if (neat_open(ctx, flows[i], argv[argc - 1], 80, NEAT_OPTARGS, NEAT_OPTARGS_COUNT) != NEAT_OK) {

@@ -82,6 +82,7 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
     TAG_STRING(NEAT_TAG_STREAM_ID),
     TAG_STRING(NEAT_TAG_STREAM_COUNT),
     TAG_STRING(NEAT_TAG_LOCAL_NAME),
+    TAG_STRING(NEAT_TAG_LOCAL_ADDRESS),
     TAG_STRING(NEAT_TAG_SERVICE_NAME),
     TAG_STRING(NEAT_TAG_CONTEXT),
     TAG_STRING(NEAT_TAG_PARTIAL_RELIABILITY_METHOD),
@@ -2276,19 +2277,20 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             candidate->pollable_socket->src_len     = result->dst_addr_len;
 
 #if defined(SCTP_MULTIHOMING)
-            if (flow->local_name && neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) {
+            if (flow->local_address && neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) {
                 struct neat_he_candidate *cand;
                 char *address_name;
                 int dstfound = false;
                 int srcfound = false;
-                char *tmp = strdup(flow->local_name);
-                address_name = strtok((char *)tmp, ",");
+                char *ptr;
+                char *tmp = strdup(flow->local_address);
+                address_name = strtok_r((char *)tmp, ",", &ptr);
                 while (address_name != NULL) {
                     if (!strcmp(address_name, src_buffer)) {
                        srcfound = true;
                        break;
                     }
-                    address_name = strtok(NULL, ",");
+                    address_name = strtok_r(NULL, ",", &ptr);
                 }
                 free (tmp);
                 if (!srcfound) {
@@ -2620,7 +2622,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     int group = 0;
     float priority = 0.5f;
     const char *cc_algorithm = NULL;
-    const char *local_name = NULL;
+    const char *local_address = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -2634,7 +2636,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
         OPTIONAL_INTEGER(NEAT_TAG_FLOW_GROUP, group)
         OPTIONAL_FLOAT(NEAT_TAG_PRIORITY, priority)
         OPTIONAL_STRING(NEAT_TAG_CC_ALGORITHM, cc_algorithm)
-        OPTIONAL_STRING(NEAT_TAG_LOCAL_NAME, local_name)
+        OPTIONAL_STRING(NEAT_TAG_LOCAL_ADDRESS, local_address)
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if (stream_count < 1) {
@@ -2659,8 +2661,8 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     flow->group = group;
     flow->priority = priority;
 
-    if (local_name) {
-        flow->local_name = strdup(local_name);
+    if (local_address) {
+        flow->local_address = strdup(local_address);
     }
     if (!mgr->resolver)
         mgr->resolver = neat_resolver_init(mgr, "/etc/resolv.conf");
@@ -3703,10 +3705,10 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #if defined(SCTP_MULTIHOMING)
     if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
-        char *address_name;
+        char *address_name, *ptr;
         char *tmp = strdup(candidate->pollable_socket->src_address);
 
-        address_name = strtok((char *)tmp, ",");
+        address_name = strtok_r((char *)tmp, ",", &ptr);
         while (address_name != NULL) {
             struct sockaddr_in *s4 = (struct sockaddr_in*) local_addr_ptr;
             struct sockaddr_in6 *s6 = (struct sockaddr_in6*) local_addr_ptr;
@@ -3725,7 +3727,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                     local_addr_ptr += sizeof(struct sockaddr_in);
                 }
             }
-            address_name = strtok(NULL, ",");
+            address_name = strtok_r(NULL, ",", &ptr);
         }
         free (tmp);
         if (sctp_bindx(candidate->pollable_socket->fd, (struct sockaddr *)candidate->pollable_socket->local_addr, candidate->pollable_socket->nr_local_addr, SCTP_BINDX_ADD_ADDR)) {
@@ -4537,7 +4539,7 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 
     rv->properties = json_object();
 
-    rv->local_name = NULL;
+    rv->local_address = NULL;
 
     rv->socket = malloc(sizeof(struct neat_pollable_socket));
     if (!rv->socket)

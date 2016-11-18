@@ -203,7 +203,7 @@ struct neat_flow
     float priority;
 
     const char *cc_algorithm;
-    const char *local_name; // Src address or addresses
+    const char *local_address; // Src address or addresses
 
     // TODO: Move more socket-specific values to neat_pollable_socket
 

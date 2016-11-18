@@ -865,36 +865,36 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 
     switch (notfn->sn_header.sn_type) {
     case SCTP_ASSOC_CHANGE:
-	handle_sctp_assoc_change(flow, &notfn->sn_assoc_change);
-	break;
+        handle_sctp_assoc_change(flow, &notfn->sn_assoc_change);
+        break;
 #ifdef HAVE_SCTP_SEND_FAILED_EVENT
     // RFC6458 API is not defined on all platforms
     case SCTP_SEND_FAILED_EVENT:
-	handle_sctp_send_failed(flow, &notfn->sn_send_failed_event);
-	break;
+        handle_sctp_send_failed(flow, &notfn->sn_send_failed_event);
+        break;
 #else
     case SCTP_SEND_FAILED:
-	handle_sctp_send_failed(flow, &notfn->sn_send_failed);
-	break;
+        handle_sctp_send_failed(flow, &notfn->sn_send_failed);
+        break;
 #endif // else HAVE_SCTP_SEND_FAILED_EVENT
     case SCTP_PEER_ADDR_CHANGE:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP peer address change event");
-	break;
+        neat_log(NEAT_LOG_DEBUG, "Got SCTP peer address change event");
+        break;
     case SCTP_REMOTE_ERROR:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP remote error event");
-	break;
+        neat_log(NEAT_LOG_DEBUG, "Got SCTP remote error event");
+        break;
     case SCTP_SHUTDOWN_EVENT:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP shutdown event");
-	break;
+        neat_log(NEAT_LOG_DEBUG, "Got SCTP shutdown event");
+        break;
     case SCTP_ADAPTATION_INDICATION:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP adaption indication event");
-	break;
+        neat_log(NEAT_LOG_DEBUG, "Got SCTP adaption indication event");
+        break;
     case SCTP_PARTIAL_DELIVERY_EVENT:
-	neat_log(NEAT_LOG_DEBUG, "Got SCTP partial delivery event");
-	break;
+        neat_log(NEAT_LOG_DEBUG, "Got SCTP partial delivery event");
+        break;
     default:
-	neat_log(NEAT_LOG_WARNING, "Got unhandled SCTP event type %d",
-		 notfn->sn_header.sn_type);
+        neat_log(NEAT_LOG_WARNING, "Got unhandled SCTP event type %d",
+        notfn->sn_header.sn_type);
     }
 }
 #endif // defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
@@ -1104,9 +1104,9 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         len = sizeof(struct sockaddr);
         memset((void *)&addr, 0, sizeof(struct sockaddr_in));
 #ifdef HAVE_SIN_LEN
-	addr.sin_len = sizeof(struct sockaddr_in);
+        addr.sin_len = sizeof(struct sockaddr_in);
 #endif
-	addr.sin_family = AF_INET;
+        addr.sin_family = AF_INET;
 
         n = usrsctp_recvv(socket->usrsctp_socket, flow->readBuffer + flow->readBufferSize,
                                flow->readBufferAllocation - flow->readBufferSize,
@@ -1308,7 +1308,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     int so_error = 0;
     unsigned int len = sizeof(so_error);
     if (getsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
-    
+
         neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed: %s", strerror(errno));
         neat_io_error(candidate->ctx, flow, NEAT_ERROR_INTERNAL);
         return;
@@ -3773,6 +3773,20 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             return -1;
         }
 #endif // defined(SCTP_RECVRCVINFO)
+#if defined(SCTP_ADAPTATION_LAYER)
+        // Enable anciliarry data when receiving data from SCTP
+        struct sctp_setadaptation adaption;
+        memset(&adaption, 0, sizeof(adaption));
+        adaption.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
+        if (setsockopt(candidate->pollable_socket->fd,
+                        IPPROTO_SCTP,
+                        SCTP_ADAPTATION_LAYER,
+                        &adaption,
+                        sizeof(adaption)) < 0) {
+            neat_log(NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
+            return -1;
+        }
+#endif // defined(SCTP_ADAPTATION_LAYER)
 #if defined(SCTP_INITMSG)
         struct sctp_initmsg init;
         memset(&init, 0, sizeof(init));
@@ -3874,6 +3888,9 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 #if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
     struct sctp_initmsg initmsg;
 #endif //defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
+#if defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT)
+    struct sctp_setadaptation adaption;
+#endif // defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT)
 
     const socklen_t slen = (family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
 
@@ -3934,6 +3951,18 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
         // Fallthrough
     case NEAT_STACK_SCTP:
+#if defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT)
+        memset(&adaption, 0, sizeof(adaption));
+        adaption.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
+        if (setsockopt(fd,
+                        IPPROTO_SCTP,
+                        SCTP_ADAPTATION_LAYER,
+                        &adaption,
+                        sizeof(adaption)) < 0) {
+            neat_log(NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
+            return -1;
+        }
+#endif // defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT)
 #if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
         memset(&initmsg, 0, sizeof(struct sctp_initmsg));
         initmsg.sinit_num_ostreams = flow->stream_count;
@@ -3943,7 +3972,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
             neat_log(NEAT_LOG_ERROR, "Unable to set inbound/outbound stream count");
         }
         neat_log(NEAT_LOG_DEBUG, "Offering %d SCTP streams in/out", flow->stream_count);
-#endif // defined(SCTP_INITMSG)
+#endif // defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
         flow->writeLimit = flow->writeSize / 4;
 #ifdef SCTP_NODELAY
         if (setsockopt(fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int)) != 0)

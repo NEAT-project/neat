@@ -37,18 +37,7 @@ class NEATPolicy(object):
     def __init__(self, policy_dict, policy_file=None):
         # set default values
 
-        self.policy_dict = policy_dict
-
-        self.uid = policy_dict.get('uid')
-        if self.uid is None:
-            # TODO make unique
-            self.uid = hashlib.md5(str(policy_dict).encode('utf-8')).hexdigest()
-        else:
-            self.uid = str(self.uid)
-
-        # deprecated
-        self.name = policy_dict.get('name', self.uid)
-
+        # TODO do we need to handle unknown attributes?
         for k, v in policy_dict.items():
             if isinstance(v, str):
                 setattr(self, k, v)
@@ -68,6 +57,37 @@ class NEATPolicy(object):
         properties = policy_dict.get('properties', {})
         self.properties = PropertyMultiArray()
         self.properties.add(*dict_to_properties(properties))
+
+        # set UID
+        self.uid = policy_dict.get('uid')
+        if self.uid is None:
+            self.uid = self.__gen_uid()
+        else:
+            self.uid = str(self.uid).lower()
+
+        # deprecated
+        self.name = policy_dict.get('name', self.uid)
+
+    def __gen_uid(self):
+        # TODO make UID immutable?
+        s = str(id(self))
+        return hashlib.md5(s.encode('utf-8')).hexdigest()
+
+    def dict(self):
+        d = {}
+        for attr in ['uid', 'priority', 'replace_matched', 'filename', 'time']:
+            try:
+                d[attr] = getattr(self, attr)
+            except AttributeError:
+                logging.warning("Policy doesn't contain attribute %s" % attr)
+
+        d['match'] = self.match.dict()
+        d['properties'] = self.properties.dict()
+
+        return d
+
+    def json(self):
+        return json.dumps(self.dict(), indent=4, sort_keys=True)
 
     def match_len(self):
         """Use the number of match elements to sort the entries in the PIB.
@@ -104,10 +124,6 @@ class NEATPolicy(object):
         for p in self.properties.values():
             logging.info("applying property %s" % p)
             properties.add(*p)
-
-    def json(self):
-        # FIXME
-        return str(self.policy_dict)
 
     def __str__(self):
         return "%d POLICY %s: %s   ==>   %s" % (self.priority, self.uid, self.match, self.properties)

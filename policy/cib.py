@@ -57,13 +57,13 @@ class CIBSource(object):
         # convert to PropertyMultiArray with NEATProperties
         properties = source_dict.get('properties')
         if not isinstance(properties, list):
-            # logging.warning("properties should be in a list [NEW STYLE]")
+            # properties should be in a list [NEW STYLE]: FIXME explain why
             properties = [properties]
 
         self.properties = []
         for p in properties:
             pa = PropertyMultiArray(*dict_to_properties(p))
-            # add CIB source uid as a NEATProperty
+            # include UID as a NEATProperty
             pa.add(NEATProperty(('uid', self.uid), score=0, precedence=NEATProperty.IMMUTABLE))
             self.properties.append(pa)
 
@@ -72,6 +72,27 @@ class CIBSource(object):
         for l in source_dict.get('match', []):
             # convert to NEATProperties
             self.match.append(PropertyArray(*dict_to_properties(l)))
+
+    def dict(self):
+        d = {}
+        for attr in ['uid', 'root', 'link_matched', 'priority', 'filename', 'description', ]:
+            try:
+                d[attr] = getattr(self, attr)
+            except AttributeError:
+                logging.debug("CIB source doesn't contain attribute %s" % attr)
+
+        d['match'] = []
+        for m in self.match:
+            d['match'].append(m.dict())
+
+        d['properties'] = []
+        for p in self.properties:
+            d['properties'].append(p.dict())
+
+        return d
+
+    def json(self):
+        return json.dumps(self.dict(), indent=4, sort_keys=True)
 
     def resolve_paths(self, path=None):
         """recursively find all paths from this CIBSource to all other matched CIBSources in the CIB graph"""

@@ -283,6 +283,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Quitting policy manager.")
         pass
+    # TODO implement http://aiohttp.readthedocs.io/en/stable/web.html#graceful-shutdown
 
     # Close the server
     server.close()

@@ -2,8 +2,6 @@ import copy
 import json
 import logging
 import numbers
-import unittest
-import operator
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
@@ -299,8 +297,14 @@ class NEATProperty(object):
 
     def dict(self):
         """Return a dict for JSON export"""
-        json_dict = {
-            self.key: dict(value=self.value, precedence=self.precedence, score=self.score, evaluated=self.evaluated)}
+
+        json_dict = {self.key: dict(precedence=self.precedence,
+                                    score=self.score,
+                                    evaluated=self.evaluated)}
+
+        # sets are not supported in JSON so convert these to lists
+        json_dict[self.key]['value'] = self.value if not isinstance(self.value, set) else list(self.value)
+
         return json_dict
 
     def __iter__(self):
@@ -464,7 +468,8 @@ class PropertyArray(dict):
 
     @property
     def score(self):
-        return sum((s.score for s in self.values() if s.evaluated)), sum((s.score for s in self.values() if not s.evaluated))  # FIXME only if s.evaluated?
+        return sum((s.score for s in self.values() if s.evaluated)), sum(
+            (s.score for s in self.values() if not s.evaluated))  # FIXME only if s.evaluated?
 
     def dict(self):
         """ Return a dictionary containing all contained NEAT property attributes"""
@@ -524,6 +529,21 @@ class PropertyMultiArray(dict):
             pas.extend(tmp)
         return pas
 
+    def dict(self):
+        """ Return a dictionary containing all contained NEAT property attributes"""
+
+        property_dict = dict()
+        for k, v in self.items():
+            if len(v) == 1:
+                p = v[0]
+                property_dict[k] = p.dict()[p.key]
+            else:
+                property_dict[k] = []
+                for p in v:
+                    property_dict[k].append(p.dict()[p.key])
+
+        return property_dict
+
     def __repr__(self):
         slist = []
         for i in self.values():
@@ -535,5 +555,5 @@ if __name__ == "__main__":
     pma = PropertyMultiArray()
 
     import code
-    code.interact(local=locals(), banner='policy')
 
+    code.interact(local=locals(), banner='policy')

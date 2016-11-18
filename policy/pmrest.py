@@ -21,12 +21,21 @@ async def handle_pib(request):
         text = json.dumps(list(pib.index.keys()))
         return web.Response(text=text)
 
-    logging.info("PIB uid request for uid %s" % (uid))
+    logging.info("PIB request for uid %s" % (uid))
+
     try:
         text = pib.index[uid].json()
     except KeyError as e:
         return web.Response(status=404, text='unknown UID')
 
+    return web.Response(text=text)
+
+
+async def handle_cib_rows(request):
+    rows = []
+    for i in cib.rows:
+        rows.append(i.dict())
+    text = json.dumps(rows, indent=4)
     return web.Response(text=text)
 
 
@@ -36,9 +45,9 @@ async def handle_cib(request):
         text = json.dumps(list(cib.uid.keys()))
         return web.Response(text=text)
 
-    logging.info("CIB uid request for uid %s" % (uid))
+    logging.info("CIB request for uid %s" % (uid))
     try:
-        text = str(cib[uid])
+        text = cib[uid].json()
     except KeyError as e:
         return web.Response(status=404, text='unknown UID')
 
@@ -73,11 +82,11 @@ def init_rest_server(asyncio_loop, pib_ref, cib_ref, rest_port=None):
 
     app = web.Application()
     app.router.add_get('/', handle_rest)
-    # app.router.add_get('/{name}/{uid}', handle_rest)
     app.router.add_get('/pib', handle_pib)
     app.router.add_get('/pib/{uid}', handle_pib)
 
     app.router.add_get('/cib', handle_cib)
+    app.router.add_get('/cib/rows', handle_cib_rows)
     app.router.add_get('/cib/{uid}', handle_cib)
 
     handler = app.make_handler()

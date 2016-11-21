@@ -71,4 +71,4 @@ Description: NEAT Tools
  NEAT uses libuv as event library, and this loop is available to users so that
  they can hook in and add their own callbacks.
  .
- This package contains the shared library.
+ This package contains the test tools.

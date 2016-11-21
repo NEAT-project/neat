@@ -53,7 +53,7 @@ neat_resolver_helpers_check_for_literal(uint8_t *family,
     } else {
         // More than one destination address provided
         char *tmp = strdup(node);
-        char *ptr;
+        char *ptr = NULL;
         char *address_name = strtok_r((char *)tmp, ",", &ptr);
         while (address_name != NULL) {
             v4_literal = inet_pton(AF_INET, address_name, &dummy_addr);

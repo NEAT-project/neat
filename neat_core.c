@@ -1471,7 +1471,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         flow->firstWritePending = 0;
         io_connected(ctx, flow, NEAT_OK);
     }
-    if (events & UV_WRITABLE && flow->isDraining) {
+    if ((events & UV_WRITABLE) && flow->isDraining) {
         neat_error_code code = neat_write_flush(ctx, flow);
         if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
             neat_io_error(ctx, flow, code);

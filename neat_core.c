@@ -1256,15 +1256,6 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     const char *home_dir;
     const char *socket_path;
     char socket_path_buf[128];
-    //json_t *interface_value = NULL;
-    //json_t *interface_object = NULL;
-    //json_t *match_value = NULL;
-    //json_t *remote_ip_value = NULL;
-    //json_t *properties_value = NULL;
-    //json_t *remote_port_value = NULL;
-    //json_t *transport_value = NULL;
-    //json_t *cached_value = NULL;
-    //json_t *result_object = NULL;
     json_t *result_array = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1293,102 +1284,6 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         "remote_port", "value", he_res->remote_port, "cached", "value", (result)?1:0, "precedence",
         2, "score", 5);
      
-#if 0
-
-    if ((interface_value = json_pack("{ss}", "value", he_res->interface)) == NULL) {
-        goto end;
-    }
-   
-  
-    if ((interface_object = json_object()) == NULL) {
-        goto end;
-    }
-
-    rc = json_object_set(interface_object, "interface", interface_value);
-    json_decref(interface_value);
-    if (rc < 0) {
-        goto end;
-    }
-
-    if ((match_value = json_array()) == NULL) {
-        goto end;
-    }
-
-    rc = json_array_append(match_value, interface_object);
-    if (rc < 0) {
-        goto end;
-    }
-  
-    if ((remote_ip_value = json_pack("{ss}", "value", he_res->remote_ip)) == NULL) {
-        goto end;
-    }
-
-    if ((properties_value = json_object()) == NULL) {
-        goto end;
-    } 
-
-    rc = json_object_set(properties_value, "remote_ip", remote_ip_value);
-    json_decref(remote_ip_value);
-    if (rc < 0) {
-        goto end;
-    }
-
-    if ((remote_port_value = json_pack("{si}", "value", he_res->remote_port)) == NULL) {
-        goto end;
-    }   
-
-    rc = json_object_set(properties_value, "remote_port", remote_port_value);
-    json_decref(remote_port_value);
-    if (rc < 0) {
-        goto end;
-    }         
-
-    if ((transport_value = json_pack("{ss}", "value", stack_to_string(he_res->transport ))) == NULL) {
-        goto end;
-    }   
-
-    rc = json_object_set(properties_value, "transport", transport_value);
-    json_decref(transport_value);
-    if (rc < 0) {
-        goto end;
-    }
-
-    if ((cached_value = json_pack("{sbsisi}", "value", (result)?1:0, "precedence", 2, "score", 5)) == NULL) {
-        goto end;
-    }
-
-    rc = json_object_set(properties_value, "cached", cached_value);
-    json_decref(cached_value);
-    if (rc < 0) {
-        goto end;
-    }
-
-    if ((result_object = json_object()) == NULL) {
-        goto end;
-    } 
-
-    rc = json_object_set(result_object, "match", match_value);
-    json_decref(match_value);
-    if (rc < 0) {
-        goto end;
-    } 
-
-    rc = json_object_set(result_object, "properties", properties_value);
-    json_decref(properties_value);
-    if (rc < 0) {
-        goto end;
-    }
-
-    if ((result_array = json_array()) == NULL) {
-        goto end;
-    }
-
-    rc = json_array_append(result_array, result_object);
-    if (rc < 0) {
-        goto end;
-    }
-#endif
-
     // TODO: Remove.
     char *json_str = json_dumps(result_array, JSON_ENSURE_ASCII);
     char strMsg[1000];
@@ -1403,35 +1298,7 @@ end:
     free(he_res->interface);
     free(he_res->remote_ip);
     free(he_res);
-#if 0
-    if (interface_value) {
-        json_decref(interface_value);
-    }
-    if (interface_object) {
-        json_decref(interface_object);
-    }
-    if (match_value) {
-        json_decref(match_value);
-    }
-    if (remote_ip_value) {
-        json_decref(remote_ip_value);
-    }
-    if (remote_port_value) {
-        json_decref(remote_port_value);
-    }
-    if (transport_value) {
-        json_decref(transport_value);
-    } 
-    if (cached_value) {
-        json_decref(cached_value);
-    }      
-    if (properties_value) {
-        json_decref(properties_value);
-    }
-    if (result_object) {
-        json_decref(result_object);
-    }
-#endif
+
     if (result_array) {
         json_decref(result_array);
     }

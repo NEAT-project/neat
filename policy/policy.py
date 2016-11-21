@@ -286,13 +286,14 @@ class NEATProperty(object):
 
     def dict(self, extended=False):
         """
-        Return a dict representation of the NEATProperty e.g. for JSON export. If extended is set also include default values.
+        Return a dict representation of the NEATProperty e.g. for JSON export.
+        If extended is set also include default values.
         """
 
         d = dict()
 
         if isinstance(self.value, tuple):
-            d['value'] = {'start':  self.value[0], 'end':  self.value[1]}
+            d['value'] = {'start': self.value[0], 'end': self.value[1]}
         elif isinstance(self.value, set):
             # sets are not supported in JSON so convert these to a list
             d['value'] = list(self.value)

@@ -1299,8 +1299,8 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     }
 #endif
 
-    tmp = json_pack("[{s:[{ss}]}]", "match", "value", he_res->interface);
-    char *json_tmp_str = json_dumps(result_array, JSON_ENSURE_ASCII);
+    tmp = json_pack("[{s:s}]", "match", "value");
+    char *json_tmp_str = json_dumps(tmp, JSON_ENSURE_ASCII);
     char strMsgTmp[1000];
     strcpy(strMsgTmp, "JSON: ");
     strcat(strMsgTmp, json_tmp_str);

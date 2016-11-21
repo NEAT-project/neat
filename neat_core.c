@@ -1256,15 +1256,15 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     const char *home_dir;
     const char *socket_path;
     char socket_path_buf[128];
-    json_t *interface_value = NULL;
-    json_t *interface_object = NULL;
-    json_t *match_value = NULL;
-    json_t *remote_ip_value = NULL;
-    json_t *properties_value = NULL;
-    json_t *remote_port_value = NULL;
-    json_t *transport_value = NULL;
-    json_t *cached_value = NULL;
-    json_t *result_object = NULL;
+    //json_t *interface_value = NULL;
+    //json_t *interface_object = NULL;
+    //json_t *match_value = NULL;
+    //json_t *remote_ip_value = NULL;
+    //json_t *properties_value = NULL;
+    //json_t *remote_port_value = NULL;
+    //json_t *transport_value = NULL;
+    //json_t *cached_value = NULL;
+    //json_t *result_object = NULL;
     json_t *result_array = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);

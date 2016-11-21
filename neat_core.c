@@ -1289,21 +1289,12 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         socket_path = socket_path_buf;
     }
 
-#if 0
-    if ((result_array = json_pack("[{s:[s:{ss}],s:{s:{ss},s:{ss},s:{ss},s:{ss},s:{sbsisi}}}]",
-        "match", "interface", "value", he_res->interface, "properties", "remote_ip", "value", he_res->remote_ip,
-        "remote_port", "value", he_res->remote_port, "transport", "value", stack_to_string(he_res->transport),
-        "cached", "value", (result)?1:0, "precedence", 2, "score", 5)) == NULL) {
-        neat_log(NEAT_LOG_DEBUG, "send_result_connection_attempt_to_pm: Error creating JSON string.");
-        goto end;
-    }
-#endif
-
-    tmp = json_pack("[{s:[{s:{ss}}],s:{s:{ss},s:{ss},s:{si}}}]",
+    tmp = json_pack("[{s:[{s:{ss}}],s:{s:{ss},s:{ss},s:{si},s:{sbsisi}}}]",
         "match", "interface", "value", he_res->interface,
         "properties", "transport", "value", stack_to_string(he_res->transport ),
         "remote_ip", "value", he_res->remote_ip,
-        "remote_port", "value", he_res->remote_port);
+        "remote_port", "value", he_res->remote_port,
+        "cached", "value", (result)?1:0, "precedence", 2, "score", 5);
     char *json_tmp_str = json_dumps(tmp, JSON_ENSURE_ASCII);
     char strMsgTmp[1000];
     strcpy(strMsgTmp, "JSON: ");

@@ -888,6 +888,11 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
         break;
     case SCTP_ADAPTATION_INDICATION:
         neat_log(NEAT_LOG_DEBUG, "Got SCTP adaption indication event");
+        struct sctp_adaptation_event *adaption = (struct sctp_adaptation_event *) notfn;
+        if (adaption->sai_adaptation_ind == SCTP_ADAPTATION_NEAT) {
+            flow->multistreaming = 1;
+            neat_log(NEAT_LOG_INFO, "Peer has NEAT support!");
+        }
         break;
     case SCTP_PARTIAL_DELIVERY_EVENT:
         neat_log(NEAT_LOG_DEBUG, "Got SCTP partial delivery event");
@@ -3774,7 +3779,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         }
 #endif // defined(SCTP_RECVRCVINFO)
 #if defined(SCTP_ADAPTATION_LAYER)
-        // Enable anciliarry data when receiving data from SCTP
+        // Set adaption layer indication
         struct sctp_setadaptation adaption;
         memset(&adaption, 0, sizeof(adaption));
         adaption.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
@@ -3951,14 +3956,11 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
         // Fallthrough
     case NEAT_STACK_SCTP:
+        neat_sctp_init_events(fd);
 #if defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT)
         memset(&adaption, 0, sizeof(adaption));
         adaption.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
-        if (setsockopt(fd,
-                        IPPROTO_SCTP,
-                        SCTP_ADAPTATION_LAYER,
-                        &adaption,
-                        sizeof(adaption)) < 0) {
+        if (setsockopt(fd, IPPROTO_SCTP, SCTP_ADAPTATION_LAYER, &adaption, sizeof(adaption)) < 0) {
             neat_log(NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
             return -1;
         }
@@ -4031,29 +4033,30 @@ static void neat_sctp_init_events(int sock)
     // (does not work with current Linux kernel SCTP)
     struct sctp_event event;
     unsigned int i;
-    uint16_t event_types[] = {SCTP_ASSOC_CHANGE,
-			      SCTP_PEER_ADDR_CHANGE,
-			      SCTP_REMOTE_ERROR,
-			      SCTP_SHUTDOWN_EVENT,
-			      SCTP_ADAPTATION_INDICATION,
-			      SCTP_PARTIAL_DELIVERY_EVENT,
-			      SCTP_SEND_FAILED_EVENT};
+    uint16_t event_types[] = {
+        SCTP_ASSOC_CHANGE,
+        SCTP_PEER_ADDR_CHANGE,
+        SCTP_REMOTE_ERROR,
+        SCTP_SHUTDOWN_EVENT,
+        SCTP_ADAPTATION_INDICATION,
+        SCTP_PARTIAL_DELIVERY_EVENT,
+        SCTP_SEND_FAILED_EVENT
+    };
 
     memset(&event, 0, sizeof(event));
     event.se_assoc_id = SCTP_FUTURE_ASSOC;
     event.se_on = 1;
 
     for (i = 0; i < (unsigned int)(sizeof(event_types)/sizeof(uint16_t)); i++) {
-	    event.se_type = event_types[i];
+        event.se_type = event_types[i];
 #if defined(USRSCTP_SUPPORT)
-	    if (usrsctp_setsockopt(
+        if (usrsctp_setsockopt(
 #else
-	    if (setsockopt(
+        if (setsockopt(
 #endif
-			sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(struct sctp_event)) < 0) {
-		    neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to event type %u - %s",
-			     __func__, event_types[i], strerror(errno));
-		}
+        sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(struct sctp_event)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to event type %u - %s", __func__, event_types[i], strerror(errno));
+        }
     }
 #else // defined(SCTP_EVENT)
 
@@ -4071,10 +4074,8 @@ static void neat_sctp_init_events(int sock)
     event.sctp_partial_delivery_event = 1;
     event.sctp_adaptation_layer_event = 1;
 
-    if (setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &event,
-		   sizeof(struct sctp_event_subscribe)) < 0) {
-	neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to SCTP events - %s",
-		 __func__, strerror(errno));
+    if (setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(struct sctp_event_subscribe)) < 0) {
+        neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to SCTP events - %s", __func__, strerror(errno));
     }
 #endif // else HAVE_SCTP_EVENT_SUBSCRIBE
 #endif //else defined(SCTP_EVENT)
@@ -4666,7 +4667,36 @@ neat_find_flow(neat_ctx *ctx, struct sockaddr *src, struct sockaddr *dst)
 
         if ((sockaddr_cmp(&flow->socket->dstAddr, dst) != 0) &&
                (sockaddr_cmp(&flow->socket->srcAddr, src) != 0)) {
-                       return flow;
+            return flow;
+        }
+    }
+    return NULL;
+}
+
+// Piggyback
+neat_flow *
+neat_find_sctp_stream(neat_ctx *ctx, struct sockaddr *dst)
+{
+    neat_flow *flow;
+    neat_log(NEAT_LOG_DEBUG, "%s - ##########", __func__);
+
+    LIST_FOREACH(flow, &ctx->flows, next_flow) {
+        if (flow->socket == NULL) {
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## A", __func__);
+            continue;
+        }
+
+        if (flow->acceptPending == 1) {
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## B", __func__);
+            continue;
+        }
+
+        if ((sockaddr_cmp(&flow->socket->dstAddr, dst) != 0) &&
+               flow->socket->family == IPPROTO_SCTP) {
+            neat_log(NEAT_LOG_DEBUG, "%s - stream found!");
+            return flow;
+        } else {
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## C", __func__);
         }
     }
     return NULL;

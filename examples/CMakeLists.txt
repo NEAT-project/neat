@@ -17,6 +17,7 @@ LIST(APPEND neat_property_examples
     datagrams.json
     default.json
     tcp.json
+    sctp.json
 )
 
 # BUILD EACH PROGRAM

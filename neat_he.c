@@ -130,6 +130,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     const char *family;
     struct neat_he_candidate *candidate;
     struct neat_he_candidate *next_candidate;
+    struct neat_flow *piggybackFlow = NULL;
 
     i = 0;
     TAILQ_FOREACH(candidate, candidate_list, next) {
@@ -141,6 +142,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             proto = "TCP";
             break;
         case NEAT_STACK_SCTP:
+            piggybackFlow = neat_find_sctp_stream(ctx, &candidate->pollable_socket->dstAddr);
             proto = "SCTP";
             break;
         case NEAT_STACK_SCTP_UDP:

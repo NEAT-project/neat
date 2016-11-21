@@ -242,6 +242,7 @@ struct neat_flow
     unsigned int isDraining;
     unsigned int isSCTPExplicitEOR : 1;
     unsigned int isServer : 1; // i.e. created via accept()
+    unsigned int multistreaming : 1;
 
     struct neat_he_candidates *candidate_list;
 
@@ -368,6 +369,8 @@ void neat_resolver_release(struct neat_resolver *resolver);
 //Free the list of results
 void neat_resolver_free_results(struct neat_resolver_results *results);
 
+neat_flow *neat_find_sctp_stream(neat_ctx *ctx, struct sockaddr *dst);
+
 //Start to resolve a domain name (or literal). Accepts a list of protocols, will
 //set socktype based on protocol
 uint8_t neat_resolve(struct neat_resolver *resolver,
@@ -434,8 +437,7 @@ neat_error_code neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_cand
 // API callbacks:
 void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate);
 void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate);
-void neat_notify_send_failure(neat_flow *flow, neat_error_code code,
-			      int context, const unsigned char *unsent_buffer);
+void neat_notify_send_failure(neat_flow *flow, neat_error_code code, int context, const unsigned char *unsent_buffer);
 void neat_notify_timeout(neat_flow *flow);
 void neat_notify_aborted(neat_flow *flow);
 void neat_notify_close(neat_flow *flow);

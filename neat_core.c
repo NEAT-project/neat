@@ -1287,16 +1287,17 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         socket_path = socket_path_buf;
     }
 
-#if 0
+#if 1
     if ((result_array = json_pack("[{s:[s:{s:s}],s:{s:{s:s},s:{s:s},s:{s:s},s:{s:s},s:{s:b:s:i:s:i}}}]",
         "match", "interface", "value", he_res->interface, "properties", "remote_ip", "value", he_res->remote_ip,
         "remote_port", "value", he_res->remote_port, "transport", "value", stack_to_string(he_res->transport),
         "cached", "value", (result)?1:0, "precedence", 2, "score", 5)) == NULL) {
+        neat_log(NEAT_LOG_DEBUG, "send_result_connection_attempt_to_pm: Error creating JSON string.");
         goto end;
     }
 #endif
 
-#if 1
+#if 0
 
     if ((interface_value = json_pack("{ss}", "value", he_res->interface)) == NULL) {
         neat_log(NEAT_LOG_DEBUG, "interface_value = json_pack({ss}, value, he_res->interface)");
@@ -1407,7 +1408,7 @@ end:
     free(he_res->interface);
     free(he_res->remote_ip);
     free(he_res);
-#if 1
+#if 0
     if (interface_value) {
         json_decref(interface_value);
     }

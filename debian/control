@@ -1,16 +1,16 @@
 Source: libneat
 Maintainer: NEAT Project <neat@neat-project.org>
-Section: libs
+Section: net
 Priority: optional
-Build-Depends: debhelper (>= 9),
-               cmake,
-               libuv1-dev,
-               libldns-dev,
+Build-Depends: cmake,
+               debhelper (>= 9),
                libjansson-dev,
+               libldns-dev,
                libmnl-dev,
                libsctp-dev,
+               libssl-dev,
+               libuv1-dev (>= 1.0.2),
                python-sphinx,
-               python-recommonmark,
                python-sphinx-rtd-theme
 Standards-Version: 3.9.8
 Vcs-Browser: https://github.com/NEAT-project/neat
@@ -18,9 +18,12 @@ Vcs-Git: https://github.com/NEAT-project/neat.git
 Homepage: https://github.com/NEAT-project/neat
 
 Package: libneat0
-Architecture: linux-any
-Depends: ${shlibs:Depends},
-         ${misc:Depends}
+Architecture: any
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Recommends: netperfmeter,
+            rsplib-tools,
+            tsctp
 Description: NEAT Sockets API
  NEAT is a callback based library and everything revovles around the neat_ctx
  struct. This struct has to be initialized before anything else can be done.
@@ -30,11 +33,11 @@ Description: NEAT Sockets API
  This package contains the shared library.
 
 Package: libneat-dev
-Architecture: linux-any
+Architecture: any
 Section: libdevel
 Depends: libneat0 (= ${binary:Version}),
-         ${shlibs:Depends},
-         ${misc:Depends}
+         ${misc:Depends},
+         ${shlibs:Depends}
 Description: NEAT Sockets API (Development Files)
  NEAT is a callback based library and everything revovles around the neat_ctx
  struct. This struct has to be initialized before anything else can be done.
@@ -46,8 +49,8 @@ Description: NEAT Sockets API (Development Files)
 Package: libneat-docs
 Architecture: all
 Section: doc
-Depends: ${sphinxdoc:Depends},
-         ${misc:Depends}
+Depends: ${misc:Depends},
+         ${sphinxdoc:Depends}
 Description: NEAT Sockets API (Documentation)
  NEAT is a callback based library and everything revovles around the neat_ctx
  struct. This struct has to be initialized before anything else can be done.

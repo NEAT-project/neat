@@ -1418,7 +1418,7 @@ end:
     free(he_res->interface);
     free(he_res->remote_ip);
     free(he_res);
-#if 0
+#if 1
     if (interface_value) {
         json_decref(interface_value);
     }

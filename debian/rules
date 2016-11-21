@@ -3,7 +3,7 @@
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
-	dh $@ --with=sphinxdoc
+	dh $@ --parallel --with=sphinxdoc
 
 override_dh_auto_build:
 
@@ -13,6 +13,3 @@ override_dh_auto_build:
 	mkdir -p docs/_build/html
 
 	dh_auto_build
-
-override_dh_shlibdeps:
-	dh_shlibdeps -l$(shell pwd)/debian/tmp/usr/lib

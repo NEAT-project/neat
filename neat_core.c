@@ -1299,7 +1299,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     }
 #endif
 
-    tmp = json_pack("[{s:[{s:{ss}}],s:{s:{ss},s:{ss},s:{ss}}}]",
+    tmp = json_pack("[{s:[{s:{ss}}],s:{s:{ss},s:{ss},s:{si}}}]",
         "match", "interface", "value", he_res->interface,
         "properties", "transport", "value", stack_to_string(he_res->transport ),
         "remote_ip", "value", he_res->remote_ip,

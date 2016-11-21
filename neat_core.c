@@ -1288,7 +1288,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     }
 
 #if 1
-    if ((result_array = json_pack("[{s:[s:{s:s}],s:{s:{s:s},s:{s:s},s:{s:s},s:{s:s},s:{s:b:s:i:s:i}}}]",
+    if ((result_array = json_pack("[{s:[s:{ss}],s:{s:{ss},s:{ss},s:{ss},s:{ss},s:{sbsisi}}}]",
         "match", "interface", "value", he_res->interface, "properties", "remote_ip", "value", he_res->remote_ip,
         "remote_port", "value", he_res->remote_port, "transport", "value", stack_to_string(he_res->transport),
         "cached", "value", (result)?1:0, "precedence", 2, "score", 5)) == NULL) {

@@ -163,6 +163,11 @@ struct neat_pollable_socket
     socklen_t               dst_len;
 
     char                    *src_address;
+#ifdef SCTP_MULTIHOMING
+   #define MAX_LOCAL_ADDR             10
+   struct sockaddr_storage local_addr[MAX_LOCAL_ADDR];
+   unsigned int nr_local_addr;
+#endif
     struct sockaddr_storage src_sockaddr;
     socklen_t               src_len;
 
@@ -198,6 +203,7 @@ struct neat_flow
     float priority;
 
     const char *cc_algorithm;
+    const char *local_address; // Src address or addresses
 
     // TODO: Move more socket-specific values to neat_pollable_socket
 

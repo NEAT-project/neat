@@ -1,5 +1,5 @@
 {  
-    "name":"set MPTCP subflows",
+    "uid":"MPTCP_subflows",
     "priority": 20,
     "match":{
 		"transport": {

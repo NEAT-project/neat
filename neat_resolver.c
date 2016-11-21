@@ -227,7 +227,7 @@ static uint32_t neat_resolver_literal_populate_results(struct neat_resolver_requ
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     char *tmp = strdup(request->domain_name);
-    char *ptr;
+    char *ptr = NULL;
     char *address_name = strtok_r((char *)tmp, ",", &ptr);
     while (address_name != NULL) {
         if (request->family == AF_INET) {

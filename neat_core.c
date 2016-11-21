@@ -1256,15 +1256,15 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     const char *home_dir;
     const char *socket_path;
     char socket_path_buf[128];
-    json_t *interface_value = NULL;
-    json_t *interface_object = NULL;
-    json_t *match_value = NULL;
-    json_t *remote_ip_value = NULL;
-    json_t *properties_value = NULL;
-    json_t *remote_port_value = NULL;
-    json_t *transport_value = NULL;
-    json_t *cached_value = NULL;
-    json_t *result_object = NULL;
+    //json_t *interface_value = NULL;
+    //json_t *interface_object = NULL;
+    //json_t *match_value = NULL;
+    //json_t *remote_ip_value = NULL;
+    //json_t *properties_value = NULL;
+    //json_t *remote_port_value = NULL;
+    //json_t *transport_value = NULL;
+    //json_t *cached_value = NULL;
+    //json_t *result_object = NULL;
     json_t *result_array = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1278,7 +1278,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
             goto end;
         }
 
-        rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_pm_socket", home_dir);
+        rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_cib_socket", home_dir);
         if (rc < 0 || rc >= 128) {
             neat_log(NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
             goto end;
@@ -1286,6 +1286,15 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
 
         socket_path = socket_path_buf;
     }
+
+    if ((result_array = json_pack("[{s:[s:{s:s}],s:{s:{s:s},s:{s:s},s:{s:s},s:{s:s},s:{s:b:s:i:s:i}}}]",
+        "match", "interface", "value", he_res->interface, "properties", "remote_ip", "value", he_res->remote_ip,
+        "remote_port", "value", he_res->remote_port, "transport", "value", stack_to_string(he_res->transport),
+        "cached", "value", (result)?1:0, "precedence", 2, "score", 5)) == NULL) {
+        goto end;
+    }
+
+#if 0
 
     if ((interface_value = json_pack("{ss}", "value", he_res->interface)) == NULL) {
         neat_log(NEAT_LOG_DEBUG, "interface_value = json_pack({ss}, value, he_res->interface)");
@@ -1380,6 +1389,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     if (rc < 0) {
         goto end;
     }
+#endif
 
     // TODO: Remove.
     char *json_str = json_dumps(result_array, JSON_ENSURE_ASCII);
@@ -1395,7 +1405,7 @@ end:
     free(he_res->interface);
     free(he_res->remote_ip);
     free(he_res);
-
+#if 0
     if (interface_value) {
         json_decref(interface_value);
     }
@@ -1423,6 +1433,7 @@ end:
     if (result_object) {
         json_decref(result_object);
     }
+#endif
 }
 
 static void

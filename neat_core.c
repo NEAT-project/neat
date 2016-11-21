@@ -1278,7 +1278,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
             goto end;
         }
 
-        rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_cib_socket", home_dir);
+        rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_pm_socket", home_dir);
         if (rc < 0 || rc >= 128) {
             neat_log(NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
             goto end;

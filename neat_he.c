@@ -122,6 +122,32 @@ static void delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_
 #endif
 }
 
+static void
+on_delayed_he_open(uv_timer_t *handle)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s - piggybackTimer fired", __func__);
+    struct neat_flow *flow       = (struct neat_flow *) (handle->data);
+    uv_timer_stop(flow->piggybackTimer);
+    uv_close((uv_handle_t *) flow->piggybackTimer, free_handle_cb);
+
+    neat_he_open(flow->ctx, flow, flow->candidate_list, flow->callback_fx);
+}
+
+static void
+delayed_he_open(struct neat_flow *flow, uv_poll_cb callback_fx)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s - starting piggybackTimer", __func__);
+
+    flow->piggybackTimer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
+    assert(flow->piggybackTimer != NULL);
+    flow->piggyback = 1;
+
+    uv_timer_init(flow->ctx->loop, flow->piggybackTimer);
+    uv_timer_start(flow->piggybackTimer, on_delayed_he_open, 100, 0);
+    flow->callback_fx = callback_fx;
+    flow->piggybackTimer->data = (void *) flow;
+}
+
 neat_error_code
 neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_list, uv_poll_cb callback_fx)
 {
@@ -130,6 +156,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     const char *family;
     struct neat_he_candidate *candidate;
     struct neat_he_candidate *next_candidate;
+    uint8_t checkPiggyback = 0;
     struct neat_flow *piggybackFlow = NULL;
 
     i = 0;
@@ -142,7 +169,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             proto = "TCP";
             break;
         case NEAT_STACK_SCTP:
-            piggybackFlow = neat_find_sctp_stream(ctx, &candidate->pollable_socket->dstAddr);
+            checkPiggyback = 1;
             proto = "SCTP";
             break;
         case NEAT_STACK_SCTP_UDP:
@@ -187,16 +214,43 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
 #endif
     }
 
-    if (piggybackFlow) {
-    	neat_log(NEAT_LOG_DEBUG, "may use piggyback flow");
-    }
+    //piggybackFlow = neat_find_sctp_piggyback_stream(ctx, flow);
 
-    neat_log(NEAT_LOG_DEBUG, "HE will now commence");
+
+
+    flow->candidate_list = candidate_list;
+    candidate = candidate_list->tqh_first;
+
+    // SCTP is generally allowed
+    if (checkPiggyback) {
+        // check if there is already a piggyback assoc
+        if ((piggybackFlow = neat_find_sctp_piggyback_assoc(ctx, flow)) != NULL) {
+            // we have a piggyback assoc...
+            neat_log(NEAT_LOG_DEBUG, "%s - using piggyback assoc!", __func__);
+
+            flow->piggyback = 1;
+
+            while (candidate) {
+                next_candidate = TAILQ_NEXT(candidate, next);
+                TAILQ_REMOVE(candidate_list, candidate, next);
+                neat_free_candidate(candidate);
+                candidate = next_candidate;
+            }
+
+            return NEAT_ERROR_OK;
+
+        // if there is no piggyback assoc, wait if we didnt already
+        } else if (flow->piggybackPending == 0 && neat_wait_for_piggyback(ctx, flow)){
+            flow->piggybackPending = 1;
+            delayed_he_open(flow, callback_fx);
+            return NEAT_ERROR_OK;
+        }
+    }
 
     flow->hefirstConnect = 1;
     flow->heConnectAttemptCount = 0;
-    flow->candidate_list = candidate_list;
-    candidate = candidate_list->tqh_first;
+
+    neat_log(NEAT_LOG_DEBUG, "HE will now commence");
     while (candidate) {
 
 #if 0
@@ -209,7 +263,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
                  candidate->priority);
 #endif
 
-        candidate->pollable_socket->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+        candidate->pollable_socket->handle = (uv_poll_t *) calloc(1, sizeof(uv_poll_t));
         assert(candidate->pollable_socket->handle != NULL);
         candidate->ctx = ctx;
         candidate->pollable_socket->flow = flow;

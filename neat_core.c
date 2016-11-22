@@ -4459,7 +4459,7 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 
     rv->properties = json_object();
 
-    rv->socket = malloc(sizeof(struct neat_pollable_socket));
+    rv->socket = calloc(1, sizeof(struct neat_pollable_socket));
     if (!rv->socket)
         goto error;
 
@@ -4675,29 +4675,84 @@ neat_find_flow(neat_ctx *ctx, struct sockaddr *src, struct sockaddr *dst)
 
 // Piggyback
 neat_flow *
-neat_find_sctp_stream(neat_ctx *ctx, struct sockaddr *dst)
+neat_find_sctp_piggyback_assoc(neat_ctx *ctx, neat_flow *new_flow)
 {
     neat_flow *flow;
     neat_log(NEAT_LOG_DEBUG, "%s - ##########", __func__);
 
     LIST_FOREACH(flow, &ctx->flows, next_flow) {
+        neat_log(NEAT_LOG_DEBUG, "%s - ########## checking: %p - %s", __func__, flow, flow->name);
+        // skipping self
+        if (flow == new_flow) {
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## SKIP SELF", __func__);
+            continue;
+        }
+
+        // flow should have a socket
         if (flow->socket == NULL) {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## A", __func__);
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## NO SOCKET", __func__);
             continue;
         }
 
+        // xxx todo : check needed?
         if (flow->acceptPending == 1) {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## B", __func__);
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## ACCEPT PENDING", __func__);
             continue;
         }
 
-        if ((sockaddr_cmp(&flow->socket->dstAddr, dst) != 0) &&
-               flow->socket->family == IPPROTO_SCTP) {
-            neat_log(NEAT_LOG_DEBUG, "%s - stream found!");
+        // DNS-name matches, flow is in connecting state, has the same group and supports NEAT multistreaming
+        if (!strcmp(flow->name, new_flow->name) && flow->group == new_flow->group && flow->socket->stack == NEAT_STACK_SCTP && flow->multistreaming == 1) {
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## >>>> WOHOWO!", __func__);
             return flow;
         } else {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## C", __func__);
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## DONT MATCH", __func__);
         }
     }
     return NULL;
+}
+
+uint8_t
+neat_wait_for_piggyback(neat_ctx *ctx, neat_flow *new_flow)
+{
+    neat_flow *flow;
+    struct neat_he_candidate *candidate;
+
+    neat_log(NEAT_LOG_DEBUG, "%s - ##########", __func__);
+
+    LIST_FOREACH(flow, &ctx->flows, next_flow) {
+        neat_log(NEAT_LOG_DEBUG, "%s - ########## checking: %p - %s", __func__, flow, flow->name);
+        // skipping self
+        if (flow == new_flow) {
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## SKIP SELF", __func__);
+            continue;
+        }
+
+        // flow should have a socket
+        if (flow->socket == NULL) {
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## NO SOCKET", __func__);
+            continue;
+        }
+
+        // xxx todo : check needed?
+        if (flow->acceptPending == 1) {
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## ACCEPT PENDING", __func__);
+            continue;
+        }
+
+        // DNS-name matches, flow is in connecting state and has the same group
+        if (!strcmp(flow->name, new_flow->name) && flow->hefirstConnect && flow->group == new_flow->group) {
+            TAILQ_FOREACH(candidate, flow->candidate_list, next) {
+                // Flow candidates include SCTP
+                if (candidate->pollable_socket->stack == NEAT_STACK_SCTP) {
+                    neat_log(NEAT_LOG_DEBUG, "%s - ########## SCTP CANDIDATE!!!", __func__);
+                    return 1;
+                } else {
+                    neat_log(NEAT_LOG_DEBUG, "%s - ########## STACK DOESNT MATCH", __func__);
+                }
+            }
+        } else {
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## DONT MATCH", __func__);
+        }
+    }
+    return 0;
 }

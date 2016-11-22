@@ -243,8 +243,15 @@ struct neat_flow
     unsigned int isSCTPExplicitEOR : 1;
     unsigned int isServer : 1; // i.e. created via accept()
     unsigned int multistreaming : 1;
+    unsigned int piggyback : 1;
+    unsigned int piggybackPending : 1;
 
     struct neat_he_candidates *candidate_list;
+
+    uv_timer_t *piggybackTimer;
+    struct neat_flow *piggybackFlow;
+    uint16_t piggybackId;
+    uv_poll_cb callback_fx;
 
     LIST_ENTRY(neat_flow) next_flow;
 };
@@ -369,7 +376,8 @@ void neat_resolver_release(struct neat_resolver *resolver);
 //Free the list of results
 void neat_resolver_free_results(struct neat_resolver_results *results);
 
-neat_flow *neat_find_sctp_stream(neat_ctx *ctx, struct sockaddr *dst);
+neat_flow *neat_find_sctp_piggyback_assoc(neat_ctx *ctx, neat_flow *new_flow);
+uint8_t neat_wait_for_piggyback(neat_ctx *ctx, neat_flow *new_flow);
 
 //Start to resolve a domain name (or literal). Accepts a list of protocols, will
 //set socktype based on protocol

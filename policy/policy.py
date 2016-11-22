@@ -371,7 +371,7 @@ class NEATProperty(object):
         else:
             if other.precedence == NEATProperty.IMMUTABLE and self.precedence == NEATProperty.IMMUTABLE:
                 err_str = "%s <-- %s: immutable property" % (self, other)
-                logging.debug(err_str)
+                #logging.debug(err_str)
                 raise ImmutablePropertyError(err_str)
             elif other.precedence >= self.precedence:
                 self.score = other.score

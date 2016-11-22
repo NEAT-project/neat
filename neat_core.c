@@ -2583,7 +2583,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
             continue;
         }
 
-        endpoint = json_pack("{ss++si}", "value", namebuf, "@", ifaddr->ifa_name, "precedence", 1);
+        endpoint = json_pack("{ss++si}", "value", namebuf, "@", ifaddr->ifa_name, "precedence", 2);
 
         if (endpoint == NULL)
             goto end;
@@ -2597,14 +2597,14 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
 
     json_object_set(properties, "local_endpoint", endpoints);
 
-    port = json_pack("{sisi}", "value", flow->port, "precedence", 1);
+    port = json_pack("{sisi}", "value", flow->port, "precedence", 2);
     if (port == NULL)
         goto end;
 
     json_object_set(properties, "port", port);
     json_decref(port);
 
-    address = json_pack("{sssi}", "value", flow->name, "precedence", 1);
+    address = json_pack("{sssi}", "value", flow->name, "precedence", 2);
     if (address == NULL)
         goto end;
 

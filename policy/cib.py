@@ -391,6 +391,12 @@ class CIB(object):
 
         for e in self.rows:
             try:
+                # FIXME better check whether all input properties are included in row
+                if len(input_properties & e) != len(input_properties): continue
+            except ImmutablePropertyError:
+                continue
+
+            try:
                 candidate = e + input_properties
                 candidate.cib_source = e.cib_source
                 candidates.append(candidate)

@@ -24,21 +24,6 @@ on_pm_written(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_ipc_cont
 }
 
 static void
-on_pm_written_2(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_ipc_context *context)
-{
-    struct neat_pm_context *pm_context = context->data;
-
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    if (neat_unix_json_shutdown(context)) {
-
-        neat_log(NEAT_LOG_DEBUG, "Failed to shutdown PM socket");
-
-        pm_context->on_pm_error(ctx, flow, PM_ERROR_SOCKET);
-    }
-}
-
-static void
 on_timer_close(uv_handle_t* handle)
 {
     free(handle);
@@ -86,13 +71,6 @@ on_pm_read(struct neat_ctx *ctx, struct neat_flow *flow, json_t *json, void *dat
 }
 
 static void
-on_pm_read_2(struct neat_ctx *ctx, struct neat_flow *flow, json_t *json, void *data)
-{
-    // Shouldn't be invoked when HE sends connection results to PM.
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-}
-
-static void
 on_pm_error(struct neat_ctx *ctx, struct neat_flow *flow, int error, void *data)
 {
     struct neat_pm_context *pm_context = data;
@@ -109,15 +87,6 @@ on_pm_connected(struct neat_ipc_context *context, void *data)
 {
     struct neat_pm_context *pm_context = data;
     if ((neat_unix_json_send(context, pm_context->output_buffer, on_pm_written, context->on_error)) != NEAT_ERROR_OK) {
-        pm_context->on_pm_error(pm_context->ipc_context->ctx, pm_context->ipc_context->flow, PM_ERROR_SOCKET);
-    }
-}
-
-static void
-on_pm_connected_2(struct neat_ipc_context *context, void *data)
-{
-    struct neat_pm_context *pm_context = data;
-    if ((neat_unix_json_send(context, pm_context->output_buffer, on_pm_written_2, context->on_error)) != NEAT_ERROR_OK) {
         pm_context->on_pm_error(pm_context->ipc_context->ctx, pm_context->ipc_context->flow, PM_ERROR_SOCKET);
     }
 }

@@ -1284,14 +1284,6 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         "remote_port", "value", he_res->remote_port, "cached", "value", (result)?1:0, "precedence",
         2, "score", 5);
      
-    // TODO: Remove.
-    char *json_str = json_dumps(result_array, JSON_ENSURE_ASCII);
-    char strMsg[1000];
-    strcpy(strMsg, "JSON: ");
-    strcat(strMsg, json_str);
-    neat_log(NEAT_LOG_DEBUG, strMsg);
-    free(json_str);
-
     neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
 
 end:

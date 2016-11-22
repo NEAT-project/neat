@@ -2282,7 +2282,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
 
             struct neat_he_candidate *candidate = calloc(1, sizeof(*candidate));
             assert(candidate);
-            candidate->pollable_socket = malloc(sizeof(struct neat_pollable_socket));
+            candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket));
             assert(candidate->pollable_socket);
 
 

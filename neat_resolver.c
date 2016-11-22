@@ -224,45 +224,53 @@ static uint32_t neat_resolver_literal_populate_results(struct neat_resolver_requ
         struct sockaddr_in6 *dst_addr6;
     } u;
 
-    if (request->family == AF_INET) {
-        u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
-        memset(u.dst_addr4, 0, sizeof(struct sockaddr_in));
-        u.dst_addr4->sin_family = AF_INET;
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    char *tmp = strdup(request->domain_name);
+    char *ptr = NULL;
+    char *address_name = strtok_r((char *)tmp, ",", &ptr);
+    while (address_name != NULL) {
+        if (request->family == AF_INET) {
+            u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
+            memset(u.dst_addr4, 0, sizeof(struct sockaddr_in));
+            u.dst_addr4->sin_family = AF_INET;
 #ifdef HAVE_SIN_LEN
-        u.dst_addr4->sin_len = sizeof(struct sockaddr_in);
+            u.dst_addr4->sin_len = sizeof(struct sockaddr_in);
 #endif
-        dst_addr_pton = &(u.dst_addr4->sin_addr);
-    } else {
-        u.dst_addr6 = (struct sockaddr_in6*) &dst_addr;
-        memset(u.dst_addr6, 0, sizeof(struct sockaddr_in6));
-        u.dst_addr6->sin6_family = AF_INET6;
+            dst_addr_pton = &(u.dst_addr4->sin_addr);
+        } else {
+            u.dst_addr6 = (struct sockaddr_in6*) &dst_addr;
+            memset(u.dst_addr6, 0, sizeof(struct sockaddr_in6));
+            u.dst_addr6->sin6_family = AF_INET6;
 #ifdef HAVE_SIN6_LEN
-        u.dst_addr6->sin6_len = sizeof(struct sockaddr_in6);
+            u.dst_addr6->sin6_len = sizeof(struct sockaddr_in6);
 #endif
-        dst_addr_pton = &(u.dst_addr6->sin6_addr);
+            dst_addr_pton = &(u.dst_addr6->sin6_addr);
+        }
 
+        //We already know that this will be successful, it was checked in the
+        //literal-check performed earlier
+        inet_pton(request->family, address_name, dst_addr_pton);
+
+        for (nsrc_addr = request->resolver->nc->src_addrs.lh_first;
+            nsrc_addr != NULL; nsrc_addr = nsrc_addr->next_addr.le_next) {
+            //Family is always set for literals
+            if (nsrc_addr->family != request->family)
+                continue;
+
+            //Do not use deprecated addresses
+            if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
+                continue;
+
+            num_resolved_addrs += neat_resolver_helpers_fill_results(request,
+                                                                     result_list,
+                                                                     nsrc_addr,
+                                                                     dst_addr);
+        }
+
+        address_name = strtok_r(NULL, ",", &ptr);
     }
-
-    //We already know that this will be successful, it was checked in the
-    //literal-check performed earlier
-    inet_pton(request->family, request->domain_name, dst_addr_pton);
-
-    for (nsrc_addr = request->resolver->nc->src_addrs.lh_first;
-         nsrc_addr != NULL; nsrc_addr = nsrc_addr->next_addr.le_next) {
-        //Family is always set for literals
-        if (nsrc_addr->family != request->family)
-            continue;
-
-        //Do not use deprecated addresses
-        if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
-            continue;
-
-        num_resolved_addrs += neat_resolver_helpers_fill_results(request,
-                                                                 result_list,
-                                                                 nsrc_addr,
-                                                                 dst_addr);
-    }
-
+    free (tmp);
     return num_resolved_addrs;
 }
 

@@ -1,4 +1,5 @@
 import bisect
+import hashlib
 import json
 import logging
 import os
@@ -36,11 +37,7 @@ class NEATPolicy(object):
     def __init__(self, policy_dict, policy_file=None):
         # set default values
 
-        self.uid = policy_dict.get('uid', id(self))
-
-        # deprecated
-        self.name = policy_dict.get('name', self.uid)
-
+        # TODO do we need to handle unknown attributes?
         for k, v in policy_dict.items():
             if isinstance(v, str):
                 setattr(self, k, v)
@@ -60,6 +57,37 @@ class NEATPolicy(object):
         properties = policy_dict.get('properties', {})
         self.properties = PropertyMultiArray()
         self.properties.add(*dict_to_properties(properties))
+
+        # set UID
+        self.uid = policy_dict.get('uid')
+        if self.uid is None:
+            self.uid = self.__gen_uid()
+        else:
+            self.uid = str(self.uid).lower()
+
+        # deprecated
+        self.name = policy_dict.get('name', self.uid)
+
+    def __gen_uid(self):
+        # TODO make UID immutable?
+        s = str(id(self))
+        return hashlib.md5(s.encode('utf-8')).hexdigest()
+
+    def dict(self):
+        d = {}
+        for attr in ['uid', 'priority', 'replace_matched', 'filename', 'time']:
+            try:
+                d[attr] = getattr(self, attr)
+            except AttributeError:
+                logging.warning("Policy doesn't contain attribute %s" % attr)
+
+        d['match'] = self.match.dict()
+        d['properties'] = self.properties.dict()
+
+        return d
+
+    def json(self):
+        return json.dumps(self.dict(), indent=4, sort_keys=True)
 
     def match_len(self):
         """Use the number of match elements to sort the entries in the PIB.

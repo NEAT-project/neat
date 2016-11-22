@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.5
 
+import unittest
 from policy import *
 import sys
 import locale

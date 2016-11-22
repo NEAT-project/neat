@@ -10,6 +10,7 @@ LIST(APPEND neat_programs
     server_echo.c
     tneat.c
     peer.c
+    http_client_multihomed.c
 )
 
 LIST(APPEND neat_property_examples
@@ -30,6 +31,9 @@ FOREACH (source_file ${neat_programs})
         util.c
     )
     TARGET_LINK_LIBRARIES(${source_file_we} neat)
+    INSTALL(TARGETS             ${source_file_we}
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            BUNDLE DESTINATION  ${CMAKE_INSTALL_BINDIR})
 ENDFOREACH ()
 
 # COPY EXAMPLE PROPERTY FILES

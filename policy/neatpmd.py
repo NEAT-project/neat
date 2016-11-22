@@ -8,8 +8,7 @@ import os
 from copy import deepcopy
 from operator import attrgetter
 
-from aiohttp import web
-
+import pmrest
 import policy
 from cib import CIB
 from pib import PIB
@@ -20,6 +19,7 @@ parser.add_argument('--cib', type=str, default='cib/example/', help='specify dir
 parser.add_argument('--pib', type=str, default='pib/example/', help='specify directory in which to look for PIB files')
 parser.add_argument('--sock', type=str, default=None, help='set Unix domain socket')
 parser.add_argument('--debug', type=bool, default=True, help='enable debugging')
+parser.add_argument('--rest', type=bool, default=True, help='enable REST API')
 
 args = parser.parse_args()
 
@@ -169,9 +169,12 @@ class PIBProtocol(asyncio.Protocol):
 
 
 class CIBProtocol(asyncio.Protocol):
+    def __init__(self):
+        self.transport = None
+        self.slim = ''
+
     def connection_made(self, transport):
         self.transport = transport
-        self.slim = ''
 
     def data_received(self, data):
         self.slim += data.decode()
@@ -179,34 +182,8 @@ class CIBProtocol(asyncio.Protocol):
     def eof_received(self):
         logging.info("New CIB object received (%dB)" % len(self.slim))
 
-        # TODO do a sanity check
-        try:
-            json_slim = json.loads(self.slim)
-        except json.decoder.JSONDecodeError:
-            logging.warning('invalid CIB file format')
-            return
+        cib.import_json(self.slim)
 
-        # make sure we always get a list of CIB entries
-        if not isinstance(json_slim, list):
-            json_slim = [json_slim]
-
-        for cib_entry in json_slim:
-            filename = cib_entry.get('uid')
-            slim = json.dumps(cib_entry)
-
-            if not filename:
-                logging.warning("CIB entry has no UID")
-                # generate CIB filename
-                filename = hashlib.md5(slim.encode('utf-8')).hexdigest()
-
-            filename = filename.lower() + '.slim'
-
-            f = open(os.path.join(CIB_DIR, '%s' % filename), 'w')
-            f.write(slim)
-            f.close()
-            logging.info("CIB entry saved as \"%s\"." % filename)
-
-        cib.reload_files()
         self.transport.close()
 
 
@@ -236,12 +213,6 @@ class PMProtocol(asyncio.Protocol):
         self.transport.close()
 
 
-async def handle(request):
-    name = request.match_info.get('name', "Anonymous")
-    text = "Hello, " + name
-    return web.Response(text=text)
-
-
 def no_loop_test():
     """
     Dummy JSON request for testing
@@ -269,23 +240,19 @@ if __name__ == "__main__":
     # FIXME: REMOVE only for local testing
     # no_loop_test()
 
-    app = web.Application()
-    app.router.add_get('/', handle)
-    app.router.add_get('/{name}', handle)
-    handler = app.make_handler()
-
     loop = asyncio.get_event_loop()
+
     # Each client connection creates a new protocol instance
     coro = loop.create_unix_server(PMProtocol, DOMAIN_SOCK)
-    coro_pib = loop.create_unix_server(PIBProtocol, PIB_SOCK)
-    coro_cib = loop.create_unix_server(CIBProtocol, CIB_SOCK)
-
-    f = loop.create_server(handler, '0.0.0.0', REST_PORT)
-    srv = loop.run_until_complete(f)
-
     server = loop.run_until_complete(coro)
+
+    coro_pib = loop.create_unix_server(PIBProtocol, PIB_SOCK)
     pib_server = loop.run_until_complete(coro_pib)
+
+    coro_cib = loop.create_unix_server(CIBProtocol, CIB_SOCK)
     cib_server = loop.run_until_complete(coro_cib)
+
+    pmrest.init_rest_server(loop, pib, cib, rest_port=REST_PORT)
 
     print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))
     try:
@@ -293,10 +260,13 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Quitting policy manager.")
         pass
+    # TODO implement http://aiohttp.readthedocs.io/en/stable/web.html#graceful-shutdown
 
     # Close the server
     server.close()
     pib_server.close()
+    cib_server.close()
+    pmrest.close()
 
     loop.run_until_complete(server.wait_closed())
     loop.close()

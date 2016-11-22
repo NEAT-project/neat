@@ -2,8 +2,6 @@ import copy
 import json
 import logging
 import numbers
-import unittest
-import operator
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
@@ -12,6 +10,10 @@ UNDERLINE_START = '\033[4m'
 STRIKETHROUGH_START = '\033[9m'
 FORMAT_END = '\033[0m'
 SUB = str.maketrans("0123456789+-", "₀₁₂₃₄₅₆₇₈₉₊₋")
+
+DEFAULT_SCORE = 0.0
+DEFAULT_PRECEDENCE = 1
+DEFAULT_EVALUATED = False
 
 
 class NEATPropertyError(Exception):
@@ -248,15 +250,14 @@ class NEATProperty(object):
     """
     The basic unit for representing properties in NEAT. NEATProperties are (key,value) tuples.
 
-
     """
 
     IMMUTABLE = 2
     OPTIONAL = 1
 
-    def __init__(self, keyval, precedence=OPTIONAL, score=0, banned=None):
-        self.key = keyval[0]
-        self._value = PropertyValue(keyval[1])
+    def __init__(self, key_val, precedence=OPTIONAL, score=0, banned=None):
+        self.key = key_val[0]
+        self._value = PropertyValue(key_val[1])
 
         self.precedence = precedence
         self.score = score
@@ -279,29 +280,36 @@ class NEATProperty(object):
     def value(self, value):
         self._value = PropertyValue(value)
 
-        # if new_value.is_numeric and self._value.is_numeric:
-        #     overlap =  self._range_overlap(new_value.value)
-        #     self._value = PropertyValue()
-        #
-        # old_value = self._value
-        # self._value = value
-        #
-        #
-        # if isinstance(old_value, (tuple, numbers.Number)) and isinstance(value, (tuple, numbers.Number)):
-        #     # FIXME ensure that tuple values are numeric
-        #     new_value = self._range_overlap(old_value)
-        #     if new_value:
-        #         self._value = new_value
-
     @property
     def property(self):
         return self.key, self.value
 
-    def dict(self):
-        """Return a dict for JSON export"""
-        json_dict = {
-            self.key: dict(value=self.value, precedence=self.precedence, score=self.score, evaluated=self.evaluated)}
-        return json_dict
+    def dict(self, extended=False):
+        """
+        Return a dict representation of the NEATProperty e.g. for JSON export.
+        If extended is set also include default values.
+        """
+
+        d = dict()
+
+        if isinstance(self.value, tuple):
+            d['value'] = {'start': self.value[0], 'end': self.value[1]}
+        elif isinstance(self.value, set):
+            # sets are not supported in JSON so convert these to a list
+            d['value'] = list(self.value)
+        else:
+            d['value'] = self.value
+
+        if extended:
+            d['precedence'] = self.precedence
+            d['score'] = self.score
+            d['evaluated'] = self.evaluated
+        else:
+            if self.precedence != DEFAULT_PRECEDENCE: d['precedence'] = self.precedence
+            if self.score != DEFAULT_SCORE: d['score'] = self.score
+            if self.evaluated != DEFAULT_EVALUATED: d['evaluated'] = self.evaluated
+
+        return {self.key: d}
 
     def __iter__(self):
         for p in self.property:
@@ -464,7 +472,8 @@ class PropertyArray(dict):
 
     @property
     def score(self):
-        return sum((s.score for s in self.values() if s.evaluated)), sum((s.score for s in self.values() if not s.evaluated))  # FIXME only if s.evaluated?
+        return sum((s.score for s in self.values() if s.evaluated)), sum(
+            (s.score for s in self.values() if not s.evaluated))  # FIXME only if s.evaluated?
 
     def dict(self):
         """ Return a dictionary containing all contained NEAT property attributes"""
@@ -524,6 +533,21 @@ class PropertyMultiArray(dict):
             pas.extend(tmp)
         return pas
 
+    def dict(self):
+        """ Return a dictionary containing all contained NEAT property attributes"""
+
+        property_dict = dict()
+        for k, v in self.items():
+            if len(v) == 1:
+                p = v[0]
+                property_dict[k] = p.dict()[p.key]
+            else:
+                property_dict[k] = []
+                for p in v:
+                    property_dict[k].append(p.dict()[p.key])
+
+        return property_dict
+
     def __repr__(self):
         slist = []
         for i in self.values():
@@ -535,5 +559,5 @@ if __name__ == "__main__":
     pma = PropertyMultiArray()
 
     import code
-    code.interact(local=locals(), banner='policy')
 
+    code.interact(local=locals(), banner='policy')

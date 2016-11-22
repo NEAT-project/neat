@@ -190,7 +190,7 @@ main(int argc, char *argv[])
         neat_set_operations(ctx, flows[i], &(ops[i]));
 
         // wait for on_connected or on_error to be invoked
-        if (neat_open(ctx, flows[i], argv[argc - 1], 8080, NULL, 0) != NEAT_OK) {
+        if (neat_open(ctx, flows[i], argv[argc - 1], 80, NULL, 0) != NEAT_OK) {
             fprintf(stderr, "Could not open flow\n");
             result = EXIT_FAILURE;
         } else {

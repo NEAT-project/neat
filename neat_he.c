@@ -216,8 +216,6 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
 
     //piggybackFlow = neat_find_sctp_piggyback_stream(ctx, flow);
 
-
-
     flow->candidate_list = candidate_list;
     candidate = candidate_list->tqh_first;
 

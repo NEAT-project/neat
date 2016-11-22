@@ -4091,7 +4091,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
     case NEAT_STACK_SCTP:
 #ifndef USRSCTP_SUPPORT
         // Subscribe to events needed for callbacks
-        neat_sctp_init_events(candidate->pollable_socket->fd);
+        neat_sctp_init_events(fd);
 #endif
 #if defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT)
         memset(&adaption, 0, sizeof(adaption));

@@ -1,5 +1,6 @@
 import bisect
 import copy
+import hashlib
 import itertools
 import json
 import logging
@@ -339,6 +340,41 @@ class CIB(object):
                     self.graph[r] = []
                 if i.uid not in self.graph[r]:
                     self.graph[r].append(i.uid)
+
+    def import_json(self, slim, uid=None):
+        """
+        Import JSON formatted CIB entries into current cib. Multiple entries can be concatenated in a JSON array
+        """
+
+        # TODO optimize
+
+        try:
+            json_slim = json.loads(slim)
+        except json.decoder.JSONDecodeError:
+            logging.warning('invalid CIB file format')
+            return
+
+        # make sure we always get CIB entries as a list
+        if not isinstance(json_slim, list):
+            json_slim = [json_slim]
+
+        for cib_entry in json_slim:
+            filename = cib_entry.get('uid')
+            slim = json.dumps(cib_entry)
+
+            if not filename:
+                logging.warning("CIB entry has no UID")
+                # generate CIB filename
+                filename = hashlib.md5(slim.encode('utf-8')).hexdigest()
+
+            filename = filename.lower() + '.slim'
+
+            f = open(os.path.join(self.cib_dir, '%s' % filename), 'w')
+            f.write(slim)
+            f.close()
+            logging.info("CIB entry saved as \"%s\"." % filename)
+
+        self.reload_files()
 
     def register(self, cib_source):
         if cib_source in self.uid:

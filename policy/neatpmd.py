@@ -169,9 +169,12 @@ class PIBProtocol(asyncio.Protocol):
 
 
 class CIBProtocol(asyncio.Protocol):
+    def __init__(self):
+        self.transport = None
+        self.slim = ''
+
     def connection_made(self, transport):
         self.transport = transport
-        self.slim = ''
 
     def data_received(self, data):
         self.slim += data.decode()
@@ -179,34 +182,8 @@ class CIBProtocol(asyncio.Protocol):
     def eof_received(self):
         logging.info("New CIB object received (%dB)" % len(self.slim))
 
-        # TODO do a sanity check
-        try:
-            json_slim = json.loads(self.slim)
-        except json.decoder.JSONDecodeError:
-            logging.warning('invalid CIB file format')
-            return
+        cib.import_json(self.slim)
 
-        # make sure we always get a list of CIB entries
-        if not isinstance(json_slim, list):
-            json_slim = [json_slim]
-
-        for cib_entry in json_slim:
-            filename = cib_entry.get('uid')
-            slim = json.dumps(cib_entry)
-
-            if not filename:
-                logging.warning("CIB entry has no UID")
-                # generate CIB filename
-                filename = hashlib.md5(slim.encode('utf-8')).hexdigest()
-
-            filename = filename.lower() + '.slim'
-
-            f = open(os.path.join(CIB_DIR, '%s' % filename), 'w')
-            f.write(slim)
-            f.close()
-            logging.info("CIB entry saved as \"%s\"." % filename)
-
-        cib.reload_files()
         self.transport.close()
 
 

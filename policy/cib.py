@@ -1,5 +1,6 @@
 import bisect
 import copy
+import hashlib
 import itertools
 import json
 import logging
@@ -13,6 +14,10 @@ from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePro
 from policy import dict_to_properties
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
+
+
+class CIBEntryError(Exception):
+    pass
 
 
 def load_json(filename):
@@ -34,6 +39,11 @@ class CIBSource(object):
     cib = None
 
     def __init__(self, source_dict):
+
+        if not isinstance(source_dict, dict):
+            raise CIBEntryError("received invalid CIB object")
+
+        # FIXME generate persistent UIDs
         self.uid = source_dict.get('uid', str(uuid.uuid4()))
         self.root = source_dict.get('root', False)
         # otherwise chain matched CIBs
@@ -48,13 +58,13 @@ class CIBSource(object):
         # convert to PropertyMultiArray with NEATProperties
         properties = source_dict.get('properties')
         if not isinstance(properties, list):
-            #logging.warning("properties should be in a list [NEW STYLE]")
+            # properties should be in a list [NEW STYLE]: FIXME explain why
             properties = [properties]
 
         self.properties = []
         for p in properties:
             pa = PropertyMultiArray(*dict_to_properties(p))
-            # add CIB source uid as a NEATProperty
+            # include UID as a NEATProperty
             pa.add(NEATProperty(('uid', self.uid), score=0, precedence=NEATProperty.IMMUTABLE))
             self.properties.append(pa)
 
@@ -63,6 +73,30 @@ class CIBSource(object):
         for l in source_dict.get('match', []):
             # convert to NEATProperties
             self.match.append(PropertyArray(*dict_to_properties(l)))
+
+    def dict(self):
+        d = {}
+        for attr in ['uid', 'root', 'link_matched', 'priority', 'filename', 'description', ]:
+            try:
+                d[attr] = getattr(self, attr)
+            except AttributeError:
+                logging.debug("CIB source doesn't contain attribute %s" % attr)
+
+        d['match'] = []
+        for m in self.match:
+            d['match'].append(m.dict())
+
+        if len(self.properties) == 1:
+            d['properties'] = self.properties[0].dict()
+        else:
+            d['properties'] = []
+            for p in self.properties:
+                d['properties'].append(p.dict())
+
+        return d
+
+    def json(self):
+        return json.dumps(self.dict(), indent=4, sort_keys=True)
 
     def resolve_paths(self, path=None):
         """recursively find all paths from this CIBSource to all other matched CIBSources in the CIB graph"""
@@ -87,8 +121,6 @@ class CIBSource(object):
     def match_entry(self, entry):
         for match_properties in self.match:
             if set(match_properties.values()) <= set(entry.values()):
-                #                import code
-                #                code.interact(local=locals(), banner='here')
                 return True
         return False
 
@@ -204,12 +236,13 @@ class CIB(object):
     """
 
     cib_dir = './cib/example/'
-    CIB_EXTENSIONS = ('.cib', '.local', '.connection', '.remote')
+    CIB_EXTENSIONS = ('.cib', '.local', '.connection', '.remote', '.slim')
 
     def __init__(self, cib_dir=None):
         self.uid = {}
         # track CIB files
         self.files = dict()
+
         CIBSource.cib = self
 
         self.graph = {}
@@ -251,6 +284,8 @@ class CIB(object):
         cib_dir = self.cib_dir if not cib_dir else cib_dir
         full_names = set()
 
+        logging.info("checking for CIB updates...")
+
         for dirpath, dirnames, filenames in os.walk(cib_dir):
             for filename in filenames:
                 if not filename.endswith(CIB.CIB_EXTENSIONS) or filename.startswith(('.', '#')):
@@ -287,7 +322,12 @@ class CIB(object):
         if not cs:
             logging.warning("CIB source file %s was invalid" % filename)
             return
-        cib_source = CIBSource(cs)
+        try:
+            cib_source = CIBSource(cs)
+        except CIBEntryError as e:
+            logging.error("Unable to load CIB source %s" % filename)
+            return
+
         cib_source.filename = filename
         self.register(cib_source)
 
@@ -300,6 +340,41 @@ class CIB(object):
                     self.graph[r] = []
                 if i.uid not in self.graph[r]:
                     self.graph[r].append(i.uid)
+
+    def import_json(self, slim, uid=None):
+        """
+        Import JSON formatted CIB entries into current cib. Multiple entries can be concatenated in a JSON array
+        """
+
+        # TODO optimize
+
+        try:
+            json_slim = json.loads(slim)
+        except json.decoder.JSONDecodeError:
+            logging.warning('invalid CIB file format')
+            return
+
+        # make sure we always get CIB entries as a list
+        if not isinstance(json_slim, list):
+            json_slim = [json_slim]
+
+        for cib_entry in json_slim:
+            filename = cib_entry.get('uid')
+            slim = json.dumps(cib_entry)
+
+            if not filename:
+                logging.warning("CIB entry has no UID")
+                # generate CIB filename
+                filename = hashlib.md5(slim.encode('utf-8')).hexdigest()
+
+            filename = filename.lower() + '.slim'
+
+            f = open(os.path.join(self.cib_dir, '%s' % filename), 'w')
+            f.write(slim)
+            f.close()
+            logging.info("CIB entry saved as \"%s\"." % filename)
+
+        self.reload_files()
 
     def register(self, cib_source):
         if cib_source in self.uid:
@@ -328,14 +403,12 @@ class CIB(object):
     def dump(self, show_all=False):
         ts = shutil.get_terminal_size()
         tcol = ts.columns
-        if show_all:
-            items = self.uid.items()
-        else:
-            items = self.roots.items()
 
         print("=" * int((tcol - 11) / 2) + " CIB START " + "=" * int((tcol - 11) / 2))
+        # ============================================================================
         for e in self.rows:
             print(str(e) + '\n')
+        # ============================================================================
         print("=" * int((tcol - 9) / 2) + " CIB END " + "=" * int((tcol - 9) / 2))
 
     def __repr__(self):

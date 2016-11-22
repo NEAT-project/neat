@@ -78,7 +78,9 @@ on_pm_read(struct neat_ctx *ctx, struct neat_flow *flow, json_t *json, void *dat
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    pm_context->on_pm_reply(ctx, flow, json);
+    if (pm_context->on_pm_reply != NULL) {
+        pm_context->on_pm_reply(ctx, flow, json);    
+    }
     
     neat_unix_json_close(pm_context->ipc_context, on_pm_close, data);
 }
@@ -227,7 +229,7 @@ neat_json_send_he_result_to_pm(struct neat_ctx *ctx, struct neat_flow *flow, con
     pm_context->on_pm_error = err_cb;
     pm_context->ipc_context = context;
 
-    if ((rc = neat_unix_json_socket_open(ctx, flow, context, path, on_pm_connected_2, on_pm_read_2, on_pm_error, pm_context)) == NEAT_OK)
+    if ((rc = neat_unix_json_socket_open(ctx, flow, context, path, on_pm_connected, on_pm_read, on_pm_error, pm_context)) == NEAT_OK)
         return NEAT_OK;
 error:
     if (pm_context) {

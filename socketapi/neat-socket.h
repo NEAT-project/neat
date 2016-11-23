@@ -205,7 +205,6 @@ union neat_notification {
 extern "C" {
 #endif
 
-unsigned int socketAPIGetVersion();
 int ext_socket(int domain, int type, int protocol);
 int ext_open(const char* pathname, int flags, mode_t mode);
 int ext_creat(const char* pathname, mode_t mode);
@@ -242,45 +241,46 @@ int ext_connectx(int                    sockfd,
                  int                    addrcnt,
                  neat_assoc_t*          id);
 
-int ext_peeloff(int sockfd, ext_assoc_t id);
+int ext_peeloff(int sockfd, neat_assoc_t id);
 
-int ext_getpaddrs(int sockfd, ext_assoc_t id, struct sockaddr** addrs);
+int ext_getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
 void ext_freepaddrs(struct sockaddr* addrs);
 
-int ext_getladdrs(int sockfd, ext_assoc_t id, struct sockaddr** addrs);
+int ext_getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
 void ext_freeladdrs(struct sockaddr* addrs);
 
-int ext_opt_info(int sd, ext_assoc_t assocID, int opt, void* arg, socklen_t* size);
+int ext_opt_info(int sd, neat_assoc_t assocID, int opt, void* arg, socklen_t* size);
 
-ssize_t ext_send(int                           s,
-                 const void*                   data,
-                 size_t                        len,
-                 const struct neat_sndrcvinfo* sinfo,
-                 int                           flags);
-ssize_t ext_sendx(int                           sd,
-                  const void*                   data,
-                  size_t                        len,
-                  const struct sockaddr*        addrs,
-                  int                           addrcnt,
-                  const struct neat_sndrcvinfo* sinfo,
-                  int                           flags);
-ssize_t ext_sendmsg(int                    s,
-                    const void*            data,
-                    size_t                 len,
-                    const struct sockaddr* to,
-                    socklen_t              tolen,
-                    uint32_t               ppid,
-                    uint32_t               flags,
-                    uint16_t               stream_no,
-                    uint32_t               timetolive,
-                    uint32_t               context);
-ssize_t ext_recvmsg(int                     s,
-                    void*                   msg,
-                    size_t                  len,
-                    struct sockaddr*        from,
-                    socklen_t*              fromlen,
-                    struct neat_sndrcvinfo* sinfo,
-                    int*                    msg_flags);
+// ssize_t ext_send(int                           s,
+//                  const void*                   data,
+//                  size_t                        len,
+//                  const struct neat_sndrcvinfo* sinfo,
+//                  int                           flags);
+// ssize_t ext_sendx(int                           sd,
+//                   const void*                   data,
+//                   size_t                        len,
+//                   const struct sockaddr*        addrs,
+//                   int                           addrcnt,
+//                   const struct neat_sndrcvinfo* sinfo,
+//                   int                           flags);
+// ssize_t ext_sendmsg(int                    s,
+//                     const void*            data,
+//                     size_t                 len,
+//                     const struct sockaddr* to,
+//                     socklen_t              tolen,
+//                     uint32_t               ppid,
+//                     uint32_t               flags,
+//                     uint16_t               stream_no,
+//                     uint32_t               timetolive,
+//                     uint32_t               context);
+// ssize_t ext_recvmsg(int                     s,
+//                     void*                   msg,
+//                     size_t                  len,
+//                     struct sockaddr*        from,
+//                     socklen_t*              fromlen,
+//                     struct neat_sndrcvinfo* sinfo,
+//                     int*                    msg_flags);
+
 int ext_pipe(int fds[2]);
 
 

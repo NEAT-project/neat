@@ -305,5 +305,6 @@ INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/neat)
 
 # INCLUDE EXAMPLES AND TESTS FOLDER
 #################################################
+ADD_SUBDIRECTORY(socketapi)
 ADD_SUBDIRECTORY(examples)
 ADD_SUBDIRECTORY(tests)

@@ -115,7 +115,7 @@ struct neat_remote_error
    uint32_t     sre_length;
    uint16_t     sre_error;
    neat_assoc_t sre_assoc_id;
-   uint8_t      sre_data[0];
+   uint8_t      sre_data[];
 };
 
 #define NEAT_SEND_FAILED 4
@@ -127,7 +127,7 @@ struct neat_send_failed
    uint32_t               ssf_error;
    struct neat_sndrcvinfo ssf_info;
    neat_assoc_t           ssf_assoc_id;
-   uint8_t                ssf_data[0];
+   uint8_t                ssf_data[];
 };
 #define NEAT_DATA_UNSENT 41
 #define NEAT_DATA_SENT   42

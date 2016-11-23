@@ -154,6 +154,7 @@ on_all_written(struct neat_flow_operations *opCB)
 static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
+    //sleep(10);
     neat_error_code code;
     struct echo_flow *ef = opCB->userData;
     struct neat_tlv options[1];

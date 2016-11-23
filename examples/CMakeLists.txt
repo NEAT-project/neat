@@ -10,6 +10,7 @@ LIST(APPEND neat_programs
     server_echo.c
     tneat.c
     peer.c
+    minimal_client.c
 )
 
 LIST(APPEND neat_property_examples

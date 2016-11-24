@@ -290,7 +290,7 @@ class CIB(object):
 
     def reload_files(self, cib_dir=None):
         """
-        WIP reload CIB files when a change is detected on disk
+        Reload CIB files when a change is detected on disk
         """
         cib_dir = self.cib_dir if not cib_dir else cib_dir
         full_names = set()
@@ -327,6 +327,7 @@ class CIB(object):
             cs.update_links_from_match()
 
         self.gen_graph()
+        self.dump()#xxx
 
     def load_cib_file(self, filename):
         cs = load_json(filename)

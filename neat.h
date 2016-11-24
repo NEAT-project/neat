@@ -25,13 +25,14 @@ typedef enum {
 struct neat_ctx; // global
 struct neat_flow; // one per connection
 
+typedef uint64_t neat_error_code;
+
 NEAT_EXTERN struct neat_ctx *neat_init_ctx();
-NEAT_EXTERN void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
+NEAT_EXTERN neat_error_code neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
 NEAT_EXTERN void neat_stop_event_loop(struct neat_ctx *nc);
 NEAT_EXTERN int neat_get_backend_fd(struct neat_ctx *nc);
 NEAT_EXTERN void neat_free_ctx(struct neat_ctx *nc);
 
-typedef uint64_t neat_error_code;
 struct neat_flow_operations;
 typedef neat_error_code (*neat_flow_operations_fx)(struct neat_flow_operations *);
 

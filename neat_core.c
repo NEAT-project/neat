@@ -136,6 +136,8 @@ struct neat_ctx *neat_init_ctx()
         return NULL;
     }
 
+    nc->error = NEAT_OK;
+
     uv_loop_init(nc->loop);
     LIST_INIT(&(nc->src_addrs));
     LIST_INIT(&(nc->flows));
@@ -167,12 +169,14 @@ struct neat_ctx *neat_init_ctx()
 
 //Start the internal NEAT event loop
 //TODO: Add support for embedding libuv loops in other event loops
-void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
+neat_error_code
+neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     uv_run(nc->loop, (uv_run_mode) run_mode);
     uv_loop_close(nc->loop);
+    return nc->error;
 }
 
 void neat_stop_event_loop(struct neat_ctx *nc)
@@ -187,6 +191,20 @@ int neat_get_backend_fd(struct neat_ctx *nc)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     return uv_backend_fd(nc->loop);
+}
+
+/*
+ * Terminate a NEAT context upon error.
+ * Errors are reported back to the user through neat_start_event_loop.
+ */
+void
+neat_ctx_fail_on_error(struct neat_ctx *nc, neat_error_code error)
+{
+    if (error == NEAT_OK)
+        return;
+
+    nc->error = error;
+    neat_stop_event_loop(nc);
 }
 
 static void neat_walk_cb(uv_handle_t *handle, void *arg)

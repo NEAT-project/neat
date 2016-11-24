@@ -1284,6 +1284,33 @@ static void free_he_handle_cb(uv_handle_t *handle)
     free(handle);
 }
 
+/*
+ * Installs security if requested by the flow.
+ * Returns non-zero if security was requested.
+ * If that is the case, the security subsystem takes care of the flow from this point.
+ */
+static int
+install_security(struct neat_he_candidate *candidate)
+{
+    struct neat_flow *flow = candidate->pollable_socket->flow;
+    json_t *security = NULL, *val = NULL;
+
+    if ((security = json_object_get(candidate->properties, "security")) != NULL &&
+        (val = json_object_get(security, "value")) != NULL &&
+        json_typeof(val) == JSON_TRUE)
+    {
+        neat_log(NEAT_LOG_DEBUG, "Flow required security");
+        if (neat_security_install(flow->ctx, flow) != NEAT_OK) {
+            neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
+        }
+
+        return 1;
+    } else {
+        neat_log(NEAT_LOG_DEBUG, "Flow did not require security");
+        return 0;
+    }
+}
+
 static void
 he_connected_cb(uv_poll_t *handle, int status, int events)
 {
@@ -1293,7 +1320,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     struct neat_he_candidate *candidate = handle->data;
     struct neat_flow *flow = candidate->pollable_socket->flow;
     struct neat_he_candidates *candidate_list = flow->candidate_list;
-    json_t *security = NULL, *val = NULL;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     c++;
     neat_log(NEAT_LOG_DEBUG, "Invokation count: %d", c);
@@ -1387,9 +1415,13 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->socket->family = candidate->pollable_socket->family;
         flow->socket->type = candidate->pollable_socket->type;
         flow->socket->stack = candidate->pollable_socket->stack;
-        json_decref(flow->properties);
-        json_incref(candidate->properties);
-        flow->properties = candidate->properties;
+
+        if (candidate->properties != flow->properties) {
+            json_incref(candidate->properties);
+            json_decref(flow->properties);
+            flow->properties = candidate->properties;
+        }
+
         flow->everConnected = 1;
 
 #if defined(USRSCTP_SUPPORT)
@@ -1404,15 +1436,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
         flow->isPolling = 1;
 
-        if ((security = json_object_get(flow->properties, "security")) != NULL &&
-            (val = json_object_get(security, "value")) != NULL &&
-            json_typeof(val) == JSON_TRUE)
-        {
-            neat_log(NEAT_LOG_DEBUG, "client required security");
-            if (neat_security_install(flow->ctx, flow) != NEAT_OK) {
-                neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
-            }
-        } else {
+        if (!install_security(candidate)) {
             // Transfer this handle to the "main" polling callback
             // TODO: Consider doing this in some other way that directly calling
             // this callback
@@ -1437,6 +1461,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         if (!(--flow->heConnectAttemptCount)) {
             neat_io_error(flow->ctx, flow, NEAT_ERROR_UNABLE);
+            return;
         }
     }
 }
@@ -2316,6 +2341,8 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             candidate->pollable_socket->stack = stacks[i];
             candidate->pollable_socket->dst_len     = result->src_addr_len;
             candidate->pollable_socket->src_len     = result->dst_addr_len;
+            json_incref(flow->properties);
+            candidate->properties = flow->properties;
 
 #if defined(SCTP_MULTIHOMING)
             if (flow->local_address && neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) {
@@ -3971,6 +3998,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         return -2;
     }
 
+    assert(candidate->pollable_socket->handle->data == candidate);
     uv_poll_start(candidate->pollable_socket->handle, UV_WRITABLE, callback_fx);
 #if defined(USRSCTP_SUPPORT)
     }

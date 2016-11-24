@@ -93,6 +93,7 @@ def process_request(json_str, num_candidates=10):
 
         # FIXME
         p_cached = policy.NEATProperty(('cached', False), precedence=policy.NEATProperty.OPTIONAL, score=1.0)
+
         r.add(p_cached)
 
     print('Received %d NEAT requests' % len(requests))

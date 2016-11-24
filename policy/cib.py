@@ -88,6 +88,7 @@ class CIBSource(object):
     def dict(self):
         d = {}
         for attr in ['uid', 'root', 'link', 'priority', 'filename', 'description', ]:
+
             try:
                 d[attr] = getattr(self, attr)
             except AttributeError:
@@ -327,7 +328,7 @@ class CIB(object):
             cs.update_links_from_match()
 
         self.gen_graph()
-        self.dump()#xxx
+        self.dump()  # xxx
 
     def load_cib_file(self, filename):
         cs = load_json(filename)
@@ -376,6 +377,7 @@ class CIB(object):
 
             filename = cs.uid
             slim = cs.json()
+
             if not filename:
                 logging.warning("CIB entry has no UID")
                 # generate CIB filename

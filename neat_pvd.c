@@ -411,7 +411,8 @@ neat_pvd_dns_ptr_recv_cb(uv_udp_t *handle,
     // There can be multiple PvDs
     for (i = 0; i < nb_ptr; i++) {
         rr              = ldns_rr_list_rr(pvd_ptr_list, i);
-        dns_record      = ldns_rr_set_rdf(rr, NULL, 0);
+        assert(ldns_rr_rd_count(rr) > 0);
+        dns_record      = ldns_rr_rdf(rr, 0);
         dns_record_str  = ldns_rdf2str(dns_record);
         ptr_record      = strdup(dns_record_str);
         free(dns_record_str);

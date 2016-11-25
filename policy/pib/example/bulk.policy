@@ -1,15 +1,20 @@
 {
-    "name":"Bulk transfer",
-    "description":"bulk file transfer policy",
+    "uid":"bulk_transfer",
+    "description":"bulk file transfer policy for specific destination",
     "priority": 5,
     "replace_matched": false,
     "match":{
+        "data_volume_gb": {
+            "value": {"start":2, "end":100000}
+        },
         "remote_ip": {
-            "precedence": 1,
             "value": "10.1.23.45"
         }
     },
     "properties":{
+        "bulk_data": {
+            "value": true
+        },
         "MTU": {
             "value": [9000, 1500]
         },
@@ -17,9 +22,9 @@
             {"precedence": 1, "value": "UDP"},
             {"precedence": 1, "value": "TCP", "banned": ["SCTP", "DCTCP"]}
         ],
-        "capacity": {
+        "capacity_gb": {
             "precedence": 2,
-            "value": {"start":10000, "end":100000}
+            "value": {"start":1, "end":10}
         }
     }
 }

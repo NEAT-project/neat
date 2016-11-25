@@ -7,13 +7,13 @@
 
 /**********************************************************************
 
-    HTTP-GET client in neat
+    Non-blocking HTTP-GET client in neat
     * connect to HOST and send GET request
     * write response to stdout
 
-    client_http_get [OPTIONS] HOST
+    client_http_run_once [OPTIONS] HOST
     -u : URI
-    -n : number of requests/flows
+    -n : number of requests/flows (default: 3)
 
 **********************************************************************/
 

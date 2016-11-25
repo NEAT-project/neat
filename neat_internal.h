@@ -68,11 +68,15 @@ struct neat_ctx
     // PvD
     struct neat_pvd* pvd;
 
+    neat_error_code error;
+
     // resolver
     NEAT_INTERNAL_CTX;
     NEAT_INTERNAL_OS;
     NEAT_INTERNAL_USRSCTP
 };
+
+void neat_ctx_fail_on_error(struct neat_ctx *nc, neat_error_code error);
 
 struct neat_he_candidate;
 struct neat_pollable_socket;
@@ -352,6 +356,14 @@ struct neat_he_candidate {
 };
 
 TAILQ_HEAD(neat_he_candidates, neat_he_candidate);
+
+// Connection attempt result sent by HE to PM.
+struct cib_he_res {
+    char *interface;
+    char *remote_ip;
+    unsigned int remote_port;
+    int transport;
+};
 
 void neat_free_candidates(struct neat_he_candidates *candidates);
 void neat_free_candidate(struct neat_he_candidate *candidate);

@@ -21,7 +21,7 @@ A TLS example:
 **********************************************************************/
 
 static uint32_t config_buffer_size = 512;
-static uint16_t config_log_level = 2;
+static uint16_t config_log_level = 1;
 static uint16_t config_number_of_streams = 1988;
 static char *config_property = "{\n\
     \"transport\": [\n\
@@ -267,6 +267,14 @@ main(int argc, char *argv[])
             goto cleanup;
             break;
         }
+    }
+
+    if (config_log_level == 0) {
+        neat_log_level(NEAT_LOG_ERROR);
+    } else if (config_log_level == 1){
+        neat_log_level(NEAT_LOG_WARNING);
+    } else {
+        neat_log_level(NEAT_LOG_DEBUG);
     }
 
     if (optind != argc) {

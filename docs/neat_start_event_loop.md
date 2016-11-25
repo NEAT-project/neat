@@ -5,7 +5,7 @@ Starts the internal event loop within NEAT.
 ### Syntax
 
 ```c
-void neat_start_event_loop(struct neat_ctx *ctx, neat_run_mode run_mode);
+neat_error_code neat_start_event_loop(struct neat_ctx *ctx, neat_run_mode run_mode);
 ```
 
 ### Parameters
@@ -16,7 +16,9 @@ May be one of either `NEAT_RUN_DEFAULT`, `NEAT_RUN_ONCE`, or `NEAT_RUN_NOWAIT`.
 
 ### Return values
 
-None.
+- Returns `NEAT_OK` if the NEAT executed with no error.
+- Returns an error value if the internal event loop in NEAT was stopped due to
+  an error.
 
 ### Remarks
 

@@ -25,13 +25,16 @@ typedef enum {
 struct neat_ctx; // global
 struct neat_flow; // one per connection
 
+typedef uint64_t neat_error_code;
+
 NEAT_EXTERN struct neat_ctx *neat_init_ctx();
-NEAT_EXTERN void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
+NEAT_EXTERN neat_error_code neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
 NEAT_EXTERN void neat_stop_event_loop(struct neat_ctx *nc);
 NEAT_EXTERN int neat_get_backend_fd(struct neat_ctx *nc);
 NEAT_EXTERN void neat_free_ctx(struct neat_ctx *nc);
+NEAT_EXTERN void neat_log_level(uint8_t level);
+NEAT_EXTERN uint8_t neat_log_file(const char* file_name);
 
-typedef uint64_t neat_error_code;
 struct neat_flow_operations;
 typedef neat_error_code (*neat_flow_operations_fx)(struct neat_flow_operations *);
 
@@ -207,6 +210,12 @@ NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
 #define NEAT_ERROR_OUT_OF_MEMORY (10)
 
 #define NEAT_INVALID_STREAM (-1)
+
+#define NEAT_LOG_OFF            (0)
+#define NEAT_LOG_ERROR          (1)
+#define NEAT_LOG_WARNING        (2)
+#define NEAT_LOG_INFO           (3)
+#define NEAT_LOG_DEBUG          (4)
 
 #define NEAT_OPTARGS (__optional_arguments)
 #define NEAT_OPTARGS_COUNT (__optional_argument_count)

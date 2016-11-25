@@ -1370,7 +1370,6 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     struct neat_he_candidate *candidate = handle->data;
     struct neat_flow *flow = candidate->pollable_socket->flow;
     struct neat_he_candidates *candidate_list = flow->candidate_list;
-    json_t *security = NULL, *val = NULL;
     struct cib_he_res *he_res = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);

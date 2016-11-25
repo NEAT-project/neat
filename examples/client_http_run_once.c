@@ -198,12 +198,12 @@ main(int argc, char *argv[])
 
     }
 cleanup:
-    for (i = 0; i < num_flows; i++) {
-        if (flows[i] != NULL) {
-            neat_free_flow(flows[i]);
-        }
-    }
     if (ctx != NULL) {
+        for (i = 0; i < num_flows; i++) {
+            if (flows[i] != NULL) {
+                neat_close(ctx, flows[i]);
+            }
+        }
         neat_free_ctx(ctx);
     }
     exit(result);

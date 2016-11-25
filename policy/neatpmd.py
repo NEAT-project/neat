@@ -89,24 +89,29 @@ def process_request(json_str, num_candidates=10):
             interface.value = eth
             r.add(interface)
 
+            del r['local_endpoint']
+
         # FIXME
-        p_cached = policy.NEATProperty(('is_cached', False), precedence=policy.NEATProperty.OPTIONAL, score=1.0)
+        p_cached = policy.NEATProperty(('cached', False), precedence=policy.NEATProperty.OPTIONAL, score=1.0)
+
         r.add(p_cached)
 
     print('Received %d NEAT requests' % len(requests))
-    for i, request in enumerate(requests):
-        print("%d: " % i, request)
+    # for i, request in enumerate(requests):
+    #    print("%d: " % i, request)
 
     candidates = []
 
     # main lookup sequence
     for i, request in enumerate(requests):
-        logging.info("processing request %d/%d" % (i + 1, len(requests)))
+        logging.info("\n")
+        logging.info("------ processing request %d/%d -------" % (i + 1, len(requests)))
+        logging.info("    %s" % request)
 
         print('Profile lookup...')
         updated_requests = profiles.lookup(request)
         for ur in updated_requests:
-            logging.debug("update request %s" % (ur))
+            logging.debug("updated request %s" % (ur))
 
         cib_candidates = []
         print('CIB lookup...')
@@ -120,7 +125,10 @@ def process_request(json_str, num_candidates=10):
 
         print('PIB lookup...')
         for j, candidate in enumerate(cib_candidates):
-            candidates.extend(pib.lookup(candidate, cand_id=j + 1))
+            candidates.extend(pib.lookup(candidate, cand_id=i + 1))
+
+        for c in candidates:  # XXXX
+            print(' -~>   ', c)
 
     candidates.sort(key=attrgetter('score'), reverse=True)
     logging.info("%d candidates generated in total. Top %d:" % (len(candidates), num_candidates))

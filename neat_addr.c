@@ -62,7 +62,7 @@ uint8_t neat_addr_cmp_ip6_addr(struct in6_addr *aAddr,
 }
 
 //Add/remove/update a source address based on information received from OS
-void neat_addr_update_src_list(struct neat_ctx *nc,
+neat_error_code neat_addr_update_src_list(struct neat_ctx *nc,
         struct sockaddr_storage *src_addr, uint32_t if_idx,
         uint8_t newaddr, uint8_t pref_length, uint32_t ifa_pref, uint32_t ifa_valid)
 {
@@ -120,7 +120,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
             neat_run_event_cb(nc, NEAT_UPDATEADDR, nsrc_addr);
         }
 
-        return;
+        return NEAT_ERROR_OK;
     }
 
     //No match found, so create a new address, add it to list and announce it to
@@ -130,7 +130,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
     if (nsrc_addr == NULL) {
         neat_log(NEAT_LOG_ERROR, "%s: Could not allocate memory for %s", __func__, addr_str);
         //TODO: Trigger a refresh of available addresses
-        return;
+        return NEAT_ERROR_OUT_OF_MEMORY;
     }
 
     nsrc_addr->family = src_addr->ss_family;
@@ -148,6 +148,7 @@ void neat_addr_update_src_list(struct neat_ctx *nc,
     ++nc->src_addr_cnt;
     neat_addr_print_src_addrs(nc);
     neat_run_event_cb(nc, NEAT_NEWADDR, nsrc_addr);
+    return NEAT_ERROR_OK;
 }
 
 void neat_addr_lifetime_timeout_cb(uv_timer_t *handle)

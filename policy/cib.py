@@ -7,7 +7,6 @@ import logging
 import operator
 import os
 import shutil
-import uuid
 from collections import ChainMap
 
 from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError
@@ -43,40 +42,53 @@ class CIBSource(object):
         if not isinstance(source_dict, dict):
             raise CIBEntryError("received invalid CIB object")
 
-        # FIXME generate persistent UIDs
-        self.uid = source_dict.get('uid', str(uuid.uuid4()))
         self.root = source_dict.get('root', False)
         # otherwise chain matched CIBs
-        self.link_matched = source_dict.get('link', False)
-        if self.root and not self.link_matched:
-            logging.warning("[%s] root: true implies link: true." % self.uid)
-            self.link_matched = True
+        self.link = source_dict.get('link', False)
+        if self.root and not self.link:
+            # logging.warning("[%s] root: true implies link: true." % self.uid)
+            self.link = True
         self.priority = source_dict.get('priority', 0)
         self.filename = source_dict.get('filename', None)
         self.description = source_dict.get('description', '')
 
         # convert to PropertyMultiArray with NEATProperties
         properties = source_dict.get('properties')
+        if properties is None:
+            raise CIBEntryError("CIB entry has no 'property' attribute")
         if not isinstance(properties, list):
             # properties should be in a list [NEW STYLE]: FIXME explain why
             properties = [properties]
+
+        self.links = set()
+        self.match = []
+        # FIXME better error handling if match undefined
+        for l in source_dict.get('match', []):
+            # convert to NEATProperties
+            self.match.append(PropertyArray(*dict_to_properties(l)))
 
         self.properties = []
         for p in properties:
             pa = PropertyMultiArray(*dict_to_properties(p))
             # include UID as a NEATProperty
-            pa.add(NEATProperty(('uid', self.uid), score=0, precedence=NEATProperty.IMMUTABLE))
+            # pa.add(NEATProperty(('uid', self.uid), score=0, precedence=NEATProperty.IMMUTABLE))
             self.properties.append(pa)
 
-        self.links = set()
-        self.match = []
-        for l in source_dict.get('match', []):
-            # convert to NEATProperties
-            self.match.append(PropertyArray(*dict_to_properties(l)))
+        # FIXME generate persistent UIDs
+
+        self.uid = source_dict.get('uid')
+        if self.uid is None:
+            s = self.json(indent=0)
+            self.uid = hashlib.md5(s.encode('utf-8')).hexdigest()
+
+        for p in self.properties:
+            # include UID as a NEATProperty
+            p.add(NEATProperty(('uid', self.uid), score=0, precedence=NEATProperty.IMMUTABLE))
 
     def dict(self):
         d = {}
-        for attr in ['uid', 'root', 'link_matched', 'priority', 'filename', 'description', ]:
+        for attr in ['uid', 'root', 'link', 'priority', 'filename', 'description', ]:
+
             try:
                 d[attr] = getattr(self, attr)
             except AttributeError:
@@ -95,8 +107,8 @@ class CIBSource(object):
 
         return d
 
-    def json(self):
-        return json.dumps(self.dict(), indent=4, sort_keys=True)
+    def json(self, indent=4):
+        return json.dumps(self.dict(), indent=indent, sort_keys=True)
 
     def resolve_paths(self, path=None):
         """recursively find all paths from this CIBSource to all other matched CIBSources in the CIB graph"""
@@ -263,7 +275,7 @@ class CIB(object):
 
     @property
     def extenders(self):
-        return {k: v for k, v in self.uid.items() if not v.link_matched}
+        return {k: v for k, v in self.uid.items() if not v.link}
 
     @property
     def rows(self):
@@ -279,7 +291,7 @@ class CIB(object):
 
     def reload_files(self, cib_dir=None):
         """
-        WIP reload CIB files when a change is detected on disk
+        Reload CIB files when a change is detected on disk
         """
         cib_dir = self.cib_dir if not cib_dir else cib_dir
         full_names = set()
@@ -316,6 +328,7 @@ class CIB(object):
             cs.update_links_from_match()
 
         self.gen_graph()
+        self.dump()  # xxx
 
     def load_cib_file(self, filename):
         cs = load_json(filename)
@@ -333,7 +346,7 @@ class CIB(object):
 
     def gen_graph(self):
         for i in self.uid.values():
-            if not i.link_matched:
+            if not i.link:
                 continue
             for r in i.links:
                 if r not in self.graph:
@@ -359,8 +372,11 @@ class CIB(object):
             json_slim = [json_slim]
 
         for cib_entry in json_slim:
-            filename = cib_entry.get('uid')
-            slim = json.dumps(cib_entry)
+
+            cs = CIBSource(cib_entry)
+
+            filename = cs.uid
+            slim = cs.json()
 
             if not filename:
                 logging.warning("CIB entry has no UID")
@@ -388,14 +404,21 @@ class CIB(object):
         """
         assert isinstance(input_properties, PropertyArray)
         candidates = [input_properties]
-
         for e in self.rows:
+            try:
+                # FIXME better check whether all input properties are included in row
+
+                if len(input_properties & e) != len(input_properties):
+                    continue
+
+            except ImmutablePropertyError:
+                continue
+
             try:
                 candidate = e + input_properties
                 candidate.cib_source = e.cib_source
                 candidates.append(candidate)
             except ImmutablePropertyError:
-                # logging.debug("immutable property!")
                 pass
 
         return sorted(candidates, key=operator.attrgetter('score'), reverse=True)[:candidate_num]

@@ -33,7 +33,7 @@ neat_time(void)
 #endif
 }
 
-static void neat_bsd_get_addresses(struct neat_ctx *ctx)
+static neat_error_code neat_bsd_get_addresses(struct neat_ctx *ctx)
 {
     struct ifaddrs *ifp, *ifa;
     struct in6_ifreq ifr6;
@@ -43,11 +43,12 @@ static void neat_bsd_get_addresses(struct neat_ctx *ctx)
     time_t now;
     struct in6_addrlifetime *lifetime;
     uint32_t preferred_lifetime, valid_lifetime;
+    neat_error_code rc = NEAT_ERROR_OK;
 
     if (getifaddrs(&ifp) < 0) {
         neat_log(NEAT_LOG_ERROR,
                 "%s: getifaddrs() failed: %s", __func__, strerror(errno));
-        return;
+        return NEAT_ERROR_IO;
     }
     now = neat_time();
     cached_ifname = "";
@@ -117,15 +118,18 @@ static void neat_bsd_get_addresses(struct neat_ctx *ctx)
                 valid_lifetime = 0;
             }
         }
-        neat_addr_update_src_list(ctx,
-                                  (struct sockaddr_storage *)ifa->ifa_addr,
-                                  cached_ifindex,
-                                  1,
-                                  0,
-                                  preferred_lifetime,
-                                  valid_lifetime);
+        rc = neat_addr_update_src_list(ctx,
+                                       (struct sockaddr_storage *)ifa->ifa_addr,
+                                       cached_ifindex,
+                                       1,
+                                       0,
+                                       preferred_lifetime,
+                                       valid_lifetime);
+        if (rc)
+          break;
     }
     freeifaddrs(ifp);
+    return rc;
 }
 
 #define NEAT_ROUTE_BUFFER_SIZE 8192
@@ -185,6 +189,7 @@ static void neat_bsd_route_recv(uv_udp_t *handle,
     time_t now;
     struct in6_addrlifetime *lifetime;
     uint32_t preferred_lifetime, valid_lifetime;
+    neat_error_code rc;
 
     ctx = (struct neat_ctx *)handle->data;
     ifa = (struct ifa_msghdr *)buf->base;
@@ -229,13 +234,16 @@ static void neat_bsd_route_recv(uv_udp_t *handle,
             valid_lifetime = 0;
         }
     }
-    neat_addr_update_src_list(ctx,
-                              (struct sockaddr_storage *)rti_info[RTAX_IFA],
-                              ifa->ifam_index,
-                              ifa->ifam_type == RTM_NEWADDR ? 1 : 0,
-                              0,
-                              preferred_lifetime,
-                              valid_lifetime);
+
+    rc = neat_addr_update_src_list(ctx,
+                                   (struct sockaddr_storage *)rti_info[RTAX_IFA],
+                                   ifa->ifam_index,
+                                   ifa->ifam_type == RTM_NEWADDR ? 1 : 0,
+                                   0,
+                                   preferred_lifetime,
+                                   valid_lifetime);
+
+    neat_ctx_fail_on_error(ctx, rc);
 }
 
 static void neat_bsd_cleanup(struct neat_ctx *ctx)
@@ -303,6 +311,9 @@ struct neat_ctx *neat_bsd_init_ctx(struct neat_ctx *ctx)
         neat_bsd_cleanup(ctx);
         return NULL;
     }
-    neat_bsd_get_addresses(ctx);
+    if (neat_bsd_get_addresses(ctx) != NEAT_OK) {
+        neat_log(NEAT_LOG_ERROR, "%s: cannot get src addresses", __func__);
+        return NULL;
+    }
     return ctx;
 }

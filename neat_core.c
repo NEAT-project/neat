@@ -703,9 +703,11 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
     int rc;
     struct sctp_status status;
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
-
-
     char proto[16];
+
+    if (flow->multistream) {
+        goto multistream_skip;
+    }
 
     flow->stream_count = 1;
 
@@ -724,9 +726,15 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             if (rc < 0) {
                 neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
                 flow->stream_count = 1;
+                flow->socket->sctp_streams_available = 1;
             } else {
                 flow->stream_count = MIN(status.sstat_outstrms, status.sstat_outstrms);
+                flow->socket->sctp_streams_available = MIN(status.sstat_outstrms, status.sstat_outstrms);
             }
+
+            flow->socket->sctp_streams_used = 1;
+            flow->multistream_id = 0;
+
             // number of outbound streams == number of inbound streams
             neat_log(NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->stream_count);
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
@@ -744,6 +752,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 
     neat_log(NEAT_LOG_INFO, "Connected: %s/%s - %d streams", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6" ), flow->stream_count);
 
+multistream_skip:
 
     if (!flow->operations || !flow->operations->on_connected) {
         return;
@@ -891,7 +900,7 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
         neat_log(NEAT_LOG_DEBUG, "Got SCTP adaption indication event");
         struct sctp_adaptation_event *adaption = (struct sctp_adaptation_event *) notfn;
         if (adaption->sai_adaptation_ind == SCTP_ADAPTATION_NEAT) {
-            flow->multistreaming = 1;
+            flow->socket->sctp_neat_peer = 1;
             neat_log(NEAT_LOG_INFO, "Peer has NEAT support!");
         }
         break;
@@ -1435,79 +1444,97 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     neat_ctx *ctx = flow->ctx;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if ((events & UV_READABLE) && flow->acceptPending) {
-        if(pollable_socket->stack == NEAT_STACK_UDP ||
-           pollable_socket->stack == NEAT_STACK_UDPLITE) {
-            neat_log(NEAT_LOG_DEBUG, "io_readable for UDP or UDPLite accept flow");
-            io_readable(ctx, flow, pollable_socket, NEAT_OK);
-        } else {
-            do_accept(ctx, flow, pollable_socket);
-        }
-        return;
-    }
-
-    // TODO: Are there cases when we should keep polling?
-    if (status < 0) {
-        neat_log(NEAT_LOG_DEBUG, "ERROR: %s", uv_strerror(status));
-
-#if !defined(USRSCTP_SUPPORT)
-        if (neat_base_stack(pollable_socket->stack) == NEAT_STACK_TCP ||
-            neat_base_stack(pollable_socket->stack) == NEAT_STACK_SCTP)
-#else
-        if (neat_base_stack(pollable_socket->stack) == NEAT_STACK_TCP)
-#endif
-        { // special bracing beacuse of ifdef
-            int so_error = 0;
-            unsigned int len = sizeof(so_error);
-            if (getsockopt(flow->socket->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
-                neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed: %s", strerror(errno));
-                neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
-                return;
+    if (pollable_socket->multistream) {
+        neat_log(NEAT_LOG_DEBUG, "%s - traversing flows", __func__);
+        LIST_FOREACH(flow, &ctx->flows, next_flow) {
+            if (flow->pollable_socket != pollable_socket) {
+                neat_log(NEAT_LOG_DEBUG, "%s - wrong flow", __func__);
+                continue;
             }
 
-            neat_log(NEAT_LOG_DEBUG, "Socket layer errno: %d (%s)", so_error, strerror(so_error));
-
-            if (so_error == ETIMEDOUT) {
-                io_timeout(ctx, flow);
-                return;
-            } else if (so_error == ECONNRESET) {
-             	neat_notify_aborted(flow);
+            if ((events & UV_WRITABLE) && flow->firstWritePending) {
+                flow->firstWritePending = 0;
+                READYCALLBACKSTRUCT;
+                flow->operations->on_connected(flow->operations);
             }
+
+
         }
 
-
-        neat_log(NEAT_LOG_ERROR, "Unspecified internal error when polling socket");
-        neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
-
-        return;
-    }
-
-    if (!events && status < 0) {
-        neat_io_error(ctx, flow, NEAT_ERROR_IO);
-        return;
-    }
-
-    if ((events & UV_WRITABLE) && flow->firstWritePending) {
-        flow->firstWritePending = 0;
-        io_connected(ctx, flow, NEAT_OK);
-    }
-    if ((events & UV_WRITABLE) && flow->isDraining) {
-        neat_error_code code = neat_write_flush(ctx, flow);
-        if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
-            neat_io_error(ctx, flow, code);
+    } else {
+        if ((events & UV_READABLE) && flow->acceptPending) {
+            if(pollable_socket->stack == NEAT_STACK_UDP ||
+               pollable_socket->stack == NEAT_STACK_UDPLITE) {
+                neat_log(NEAT_LOG_DEBUG, "io_readable for UDP or UDPLite accept flow");
+                io_readable(ctx, flow, pollable_socket, NEAT_OK);
+            } else {
+                do_accept(ctx, flow, pollable_socket);
+            }
             return;
         }
-        if (!flow->isDraining) {
-            io_all_written(ctx, flow, 0);
+
+        // TODO: Are there cases when we should keep polling?
+        if (status < 0) {
+            neat_log(NEAT_LOG_DEBUG, "ERROR: %s", uv_strerror(status));
+
+#if !defined(USRSCTP_SUPPORT)
+            if (neat_base_stack(pollable_socket->stack) == NEAT_STACK_TCP ||
+                neat_base_stack(pollable_socket->stack) == NEAT_STACK_SCTP)
+#else
+            if (neat_base_stack(pollable_socket->stack) == NEAT_STACK_TCP)
+#endif
+            { // special bracing beacuse of ifdef
+                int so_error = 0;
+                unsigned int len = sizeof(so_error);
+                if (getsockopt(flow->socket->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
+                    neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed: %s", strerror(errno));
+                    neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
+                    return;
+                }
+
+                neat_log(NEAT_LOG_DEBUG, "Socket layer errno: %d (%s)", so_error, strerror(so_error));
+
+                if (so_error == ETIMEDOUT) {
+                    io_timeout(ctx, flow);
+                    return;
+                } else if (so_error == ECONNRESET) {
+                    neat_notify_aborted(flow);
+                }
+            }
+
+
+            neat_log(NEAT_LOG_ERROR, "Unspecified internal error when polling socket");
+            neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
+
+            return;
         }
+
+        if (!events && status < 0) {
+            neat_io_error(ctx, flow, NEAT_ERROR_IO);
+            return;
+        }
+        if ((events & UV_WRITABLE) && flow->firstWritePending) {
+            flow->firstWritePending = 0;
+            io_connected(ctx, flow, NEAT_OK);
+        }
+        if ((events & UV_WRITABLE) && flow->isDraining) {
+            neat_error_code code = neat_write_flush(ctx, flow);
+            if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
+                neat_io_error(ctx, flow, code);
+                return;
+            }
+            if (!flow->isDraining) {
+                io_all_written(ctx, flow, 0);
+            }
+        }
+        if (events & UV_WRITABLE) {
+            io_writable(ctx, flow, 0, NEAT_OK); // TODO: Remove stream param
+        }
+        if (events & UV_READABLE) {
+            io_readable(ctx, flow, pollable_socket, NEAT_OK);
+        }
+        updatePollHandle(ctx, flow, handle);
     }
-    if (events & UV_WRITABLE) {
-        io_writable(ctx, flow, 0, NEAT_OK); // TODO: Remove stream param
-    }
-    if (events & UV_READABLE) {
-        io_readable(ctx, flow, pollable_socket, NEAT_OK);
-    }
-    updatePollHandle(ctx, flow, handle);
 }
 
 static neat_flow *
@@ -1739,9 +1766,14 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         if (rc < 0) {
             neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
             newFlow->stream_count = 1;
+            newFlow->socket->sctp_streams_available = 1;
         } else {
             newFlow->stream_count = MIN(status.sstat_instrms, status.sstat_outstrms);
+            newFlow->socket->sctp_streams_available = MIN(status.sstat_instrms, status.sstat_outstrms);
         }
+
+        newFlow->socket->sctp_streams_used = 1;
+        newFlow->multistream_id = 0;
 
         // number of outbound streams == number of inbound streams
         neat_log(NEAT_LOG_DEBUG, "%s - SCTP - number of streams: %d", __func__, newFlow->stream_count);
@@ -2646,7 +2678,7 @@ neat_error_code
 neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
           struct neat_tlv optional[], unsigned int opt_count)
 {
-    int stream_count = 1;
+    int stream_count = 10;
     int group = 0;
     float priority = 0.5f;
     const char *cc_algorithm = NULL;
@@ -3131,7 +3163,7 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     const char *local_name = NULL;
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM]; /* We only support SCTP, TCP, UDP, and UDPLite */
     uint8_t nr_of_stacks;
-    int stream_count = 1;
+    int stream_count = 10;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     nr_of_stacks = neat_property_translate_protocols(flow->propertyMask, stacks);
@@ -4815,7 +4847,7 @@ neat_find_flow(neat_ctx *ctx, struct sockaddr *src, struct sockaddr *dst)
 
 // Piggyback
 neat_flow *
-neat_find_sctp_piggyback_assoc(neat_ctx *ctx, neat_flow *new_flow)
+neat_find_multistream_assoc(neat_ctx *ctx, neat_flow *new_flow)
 {
     neat_flow *flow;
     neat_log(NEAT_LOG_DEBUG, "%s - ##########", __func__);
@@ -4841,18 +4873,23 @@ neat_find_sctp_piggyback_assoc(neat_ctx *ctx, neat_flow *new_flow)
         }
 
         // DNS-name matches, flow is in connecting state, has the same group and supports NEAT multistreaming
-        if (!strcmp(flow->name, new_flow->name) && flow->group == new_flow->group && flow->socket->stack == NEAT_STACK_SCTP && flow->multistreaming == 1) {
+        if (!strcmp(flow->name, new_flow->name) &&
+            flow->group == new_flow->group &&
+            flow->socket->stack == NEAT_STACK_SCTP &&
+            flow->socket->sctp_neat_peer == 1 &&
+            flow->socket->sctp_streams_used < flow->socket->sctp_streams_available
+        ) {
             neat_log(NEAT_LOG_DEBUG, "%s - ########## >>>> WOHOWO!", __func__);
             return flow;
         } else {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## DONT MATCH", __func__);
+            neat_log(NEAT_LOG_DEBUG, "%s - ########## DONT MATCH - us %d - av %d", __func__, flow->socket->sctp_streams_used, flow->socket->sctp_streams_available);
         }
     }
     return NULL;
 }
 
 uint8_t
-neat_wait_for_piggyback(neat_ctx *ctx, neat_flow *new_flow)
+neat_wait_for_multistream_assoc(neat_ctx *ctx, neat_flow *new_flow)
 {
     neat_flow *flow;
     struct neat_he_candidate *candidate;

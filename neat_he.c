@@ -125,10 +125,10 @@ static void delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_
 static void
 on_delayed_he_open(uv_timer_t *handle)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s - piggybackTimer fired", __func__);
+    neat_log(NEAT_LOG_DEBUG, "%s - sctp multistream HE timer fired", __func__);
     struct neat_flow *flow       = (struct neat_flow *) (handle->data);
-    uv_timer_stop(flow->piggybackTimer);
-    uv_close((uv_handle_t *) flow->piggybackTimer, free_handle_cb);
+    uv_timer_stop(flow->multistream_timer);
+    uv_close((uv_handle_t *) flow->multistream_timer, free_handle_cb);
 
     neat_he_open(flow->ctx, flow, flow->candidate_list, flow->callback_fx);
 }
@@ -138,14 +138,14 @@ delayed_he_open(struct neat_flow *flow, uv_poll_cb callback_fx)
 {
     neat_log(NEAT_LOG_DEBUG, "%s - starting piggybackTimer", __func__);
 
-    flow->piggybackTimer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
-    assert(flow->piggybackTimer != NULL);
-    flow->piggyback = 1;
+    flow->multistream_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
+    assert(flow->multistream_timer != NULL);
+    flow->multistreamCheck = 1;
 
-    uv_timer_init(flow->ctx->loop, flow->piggybackTimer);
-    uv_timer_start(flow->piggybackTimer, on_delayed_he_open, 100, 0);
+    uv_timer_init(flow->ctx->loop, flow->multistream_timer);
+    uv_timer_start(flow->multistream_timer, on_delayed_he_open, 100, 0);
     flow->callback_fx = callback_fx;
-    flow->piggybackTimer->data = (void *) flow;
+    flow->multistream_timer->data = (void *) flow;
 }
 
 neat_error_code
@@ -156,8 +156,8 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     const char *family;
     struct neat_he_candidate *candidate;
     struct neat_he_candidate *next_candidate;
-    uint8_t checkPiggyback = 0;
-    struct neat_flow *piggybackFlow = NULL;
+    uint8_t check_multistream = 0;
+    struct neat_flow *piggyback_flow = NULL;
 
     i = 0;
     TAILQ_FOREACH(candidate, candidate_list, next) {
@@ -169,7 +169,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             proto = "TCP";
             break;
         case NEAT_STACK_SCTP:
-            checkPiggyback = 1;
+            check_multistream = 1;
             proto = "SCTP";
             break;
         case NEAT_STACK_SCTP_UDP:
@@ -214,19 +214,32 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
 #endif
     }
 
-    //piggybackFlow = neat_find_sctp_piggyback_stream(ctx, flow);
-
     flow->candidate_list = candidate_list;
     candidate = candidate_list->tqh_first;
 
     // SCTP is generally allowed
-    if (checkPiggyback) {
+    if (check_multistream) {
         // check if there is already a piggyback assoc
-        if ((piggybackFlow = neat_find_sctp_piggyback_assoc(ctx, flow)) != NULL) {
+        if ((piggyback_flow = neat_find_multistream_assoc(ctx, flow)) != NULL) {
+            neat_log(NEAT_LOG_DEBUG, "%s - using piggyback assoc", __func__);
             // we have a piggyback assoc...
-            neat_log(NEAT_LOG_DEBUG, "%s - using piggyback assoc!", __func__);
 
-            flow->piggyback = 1;
+            piggyback_flow->multistream = 1;
+            piggyback_flow->socket->multistream = 1;
+
+            flow->multistream = 1;
+            flow->everConnected = 1;
+            flow->isPolling = 1;
+            flow->multistream_id = ++(flow->socket->sctp_streams_used);
+            flow->firstWritePending = 1;
+
+            json_decref(flow->properties);
+
+            flow->writeSize = piggyback_flow->writeSize;
+            flow->writeLimit = piggyback_flow->writeLimit;
+            flow->readSize = piggyback_flow->readSize;
+            flow->isSCTPExplicitEOR = piggyback_flow->isSCTPExplicitEOR;
+            flow->socket = piggyback_flow->socket;
 
             while (candidate) {
                 next_candidate = TAILQ_NEXT(candidate, next);
@@ -235,11 +248,12 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
                 candidate = next_candidate;
             }
 
+            uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
             return NEAT_ERROR_OK;
 
         // if there is no piggyback assoc, wait if we didnt already
-        } else if (flow->piggybackPending == 0 && neat_wait_for_piggyback(ctx, flow)){
-            flow->piggybackPending = 1;
+        } else if (flow->multistreamCheck == 0 && neat_wait_for_multistream_assoc(ctx, flow)){
+            flow->multistreamCheck = 1;
             delayed_he_open(flow, callback_fx);
             return NEAT_ERROR_OK;
         }

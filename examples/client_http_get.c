@@ -137,6 +137,8 @@ main(int argc, char *argv[])
     uint32_t i = 0;
     result = EXIT_SUCCESS;
 
+    neat_log_level(NEAT_LOG_DEBUG);
+
     memset(&ops, 0, sizeof(ops));
     memset(flows, 0, sizeof(flows));
 

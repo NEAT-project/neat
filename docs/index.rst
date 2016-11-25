@@ -44,9 +44,11 @@ Welcome to the NEAT documentation!
     neat_get_backend_fd <neat_get_backend_fd>
     neat_get_stats <neat_get_stats>
 
+    neat_log_level <neat_log_level>
+    neat_log_file <neat_log_file>
+
 .. toctree::
     :caption: Internal
     :maxdepth: 1
 
     Coding Style <internal/codingstyle>
-

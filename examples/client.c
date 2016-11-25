@@ -28,7 +28,7 @@
 
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
-static uint16_t config_log_level = 2;
+static uint16_t config_log_level = 1;
 static uint16_t config_json_stats = 1;
 static uint16_t config_timeout = 0;
 static uint16_t config_number_of_streams = 1207;
@@ -182,7 +182,7 @@ on_readable(struct neat_flow_operations *opCB)
     // all fine
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
-            fprintf(stderr, "%s - received %d bytes on stream %d of %d\n", __func__, buffer_filled, opCB->stream_id, opCB->flow->stream_count);
+            fprintf(stderr, "%s - received %d bytes on stream id %d (%d streams)\n", __func__, buffer_filled, opCB->stream_id, opCB->flow->stream_count);
         }
         fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
         fflush(stdout);
@@ -445,6 +445,14 @@ main(int argc, char *argv[])
             goto cleanup;
             break;
         }
+    }
+
+    if (config_log_level == 0) {
+        neat_log_level(NEAT_LOG_ERROR);
+    } else if (config_log_level == 1){
+        neat_log_level(NEAT_LOG_WARNING);
+    } else {
+        neat_log_level(NEAT_LOG_DEBUG);
     }
 
     if (optind + 2 != argc) {

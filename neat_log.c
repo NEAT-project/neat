@@ -79,7 +79,8 @@ neat_log_file(const char* file_name)
 
         return RETVAL_SUCCESS;
     } else {
-        return RETVAL_FAILURE;
+        neat_log_fd = stderr;
+        return RETVAL_SUCCESS;
     }
 }
 

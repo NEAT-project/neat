@@ -31,3 +31,20 @@
 
 #include "neat-socket.h"
 
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+/*
+static bool isInitialized = false;
+
+int ext_socket(int domain, int type, int protocol);
+int ext_open(const char* pathname, int flags, mode_t mode);
+int ext_creat(const char* pathname, mode_t mode);
+int ext_bind(int sockfd, struct sockaddr* my_addr, socklen_t addrlen);
+int ext_connect(int sockfd, const struct sockaddr* serv_addr, socklen_t addrlen);
+int ext_listen(int s, int backlog);
+int ext_accept(int s,  struct  sockaddr * addr,  socklen_t* addrlen);
+int ext_shutdown(int s, int how);
+int ext_close(int fd);
+*/

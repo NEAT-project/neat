@@ -60,11 +60,6 @@ Architecture: any
 Depends: libneat0 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
-Recommends: netperfmeter,
-            rsplib-tools,
-            subnetcalc,
-            tsctp,
-            tshark
 Description: NEAT Tools
  NEAT is a callback based library and everything revovles around the neat_ctx
  struct. This struct has to be initialized before anything else can be done.

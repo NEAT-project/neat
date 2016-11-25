@@ -274,6 +274,14 @@ class PIB(list):
         print(s)
 
 
+def term_col():
+    """
+    Get the width of the terminal
+    """
+    ts = shutil.get_terminal_size()
+    return ts.columns
+
+
 if __name__ == "__main__":
     pib = PIB('pib/examples/')
     pib.dump()

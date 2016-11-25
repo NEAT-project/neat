@@ -59,6 +59,9 @@ def dict_to_properties(property_dict):
     example: dict_to_properties({'foo':{'value':'bar', 'precedence':0}})
 
     """
+    if not isinstance(property_dict, dict):
+        raise InvalidPropertyError("not a dict")
+
     properties = []
     for key, attr in property_dict.items():
 
@@ -203,6 +206,9 @@ class PropertyValue(object):
 
         if len(new_set) == 1:
             return PropertyValue(new_set.pop())
+        elif len(new_set) == 0:
+            # FIXME is there a better way to handle this?
+            raise InvalidPropertyError("set is empty")
         else:
             return PropertyValue(new_set)
 
@@ -341,8 +347,11 @@ class NEATProperty(object):
         return self._value & other._value
 
     def __eq__(self, other):
-        """Return true if a single value is in range, or if two ranges have an overlapping region."""
-        return self & other
+        """Return true if a single value is within range, or if two ranges have an overlapping region. """
+        try:
+            return self & other
+        except InvalidPropertyError:
+            return False
 
     def update(self, other):
         """ Update the current property value with a different one and update the score."""
@@ -371,7 +380,7 @@ class NEATProperty(object):
         else:
             if other.precedence == NEATProperty.IMMUTABLE and self.precedence == NEATProperty.IMMUTABLE:
                 err_str = "%s <-- %s: immutable property" % (self, other)
-                logging.debug(err_str)
+                # logging.debug(err_str)
                 raise ImmutablePropertyError(err_str)
             elif other.precedence >= self.precedence:
                 self.score = other.score

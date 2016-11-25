@@ -42,6 +42,7 @@ Welcome to the NEAT documentation!
     neat_start_event_loop <neat_start_event_loop>
     neat_stop_event_loop <neat_stop_event_loop>
     neat_get_backend_fd <neat_get_backend_fd>
+    neat_get_backend_timeout <neat_get_backend_timeout>
     neat_get_stats <neat_get_stats>
 
     neat_log_level <neat_log_level>

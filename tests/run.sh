@@ -27,6 +27,21 @@ fi
 
 echo ""
 echo "########################################"
+ARG="$PREFIX$EXAMPLES_DIR/client_http_run_once -u /cgi-bin/he bsd10.nplab.de"
+echo "Running: $ARG"
+$ARG
+RC=$?
+if [ $RC -ne 0 ]; then
+    RC_GLOBAL=1
+    echo ">> test failed!"
+else
+    echo ">> test succeeded"
+fi
+
+##############
+
+echo ""
+echo "########################################"
 ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he 212.201.121.100"
 echo "Running: $ARG"
 $ARG

@@ -2,7 +2,7 @@
     "name":"Bulk transfer",
     "description":"bulk file transfer policy",
     "priority": 5,
-    "remove_matched": false,
+    "replace_matched": false,
     "match":{
         "remote_ip": {
             "precedence": 1,

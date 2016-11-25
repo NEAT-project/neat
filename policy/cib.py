@@ -328,7 +328,7 @@ class CIB(object):
             cs.update_links_from_match()
 
         self.gen_graph()
-        self.dump()  # xxx
+        #self.dump()  # xxx
 
     def load_cib_file(self, filename):
         cs = load_json(filename)

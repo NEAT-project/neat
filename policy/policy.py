@@ -335,6 +335,13 @@ class NEATProperty(object):
         """
         Create a new property by updating the first one with the second. Returns a new NEATProperty object.
         """
+
+        # experimental: reverse comparison order if precedence is zero. Used to specify default policies
+        if other.precedence == 0:
+            new_prop = copy.deepcopy(other)
+            new_prop.update(self, evaluate=False)
+            return new_prop
+
         new_prop = copy.deepcopy(self)
         new_prop.update(other)
         return new_prop
@@ -353,7 +360,7 @@ class NEATProperty(object):
         except InvalidPropertyError:
             return False
 
-    def update(self, other):
+    def update(self, other, evaluate=True):
         """ Update the current property value with a different one and update the score."""
         assert isinstance(other, NEATProperty)
 
@@ -364,7 +371,7 @@ class NEATProperty(object):
         old_self_str = str(self)
         other_str = str(other)
 
-        self.evaluated = True
+        self.evaluated = evaluate
         self.banned.extend(other.banned)
 
         value_match = self == other

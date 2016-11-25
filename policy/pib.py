@@ -14,6 +14,10 @@ POLICY_DIR = "pib/examples/"
 PIB_EXTENSIONS = ('.policy', '.profile', '.pib')
 
 
+class NEATPIBError(Exception):
+    pass
+
+
 def load_policy_json(filename):
     """Read and decode a .policy JSON file and return a NEATPolicy object."""
     try:
@@ -21,11 +25,11 @@ def load_policy_json(filename):
         policy_dict = json.load(policy_file)
     except OSError as e:
         logging.error('Policy ' + filename + ' not found.')
-        return
+        raise NEATPIBError(e)
     except json.decoder.JSONDecodeError as e:
         logging.error('Error parsing policy file ' + filename)
         print(e)
-        return
+        raise NEATPIBError(e)
 
     p = NEATPolicy(policy_dict)
     return p
@@ -168,7 +172,12 @@ class PIB(list):
         t = stat.st_mtime_ns
         if filename not in self.files or self.files[filename].timestamp != t:
             logging.info("Loading policy %s...", filename)
-            p = load_policy_json(filename)
+            try:
+                p = load_policy_json(filename)
+            except NEATPIBError as e:
+                logging.error("Unable not load policy %s" % filename)
+                return
+
             # update filename and timestamp
             p.filename = filename
             p.timestamp = t
@@ -248,7 +257,6 @@ class PIB(list):
                         if p.replace_matched:
                             for key in p.match:
                                 del candidate[key]
-                                logging.debug('    removing property:' + key)
 
                         for policy_properties in p.properties.expand():
                             try:

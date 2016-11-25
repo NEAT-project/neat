@@ -16,7 +16,7 @@ uint8_t neat_log_file(const char* file_name)
 
 ### Examples
 ```
-neat_log_file("desaster.log");
+neat_log_file("disaster.log");
 ```
 
 ### See also

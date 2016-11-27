@@ -1721,6 +1721,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->operations->on_error = flow->operations->on_error;
     newFlow->operations->ctx = ctx;
     newFlow->operations->flow = flow;
+    newFlow->operations->userData = flow->operations->userData;
 
     switch (newFlow->socket->stack) {
     case NEAT_STACK_SCTP_UDP:
@@ -1827,6 +1828,27 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
 
             newFlow->socket->handle->data = newFlow->socket;
+
+            if (newFlow->socket->fd > 0) {
+                int rc;
+                void *ptr;
+                json_t *json;
+                struct sockaddr_storage sockaddr;
+                socklen_t socklen = sizeof(sockaddr);
+                char buffer[INET6_ADDRSTRLEN+1];
+                memset(buffer, 0, sizeof(buffer));
+
+                rc = getpeername(newFlow->socket->fd, (struct sockaddr*)&sockaddr, &socklen);
+                assert(rc == 0);
+
+                ptr = (void*)inet_ntop(AF_INET, (void*)&((struct sockaddr_in*)(&sockaddr))->sin_addr, buffer, INET6_ADDRSTRLEN);
+                assert(ptr);
+
+                json = json_pack("{ss}", "value", buffer);
+
+                json_object_set(newFlow->properties, "address", json);
+                json_decref(json);
+            }
 
             newFlow->acceptPending = 0;
             if ((newFlow->propertyMask & NEAT_PROPERTY_REQUIRED_SECURITY) &&

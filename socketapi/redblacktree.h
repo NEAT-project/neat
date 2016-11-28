@@ -46,20 +46,20 @@ enum redblacktree_node_color_type
 
 struct redblacktree_node
 {
-   struct redblacktree_node*          Parent;
-   struct redblacktree_node*          LeftSubtree;
-   struct redblacktree_node*          RightSubtree;
-   enum redblacktree_node_color_type  Color;
-   redblacktree_node_value_type       Value;
-   redblacktree_node_value_type       ValueSum;  /* ValueSum := LeftSubtree->Value + Value + RightSubtree->Value */
+   struct redblacktree_node*          parent;
+   struct redblacktree_node*          left_subtree;
+   struct redblacktree_node*          right_subtree;
+   enum redblacktree_node_color_type  color;
+   redblacktree_node_value_type       value;
+   redblacktree_node_value_type       value_sum;  /* value_sum := left_subtree->value + value + RightSubtree->value */
 };
 
 struct redblacktree
 {
-   struct redblacktree_node NullNode;
-   size_t                                 Elements;
-   void                                   (*PrintFunction)(const void* node, FILE* fd);
-   int                                    (*ComparisonFunction)(const void* node1, const void* node2);
+   struct redblacktree_node null_node;
+   size_t                   elements;
+   void                     (*print_function)(const void* node, FILE* fd);
+   int                      (*comparison_function)(const void* node1, const void* node2);
 };
 
 

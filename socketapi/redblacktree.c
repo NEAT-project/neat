@@ -50,31 +50,31 @@ static struct redblacktree_node* rbt_internal_find_next(const struct redblacktre
 /* ###### Initialize ##################################################### */
 void rbt_node_new(struct redblacktree_node* node)
 {
-   node->Parent       = NULL;
-   node->LeftSubtree  = NULL;
-   node->RightSubtree = NULL;
-   node->Color        = Black;
-   node->Value        = 0;
-   node->ValueSum     = 0;
+   node->parent        = NULL;
+   node->left_subtree  = NULL;
+   node->right_subtree = NULL;
+   node->color         = Black;
+   node->value         = 0;
+   node->value_sum     = 0;
 }
 
 
 /* ###### Invalidate ##################################################### */
 void rbt_node_delete(struct redblacktree_node* node)
 {
-   node->Parent       = NULL;
-   node->LeftSubtree  = NULL;
-   node->RightSubtree = NULL;
-   node->Color        = Black;
-   node->Value        = 0;
-   node->ValueSum     = 0;
+   node->parent        = NULL;
+   node->left_subtree  = NULL;
+   node->right_subtree = NULL;
+   node->color         = Black;
+   node->value         = 0;
+   node->value_sum     = 0;
 }
 
 
 /* ###### Is node linked? ################################################ */
 int rbt_node_is_linked(const struct redblacktree_node* node)
 {
-   return(node->LeftSubtree != NULL);
+   return(node->left_subtree != NULL);
 }
 
 
@@ -83,32 +83,32 @@ void rbt_new(struct redblacktree* rbt,
              void                 (*printFunction)(const void* node, FILE* fd),
              int                  (*comparisonFunction)(const void* node1, const void* node2))
 {
-   rbt->PrintFunction         = printFunction;
-   rbt->ComparisonFunction    = comparisonFunction;
-   rbt->NullNode.Parent       = &rbt->NullNode;
-   rbt->NullNode.LeftSubtree  = &rbt->NullNode;
-   rbt->NullNode.RightSubtree = &rbt->NullNode;
-   rbt->NullNode.Color        = Black;
-   rbt->NullNode.Value        = 0;
-   rbt->NullNode.ValueSum     = 0;
-   rbt->Elements              = 0;
+   rbt->print_function          = printFunction;
+   rbt->comparison_function     = comparisonFunction;
+   rbt->null_node.parent        = &rbt->null_node;
+   rbt->null_node.left_subtree  = &rbt->null_node;
+   rbt->null_node.right_subtree = &rbt->null_node;
+   rbt->null_node.color         = Black;
+   rbt->null_node.value         = 0;
+   rbt->null_node.value_sum     = 0;
+   rbt->elements                = 0;
 }
 
 
 /* ##### Invalidate ###################################################### */
 void rbt_delete(struct redblacktree* rbt)
 {
-   rbt->Elements              = 0;
-   rbt->NullNode.Parent       = NULL;
-   rbt->NullNode.LeftSubtree  = NULL;
-   rbt->NullNode.RightSubtree = NULL;
+   rbt->elements                = 0;
+   rbt->null_node.parent        = NULL;
+   rbt->null_node.left_subtree  = NULL;
+   rbt->null_node.right_subtree = NULL;
 }
 
 
 /* ##### Update value sum ################################################ */
 inline static void rbt_update_value_sum(struct redblacktree_node* node)
 {
-   node->ValueSum = node->LeftSubtree->ValueSum + node->Value + node->RightSubtree->ValueSum;
+   node->value_sum = node->left_subtree->value_sum + node->value + node->right_subtree->value_sum;
 }
 
 
@@ -116,9 +116,9 @@ inline static void rbt_update_value_sum(struct redblacktree_node* node)
 static void rbt_update_value_sums_up_to_root(struct redblacktree*      rbt,
                                              struct redblacktree_node* node)
 {
-   while(node != &rbt->NullNode) {
+   while(node != &rbt->null_node) {
        rbt_update_value_sum(node);
-       node = node->Parent;
+       node = node->parent;
    }
 }
 
@@ -128,30 +128,30 @@ static void rbt_print_node(const struct redblacktree*      rbt,
                            const struct redblacktree_node* node,
                            FILE*                           fd)
 {
-   rbt->PrintFunction(node, fd);
+   rbt->print_function(node, fd);
 #ifdef DEBUG
    fprintf(fd, " ptr=%p c=%s v=%llu vsum=%llu",
-           node, ((node->Color == Red) ? "Red" : "Black"),
-           node->Value, node->ValueSum);
-   if(node->LeftSubtree != &rbt->NullNode) {
-      fprintf(fd, " l=%p[", node->LeftSubtree);
-      rbt->PrintFunction(node->LeftSubtree, fd);
+           node, ((node->color == Red) ? "Red" : "Black"),
+           node->value, node->value_sum);
+   if(node->left_subtree != &rbt->null_node) {
+      fprintf(fd, " l=%p[", node->left_subtree);
+      rbt->print_function(node->left_subtree, fd);
       fprintf(fd, "]");
    }
    else {
       fprintf(fd, " l=()");
    }
-   if(node->RightSubtree != &rbt->NullNode) {
-      fprintf(fd, " r=%p[", node->RightSubtree);
-      rbt->PrintFunction(node->RightSubtree, fd);
+   if(node->right_subtree != &rbt->null_node) {
+      fprintf(fd, " r=%p[", node->right_subtree);
+      rbt->print_function(node->right_subtree, fd);
       fprintf(fd, "]");
    }
    else {
       fprintf(fd, " r=()");
    }
-   if(node->Parent != &rbt->NullNode) {
-      fprintf(fd, " p=%p[", node->Parent);
-      rbt->PrintFunction(node->Parent, fd);
+   if(node->parent != &rbt->null_node) {
+      fprintf(fd, " p=%p[", node->parent);
+      rbt->print_function(node->parent, fd);
       fprintf(fd, "]   ");
    }
    else {
@@ -167,10 +167,10 @@ void rbt_internal_print(const struct redblacktree*      rbt,
                         const struct redblacktree_node* node,
                         FILE*                           fd)
 {
-   if(node != &rbt->NullNode) {
-      rbt_internal_print(rbt, node->LeftSubtree, fd);
+   if(node != &rbt->null_node) {
+      rbt_internal_print(rbt, node->left_subtree, fd);
       rbt_print_node(rbt, node, fd);
-      rbt_internal_print(rbt, node->RightSubtree, fd);
+      rbt_internal_print(rbt, node->right_subtree, fd);
    }
 }
 
@@ -180,13 +180,13 @@ void rbt_print(const struct redblacktree* rbt,
                FILE*                      fd)
 {
 #ifdef DEBUG
-   fprintf(fd, "\n\nroot=%p[", rbt->NullNode.LeftSubtree);
-   if(rbt->NullNode.LeftSubtree != &rbt->NullNode) {
-      rbt->PrintFunction(rbt->NullNode.LeftSubtree, fd);
+   fprintf(fd, "\n\nroot=%p[", rbt->null_node.left_subtree);
+   if(rbt->null_node.left_subtree != &rbt->null_node) {
+      rbt->print_function(rbt->null_node.left_subtree, fd);
    }
-   fprintf(fd, "] null=%p   \n", &rbt->NullNode);
+   fprintf(fd, "] null=%p   \n", &rbt->null_node);
 #endif
-   rbt_internal_print(rbt, rbt->NullNode.LeftSubtree, fd);
+   rbt_internal_print(rbt, rbt->null_node.left_subtree, fd);
    fputs("\n", fd);
 }
 
@@ -194,21 +194,21 @@ void rbt_print(const struct redblacktree* rbt,
 /* ###### Is tree empty? ################################################# */
 int rbt_is_empty(const struct redblacktree* rbt)
 {
-   return(rbt->NullNode.LeftSubtree == &rbt->NullNode);
+   return(rbt->null_node.left_subtree == &rbt->null_node);
 }
 
 
 /* ###### Get first node ################################################## */
 struct redblacktree_node* rbt_get_first(const struct redblacktree* rbt)
 {
-   const struct redblacktree_node* node = rbt->NullNode.LeftSubtree;
-   if(node == &rbt->NullNode) {
-      node = rbt->NullNode.RightSubtree;
+   const struct redblacktree_node* node = rbt->null_node.left_subtree;
+   if(node == &rbt->null_node) {
+      node = rbt->null_node.right_subtree;
    }
-   while(node->LeftSubtree != &rbt->NullNode) {
-      node = node->LeftSubtree;
+   while(node->left_subtree != &rbt->null_node) {
+      node = node->left_subtree;
    }
-   if(node != &rbt->NullNode) {
+   if(node != &rbt->null_node) {
       return((struct redblacktree_node*)node);
    }
    return(NULL);
@@ -218,14 +218,14 @@ struct redblacktree_node* rbt_get_first(const struct redblacktree* rbt)
 /* ###### Get last node ################################################### */
 struct redblacktree_node* rbt_get_last(const struct redblacktree* rbt)
 {
-   const struct redblacktree_node* node = rbt->NullNode.RightSubtree;
-   if(node == &rbt->NullNode) {
-      node = rbt->NullNode.LeftSubtree;
+   const struct redblacktree_node* node = rbt->null_node.right_subtree;
+   if(node == &rbt->null_node) {
+      node = rbt->null_node.left_subtree;
    }
-   while(node->RightSubtree != &rbt->NullNode) {
-      node = node->RightSubtree;
+   while(node->right_subtree != &rbt->null_node) {
+      node = node->right_subtree;
    }
-   if(node != &rbt->NullNode) {
+   if(node != &rbt->null_node) {
       return((struct redblacktree_node*)node);
    }
    return(NULL);
@@ -238,7 +238,7 @@ struct redblacktree_node* rbt_get_prev(const struct redblacktree*      rbt,
 {
    struct redblacktree_node* result;
    result = rbt_internal_find_prev(rbt, node);
-   if(result != &rbt->NullNode) {
+   if(result != &rbt->null_node) {
       return(result);
    }
    return(NULL);
@@ -251,7 +251,7 @@ struct redblacktree_node* rbt_get_next(const struct redblacktree*      rbt,
 {
    struct redblacktree_node* result;
    result = rbt_internal_find_next(rbt, node);
-   if(result != &rbt->NullNode) {
+   if(result != &rbt->null_node) {
       return(result);
    }
    return(NULL);
@@ -270,22 +270,22 @@ struct redblacktree_node* rbt_get_nearest_prev(const struct redblacktree*      r
 
 #ifdef DEBUG
    printf("nearest prev: ");
-   rbt->PrintFunction(cmpNode, stdout);
+   rbt->print_function(cmpNode, stdout);
    printf("\n");
    rbt_print(rbt, stdout);
 #endif
 
    parentPtr = NULL;
-   nodePtr   = &rbt->NullNode.LeftSubtree;
-   while(*nodePtr != &rbt->NullNode) {
-      cmpResult = rbt->ComparisonFunction(cmpNode, *nodePtr);
+   nodePtr   = &rbt->null_node.left_subtree;
+   while(*nodePtr != &rbt->null_node) {
+      cmpResult = rbt->comparison_function(cmpNode, *nodePtr);
       if(cmpResult < 0) {
          parentPtr = nodePtr;
-         nodePtr   = &(*nodePtr)->LeftSubtree;
+         nodePtr   = &(*nodePtr)->left_subtree;
       }
       else if(cmpResult > 0) {
          parentPtr = nodePtr;
-         nodePtr   = &(*nodePtr)->RightSubtree;
+         nodePtr   = &(*nodePtr)->right_subtree;
       }
       if(cmpResult == 0) {
          return(rbt_get_prev(rbt, *nodePtr));
@@ -294,14 +294,14 @@ struct redblacktree_node* rbt_get_nearest_prev(const struct redblacktree*      r
 
    if(parentPtr == NULL) {
       if(cmpResult > 0) {
-         return(rbt->NullNode.LeftSubtree);
+         return(rbt->null_node.left_subtree);
       }
       return(NULL);
    }
    else {
       /* The new node would be the right child of its parent.
          => The parent is the nearest previous node! */
-      if(nodePtr == &(*parentPtr)->RightSubtree) {
+      if(nodePtr == &(*parentPtr)->right_subtree) {
          return(*parentPtr);
       }
       else {
@@ -309,12 +309,12 @@ struct redblacktree_node* rbt_get_nearest_prev(const struct redblacktree*      r
 
          /* If there is a left subtree, the nearest previous node is the
             rightmost child of the left subtree. */
-         if(parent->LeftSubtree != &rbt->NullNode) {
-            node = parent->LeftSubtree;
-            while(node->RightSubtree != &rbt->NullNode) {
-               node = node->RightSubtree;
+         if(parent->left_subtree != &rbt->null_node) {
+            node = parent->left_subtree;
+            while(node->right_subtree != &rbt->null_node) {
+               node = node->right_subtree;
             }
-            if(node != &rbt->NullNode) {
+            if(node != &rbt->null_node) {
                return((struct redblacktree_node*)node);
             }
          }
@@ -323,12 +323,12 @@ struct redblacktree_node* rbt_get_nearest_prev(const struct redblacktree*      r
             ancestor node which has the node on its right side. */
          else {
             node   = parent;
-            parent = node->Parent;
-            while((parent != &rbt->NullNode) && (node == parent->LeftSubtree)) {
+            parent = node->parent;
+            while((parent != &rbt->null_node) && (node == parent->left_subtree)) {
                node   = parent;
-               parent = parent->Parent;
+               parent = parent->parent;
             }
-            if(parent != &rbt->NullNode) {
+            if(parent != &rbt->null_node) {
                return((struct redblacktree_node*)parent);
             }
          }
@@ -350,22 +350,22 @@ struct redblacktree_node* rbt_get_nearest_next(const struct redblacktree*      r
 
 #ifdef DEBUG
    printf("nearest next: ");
-   rbt->PrintFunction(cmpNode, stdout);
+   rbt->print_function(cmpNode, stdout);
    printf("\n");
    rbt_print(bt, stdout);
 #endif
 
    parentPtr = NULL;
-   nodePtr   = &rbt->NullNode.LeftSubtree;
-   while(*nodePtr != &rbt->NullNode) {
-      cmpResult = rbt->ComparisonFunction(cmpNode, *nodePtr);
+   nodePtr   = &rbt->null_node.left_subtree;
+   while(*nodePtr != &rbt->null_node) {
+      cmpResult = rbt->comparison_function(cmpNode, *nodePtr);
       if(cmpResult < 0) {
          parentPtr = nodePtr;
-         nodePtr   = &(*nodePtr)->LeftSubtree;
+         nodePtr   = &(*nodePtr)->left_subtree;
       }
       else if(cmpResult > 0) {
          parentPtr = nodePtr;
-         nodePtr   = &(*nodePtr)->RightSubtree;
+         nodePtr   = &(*nodePtr)->right_subtree;
       }
       if(cmpResult == 0) {
          return(rbt_get_next(rbt, *nodePtr));
@@ -374,14 +374,14 @@ struct redblacktree_node* rbt_get_nearest_next(const struct redblacktree*      r
 
    if(parentPtr == NULL) {
       if(cmpResult < 0) {
-         return(rbt->NullNode.LeftSubtree);
+         return(rbt->null_node.left_subtree);
       }
       return(NULL);
    }
    else {
       /* The new node would be the left child of its parent.
          => The parent is the nearest next node! */
-      if(nodePtr == &(*parentPtr)->LeftSubtree) {
+      if(nodePtr == &(*parentPtr)->left_subtree) {
          return(*parentPtr);
       }
       else {
@@ -389,12 +389,12 @@ struct redblacktree_node* rbt_get_nearest_next(const struct redblacktree*      r
 
          /* If there is a right subtree, the nearest next node is the
             leftmost child of the right subtree. */
-         if(parent->RightSubtree != &rbt->NullNode) {
-            node = parent->RightSubtree;
-            while(node->LeftSubtree != &rbt->NullNode) {
-               node = node->LeftSubtree;
+         if(parent->right_subtree != &rbt->null_node) {
+            node = parent->right_subtree;
+            while(node->left_subtree != &rbt->null_node) {
+               node = node->left_subtree;
             }
-            if(node != &rbt->NullNode) {
+            if(node != &rbt->null_node) {
                return((struct redblacktree_node*)node);
             }
          }
@@ -403,12 +403,12 @@ struct redblacktree_node* rbt_get_nearest_next(const struct redblacktree*      r
             ancestor node which has the node on its left side. */
          else {
             node   = parent;
-            parent = node->Parent;
-            while((parent != &rbt->NullNode) && (node == parent->RightSubtree)) {
+            parent = node->parent;
+            while((parent != &rbt->null_node) && (node == parent->right_subtree)) {
                node   = parent;
-               parent = parent->Parent;
+               parent = parent->parent;
             }
-            if(parent != &rbt->NullNode) {
+            if(parent != &rbt->null_node) {
                return((struct redblacktree_node*)parent);
             }
          }
@@ -421,7 +421,7 @@ struct redblacktree_node* rbt_get_nearest_next(const struct redblacktree*      r
 /* ###### Get number of elements ########################################## */
 size_t rbt_get_elements(const struct redblacktree* rbt)
 {
-   return(rbt->Elements);
+   return(rbt->elements);
 }
 
 
@@ -429,21 +429,21 @@ size_t rbt_get_elements(const struct redblacktree* rbt)
 static struct redblacktree_node* rbt_internal_find_prev(const struct redblacktree*      rbt,
                                                         const struct redblacktree_node* cmpNode)
 {
-   const struct redblacktree_node* node = cmpNode->LeftSubtree;
+   const struct redblacktree_node* node = cmpNode->left_subtree;
    const struct redblacktree_node* parent;
 
-   if(node != &rbt->NullNode) {
-      while(node->RightSubtree != &rbt->NullNode) {
-         node = node->RightSubtree;
+   if(node != &rbt->null_node) {
+      while(node->right_subtree != &rbt->null_node) {
+         node = node->right_subtree;
       }
       return((struct redblacktree_node*)node);
    }
    else {
       node   = cmpNode;
-      parent = cmpNode->Parent;
-      while((parent != &rbt->NullNode) && (node == parent->LeftSubtree)) {
+      parent = cmpNode->parent;
+      while((parent != &rbt->null_node) && (node == parent->left_subtree)) {
          node   = parent;
-         parent = parent->Parent;
+         parent = parent->parent;
       }
       return((struct redblacktree_node*)parent);
    }
@@ -454,21 +454,21 @@ static struct redblacktree_node* rbt_internal_find_prev(const struct redblacktre
 static struct redblacktree_node* rbt_internal_find_next(const struct redblacktree*      rbt,
                                                         const struct redblacktree_node* cmpNode)
 {
-   const struct redblacktree_node* node = cmpNode->RightSubtree;
+   const struct redblacktree_node* node = cmpNode->right_subtree;
    const struct redblacktree_node* parent;
 
-   if(node != &rbt->NullNode) {
-      while(node->LeftSubtree != &rbt->NullNode) {
-         node = node->LeftSubtree;
+   if(node != &rbt->null_node) {
+      while(node->left_subtree != &rbt->null_node) {
+         node = node->left_subtree;
       }
       return((struct redblacktree_node*)node);
    }
    else {
       node   = cmpNode;
-      parent = cmpNode->Parent;
-      while((parent != &rbt->NullNode) && (node == parent->RightSubtree)) {
+      parent = cmpNode->parent;
+      while((parent != &rbt->null_node) && (node == parent->right_subtree)) {
          node   = parent;
-         parent = parent->Parent;
+         parent = parent->parent;
       }
       return((struct redblacktree_node*)parent);
    }
@@ -481,21 +481,21 @@ struct redblacktree_node* rbt_find(const struct redblacktree*      rbt,
 {
 #ifdef DEBUG
    printf("find: ");
-   rbt->PrintFunction(cmpNode, stdout);
+   rbt->print_function(cmpNode, stdout);
    printf("\n");
 #endif
 
-   struct redblacktree_node* node = rbt->NullNode.LeftSubtree;
-   while(node != &rbt->NullNode) {
-      const int cmpResult = rbt->ComparisonFunction(cmpNode, node);
+   struct redblacktree_node* node = rbt->null_node.left_subtree;
+   while(node != &rbt->null_node) {
+      const int cmpResult = rbt->comparison_function(cmpNode, node);
       if(cmpResult == 0) {
          return(node);
       }
       else if(cmpResult < 0) {
-         node = node->LeftSubtree;
+         node = node->left_subtree;
       }
       else {
-         node = node->RightSubtree;
+         node = node->right_subtree;
       }
    }
    return(NULL);
@@ -505,7 +505,7 @@ struct redblacktree_node* rbt_find(const struct redblacktree*      rbt,
 /* ###### Get value sum from root node ################################### */
 redblacktree_node_value_type rbt_get_value_sum(const struct redblacktree* rbt)
 {
-   return(rbt->NullNode.LeftSubtree->ValueSum);
+   return(rbt->null_node.left_subtree->value_sum);
 }
 
 
@@ -516,23 +516,23 @@ static void rbt_rotate_left(struct redblacktree_node* node)
    struct redblacktree_node* lowleft;
    struct redblacktree_node* upparent;
 
-   lower = node->RightSubtree;
-   node->RightSubtree = lowleft = lower->LeftSubtree;
-   lowleft->Parent = node;
-   lower->Parent = upparent = node->Parent;
+   lower = node->right_subtree;
+   node->right_subtree = lowleft = lower->left_subtree;
+   lowleft->parent = node;
+   lower->parent = upparent = node->parent;
 
-   if(node == upparent->LeftSubtree) {
-      upparent->LeftSubtree = lower;
+   if(node == upparent->left_subtree) {
+      upparent->left_subtree = lower;
    } else {
-      assert(node == upparent->RightSubtree);
-      upparent->RightSubtree = lower;
+      assert(node == upparent->right_subtree);
+      upparent->right_subtree = lower;
    }
 
-   lower->LeftSubtree = node;
-   node->Parent = lower;
+   lower->left_subtree = node;
+   node->parent = lower;
 
    rbt_update_value_sum(node);
-   rbt_update_value_sum(node->Parent);
+   rbt_update_value_sum(node->parent);
 }
 
 
@@ -543,23 +543,23 @@ static void rbt_rotate_right(struct redblacktree_node* node)
    struct redblacktree_node* lowright;
    struct redblacktree_node* upparent;
 
-   lower = node->LeftSubtree;
-   node->LeftSubtree = lowright = lower->RightSubtree;
-   lowright->Parent = node;
-   lower->Parent = upparent = node->Parent;
+   lower = node->left_subtree;
+   node->left_subtree = lowright = lower->right_subtree;
+   lowright->parent = node;
+   lower->parent = upparent = node->parent;
 
-   if(node == upparent->RightSubtree) {
-      upparent->RightSubtree = lower;
+   if(node == upparent->right_subtree) {
+      upparent->right_subtree = lower;
    } else {
-      assert(node == upparent->LeftSubtree);
-      upparent->LeftSubtree = lower;
+      assert(node == upparent->left_subtree);
+      upparent->left_subtree = lower;
    }
 
-   lower->RightSubtree = node;
-   node->Parent = lower;
+   lower->right_subtree = node;
+   node->parent = lower;
 
    rbt_update_value_sum(node);
-   rbt_update_value_sum(node->Parent);
+   rbt_update_value_sum(node->parent);
 }
 
 
@@ -568,27 +568,27 @@ struct redblacktree_node* rbt_insert(struct redblacktree*      rbt,
                                      struct redblacktree_node* node)
 {
    int                       cmpResult = -1;
-   struct redblacktree_node* where     = rbt->NullNode.LeftSubtree;
-   struct redblacktree_node* parent    = &rbt->NullNode;
+   struct redblacktree_node* where     = rbt->null_node.left_subtree;
+   struct redblacktree_node* parent    = &rbt->null_node;
    struct redblacktree_node* result;
    struct redblacktree_node* uncle;
    struct redblacktree_node* grandparent;
 #ifdef DEBUG
    printf("insert: ");
-   rbt->PrintFunction(node, stdout);
+   rbt->print_function(node, stdout);
    printf("\n");
 #endif
 
 
    /* ====== Find location of new node =================================== */
-   while(where != &rbt->NullNode) {
+   while(where != &rbt->null_node) {
       parent = where;
-      cmpResult = rbt->ComparisonFunction(node, where);
+      cmpResult = rbt->comparison_function(node, where);
       if(cmpResult < 0) {
-         where = where->LeftSubtree;
+         where = where->left_subtree;
       }
       else if(cmpResult > 0) {
-         where = where->RightSubtree;
+         where = where->right_subtree;
       }
       else {
          /* Node with same key is already available -> return. */
@@ -596,74 +596,74 @@ struct redblacktree_node* rbt_insert(struct redblacktree*      rbt,
          goto finished;
       }
    }
-   assert(where == &rbt->NullNode);
+   assert(where == &rbt->null_node);
 
    if(cmpResult < 0) {
-      parent->LeftSubtree = node;
+      parent->left_subtree = node;
    }
    else {
-      parent->RightSubtree = node;
+      parent->right_subtree = node;
    }
 
 
    /* ====== Link node =================================================== */
-   node->Parent       = parent;
-   node->LeftSubtree  = &rbt->NullNode;
-   node->RightSubtree = &rbt->NullNode;
-   node->ValueSum     = node->Value;
-   rbt->Elements++;
+   node->parent        = parent;
+   node->left_subtree  = &rbt->null_node;
+   node->right_subtree = &rbt->null_node;
+   node->value_sum     = node->value;
+   rbt->elements++;
    result = node;
 
 
    /* ====== Update parent's value sum =================================== */
-   rbt_update_value_sums_up_to_root(rbt, node->Parent);
+   rbt_update_value_sums_up_to_root(rbt, node->parent);
 
 
    /* ====== Ensure red-black tree properties ============================ */
-   node->Color = Red;
-   while (parent->Color == Red) {
-      grandparent = parent->Parent;
-      if(parent == grandparent->LeftSubtree) {
-         uncle = grandparent->RightSubtree;
-         if(uncle->Color == Red) {
-            parent->Color  = Black;
-            uncle->Color   = Black;
-            grandparent->Color = Red;
+   node->color = Red;
+   while (parent->color == Red) {
+      grandparent = parent->parent;
+      if(parent == grandparent->left_subtree) {
+         uncle = grandparent->right_subtree;
+         if(uncle->color == Red) {
+            parent->color  = Black;
+            uncle->color   = Black;
+            grandparent->color = Red;
             node           = grandparent;
-            parent         = grandparent->Parent;
+            parent         = grandparent->parent;
          } else {
-            if(node == parent->RightSubtree) {
+            if(node == parent->right_subtree) {
                rbt_rotate_left(parent);
                parent = node;
-               assert(grandparent == parent->Parent);
+               assert(grandparent == parent->parent);
             }
-            parent->Color  = Black;
-            grandparent->Color = Red;
+            parent->color  = Black;
+            grandparent->color = Red;
             rbt_rotate_right(grandparent);
             break;
          }
       } else {
-         uncle = grandparent->LeftSubtree;
-         if(uncle->Color == Red) {
-            parent->Color  = Black;
-            uncle->Color   = Black;
-            grandparent->Color = Red;
+         uncle = grandparent->left_subtree;
+         if(uncle->color == Red) {
+            parent->color  = Black;
+            uncle->color   = Black;
+            grandparent->color = Red;
             node           = grandparent;
-            parent         = grandparent->Parent;
+            parent         = grandparent->parent;
          } else {
-            if(node == parent->LeftSubtree) {
+            if(node == parent->left_subtree) {
                rbt_rotate_right(parent);
                parent = node;
-               assert(grandparent == parent->Parent);
+               assert(grandparent == parent->parent);
             }
-            parent->Color  = Black;
-            grandparent->Color = Red;
+            parent->color  = Black;
+            grandparent->color = Red;
             rbt_rotate_left(grandparent);
             break;
          }
       }
    }
-   rbt->NullNode.LeftSubtree->Color = Black;
+   rbt->null_node.left_subtree->color = Black;
 
 
 finished:
@@ -682,155 +682,155 @@ struct redblacktree_node* rbt_remove(struct redblacktree*      rbt,
                                      struct redblacktree_node* node)
 {
    struct redblacktree_node*          child;
-   struct redblacktree_node*          delParent;
+   struct redblacktree_node*          delparent;
    struct redblacktree_node*          parent;
    struct redblacktree_node*          sibling;
    struct redblacktree_node*          next;
-   struct redblacktree_node*          nextParent;
-   enum redblacktree_node_color_type  nextColor;
+   struct redblacktree_node*          nextparent;
+   enum redblacktree_node_color_type  nextcolor;
 #ifdef DEBUG
    printf("remove: ");
-   rbt->PrintFunction(node, stdout);
+   rbt->print_function(node, stdout);
    printf("\n");
 #endif
 
    assert(rbt_node_is_linked(node));
 
    /* ====== Unlink node ================================================= */
-   if((node->LeftSubtree != &rbt->NullNode) && (node->RightSubtree != &rbt->NullNode)) {
+   if((node->left_subtree != &rbt->null_node) && (node->right_subtree != &rbt->null_node)) {
       next       = rbt_get_next(rbt, node);
-      nextParent = next->Parent;
-      nextColor  = next->Color;
+      nextparent = next->parent;
+      nextcolor  = next->color;
 
-      assert(next != &rbt->NullNode);
-      assert(next->Parent != &rbt->NullNode);
-      assert(next->LeftSubtree == &rbt->NullNode);
+      assert(next != &rbt->null_node);
+      assert(next->parent != &rbt->null_node);
+      assert(next->left_subtree == &rbt->null_node);
 
-      child         = next->RightSubtree;
-      child->Parent = nextParent;
-      if(nextParent->LeftSubtree == next) {
-         nextParent->LeftSubtree = child;
+      child         = next->right_subtree;
+      child->parent = nextparent;
+      if(nextparent->left_subtree == next) {
+         nextparent->left_subtree = child;
       } else {
-         assert(nextParent->RightSubtree == next);
-         nextParent->RightSubtree = child;
+         assert(nextparent->right_subtree == next);
+         nextparent->right_subtree = child;
       }
 
 
-      delParent                  = node->Parent;
-      next->Parent               = delParent;
-      next->LeftSubtree          = node->LeftSubtree;
-      next->RightSubtree         = node->RightSubtree;
-      next->LeftSubtree->Parent  = next;
-      next->RightSubtree->Parent = next;
-      next->Color                = node->Color;
-      node->Color                = nextColor;
+      delparent                  = node->parent;
+      next->parent               = delparent;
+      next->left_subtree          = node->left_subtree;
+      next->right_subtree         = node->right_subtree;
+      next->left_subtree->parent  = next;
+      next->right_subtree->parent = next;
+      next->color                = node->color;
+      node->color                = nextcolor;
 
-      if(delParent->LeftSubtree == node) {
-         delParent->LeftSubtree = next;
+      if(delparent->left_subtree == node) {
+         delparent->left_subtree = next;
       } else {
-         assert(delParent->RightSubtree == node);
-         delParent->RightSubtree = next;
+         assert(delparent->right_subtree == node);
+         delparent->right_subtree = next;
       }
 
       /* ====== Update parent's value sum ================================ */
       rbt_update_value_sums_up_to_root(rbt, next);
-      rbt_update_value_sums_up_to_root(rbt, nextParent);
+      rbt_update_value_sums_up_to_root(rbt, nextparent);
    } else {
-      assert(node != &rbt->NullNode);
-      assert((node->LeftSubtree == &rbt->NullNode) || (node->RightSubtree == &rbt->NullNode));
+      assert(node != &rbt->null_node);
+      assert((node->left_subtree == &rbt->null_node) || (node->right_subtree == &rbt->null_node));
 
-      child         = (node->LeftSubtree != &rbt->NullNode) ? node->LeftSubtree : node->RightSubtree;
-      child->Parent = delParent = node->Parent;
+      child         = (node->left_subtree != &rbt->null_node) ? node->left_subtree : node->right_subtree;
+      child->parent = delparent = node->parent;
 
-      if(node == delParent->LeftSubtree) {
-         delParent->LeftSubtree = child;
+      if(node == delparent->left_subtree) {
+         delparent->left_subtree = child;
       } else {
-         assert(node == delParent->RightSubtree);
-         delParent->RightSubtree = child;
+         assert(node == delparent->right_subtree);
+         delparent->right_subtree = child;
       }
 
       /* ====== Update parent's value sum ================================ */
-      rbt_update_value_sums_up_to_root(rbt, delParent);
+      rbt_update_value_sums_up_to_root(rbt, delparent);
    }
 
 
    /* ====== Unlink node from list and invalidate pointers =============== */
-   node->Parent       = NULL;
-   node->RightSubtree = NULL;
-   node->LeftSubtree  = NULL;
-   assert(rbt->Elements > 0);
-   rbt->Elements--;
+   node->parent       = NULL;
+   node->right_subtree = NULL;
+   node->left_subtree  = NULL;
+   assert(rbt->elements > 0);
+   rbt->elements--;
 
 
    /* ====== Ensure red-black properties ================================= */
-   if(node->Color == Black) {
-      rbt->NullNode.LeftSubtree->Color = Red;
+   if(node->color == Black) {
+      rbt->null_node.left_subtree->color = Red;
 
-      while (child->Color == Black) {
-         parent = child->Parent;
-         if(child == parent->LeftSubtree) {
-            sibling = parent->RightSubtree;
-            assert(sibling != &rbt->NullNode);
-            if(sibling->Color == Red) {
-               sibling->Color = Black;
-               parent->Color = Red;
+      while (child->color == Black) {
+         parent = child->parent;
+         if(child == parent->left_subtree) {
+            sibling = parent->right_subtree;
+            assert(sibling != &rbt->null_node);
+            if(sibling->color == Red) {
+               sibling->color = Black;
+               parent->color = Red;
                rbt_rotate_left(parent);
-               sibling = parent->RightSubtree;
-               assert(sibling != &rbt->NullNode);
+               sibling = parent->right_subtree;
+               assert(sibling != &rbt->null_node);
             }
-            if((sibling->LeftSubtree->Color == Black) &&
-               (sibling->RightSubtree->Color == Black)) {
-               sibling->Color = Red;
+            if((sibling->left_subtree->color == Black) &&
+               (sibling->right_subtree->color == Black)) {
+               sibling->color = Red;
                child = parent;
             } else {
-               if(sibling->RightSubtree->Color == Black) {
-                  assert(sibling->LeftSubtree->Color == Red);
-                  sibling->LeftSubtree->Color = Black;
-                  sibling->Color = Red;
+               if(sibling->right_subtree->color == Black) {
+                  assert(sibling->left_subtree->color == Red);
+                  sibling->left_subtree->color = Black;
+                  sibling->color = Red;
                   rbt_rotate_right(sibling);
-                  sibling = parent->RightSubtree;
-                  assert(sibling != &rbt->NullNode);
+                  sibling = parent->right_subtree;
+                  assert(sibling != &rbt->null_node);
                }
-               sibling->Color = parent->Color;
-               sibling->RightSubtree->Color = Black;
-               parent->Color = Black;
+               sibling->color = parent->color;
+               sibling->right_subtree->color = Black;
+               parent->color = Black;
                rbt_rotate_left(parent);
                break;
             }
          } else {
-            assert(child == parent->RightSubtree);
-            sibling = parent->LeftSubtree;
-            assert(sibling != &rbt->NullNode);
-            if(sibling->Color == Red) {
-               sibling->Color = Black;
-               parent->Color = Red;
+            assert(child == parent->right_subtree);
+            sibling = parent->left_subtree;
+            assert(sibling != &rbt->null_node);
+            if(sibling->color == Red) {
+               sibling->color = Black;
+               parent->color = Red;
                rbt_rotate_right(parent);
-               sibling = parent->LeftSubtree;
-               assert(sibling != &rbt->NullNode);
+               sibling = parent->left_subtree;
+               assert(sibling != &rbt->null_node);
             }
-            if((sibling->RightSubtree->Color == Black) &&
-               (sibling->LeftSubtree->Color == Black)) {
-               sibling->Color = Red;
+            if((sibling->right_subtree->color == Black) &&
+               (sibling->left_subtree->color == Black)) {
+               sibling->color = Red;
                child = parent;
             } else {
-               if(sibling->LeftSubtree->Color == Black) {
-                  assert(sibling->RightSubtree->Color == Red);
-                  sibling->RightSubtree->Color = Black;
-                  sibling->Color = Red;
+               if(sibling->left_subtree->color == Black) {
+                  assert(sibling->right_subtree->color == Red);
+                  sibling->right_subtree->color = Black;
+                  sibling->color = Red;
                   rbt_rotate_left(sibling);
-                  sibling = parent->LeftSubtree;
-                  assert(sibling != &rbt->NullNode);
+                  sibling = parent->left_subtree;
+                  assert(sibling != &rbt->null_node);
                }
-               sibling->Color = parent->Color;
-               sibling->LeftSubtree->Color = Black;
-               parent->Color = Black;
+               sibling->color = parent->color;
+               sibling->left_subtree->color = Black;
+               parent->color = Black;
                rbt_rotate_right(parent);
                break;
             }
          }
       }
-      child->Color = Black;
-      rbt->NullNode.LeftSubtree->Color = Black;
+      child->color = Black;
+      rbt->null_node.left_subtree->color = Black;
    }
 
 
@@ -848,23 +848,23 @@ struct redblacktree_node* rbt_remove(struct redblacktree*      rbt,
 struct redblacktree_node* rbt_get_node_by_value(const struct redblacktree* rbt,
                                                 redblacktree_node_value_type  value)
 {
-   const struct redblacktree_node* node = rbt->NullNode.LeftSubtree;
+   const struct redblacktree_node* node = rbt->null_node.left_subtree;
    for(;;) {
-      if(value < node->LeftSubtree->ValueSum) {
-         if(node->LeftSubtree != &rbt->NullNode) {
-            node = node->LeftSubtree;
+      if(value < node->left_subtree->value_sum) {
+         if(node->left_subtree != &rbt->null_node) {
+            node = node->left_subtree;
          }
          else {
             break;
          }
       }
-      else if(value < node->LeftSubtree->ValueSum + node->Value) {
+      else if(value < node->left_subtree->value_sum + node->value) {
          break;
       }
       else {
-         if(node->RightSubtree != &rbt->NullNode) {
-            value -= node->LeftSubtree->ValueSum + node->Value;
-            node = node->RightSubtree;
+         if(node->right_subtree != &rbt->null_node) {
+            value -= node->left_subtree->value_sum + node->value;
+            node = node->right_subtree;
          }
          else {
             break;
@@ -872,7 +872,7 @@ struct redblacktree_node* rbt_get_node_by_value(const struct redblacktree* rbt,
       }
    }
 
-   if(node !=  &rbt->NullNode) {
+   if(node !=  &rbt->null_node) {
       return((struct redblacktree_node*)node);
    }
    return(NULL);
@@ -889,7 +889,7 @@ static size_t rbt_internal_verify(struct redblacktree*       rbt,
    size_t leftHeight;
    size_t rightHeight;
 
-   if(node != &rbt->NullNode) {
+   if(node != &rbt->null_node) {
       /* ====== Print node =============================================== */
 #ifdef DEBUG
       printf("verifying ");
@@ -898,24 +898,24 @@ static size_t rbt_internal_verify(struct redblacktree*       rbt,
 #endif
 
       /* ====== Correct parent? ========================================== */
-      assert(node->Parent == parent);
+      assert(node->parent == parent);
 
       /* ====== Correct tree and heap properties? ======================== */
-      if(node->LeftSubtree != &rbt->NullNode) {
-         assert(rbt->ComparisonFunction(node, node->LeftSubtree) > 0);
+      if(node->left_subtree != &rbt->null_node) {
+         assert(rbt->comparison_function(node, node->left_subtree) > 0);
       }
-      if(node->RightSubtree != &rbt->NullNode) {
-         assert(rbt->ComparisonFunction(node, node->RightSubtree) < 0);
+      if(node->right_subtree != &rbt->null_node) {
+         assert(rbt->comparison_function(node, node->right_subtree) < 0);
       }
 
       /* ====== Is value sum okay? ======================================= */
-      assert(node->ValueSum == node->LeftSubtree->ValueSum +
-                              node->Value +
-                              node->RightSubtree->ValueSum);
+      assert(node->value_sum == node->left_subtree->value_sum +
+                              node->value +
+                              node->right_subtree->value_sum);
 
       /* ====== Is left subtree okay? ==================================== */
       leftHeight = rbt_internal_verify(
-                      rbt, node, node->LeftSubtree, lastRedBlackTreeNode,
+                      rbt, node, node->left_subtree, lastRedBlackTreeNode,
                       counter);
 
       /* ====== Count elements =========================================== */
@@ -923,18 +923,18 @@ static size_t rbt_internal_verify(struct redblacktree*       rbt,
 
       /* ====== Is right subtree okay? =================================== */
       rightHeight = rbt_internal_verify(
-                       rbt, node, node->RightSubtree, lastRedBlackTreeNode,
+                       rbt, node, node->right_subtree, lastRedBlackTreeNode,
                        counter);
 
       /* ====== Verify red-black property ================================ */
       assert((leftHeight != 0) || (rightHeight != 0));
       assert(leftHeight == rightHeight);
-      if(node->Color == Red) {
-         assert(node->LeftSubtree->Color == Black);
-         assert(node->RightSubtree->Color == Black);
+      if(node->color == Red) {
+         assert(node->left_subtree->color == Black);
+         assert(node->right_subtree->color == Black);
          return(leftHeight);
       }
-      assert(node->Color == Black);
+      assert(node->color == Black);
       return(leftHeight + 1);
    }
    return(1);
@@ -947,14 +947,14 @@ void rbt_verify(struct redblacktree* rbt)
    size_t                   counter              = 0;
    struct redblacktree_node* lastRedBlackTreeNode = NULL;
 
-   assert(rbt->NullNode.Color == Black);
-   assert(rbt->NullNode.Value == 0);
-   assert(rbt->NullNode.ValueSum == 0);
+   assert(rbt->null_node.color == Black);
+   assert(rbt->null_node.value == 0);
+   assert(rbt->null_node.value_sum == 0);
 
-   assert(rbt_internal_verify(rbt, &rbt->NullNode,
-                     rbt->NullNode.LeftSubtree, &lastRedBlackTreeNode,
+   assert(rbt_internal_verify(rbt, &rbt->null_node,
+                     rbt->null_node.left_subtree, &lastRedBlackTreeNode,
                      &counter) != 0);
-   assert(counter == rbt->Elements);
+   assert(counter == rbt->elements);
 }
 
 

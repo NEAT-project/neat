@@ -1332,7 +1332,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     const char *home_dir;
     const char *socket_path;
     char socket_path_buf[128];
-    json_t *result_array = NULL;
+    json_t *json_result = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -1354,25 +1354,31 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         socket_path = socket_path_buf;
     }
 
-    /* TODO: Remove. */
-    char *json_str = json_dumps( flow->properties, JSON_INDENT(2));
-    neat_log(NEAT_LOG_DEBUG, json_str);
-
-    result_array = json_pack("[{s:[{s:{ss}}],s:b,s:{s:{ss},s:{ss},s:{si},s:{sbsisi}}}]",
+    json_result = json_pack("[{s:[{s:{ss}}],s:b,s:{s:{ss},s:{ss},s:{si},s:{sbsisi}}}]",
         "match", "interface", "value", he_res->interface, "link", true, "properties", "transport",
         "value", stack_to_string(he_res->transport ), "remote_ip", "value", he_res->remote_ip,
         "remote_port", "value", he_res->remote_port, "cached", "value", (result)?1:0, "precedence",
         2, "score", 5);
 
-    neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
+
+    if (json_object_update_missing(json_result, flow->properties) == -1) {
+        neat_log(NEAT_LOG_DEBUG, "Failed to merge Happy Eyeballs result with flow properties");
+        goto end;
+    }
+
+    /* TODO: Remove. */
+    char *json_str = json_dumps( json_result, JSON_INDENT(2));
+    neat_log(NEAT_LOG_DEBUG, json_str);
+
+    neat_json_send_he_result_to_pm(ctx, flow, socket_path, json_result, on_pm_he_error);
 
 end:
     free(he_res->interface);
     free(he_res->remote_ip);
     free(he_res);
 
-    if (result_array) {
-        json_decref(result_array);
+    if (json_result) {
+        json_decref(json_result);
     }
 }
 

@@ -1389,8 +1389,18 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     }
     json_decref(prop_obj);
 
+    result_array = json_array();
+    if (result_array == NULL) {
+        goto end;
+    }
+
+    if (json_array_append(result_array, result_obj) == -1) {
+        goto end;
+    }
+    json_decref(result_obj);
+
     /* TODO: Remove. */
-    char *json_str = json_dumps(result_obj, JSON_INDENT(2));
+    char *json_str = json_dumps(result_array, JSON_INDENT(2));
     neat_log(NEAT_LOG_DEBUG, json_str);
     json_decref(result_obj);
 
@@ -1409,6 +1419,10 @@ end:
 
     if (prop_obj) {
         json_decref(prop_obj);
+    }
+
+    if (result_obj) {
+        json_decref(result_obj);
     }
 
     if (result_array) {

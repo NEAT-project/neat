@@ -36,13 +36,16 @@
 #include <neat-socketapi.h>
 #include <neat.h>
 
+#include <pthread.h>
+
 #include "redblacktree.h"
 #include "identifierbitmap.h"
 
 
 struct neat_socketapi_internals
 {
-   int Test;
+   struct redblacktree socket_set;
+   pthread_mutex_t     socket_set_mutex;
 };
 
 
@@ -55,6 +58,25 @@ extern "C" {
 struct neat_socketapi_internals* nsa_initialize();
 struct neat_socketapi_internals* nsa_get();
 void nsa_cleanup();
+
+
+struct neat_socket
+{
+   struct redblacktree_node node;
+   int                      descriptor;
+
+   pthread_mutex_t          mutex;
+   int                      socket_domain;
+   int                      socket_type;
+   int                      socket_protocol;
+   int                      socket_sd;
+};
+
+
+void nsa_socket_print_function(const void* node, FILE* fd);
+int nsa_socket_comparison_function(const void* node1, const void* node2);
+
+struct neat_socket* nsa_get_socket_for_descriptor(int sd);
 
 
 #ifdef __cplusplus

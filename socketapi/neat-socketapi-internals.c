@@ -60,3 +60,46 @@ void nsa_cleanup()
       gSocketAPIInternals = NULL;
    }
 }
+
+
+/* ###### Print socket ################################################### */
+void nsa_socket_print_function(const void* node, FILE* fd)
+{
+   const struct neat_socket* rserpoolSocket = (const struct neat_socket*)node;
+   fprintf(fd, "%d ", rserpoolSocket->descriptor);
+}
+
+
+/* ###### Compare sockets ################################################ */
+int nsa_socket_comparison_function(const void* node1, const void* node2)
+{
+   const struct neat_socket* rserpoolSocket1 = (const struct neat_socket*)node1;
+   const struct neat_socket* rserpoolSocket2 = (const struct neat_socket*)node2;
+
+   if(rserpoolSocket1->descriptor < rserpoolSocket2->descriptor) {
+      return(-1);
+   }
+   else if(rserpoolSocket1->descriptor > rserpoolSocket2->descriptor) {
+      return(1);
+   }
+   return(0);
+}
+
+
+/* ###### Find socket #################################################### */
+struct neat_socket* nsa_get_socket_for_descriptor(int sd)
+{
+   struct neat_socket* rserpoolSocket;
+   struct neat_socket  cmpSocket;
+
+   cmpSocket.descriptor = sd;
+   pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+   rserpoolSocket = (struct neat_socket*)rbt_find(&gSocketAPIInternals->socket_set,
+                                                  &cmpSocket.node);
+   pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+   if(rserpoolSocket == NULL) {
+      fprintf(stderr, "Bad NEAT socket descriptor %d\n", sd);
+      abort();
+   }
+   return(rserpoolSocket);
+}

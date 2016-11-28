@@ -44,8 +44,9 @@
 
 struct neat_socketapi_internals
 {
-   struct redblacktree socket_set;
-   pthread_mutex_t     socket_set_mutex;
+   struct identifier_bitmap* identifier_bitmap;
+   struct redblacktree       socket_set;
+   pthread_mutex_t           socket_set_mutex;
 };
 
 

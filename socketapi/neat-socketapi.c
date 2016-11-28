@@ -36,6 +36,21 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+
+/* ###### NEAT socket() implementation ################################### */
+int ext_socket(int domain, int type, int protocol)
+{
+   return(-1);
+}
+
+
+/* ###### NEAT close() implementation #################################### */
+int ext_close(int fd)
+{
+   return(0);
+}
+
+
 /*
 static bool isInitialized = false;
 

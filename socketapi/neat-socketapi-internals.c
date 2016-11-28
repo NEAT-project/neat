@@ -38,9 +38,45 @@
 struct neat_socketapi_internals* gSocketAPIInternals = NULL;
 
 
+/* ###### Initialize recursive mutex ##################################### */
+static void init_mutex(pthread_mutex_t* mutex)
+{
+   pthread_mutexattr_t attributes;
+   pthread_mutexattr_init(&attributes);
+   pthread_mutexattr_settype(&attributes, PTHREAD_MUTEX_RECURSIVE);
+   pthread_mutex_init(mutex, &attributes);
+   pthread_mutexattr_destroy(&attributes);
+}
+
+
 /* ###### Initialize ##################################################### */
 struct neat_socketapi_internals* nsa_initialize()
 {
+   if(gSocketAPIInternals != NULL) {
+      return(gSocketAPIInternals);
+   }
+
+   gSocketAPIInternals = calloc(1, sizeof(struct neat_socketapi_internals));
+   if(gSocketAPIInternals != NULL) {
+
+      /* ====== Initialize identifier bitmap ========================== */
+      gSocketAPIInternals->identifier_bitmap = ibm_new(FD_SETSIZE);
+      if(gSocketAPIInternals->identifier_bitmap != NULL) {
+
+         /* ====== Initialize socket storage ========================== */
+         init_mutex(&gSocketAPIInternals->socket_set_mutex);
+         rbt_new(&gSocketAPIInternals->socket_set,
+                 nsa_socket_print_function,
+                 nsa_socket_comparison_function);
+
+         return(gSocketAPIInternals);
+      }
+   }
+
+   /* Something went wrong! */
+   fputs("Failed to initialize NEAT structures!\n", stderr);
+   nsa_cleanup();
+
    return(NULL);
 }
 

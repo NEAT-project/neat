@@ -208,6 +208,14 @@ neat_ctx_fail_on_error(struct neat_ctx *nc, neat_error_code error)
     neat_stop_event_loop(nc);
 }
 
+int
+neat_get_backend_timeout(struct neat_ctx *nc)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    return uv_backend_timeout(nc->loop);
+}
+
 static void neat_walk_cb(uv_handle_t *handle, void *arg)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -427,7 +435,10 @@ neat_free_candidate(struct neat_he_candidate *candidate)
         if (candidate->pollable_socket->handle == candidate->pollable_socket->flow->socket->handle) {
             neat_log(NEAT_LOG_DEBUG,"%s: Handle used by flow, flow should release it", __func__);
         } else {
-            if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
+            if (candidate->pollable_socket->fd == -1) {
+                neat_log(NEAT_LOG_DEBUG,"%s: Candidate does not use a socket", __func__);
+                free(candidate->pollable_socket->handle);
+            } else if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
                 neat_log(NEAT_LOG_DEBUG,"%s: Release candidate after closing", __func__);
                 uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed);
             } else {
@@ -1348,7 +1359,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         "value", stack_to_string(he_res->transport ), "remote_ip", "value", he_res->remote_ip,
         "remote_port", "value", he_res->remote_port, "cached", "value", (result)?1:0, "precedence",
         2, "score", 5);
-     
+
     neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
 
 end:

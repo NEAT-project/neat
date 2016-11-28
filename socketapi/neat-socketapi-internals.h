@@ -47,6 +47,9 @@ struct neat_socketapi_internals
    /* ====== NEAT Core ================================= */
    struct neat_ctx*          neat_context;
 
+   /* ====== Main loop ================================= */
+   pthread_t                 main_loop_thread;
+
    /* ====== Socket Storage ============================ */
    struct identifier_bitmap* socket_identifier_bitmap;
    struct redblacktree       socket_set;

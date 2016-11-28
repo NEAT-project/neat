@@ -44,6 +44,10 @@
 struct neat_socketapi_internals* gSocketAPIInternals = NULL;
 
 
+static void* nsa_main_loop(void* args);
+
+
+
 /* ###### Initialize recursive mutex ##################################### */
 static void init_mutex(pthread_mutex_t* mutex)
 {
@@ -96,7 +100,11 @@ struct neat_socketapi_internals* nsa_initialize()
          /* ====== NEAT context ========================================== */
          gSocketAPIInternals->neat_context = neat_init_ctx();
          if(gSocketAPIInternals->neat_context != NULL) {
-            return(gSocketAPIInternals);
+
+            /* ====== Initialize main loop ================================== */
+            if(pthread_create(&gSocketAPIInternals->main_loop_thread, NULL, &nsa_main_loop, gSocketAPIInternals) == 0) {
+               return(gSocketAPIInternals);
+            }
          }
       }
    }
@@ -132,7 +140,6 @@ void nsa_cleanup()
       pthread_mutex_destroy(&gSocketAPIInternals->socket_set_mutex);
       free(gSocketAPIInternals);
       gSocketAPIInternals = NULL;
-      puts("CLEAN!");
    }
 }
 
@@ -191,7 +198,6 @@ int ext_socket_internal(int domain, int type, int protocol,
 
    /* ====== Has there been a problem? =================================== */
    if(neatSocket->descriptor < 0) {
-      puts("FAILED!");
       if(neatSocket->flags & NSAF_CLOSE_ON_REMOVAL) {
          close(neatSocket->socket_sd);
       }
@@ -244,4 +250,12 @@ struct neat_socket* nsa_get_socket_for_descriptor(int sd)
       abort();
    }
    return(rserpoolSocket);
+}
+
+
+/* ###### Main loop ###################################################### */
+static void* nsa_main_loop(void* args)
+{
+   puts("MAIN LOOP!");
+   return(NULL);
 }

@@ -59,19 +59,25 @@ struct neat_socketapi_internals* nsa_initialize()
    gSocketAPIInternals = calloc(1, sizeof(struct neat_socketapi_internals));
    if(gSocketAPIInternals != NULL) {
 
-      /* ====== Initialize identifier bitmap ========================== */
+      /* ====== Initialize socket storage ============================= */
+      init_mutex(&gSocketAPIInternals->socket_set_mutex);
+      rbt_new(&gSocketAPIInternals->socket_set,
+              nsa_socket_print_function,
+              nsa_socket_comparison_function);
+
+      /* ====== Initialize identifier bitmap ============================= */
       gSocketAPIInternals->socket_identifier_bitmap = ibm_new(FD_SETSIZE);
       if(gSocketAPIInternals->socket_identifier_bitmap != NULL) {
 
-         /* ====== Initialize socket storage ========================== */
-         init_mutex(&gSocketAPIInternals->socket_set_mutex);
-         rbt_new(&gSocketAPIInternals->socket_set,
-                 nsa_socket_print_function,
-                 nsa_socket_comparison_function);
 
-         puts("READY!");
+         /* ====== NEAT context ========================================== */
+         gSocketAPIInternals->neat_context = neat_init_ctx();
+         if(gSocketAPIInternals->neat_context != NULL) {
 
-         return(gSocketAPIInternals);
+            puts("READY!");
+
+            return(gSocketAPIInternals);
+         }
       }
    }
 
@@ -94,7 +100,14 @@ struct neat_socketapi_internals* nsa_get()
 void nsa_cleanup()
 {
    if(gSocketAPIInternals) {
-      ibm_delete(gSocketAPIInternals->socket_identifier_bitmap);
+      if(gSocketAPIInternals->neat_context) {
+         neat_free_ctx(gSocketAPIInternals->neat_context);
+         gSocketAPIInternals->neat_context = NULL;
+      }
+      if(gSocketAPIInternals->socket_identifier_bitmap)  {
+         ibm_delete(gSocketAPIInternals->socket_identifier_bitmap);
+         gSocketAPIInternals->socket_identifier_bitmap = NULL;
+      }
       rbt_delete(&gSocketAPIInternals->socket_set);
       pthread_mutex_destroy(&gSocketAPIInternals->socket_set_mutex);
       free(gSocketAPIInternals);

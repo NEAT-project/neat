@@ -45,7 +45,7 @@
 struct neat_socketapi_internals
 {
    /* ====== NEAT Core ================================= */
-   struct neat_init_ctx*     neat_context;
+   struct neat_ctx*          neat_context;
 
    /* ====== Socket Storage ============================ */
    struct identifier_bitmap* socket_identifier_bitmap;

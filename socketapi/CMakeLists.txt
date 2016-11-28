@@ -58,7 +58,7 @@ FOREACH (source_file ${neat_socketapi_programs})
    if(THREADS_HAVE_PTHREAD_ARG)
       TARGET_COMPILE_OPTIONS(PUBLIC ${source_file_we} "-pthread")
    endif()
-   TARGET_LINK_LIBRARIES(${source_file_we} neat-socketapi "${CMAKE_THREAD_LIBS_INIT}" m)
+   TARGET_LINK_LIBRARIES(${source_file_we} neat-socketapi neat "${CMAKE_THREAD_LIBS_INIT}" m)
    INSTALL(TARGETS             ${source_file_we}
            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
            BUNDLE DESTINATION  ${CMAKE_INSTALL_BINDIR})

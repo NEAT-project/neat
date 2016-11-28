@@ -260,6 +260,7 @@ class NEATProperty(object):
 
     IMMUTABLE = 2
     OPTIONAL = 1
+    BASE = 0
 
     def __init__(self, key_val, precedence=OPTIONAL, score=0, banned=None):
         self.key = key_val[0]

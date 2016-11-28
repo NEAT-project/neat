@@ -12,4 +12,4 @@ override_dh_auto_build:
 	# Exotic experimental package with further exotic dependencies -> Skipping documentation at the moment ...
 	mkdir -p docs/_build/html
 
-	dh_auto_build
+	dh_auto_build --parallel

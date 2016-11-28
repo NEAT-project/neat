@@ -29,7 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "neat-socket.h"
+#include "neat-socketapi.h"
 
 #include <stdio.h>
 #include <stdint.h>

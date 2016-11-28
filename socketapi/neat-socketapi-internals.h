@@ -36,6 +36,9 @@
 #include <neat-socketapi.h>
 #include <neat.h>
 
+#include "redblacktree.h"
+#include "identifierbitmap.h"
+
 
 struct neat_socketapi_internals
 {

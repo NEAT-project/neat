@@ -1354,6 +1354,10 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         socket_path = socket_path_buf;
     }
 
+    /* TODO: Remove. */
+    char *json_str = json_dumps( flow->properties, JSON_INDENT(2));
+    neat_log(NEAT_LOG_DEBUG, json_str);
+
     result_array = json_pack("[{s:[{s:{ss}}],s:b,s:{s:{ss},s:{ss},s:{si},s:{sbsisi}}}]",
         "match", "interface", "value", he_res->interface, "link", true, "properties", "transport",
         "value", stack_to_string(he_res->transport ), "remote_ip", "value", he_res->remote_ip,

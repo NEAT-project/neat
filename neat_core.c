@@ -228,6 +228,12 @@ static void neat_walk_cb(uv_handle_t *handle, void *arg)
     }
 
     if (!uv_is_closing(handle)) {
+        // If this assert triggers, then some handle is not being closed
+        // correctly. A handle with a data pointer should already be closed
+        // before this point since the next uv_close operation will not free
+        // any handles. In other words, you have a memory leak.
+        assert(handle->data);
+
         neat_log(NEAT_LOG_DEBUG, "%s - closing handle", __func__);
         uv_close(handle, NULL);
     }
@@ -236,6 +242,10 @@ static void neat_walk_cb(uv_handle_t *handle, void *arg)
 static void neat_close_loop(struct neat_ctx *nc)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    // Some handles may be closed inside uv_close callbacks.
+    // Give those callbacks an opportunity to run first before executing uv_walk.
+    uv_run(nc->loop, UV_RUN_NOWAIT);
 
     uv_walk(nc->loop, neat_walk_cb, nc);
 

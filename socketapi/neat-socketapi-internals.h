@@ -55,7 +55,8 @@ struct neat_socketapi_internals
 
    /* ====== Main loop ================================= */
    pthread_t                 main_loop_thread;
-   bool                      is_shutting_down;
+   bool                      main_loop_thread_shutdown;
+   int                       main_loop_pipe[2];
 };
 
 
@@ -90,6 +91,8 @@ int ext_socket_internal(int domain, int type, int protocol,
 void nsa_socket_print_function(const void* node, FILE* fd);
 int nsa_socket_comparison_function(const void* node1, const void* node2);
 struct neat_socket* nsa_get_socket_for_descriptor(int sd);
+
+void nsa_notify_main_loop();
 
 #ifdef __cplusplus
 }

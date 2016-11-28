@@ -84,6 +84,8 @@ struct neat_socketapi_internals* nsa_initialize()
    if(gSocketAPIInternals != NULL) {
 
       /* ====== Initialize socket storage ============================= */
+      gSocketAPIInternals->main_loop_pipe[0] = -1;
+      gSocketAPIInternals->main_loop_pipe[1] = -1;
       init_mutex(&gSocketAPIInternals->socket_set_mutex);
       rbt_new(&gSocketAPIInternals->socket_set,
               nsa_socket_print_function,
@@ -101,12 +103,18 @@ struct neat_socketapi_internals* nsa_initialize()
          gSocketAPIInternals->neat_context = neat_init_ctx();
          if(gSocketAPIInternals->neat_context != NULL) {
 
-            /* ====== Initialize main loop ================================== */
-            pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
-            gSocketAPIInternals->is_shutting_down = false;
-            pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
-            if(pthread_create(&gSocketAPIInternals->main_loop_thread, NULL, &nsa_main_loop, gSocketAPIInternals) == 0) {
-               return(gSocketAPIInternals);
+            /* ====== Initialize main loop =============================== */
+            if(pipe((int*)&gSocketAPIInternals->main_loop_pipe) >= 0) {
+               set_non_blocking(gSocketAPIInternals->main_loop_pipe[0]);
+               set_non_blocking(gSocketAPIInternals->main_loop_pipe[1]);
+
+               pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+               gSocketAPIInternals->main_loop_thread_shutdown = false;
+               pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+
+               if(pthread_create(&gSocketAPIInternals->main_loop_thread, NULL, &nsa_main_loop, gSocketAPIInternals) == 0) {
+                  return(gSocketAPIInternals);
+               }
             }
          }
       }
@@ -133,9 +141,19 @@ void nsa_cleanup()
    if(gSocketAPIInternals) {
       if(gSocketAPIInternals->main_loop_thread != 0) {
          pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
-         gSocketAPIInternals->is_shutting_down = true;
+         gSocketAPIInternals->main_loop_thread_shutdown = true;
          pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+         nsa_notify_main_loop();
          assert(pthread_join(gSocketAPIInternals->main_loop_thread, NULL) == 0);
+         gSocketAPIInternals->main_loop_thread = 0;
+      }
+      if(gSocketAPIInternals->main_loop_pipe[0] >= 0) {
+         close(gSocketAPIInternals->main_loop_pipe[0]);
+         gSocketAPIInternals->main_loop_pipe[0] = -1;
+      }
+      if(gSocketAPIInternals->main_loop_pipe[1] >= 0) {
+         close(gSocketAPIInternals->main_loop_pipe[1]);
+         gSocketAPIInternals->main_loop_pipe[1] = -1;
       }
       if(gSocketAPIInternals->neat_context) {
          neat_free_ctx(gSocketAPIInternals->neat_context);
@@ -259,6 +277,16 @@ struct neat_socket* nsa_get_socket_for_descriptor(int sd)
       abort();
    }
    return(rserpoolSocket);
+}
+
+
+/* ###### Notify main loop ############################################### */
+void nsa_notify_main_loop()
+{
+   const ssize_t result = write(gSocketAPIInternals->main_loop_pipe[1], "!", 1);
+   if(result <= 0) {
+      perror("Writing to main loop pipe failed");
+   }
 }
 
 

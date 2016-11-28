@@ -37,6 +37,24 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <assert.h>
+
+
+/* ###### Map system socket into NEAT socket descriptor space ############ */
+int nsa_map_socket(int systemSD, int neatSD)
+{
+   return(ext_socket_internal(0, 0, 0, systemSD, NULL, neatSD));
+}
+
+
+/* ###### Unmap system socket from NEAT socket descriptor space ########## */
+int nsa_unmap_socket(int neatSD)
+{
+   return(ext_close(neatSD));
+}
 
 
 /* ###### NEAT socket() implementation ################################### */
@@ -46,14 +64,32 @@ int ext_socket(int domain, int type, int protocol)
       return(-1);
    }
 
-   return -1;
+   return(ext_socket_internal(domain, type, protocol, -1, NULL, -1));
 }
 
 
 /* ###### NEAT close() implementation #################################### */
 int ext_close(int fd)
 {
-   return(0);
+   struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(fd);
+   if(neatSocket != NULL) {
+      if(neatSocket->flow != NULL) {
+
+      }
+      else if(neatSocket->socket_sd >= 0) {
+         if(neatSocket->flags & NSAF_CLOSE_ON_REMOVAL) {
+            printf("close(%d)\n", neatSocket->socket_sd);;
+            close(neatSocket->socket_sd);
+            neatSocket->socket_sd = -1;
+         }
+         else   printf("not close(%d)\n", neatSocket->socket_sd);;
+      }
+      pthread_mutex_destroy(&neatSocket->mutex);
+      free(neatSocket);
+      return(0);
+   }
+   errno = EBADF;
+   return(-1);
 }
 
 

@@ -54,12 +54,17 @@ struct neat_socketapi_internals
 };
 
 
+#define NSAF_CLOSE_ON_REMOVAL (1 << 0)
+
 struct neat_socket
 {
    struct redblacktree_node node;
+   pthread_mutex_t          mutex;
    int                      descriptor;
 
-   pthread_mutex_t          mutex;
+   int                      flags;
+
+   struct neat_flow*        flow;
    int                      socket_domain;
    int                      socket_type;
    int                      socket_protocol;
@@ -73,6 +78,9 @@ extern "C" {
 
 struct neat_socketapi_internals* nsa_initialize();
 struct neat_socketapi_internals* nsa_get();
+
+int ext_socket_internal(int domain, int type, int protocol,
+                        int customFD, struct neat_flow* flow, int requestedSD);
 
 void nsa_socket_print_function(const void* node, FILE* fd);
 int nsa_socket_comparison_function(const void* node1, const void* node2);

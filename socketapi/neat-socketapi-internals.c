@@ -32,7 +32,13 @@
 #include "neat-socketapi-internals.h"
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <assert.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 
 struct neat_socketapi_internals* gSocketAPIInternals = NULL;
@@ -46,6 +52,20 @@ static void init_mutex(pthread_mutex_t* mutex)
    pthread_mutexattr_settype(&attributes, PTHREAD_MUTEX_RECURSIVE);
    pthread_mutex_init(mutex, &attributes);
    pthread_mutexattr_destroy(&attributes);
+}
+
+
+/* ###### Set blocking mode ############################################## */
+static bool set_non_blocking(int fd)
+{
+   int flags = fcntl(fd, F_GETFL, 0);
+   if(flags != -1) {
+      flags |= O_NONBLOCK;
+      if(fcntl(fd, F_SETFL, flags) == 0) {
+         return(true);
+      }
+   }
+   return(false);
 }
 
 
@@ -68,14 +88,14 @@ struct neat_socketapi_internals* nsa_initialize()
       /* ====== Initialize identifier bitmap ============================= */
       gSocketAPIInternals->socket_identifier_bitmap = ibm_new(FD_SETSIZE);
       if(gSocketAPIInternals->socket_identifier_bitmap != NULL) {
-
+         /* ====== Map stdin, stdout, stderr file descriptors ============ */
+         assert(nsa_map_socket(STDOUT_FILENO, STDOUT_FILENO) == STDOUT_FILENO);
+         assert(nsa_map_socket(STDIN_FILENO,  STDIN_FILENO)  == STDIN_FILENO);
+         assert(nsa_map_socket(STDERR_FILENO, STDERR_FILENO) == STDERR_FILENO);
 
          /* ====== NEAT context ========================================== */
          gSocketAPIInternals->neat_context = neat_init_ctx();
          if(gSocketAPIInternals->neat_context != NULL) {
-
-            puts("READY!");
-
             return(gSocketAPIInternals);
          }
       }
@@ -114,6 +134,73 @@ void nsa_cleanup()
       gSocketAPIInternals = NULL;
       puts("CLEAN!");
    }
+}
+
+
+/* ###### NEAT socket() implementation internals ######################### */
+int ext_socket_internal(int domain, int type, int protocol,
+                        int customFD, struct neat_flow* flow, int requestedSD)
+{
+   struct neat_socket* neatSocket;
+
+   /* ====== Handle different internal types ============================= */
+   neatSocket = (struct neat_socket*)calloc(1, sizeof(struct neat_socket));
+   if(neatSocket == NULL) {
+      errno = ENOMEM;
+      return(-1);
+   }
+
+   if(flow == NULL) {   /* NEAT flow */
+      neatSocket->socket_sd = -1;
+//       neatSocket->flow = ...
+   }
+   else if(customFD < 0) {   /* System socket to be created */
+      neatSocket->socket_sd = socket(domain, type, protocol);
+      neatSocket->flags     = NSAF_CLOSE_ON_REMOVAL;
+   }
+   else {   /* Existing socket, given by its socket descriptor */
+      neatSocket->socket_sd = customFD;
+   }
+
+   /* ====== Set socket into non-blocking mode =========================== */
+   if(neatSocket->socket_sd >= 0) {
+      set_non_blocking(neatSocket->socket_sd);
+   }
+
+   /* ====== Initialize NEAT socket ====================================== */
+   rbt_node_new(&neatSocket->node);
+   init_mutex(&neatSocket->mutex);
+   neatSocket->descriptor      = -1;   /* to be allocated below */
+   neatSocket->socket_domain   = domain;
+   neatSocket->socket_type     = type;
+   neatSocket->socket_protocol = protocol;
+
+   /* ====== Add new socket to socket storage ============================ */
+   pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+   if(requestedSD < 0) {
+      neatSocket->descriptor = ibm_allocate_id(gSocketAPIInternals->socket_identifier_bitmap);
+   }
+   else {
+      neatSocket->descriptor = ibm_allocate_specific_id(gSocketAPIInternals->socket_identifier_bitmap,
+                                                        requestedSD);
+   }
+   if(neatSocket->descriptor >= 0) {
+      assert(rbt_insert(&gSocketAPIInternals->socket_set, &neatSocket->node) == &neatSocket->node);
+   }
+   pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+
+   /* ====== Has there been a problem? =================================== */
+   if(neatSocket->descriptor < 0) {
+      puts("FAILED!");
+      if(neatSocket->flags & NSAF_CLOSE_ON_REMOVAL) {
+         close(neatSocket->socket_sd);
+      }
+      pthread_mutex_destroy(&neatSocket->mutex);
+      free(neatSocket);
+      errno = EMFILE;
+      return(-1);
+   }
+   return(neatSocket->descriptor);
 }
 
 

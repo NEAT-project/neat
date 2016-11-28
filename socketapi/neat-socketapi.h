@@ -206,6 +206,8 @@ extern "C" {
 #endif
 
 void nsa_cleanup();
+int nsa_map_socket(int systemSD, int neatSD);
+int nsa_unmap_socket(int neatSD);
 
 int ext_socket(int domain, int type, int protocol);
 int ext_open(const char* pathname, int flags, mode_t mode);

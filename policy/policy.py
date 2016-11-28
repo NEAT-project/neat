@@ -59,6 +59,9 @@ def dict_to_properties(property_dict):
     example: dict_to_properties({'foo':{'value':'bar', 'precedence':0}})
 
     """
+    if not isinstance(property_dict, dict):
+        raise InvalidPropertyError("not a dict")
+
     properties = []
     for key, attr in property_dict.items():
 
@@ -203,6 +206,9 @@ class PropertyValue(object):
 
         if len(new_set) == 1:
             return PropertyValue(new_set.pop())
+        elif len(new_set) == 0:
+            # FIXME is there a better way to handle this?
+            raise InvalidPropertyError("set is empty")
         else:
             return PropertyValue(new_set)
 
@@ -329,6 +335,13 @@ class NEATProperty(object):
         """
         Create a new property by updating the first one with the second. Returns a new NEATProperty object.
         """
+
+        # experimental: reverse comparison order if precedence is zero. Used to specify default policies
+        if other.precedence == 0:
+            new_prop = copy.deepcopy(other)
+            new_prop.update(self, evaluate=False)
+            return new_prop
+
         new_prop = copy.deepcopy(self)
         new_prop.update(other)
         return new_prop
@@ -341,10 +354,13 @@ class NEATProperty(object):
         return self._value & other._value
 
     def __eq__(self, other):
-        """Return true if a single value is in range, or if two ranges have an overlapping region."""
-        return self & other
+        """Return true if a single value is within range, or if two ranges have an overlapping region. """
+        try:
+            return self & other
+        except InvalidPropertyError:
+            return False
 
-    def update(self, other):
+    def update(self, other, evaluate=True):
         """ Update the current property value with a different one and update the score."""
         assert isinstance(other, NEATProperty)
 
@@ -355,7 +371,7 @@ class NEATProperty(object):
         old_self_str = str(self)
         other_str = str(other)
 
-        self.evaluated = True
+        self.evaluated = evaluate
         self.banned.extend(other.banned)
 
         value_match = self == other
@@ -371,7 +387,7 @@ class NEATProperty(object):
         else:
             if other.precedence == NEATProperty.IMMUTABLE and self.precedence == NEATProperty.IMMUTABLE:
                 err_str = "%s <-- %s: immutable property" % (self, other)
-                logging.debug(err_str)
+                # logging.debug(err_str)
                 raise ImmutablePropertyError(err_str)
             elif other.precedence >= self.precedence:
                 self.score = other.score

@@ -47,6 +47,17 @@ string_to_stack(const char *str)
     return 0;
 }
 
+const char* 
+stack_to_string(neat_protocol_stack_type stack)
+{
+    for (size_t i = 0; i < sizeof(neat_transports) / sizeof(*neat_transports); ++i) {
+        if (stack == neat_transports[i].stack) {
+            return neat_transports[i].name;
+        }
+    }
+
+    return NULL;
+}
 
 /*
  * Parse the json structure to discover which protocols are enabled.

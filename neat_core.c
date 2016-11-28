@@ -10,6 +10,7 @@
 #endif
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -136,6 +137,8 @@ struct neat_ctx *neat_init_ctx()
         return NULL;
     }
 
+    nc->error = NEAT_OK;
+
     uv_loop_init(nc->loop);
     LIST_INIT(&(nc->src_addrs));
     LIST_INIT(&(nc->flows));
@@ -167,12 +170,14 @@ struct neat_ctx *neat_init_ctx()
 
 //Start the internal NEAT event loop
 //TODO: Add support for embedding libuv loops in other event loops
-void neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
+neat_error_code
+neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     uv_run(nc->loop, (uv_run_mode) run_mode);
     uv_loop_close(nc->loop);
+    return nc->error;
 }
 
 void neat_stop_event_loop(struct neat_ctx *nc)
@@ -187,6 +192,28 @@ int neat_get_backend_fd(struct neat_ctx *nc)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     return uv_backend_fd(nc->loop);
+}
+
+/*
+ * Terminate a NEAT context upon error.
+ * Errors are reported back to the user through neat_start_event_loop.
+ */
+void
+neat_ctx_fail_on_error(struct neat_ctx *nc, neat_error_code error)
+{
+    if (error == NEAT_OK)
+        return;
+
+    nc->error = error;
+    neat_stop_event_loop(nc);
+}
+
+int
+neat_get_backend_timeout(struct neat_ctx *nc)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    return uv_backend_timeout(nc->loop);
 }
 
 static void neat_walk_cb(uv_handle_t *handle, void *arg)
@@ -408,7 +435,10 @@ neat_free_candidate(struct neat_he_candidate *candidate)
         if (candidate->pollable_socket->handle == candidate->pollable_socket->flow->socket->handle) {
             neat_log(NEAT_LOG_DEBUG,"%s: Handle used by flow, flow should release it", __func__);
         } else {
-            if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
+            if (candidate->pollable_socket->fd == -1) {
+                neat_log(NEAT_LOG_DEBUG,"%s: Candidate does not use a socket", __func__);
+                free(candidate->pollable_socket->handle);
+            } else if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
                 neat_log(NEAT_LOG_DEBUG,"%s: Release candidate after closing", __func__);
                 uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed);
             } else {
@@ -1266,6 +1296,82 @@ static void free_he_handle_cb(uv_handle_t *handle)
     free(handle);
 }
 
+/*
+ * Installs security if requested by the flow.
+ * Returns non-zero if security was requested.
+ * If that is the case, the security subsystem takes care of the flow from this point.
+ */
+static int
+install_security(struct neat_he_candidate *candidate)
+{
+    struct neat_flow *flow = candidate->pollable_socket->flow;
+    json_t *security = NULL, *val = NULL;
+
+    if ((security = json_object_get(candidate->properties, "security")) != NULL &&
+        (val = json_object_get(security, "value")) != NULL &&
+        json_typeof(val) == JSON_TRUE)
+    {
+        neat_log(NEAT_LOG_DEBUG, "Flow required security");
+        if (neat_security_install(flow->ctx, flow) != NEAT_OK) {
+            neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
+        }
+
+        return 1;
+    } else {
+        neat_log(NEAT_LOG_DEBUG, "Flow did not require security");
+        return 0;
+    }
+}
+
+static void on_pm_he_error(struct neat_ctx *ctx, struct neat_flow *flow, int error);
+
+static void
+send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_he_res *he_res, _Bool result)
+{
+    int rc;
+    const char *home_dir;
+    const char *socket_path;
+    char socket_path_buf[128];
+    json_t *result_array = NULL;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    assert(he_res);
+
+    socket_path = getenv("NEAT_PM_SOCKET");
+    if (!socket_path) {
+        if ((home_dir = getenv("HOME")) == NULL) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");
+            goto end;
+        }
+
+        rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_cib_socket", home_dir);
+        if (rc < 0 || rc >= 128) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
+            goto end;
+        }
+
+        socket_path = socket_path_buf;
+    }
+
+    result_array = json_pack("[{s:[{s:{ss}}],s:b,s:{s:{ss},s:{ss},s:{si},s:{sbsisi}}}]",
+        "match", "interface", "value", he_res->interface, "link", true, "properties", "transport",
+        "value", stack_to_string(he_res->transport ), "remote_ip", "value", he_res->remote_ip,
+        "remote_port", "value", he_res->remote_port, "cached", "value", (result)?1:0, "precedence",
+        2, "score", 5);
+
+    neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
+
+end:
+    free(he_res->interface);
+    free(he_res->remote_ip);
+    free(he_res);
+
+    if (result_array) {
+        json_decref(result_array);
+    }
+}
+
 static void
 he_connected_cb(uv_poll_t *handle, int status, int events)
 {
@@ -1275,7 +1381,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     struct neat_he_candidate *candidate = handle->data;
     struct neat_flow *flow = candidate->pollable_socket->flow;
     struct neat_he_candidates *candidate_list = flow->candidate_list;
-    json_t *security = NULL, *val = NULL;
+    struct cib_he_res *he_res = NULL;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     c++;
     neat_log(NEAT_LOG_DEBUG, "Invokation count: %d", c);
@@ -1337,12 +1445,21 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     neat_log(NEAT_LOG_DEBUG,
              "Connection status: %d", status);
 
+    he_res = malloc(sizeof(struct cib_he_res));
+    assert(he_res);
+    he_res->interface = strdup(candidate->if_name);
+    he_res->remote_ip = strdup(candidate->pollable_socket->dst_address);
+    he_res->remote_port = candidate->pollable_socket->port;
+    he_res->transport = candidate->pollable_socket->stack;
+
     // TODO: In which circumstances do we end up in the three different cases?
     if (flow->firstWritePending) {
         // assert(0);
-        neat_log(NEAT_LOG_DEBUG, "First successful connect");
+        neat_log(NEAT_LOG_DEBUG, "First successful connect (flow->firstWritePending)");
 
         assert(flow->socket);
+
+        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
 
         // Transfer this handle to the "main" polling callback
         // TODO: Consider doing this in some other way that directly calling
@@ -1352,8 +1469,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->hefirstConnect = 0;
 
         //neat_log(NEAT_LOG_DEBUG, "?");
-        neat_log(NEAT_LOG_DEBUG, "First successful connect");
-
+        neat_log(NEAT_LOG_DEBUG, "First successful connect (flow->hefirstConnect)");
 
         assert(flow->socket);
 
@@ -1369,9 +1485,13 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->socket->family = candidate->pollable_socket->family;
         flow->socket->type = candidate->pollable_socket->type;
         flow->socket->stack = candidate->pollable_socket->stack;
-        json_decref(flow->properties);
-        json_incref(candidate->properties);
-        flow->properties = candidate->properties;
+
+        if (candidate->properties != flow->properties) {
+            json_incref(candidate->properties);
+            json_decref(flow->properties);
+            flow->properties = candidate->properties;
+        }
+
         flow->everConnected = 1;
 
 #if defined(USRSCTP_SUPPORT)
@@ -1386,15 +1506,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
         flow->isPolling = 1;
 
-        if ((security = json_object_get(flow->properties, "security")) != NULL &&
-            (val = json_object_get(security, "value")) != NULL &&
-            json_typeof(val) == JSON_TRUE)
-        {
-            neat_log(NEAT_LOG_DEBUG, "client required security");
-            if (neat_security_install(flow->ctx, flow) != NEAT_OK) {
-                neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
-            }
-        } else {
+        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
+
+        if (!install_security(candidate)) {
             // Transfer this handle to the "main" polling callback
             // TODO: Consider doing this in some other way that directly calling
             // this callback
@@ -1402,8 +1516,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
             uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
         }
     } else {
-        // assert(0);
         neat_log(NEAT_LOG_DEBUG, "NOT first connect");
+
+        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
 
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);
@@ -1419,6 +1534,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         if (!(--flow->heConnectAttemptCount)) {
             neat_io_error(flow->ctx, flow, NEAT_ERROR_UNABLE);
+            return;
         }
     }
 }
@@ -2298,6 +2414,8 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             candidate->pollable_socket->stack = stacks[i];
             candidate->pollable_socket->dst_len     = result->src_addr_len;
             candidate->pollable_socket->src_len     = result->dst_addr_len;
+            json_incref(flow->properties);
+            candidate->properties = flow->properties;
 
 #if defined(SCTP_MULTIHOMING)
             if (flow->local_address && neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) {
@@ -2397,9 +2515,29 @@ on_pm_error(struct neat_ctx *ctx, struct neat_flow *flow, int error)
         case PM_ERROR_SOCKET_UNAVAILABLE:
         case PM_ERROR_SOCKET:
         case PM_ERROR_INVALID_JSON:
-            neat_log(NEAT_LOG_DEBUG, "===== Unable to communicate with PM, using fallback =====");
+            neat_log(NEAT_LOG_DEBUG, "===== Unable to communicate with PM, using fallback =====, error code = %d", error);
             neat_resolve(ctx->resolver, AF_UNSPEC, flow->name, flow->port,
                          open_resolve_cb, flow);
+            break;
+        case PM_ERROR_OOM:
+            break;
+        default:
+            assert(0);
+            break;
+    }
+
+}
+
+static void
+on_pm_he_error(struct neat_ctx *ctx, struct neat_flow *flow, int error)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    switch (error) {
+        case PM_ERROR_SOCKET_UNAVAILABLE:
+        case PM_ERROR_SOCKET:
+        case PM_ERROR_INVALID_JSON:
+            neat_log(NEAT_LOG_DEBUG, "Unable to communicate with PM, error code = %d", error);
             break;
         case PM_ERROR_OOM:
             break;
@@ -2591,7 +2729,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
             continue;
         }
 
-        endpoint = json_pack("{ss++si}", "value", namebuf, "@", ifaddr->ifa_name, "precedence", 1);
+        endpoint = json_pack("{ss++si}", "value", namebuf, "@", ifaddr->ifa_name, "precedence", 2);
 
         if (endpoint == NULL)
             goto end;
@@ -2605,14 +2743,14 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
 
     json_object_set(properties, "local_endpoint", endpoints);
 
-    port = json_pack("{sisi}", "value", flow->port, "precedence", 1);
+    port = json_pack("{sisi}", "value", flow->port, "precedence", 2);
     if (port == NULL)
         goto end;
 
     json_object_set(properties, "port", port);
     json_decref(port);
 
-    address = json_pack("{sssi}", "value", flow->name, "precedence", 1);
+    address = json_pack("{sssi}", "value", flow->name, "precedence", 2);
     if (address == NULL)
         goto end;
 
@@ -3953,6 +4091,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         return -2;
     }
 
+    assert(candidate->pollable_socket->handle->data == candidate);
     uv_poll_start(candidate->pollable_socket->handle, UV_WRITABLE, callback_fx);
 #if defined(USRSCTP_SUPPORT)
     }

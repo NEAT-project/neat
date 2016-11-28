@@ -344,6 +344,14 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
     // udp client
     // udp server
 
+#if  (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+#define client_method() TLS_client_method()
+#define server_method() TLS_server_method()
+#else
+#define client_method() TLSv1_2_client_method()
+#define server_method() TLSv1_2_server_method()
+#endif
+
     int isClient = !flow->isServer;
     if (flow->socket->stack == NEAT_STACK_TCP) {
         struct security_data *private = calloc (1, sizeof (struct security_data));
@@ -354,11 +362,11 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
         filter->readfx = neat_security_filter_read;
 
         if (isClient) {
-            private->ctx = SSL_CTX_new(TLSv1_2_client_method());
+            private->ctx = SSL_CTX_new(client_method());
             SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
             tls_init_trust_list(private->ctx);
         } else {
-            private->ctx = SSL_CTX_new(TLSv1_2_server_method());
+            private->ctx = SSL_CTX_new(server_method());
             SSL_CTX_set_ecdh_auto(private->ctx, 1);
 
             if (!flow->server_pem) {
@@ -430,7 +438,9 @@ neat_security_close(neat_ctx *ctx)
     ERR_free_strings();
     EVP_cleanup();
     CRYPTO_cleanup_all_ex_data();
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
     ERR_remove_state(0);
+#endif
 }
 
 #endif

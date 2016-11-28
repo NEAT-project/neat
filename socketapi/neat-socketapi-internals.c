@@ -46,7 +46,7 @@ struct neat_socketapi_internals* nsa_initialize()
 
 
 /* ###### Initialize ##################################################### */
-inline struct neat_socketapi_internals* nsa_get()
+struct neat_socketapi_internals* nsa_get()
 {
    return(gSocketAPIInternals);
 }

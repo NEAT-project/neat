@@ -50,7 +50,7 @@ extern "C" {
 
 
 struct neat_socketapi_internals* nsa_initialize();
-inline struct neat_socketapi_internals* nsa_get();
+struct neat_socketapi_internals* nsa_get();
 void nsa_cleanup();
 
 

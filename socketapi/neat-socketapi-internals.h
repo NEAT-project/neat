@@ -33,7 +33,8 @@
 #define NEAT_SOCKETAPI_INTERNALS_H
 
 
-#include "neat-socketapi.h"
+#include <neat-socketapi.h>
+#include <neat.h>
 
 
 struct neat_socketapi_internals

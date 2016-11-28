@@ -20,6 +20,8 @@ LIST(APPEND neat_socketapi_programs
 
 # LIBRARIES
 #################################################
+include_directories(.)
+
 ADD_LIBRARY(neat-socketapi SHARED ${neat_socketapi_sources})
 
 set_target_properties(neat-socketapi PROPERTIES

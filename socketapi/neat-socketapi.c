@@ -29,9 +29,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "neat-socketapi.h"
-
-#include "identifierbitmap.h"
+#include <neat-socketapi.h>
+#include <identifierbitmap.h>
 
 #include <stdio.h>
 #include <stdint.h>

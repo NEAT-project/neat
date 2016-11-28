@@ -102,6 +102,9 @@ struct neat_socketapi_internals* nsa_initialize()
          if(gSocketAPIInternals->neat_context != NULL) {
 
             /* ====== Initialize main loop ================================== */
+            pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+            gSocketAPIInternals->is_shutting_down = false;
+            pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
             if(pthread_create(&gSocketAPIInternals->main_loop_thread, NULL, &nsa_main_loop, gSocketAPIInternals) == 0) {
                return(gSocketAPIInternals);
             }
@@ -128,6 +131,12 @@ struct neat_socketapi_internals* nsa_get()
 void nsa_cleanup()
 {
    if(gSocketAPIInternals) {
+      if(gSocketAPIInternals->main_loop_thread != 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+         gSocketAPIInternals->is_shutting_down = true;
+         pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+         assert(pthread_join(gSocketAPIInternals->main_loop_thread, NULL) == 0);
+      }
       if(gSocketAPIInternals->neat_context) {
          neat_free_ctx(gSocketAPIInternals->neat_context);
          gSocketAPIInternals->neat_context = NULL;

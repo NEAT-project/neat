@@ -36,6 +36,7 @@
 #include <neat-socketapi.h>
 #include <neat.h>
 
+#include <stdbool.h>
 #include <pthread.h>
 
 #include "redblacktree.h"
@@ -47,13 +48,14 @@ struct neat_socketapi_internals
    /* ====== NEAT Core ================================= */
    struct neat_ctx*          neat_context;
 
-   /* ====== Main loop ================================= */
-   pthread_t                 main_loop_thread;
-
    /* ====== Socket Storage ============================ */
    struct identifier_bitmap* socket_identifier_bitmap;
    struct redblacktree       socket_set;
    pthread_mutex_t           socket_set_mutex;
+
+   /* ====== Main loop ================================= */
+   pthread_t                 main_loop_thread;
+   bool                      is_shutting_down;
 };
 
 

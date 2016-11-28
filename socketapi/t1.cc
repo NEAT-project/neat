@@ -12,6 +12,8 @@ int main(int argc, char** argv)
       printf("sd=%d\n", sd);
       ext_close(sd);
    }
-
+   else {
+      printf("ext_socket() failed!\n");
+   }
    return 0;
 }

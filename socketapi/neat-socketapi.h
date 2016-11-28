@@ -29,8 +29,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NEAT_SOCKET_H
-#define NEAT_SOCKET_H
+#ifndef NEAT_SOCKETAPI_H
+#define NEAT_SOCKETAPI_H
 
 
 #include <sys/types.h>

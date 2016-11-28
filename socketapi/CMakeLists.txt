@@ -6,6 +6,7 @@ LIST(APPEND neat_socketapi_headers
 
 LIST(APPEND neat_socketapi_sources
    neat-socketapi.c
+   neat-socketapi-internals.c
    identifierbitmap.c
 )
 

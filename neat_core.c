@@ -1361,10 +1361,12 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         2, "score", 5);
 
 
+#if 0
     if (json_object_update_missing(json_result, flow->properties) == -1) {
         neat_log(NEAT_LOG_DEBUG, "Failed to merge Happy Eyeballs result with flow properties");
         goto end;
     }
+#endif
 
     /* TODO: Remove. */
     char *json_str = json_dumps( json_result, JSON_INDENT(2));

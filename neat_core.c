@@ -1333,6 +1333,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     const char *socket_path;
     char socket_path_buf[128];
     json_t *prop_obj = NULL;
+    json_t *result_obj = NULL;
     json_t *result_array = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1368,16 +1369,30 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         "remote_ip", "value", he_res->remote_ip,
         "remote_port", "value", he_res->remote_port,
         "cached", "value", (result)?1:0, "precedence", 2, "score", 5);
-
-    if (json_object_update_missing(prop_obj, flow->properties) == -1) {
-        neat_log(NEAT_LOG_DEBUG, "Unable to add flow properties to Happy Eyeball result");
-        goto end;       
+    if (prop_obj == NULL) {
+        goto end;
     }
 
-    /* TODO: Remove. */
-    char *json_str = json_dumps(prop_obj, JSON_INDENT(2));
-    neat_log(NEAT_LOG_DEBUG, json_str);
+    if (json_object_update_missing(prop_obj, flow->properties) == -1) {
+        goto end;
+    }
+
+    result_obj = json_pack("{s:[{s:{ss}}],s:b}",
+       "match", "interface", "value", he_res->interface,
+       "link", true);
+    if (result_obj == NULL) {
+        goto end;
+    }
+  
+    if (json_object_set(result_obj, "properties", prop_obj) == -1) {
+        goto end;
+    }
     json_decref(prop_obj);
+
+    /* TODO: Remove. */
+    char *json_str = json_dumps(result_obj, JSON_INDENT(2));
+    neat_log(NEAT_LOG_DEBUG, json_str);
+    json_decref(result_obj);
 
     result_array = json_pack("[{s:[{s:{ss}}],s:b,s:{s:{ss},s:{ss},s:{si},s:{sbsisi}}}]",
         "match", "interface", "value", he_res->interface, "link", true, "properties", "transport",
@@ -1391,6 +1406,10 @@ end:
     free(he_res->interface);
     free(he_res->remote_ip);
     free(he_res);
+
+    if (prop_obj) {
+        json_decref(prop_obj);
+    }
 
     if (result_array) {
         json_decref(result_array);

@@ -173,7 +173,8 @@ struct neat_ctx *neat_init_ctx()
 neat_error_code
 neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    if (run_mode == NEAT_RUN_DEFAULT)
+        neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     uv_run(nc->loop, (uv_run_mode) run_mode);
     uv_loop_close(nc->loop);

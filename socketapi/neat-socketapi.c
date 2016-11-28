@@ -32,6 +32,8 @@
 #include <neat-socketapi.h>
 #include <identifierbitmap.h>
 
+#include "neat-socketapi-internals.h"
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -40,7 +42,11 @@
 /* ###### NEAT socket() implementation ################################### */
 int ext_socket(int domain, int type, int protocol)
 {
-   return(-1);
+   if(nsa_initialize() == NULL) {
+      return(-1);
+   }
+
+   return -1;
 }
 
 

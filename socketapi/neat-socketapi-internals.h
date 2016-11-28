@@ -44,21 +44,14 @@
 
 struct neat_socketapi_internals
 {
-   struct identifier_bitmap* identifier_bitmap;
+   /* ====== NEAT Core ================================= */
+   struct neat_init_ctx*     neat_context;
+
+   /* ====== Socket Storage ============================ */
+   struct identifier_bitmap* socket_identifier_bitmap;
    struct redblacktree       socket_set;
    pthread_mutex_t           socket_set_mutex;
 };
-
-
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-struct neat_socketapi_internals* nsa_initialize();
-struct neat_socketapi_internals* nsa_get();
-void nsa_cleanup();
 
 
 struct neat_socket
@@ -74,11 +67,16 @@ struct neat_socket
 };
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct neat_socketapi_internals* nsa_initialize();
+struct neat_socketapi_internals* nsa_get();
+
 void nsa_socket_print_function(const void* node, FILE* fd);
 int nsa_socket_comparison_function(const void* node1, const void* node2);
-
 struct neat_socket* nsa_get_socket_for_descriptor(int sd);
-
 
 #ifdef __cplusplus
 }

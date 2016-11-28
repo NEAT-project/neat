@@ -60,14 +60,16 @@ struct neat_socketapi_internals* nsa_initialize()
    if(gSocketAPIInternals != NULL) {
 
       /* ====== Initialize identifier bitmap ========================== */
-      gSocketAPIInternals->identifier_bitmap = ibm_new(FD_SETSIZE);
-      if(gSocketAPIInternals->identifier_bitmap != NULL) {
+      gSocketAPIInternals->socket_identifier_bitmap = ibm_new(FD_SETSIZE);
+      if(gSocketAPIInternals->socket_identifier_bitmap != NULL) {
 
          /* ====== Initialize socket storage ========================== */
          init_mutex(&gSocketAPIInternals->socket_set_mutex);
          rbt_new(&gSocketAPIInternals->socket_set,
                  nsa_socket_print_function,
                  nsa_socket_comparison_function);
+
+         puts("READY!");
 
          return(gSocketAPIInternals);
       }
@@ -92,8 +94,12 @@ struct neat_socketapi_internals* nsa_get()
 void nsa_cleanup()
 {
    if(gSocketAPIInternals) {
+      ibm_delete(gSocketAPIInternals->socket_identifier_bitmap);
+      rbt_delete(&gSocketAPIInternals->socket_set);
+      pthread_mutex_destroy(&gSocketAPIInternals->socket_set_mutex);
       free(gSocketAPIInternals);
       gSocketAPIInternals = NULL;
+      puts("CLEAN!");
    }
 }
 

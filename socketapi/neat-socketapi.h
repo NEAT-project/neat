@@ -205,6 +205,8 @@ union neat_notification {
 extern "C" {
 #endif
 
+void nsa_cleanup();
+
 int ext_socket(int domain, int type, int protocol);
 int ext_open(const char* pathname, int flags, mode_t mode);
 int ext_creat(const char* pathname, mode_t mode);

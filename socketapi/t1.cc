@@ -15,5 +15,7 @@ int main(int argc, char** argv)
    else {
       printf("ext_socket() failed!\n");
    }
+
+   nsa_cleanup();
    return 0;
 }

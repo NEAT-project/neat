@@ -34,6 +34,7 @@ void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
     struct neat_flow *flow;
     struct neat_tcp_info *neat_tcpi;
     uint flowcount;
+    char flow_name[128];
 
 	neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -56,7 +57,9 @@ void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
         json_object_set_new( newflow, "readSize", json_integer( flow->readSize));
         json_object_set_new( newflow, "bytes sent", json_integer( flow->flow_stats.bytes_sent));
         json_object_set_new( newflow, "bytes received", json_integer( flow->flow_stats.bytes_received ));
-        json_object_set_new(json_root, "flow", newflow);
+
+        snprintf(flow_name, 128, "flow-%d", flowcount);
+        json_object_set_new(json_root, flow_name, newflow);
         /* Gather stack-specific info */
         switch (flow->socket->stack) {
             case NEAT_STACK_UDP:
@@ -96,12 +99,9 @@ void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
     json_object_set_new( json_root, "Number of flows", json_integer( flowcount ));
 
 	/* Callers must remember to free the output */
-	*json_stats = json_dumps(json_root, 0);
+	*json_stats = json_dumps(json_root, JSON_INDENT(4));
 
 	json_decref(json_root);
 
 	return;
 }
-
-
-

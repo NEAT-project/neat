@@ -9,6 +9,7 @@ LIST(APPEND neat_programs
     server_daytime.c
     server_discard.c
     server_echo.c
+    server_http.c
     tneat.c
     peer.c
     http_client_multihomed.c

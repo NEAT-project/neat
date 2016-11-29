@@ -6,10 +6,9 @@ import json
 import logging
 import operator
 import os
-import shutil
 from collections import ChainMap
 
-from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError
+from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
 from policy import dict_to_properties
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
@@ -82,8 +81,17 @@ class CIBSource(object):
             self.uid = hashlib.md5(s.encode('utf-8')).hexdigest()
 
         for p in self.properties:
-            # include UID as a NEATProperty
-            p.add(NEATProperty(('uid', self.uid), score=0, precedence=NEATProperty.IMMUTABLE))
+            # include UID as a NEATProperty with set value
+            # TODO maybe we should look up UIDs explicitly
+            # TODO replace uids back to uid
+            if 'uids' in p.keys():
+                for i in p['uids']:
+                    if isinstance(i.value, set):
+                        i.value |= {self.uid}
+                    else:
+                        i.value = {i.value} | {self.uid}
+            else:
+                p.add(NEATProperty(('uids', [self.uid]), score=0, precedence=NEATProperty.IMMUTABLE))
 
     def dict(self):
         d = {}
@@ -204,7 +212,7 @@ class CIBSource(object):
             for pas in itertools.product(*expanded_properties):
                 chain = ChainMap(*pas)
                 # get list of UIDs of all CIBs in chain and add the in first position of the chain
-                uid_list = [p['uid'].value for p in pas]
+                uid_list = [p['uids'].value for p in pas]
 
                 chain.maps.insert(0, PropertyArray(NEATProperty(('uid', uid_list))))
 
@@ -318,7 +326,7 @@ class CIB(object):
         for filename in removed_files:
             logging.info("CIB source %s has been removed", filename)
             del self.files[filename]
-            deleted_cs = [cs for cs in cib.uid.values() if cs.filename == filename]
+            deleted_cs = [cs for cs in self.uid.values() if cs.filename == filename]
             # remove corresponding CIBSource object
             for cs in deleted_cs:
                 self.uid.pop(uid, None)
@@ -409,9 +417,12 @@ class CIB(object):
         candidates = [input_properties]
         for e in self.rows:
             try:
-                # FIXME better check whether all input properties are included in row
-
-                if len(input_properties & e) != len(input_properties):
+                # FIXME better check whether all input properties are included in row - improve matching
+                import code
+                # code.interact(local=locals(), banner='herexxx')
+                # ignore optional properties in input request
+                i = PropertyArray(*(p for p in input_properties.values() if p.precedence > NEATProperty.OPTIONAL))
+                if len(i & e) != len(i):
                     continue
 
             except ImmutablePropertyError:
@@ -427,15 +438,12 @@ class CIB(object):
         return sorted(candidates, key=operator.attrgetter('score'), reverse=True)[:candidate_num]
 
     def dump(self, show_all=False):
-        ts = shutil.get_terminal_size()
-        tcol = ts.columns
-
-        print("=" * int((tcol - 11) / 2) + " CIB START " + "=" * int((tcol - 11) / 2))
+        print(term_separator("CIB START"))
         # ============================================================================
         for e in self.rows:
             print(str(e) + '\n')
         # ============================================================================
-        print("=" * int((tcol - 9) / 2) + " CIB END " + "=" * int((tcol - 9) / 2))
+        print(term_separator("CIB END"))
 
     def __repr__(self):
         return 'CIB<%d>' % (len(self.uid))

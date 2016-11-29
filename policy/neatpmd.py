@@ -76,6 +76,8 @@ def process_special_properties(r):
 def cleanup_special_properties(r):
     if 'default_profile' in r:
         del r['default_profile']
+    if 'uid' in r:
+        del r['uid']
 
 
 def process_request(json_str, num_candidates=10):
@@ -117,7 +119,8 @@ def process_request(json_str, num_candidates=10):
     # main lookup sequence
     for i, request in enumerate(requests):
         logging.info("\n")
-        logging.info("------ processing request %d/%d -------" % (i + 1, len(requests)))
+        logging.info(
+            policy.term_separator("processing request %d/%d" % (i + 1, len(requests)), offset=8, line_char='─'))
         logging.info("    %s" % request)
 
         print('Profile lookup...')
@@ -140,18 +143,23 @@ def process_request(json_str, num_candidates=10):
             candidates.extend(pib.lookup(candidate, cand_id=i + 1))
 
         for c in candidates:  # XXXX
-            print(' -~>   ', c)
+            print(' ~~>   ', c)
 
     candidates.sort(key=attrgetter('score'), reverse=True)
-    logging.info("%d candidates generated in total. Top %d:" % (len(candidates), num_candidates))
-
-    for candidate in candidates[:num_candidates]:
-        print(candidate, candidate.score)
-    # TODO check if candidates contain the minimum src/dst/transport tuple
 
     top_candidates = candidates[:num_candidates]
-    for c in top_candidates:
-        cleanup_special_properties(c)
+
+    for candidate in top_candidates:
+        cleanup_special_properties(candidate)
+
+    # print candidates before returning
+    logging.info("%d candidates generated in total." % (len(candidates)))
+    print(policy.term_separator('Top %d' % num_candidates))
+    for candidate in top_candidates:
+        print(candidate, candidate.score)
+    # TODO check if candidates contain the minimum src/dst/transport tuple
+    print(policy.term_separator())
+
     return top_candidates
 
 

@@ -491,6 +491,14 @@ class PropertyArray(dict):
         diff = [k for k in self.keys() ^ other.keys()]
         return PropertyArray(*[other[k] for k in diff if k in other], *[self[k] for k in diff if k in self])
 
+    def __le__(self, other):
+        """Check if current properties are a full subset of another PropertyArray"""
+        if isinstance(other, PropertyArray):
+            return set(self.values()) <= set(other.values())
+        else:
+            return set(self.values()) <= other
+
+
     def intersection(self, other):
         return self & other
 

@@ -80,18 +80,18 @@ class CIBSource(object):
             s = self.json(indent=0)
             self.uid = hashlib.md5(s.encode('utf-8')).hexdigest()
 
-        for p in self.properties:
-            # include UID as a NEATProperty with set value
-            # TODO maybe we should look up UIDs explicitly
-            # TODO replace uids back to uid
-            if 'uids' in p.keys():
-                for i in p['uids']:
-                    if isinstance(i.value, set):
-                        i.value |= {self.uid}
-                    else:
-                        i.value = {i.value} | {self.uid}
-            else:
-                p.add(NEATProperty(('uids', [self.uid]), score=0, precedence=NEATProperty.IMMUTABLE))
+            # for p in self.properties:
+            #     # include UID as a NEATProperty with set value
+            #     # TODO maybe we should look up UIDs explicitly
+            #     # TODO replace uids back to uid
+            #     if 'uids' in p.keys():
+            #         for i in p['uids']:
+            #             if isinstance(i.value, set):
+            #                 i.value |= {self.uid}
+            #             else:
+            #                 i.value = {i.value} | {self.uid}
+            #     else:
+            #         p.add(NEATProperty(('uids', [self.uid]), score=0, precedence=NEATProperty.IMMUTABLE))
 
     def dict(self):
         d = {}
@@ -140,7 +140,7 @@ class CIBSource(object):
 
     def match_entry(self, entry):
         for match_properties in self.match:
-            if set(match_properties.values()) <= set(entry.values()):
+            if match_properties <= entry:
                 return True
         return False
 
@@ -151,17 +151,18 @@ class CIBSource(object):
 
     def update_links_from_match(self):
         """
-        Look at the list elements in self.match and try to match all of its properties to another CIB entry. Return a list
-         containing the uids of the matched rows.
+        Look at the list elements in self.match and try to match all of its properties to another CIB entry. Generates a
+         list containing the UIDs of the matched rows. The list is store in self.links.
         """
         links = set()
+        uid_property = {NEATProperty(('uid', self.uid), score=0, precedence=NEATProperty.IMMUTABLE)}
         for match_properties in self.match:
-            for i in self.cib.uid.keys() - self.uid:
-                for p in self.cib.uid[i].expand():
-                    # check if the properties in the match list are a full subset of some CIB properties
-                    if set(match_properties.values()) <= set(p.values()):
-                        # logging.debug("%s is in %s uid:%s " % (match_properties, p, self.cib.uid[i].uid))
-                        links.add(self.cib.uid[i].uid)
+            for uid in self.cib.uid.keys() - self.uid:
+                for p in self.cib.uid[uid].expand():
+                    # Check if the properties in the match list are a full subset of some CIB properties.
+                    # We include our own UID in the property list to enable matching against UIDs.
+                    if match_properties <= set(p.values()) | uid_property:
+                        links.add(uid)
         self.links = links
 
     def resolve_graph(self, path=None):
@@ -201,7 +202,7 @@ class CIBSource(object):
         return new_paths
 
     def gen_rows(self, apply_extended=True):
-        """Generate rows by expanding all CIBs pointing to current CIB """
+        """Generate CIB rows by expanding all CIBs pointing to current CIB """
         paths = self.resolve_graph()
 
         # for storing expanded rows
@@ -211,37 +212,44 @@ class CIBSource(object):
             expanded_properties = (self.cib[uid].expand() for uid in path)
             for pas in itertools.product(*expanded_properties):
                 chain = ChainMap(*pas)
-                # get list of UIDs of all CIBs in chain and add the in first position of the chain
-                uid_list = [p['uids'].value for p in pas]
 
-                chain.maps.insert(0, PropertyArray(NEATProperty(('uid', uid_list))))
+                # get a list of UIDs of all CIB sources in chain and add the list in first position of the chain map
+                # TODO DELETE
+                # uid_list = [p['uids'].value for p in pas]
+                # chain.maps.insert(0, PropertyArray(NEATProperty(('uid', uid_list))))
+
+                # For debugging purposes, add the path list to the chain.
+                # Store as string to preserve path order (NEAT properties are not ordered).
+                dbg_path = '<<'.join(uid for uid in path)
+                # insert at position 0 to override any existing entries
+                chain.maps.insert(0, PropertyArray(NEATProperty(('cib_uids', dbg_path))))
 
                 # convert back to normal PropertyArrays
-                rows.append(PropertyArray(*(c for c in chain.values())))
+                rows.append(PropertyArray(*(p for p in chain.values())))
 
         if not apply_extended:
             return rows
 
         if not self.cib.extenders:
-            return rows  # TODO optimize
+            # no extender CIB sources loaded
+            return rows
 
+        # TODO optimize
         extended_rows = rows.copy()
         for entry in rows:
             # TODO take priorities into account
             # iterate extender cib_sources
-            for xcs in self.cib.extenders.values():
-                for pa in xcs.expand():
-                    if xcs.match_entry(entry):
+            for uid, xs in self.cib.extenders.items():
+                for pa in xs.expand():
+                    if xs.match_entry(entry):
                         entry_copy = copy.deepcopy(entry)
                         chain = ChainMap(pa, entry_copy)
-                        new_pa = PropertyArray(*(c for c in chain.values()))
+                        new_pa = PropertyArray(*(p for p in chain.values()))
                         try:
                             del new_pa['uid']
                         except KeyError:
                             pass
                         extended_rows.append(new_pa)
-                        #                    else:
-                        #                        print('noo')
 
         return extended_rows
 

@@ -35,11 +35,6 @@
 #include <stddef.h>
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
 struct identifier_bitmap
 {
    size_t        entries;
@@ -51,13 +46,16 @@ struct identifier_bitmap
 #define identifier_bitmap_slotsize (sizeof(unsigned long) * 8)
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct identifier_bitmap* ibm_new(const size_t entries);
 void ibm_delete(struct identifier_bitmap* identifierBitmap);
 int ibm_allocate_id(struct identifier_bitmap* identifierBitmap);
 int ibm_allocate_specific_id(struct identifier_bitmap* identifierBitmap,
                              const int                id);
 void ibm_free_id(struct identifier_bitmap* identifierBitmap, const int id);
-
 
 #ifdef __cplusplus
 }

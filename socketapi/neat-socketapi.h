@@ -209,65 +209,65 @@ void nsa_cleanup();
 int nsa_map_socket(int systemSD, int neatSD);
 int nsa_unmap_socket(int neatSD);
 
-int ext_socket(int domain, int type, int protocol);
-int ext_open(const char* pathname, int flags, mode_t mode);
-int ext_creat(const char* pathname, mode_t mode);
-int ext_bind(int sockfd, struct sockaddr* my_addr, socklen_t addrlen);
-int ext_connect(int sockfd, const struct sockaddr* serv_addr, socklen_t addrlen);
-int ext_listen(int s, int backlog);
-int ext_accept(int s,  struct  sockaddr * addr,  socklen_t* addrlen);
-int ext_shutdown(int s, int how);
-int ext_close(int fd);
-int ext_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen);
-int ext_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen);
-int ext_fcntl(int fd, int cmd, ...);
-int ext_ioctl(int d, int request, const void* argp);
-int ext_getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optlen);
-int ext_setsockopt(int sockfd, int level, int optname, const void* optval, socklen_t optlen);
-ssize_t ext_recv(int s, void* buf, size_t len, int flags);
-ssize_t ext_recvfrom(int  s,  void * buf,  size_t len, int flags, struct sockaddr* from, socklen_t* fromlen);
-ssize_t ext_recvmsg(int s, struct msghdr* msg, int flags);
-ssize_t ext_send(int s, const void* msg, size_t len, int flags);
-ssize_t ext_sendto(int s, const void* msg, size_t len, int flags, const struct sockaddr* to, socklen_t tolen);
-ssize_t ext_sendmsg(int s, const struct msghdr* msg, int flags);
-ssize_t ext_read(int fd, void* buf, size_t count);
-ssize_t ext_write(int fd, const void* buf, size_t count);
-int ext_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout);
-int ext_poll(struct pollfd* fdlist, long unsigned int count, int time);
+int nsa_socket(int domain, int type, int protocol);
+int nsa_open(const char* pathname, int flags, mode_t mode);
+int nsa_creat(const char* pathname, mode_t mode);
+int nsa_bind(int sockfd, struct sockaddr* my_addr, socklen_t addrlen);
+int nsa_connect(int sockfd, const struct sockaddr* serv_addr, socklen_t addrlen);
+int nsa_listen(int s, int backlog);
+int nsa_accept(int s,  struct  sockaddr * addr,  socklen_t* addrlen);
+int nsa_shutdown(int s, int how);
+int nsa_close(int fd);
+int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen);
+int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen);
+int nsa_fcntl(int fd, int cmd, ...);
+int nsa_ioctl(int d, int request, const void* argp);
+int nsa_getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optlen);
+int nsa_setsockopt(int sockfd, int level, int optname, const void* optval, socklen_t optlen);
+ssize_t nsa_recv(int s, void* buf, size_t len, int flags);
+ssize_t nsa_recvfrom(int  s,  void * buf,  size_t len, int flags, struct sockaddr* from, socklen_t* fromlen);
+ssize_t nsa_recvmsg(int s, struct msghdr* msg, int flags);
+ssize_t nsa_send(int s, const void* msg, size_t len, int flags);
+ssize_t nsa_sendto(int s, const void* msg, size_t len, int flags, const struct sockaddr* to, socklen_t tolen);
+ssize_t nsa_sendmsg(int s, const struct msghdr* msg, int flags);
+ssize_t nsa_read(int fd, void* buf, size_t count);
+ssize_t nsa_write(int fd, const void* buf, size_t count);
+int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout);
+int nsa_poll(struct pollfd* fdlist, long unsigned int count, int time);
 
-int ext_bindx(int              sockfd,
+int nsa_bindx(int              sockfd,
               struct sockaddr* addrs,
               int              addrcnt,
               int              flags);
 
-int ext_connectx(int                    sockfd,
+int nsa_connectx(int                    sockfd,
                  const struct sockaddr* addrs,
                  int                    addrcnt,
                  neat_assoc_t*          id);
 
-int ext_peeloff(int sockfd, neat_assoc_t id);
+int nsa_peeloff(int sockfd, neat_assoc_t id);
 
-int ext_getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
-void ext_freepaddrs(struct sockaddr* addrs);
+int nsa_getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
+void nsa_freepaddrs(struct sockaddr* addrs);
 
-int ext_getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
-void ext_freeladdrs(struct sockaddr* addrs);
+int nsa_getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
+void nsa_freeladdrs(struct sockaddr* addrs);
 
-int ext_opt_info(int sd, neat_assoc_t assocID, int opt, void* arg, socklen_t* size);
+int nsa_opt_info(int sd, neat_assoc_t assocID, int opt, void* arg, socklen_t* size);
 
-// ssize_t ext_send(int                           s,
+// ssize_t nsa_send(int                           s,
 //                  const void*                   data,
 //                  size_t                        len,
 //                  const struct neat_sndrcvinfo* sinfo,
 //                  int                           flags);
-// ssize_t ext_sendx(int                           sd,
+// ssize_t nsa_sendx(int                           sd,
 //                   const void*                   data,
 //                   size_t                        len,
 //                   const struct sockaddr*        addrs,
 //                   int                           addrcnt,
 //                   const struct neat_sndrcvinfo* sinfo,
 //                   int                           flags);
-// ssize_t ext_sendmsg(int                    s,
+// ssize_t nsa_sendmsg(int                    s,
 //                     const void*            data,
 //                     size_t                 len,
 //                     const struct sockaddr* to,
@@ -277,7 +277,7 @@ int ext_opt_info(int sd, neat_assoc_t assocID, int opt, void* arg, socklen_t* si
 //                     uint16_t               stream_no,
 //                     uint32_t               timetolive,
 //                     uint32_t               context);
-// ssize_t ext_recvmsg(int                     s,
+// ssize_t nsa_recvmsg(int                     s,
 //                     void*                   msg,
 //                     size_t                  len,
 //                     struct sockaddr*        from,
@@ -285,7 +285,7 @@ int ext_opt_info(int sd, neat_assoc_t assocID, int opt, void* arg, socklen_t* si
 //                     struct neat_sndrcvinfo* sinfo,
 //                     int*                    msg_flags);
 
-int ext_pipe(int fds[2]);
+int nsa_pipe(int fds[2]);
 
 
 #ifdef __cplusplus

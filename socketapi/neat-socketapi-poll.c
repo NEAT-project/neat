@@ -39,14 +39,14 @@
 
 
 /* ###### NEAT poll() implementation ##################################### */
-int ext_poll(struct pollfd* fdlist, long unsigned int count, int time)
+int nsa_poll(struct pollfd* fdlist, long unsigned int count, int time)
 {
    return -1;
 }
 
 
 /* ###### NEAT select() implementation ################################### */
-int ext_select(int             n,
+int nsa_select(int             n,
                fd_set*         readfds,
                fd_set*         writefds,
                fd_set*         exceptfds,
@@ -87,7 +87,7 @@ int ext_select(int             n,
 
    /* ====== Call poll() and propagate results to fdsets ================= */
    waitingTime = (1000 * timeout->tv_sec) + (int)ceil((double)timeout->tv_usec / 1000.0);
-   result = ext_poll((struct pollfd*)&ufds, nfds, waitingTime);
+   result = nsa_poll((struct pollfd*)&ufds, nfds, waitingTime);
    if(result > 0) {
       for(i = 0;i < nfds;i++) {
          if( (!(ufds[i].events & POLLIN)) && (readfds) ) {

@@ -172,7 +172,7 @@ void nsa_cleanup()
 
 
 /* ###### NEAT socket() implementation internals ######################### */
-int ext_socket_internal(int domain, int type, int protocol,
+int nsa_socket_internal(int domain, int type, int protocol,
                         int customFD, struct neat_flow* flow, int requestedSD)
 {
    struct neat_socket* neatSocket;

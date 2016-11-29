@@ -46,30 +46,30 @@
 /* ###### Map system socket into NEAT socket descriptor space ############ */
 int nsa_map_socket(int systemSD, int neatSD)
 {
-   return(ext_socket_internal(0, 0, 0, systemSD, NULL, neatSD));
+   return(nsa_socket_internal(0, 0, 0, systemSD, NULL, neatSD));
 }
 
 
 /* ###### Unmap system socket from NEAT socket descriptor space ########## */
 int nsa_unmap_socket(int neatSD)
 {
-   return(ext_close(neatSD));
+   return(nsa_close(neatSD));
 }
 
 
 /* ###### NEAT socket() implementation ################################### */
-int ext_socket(int domain, int type, int protocol)
+int nsa_socket(int domain, int type, int protocol)
 {
    if(nsa_initialize() == NULL) {
       return(-1);
    }
 
-   return(ext_socket_internal(domain, type, protocol, -1, NULL, -1));
+   return(nsa_socket_internal(domain, type, protocol, -1, NULL, -1));
 }
 
 
 /* ###### NEAT close() implementation #################################### */
-int ext_close(int fd)
+int nsa_close(int fd)
 {
    struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(fd);
    if(neatSocket != NULL) {
@@ -96,13 +96,13 @@ int ext_close(int fd)
 /*
 static bool isInitialized = false;
 
-int ext_socket(int domain, int type, int protocol);
-int ext_open(const char* pathname, int flags, mode_t mode);
-int ext_creat(const char* pathname, mode_t mode);
-int ext_bind(int sockfd, struct sockaddr* my_addr, socklen_t addrlen);
-int ext_connect(int sockfd, const struct sockaddr* serv_addr, socklen_t addrlen);
-int ext_listen(int s, int backlog);
-int ext_accept(int s,  struct  sockaddr * addr,  socklen_t* addrlen);
-int ext_shutdown(int s, int how);
-int ext_close(int fd);
+int nsa_socket(int domain, int type, int protocol);
+int nsa_open(const char* pathname, int flags, mode_t mode);
+int nsa_creat(const char* pathname, mode_t mode);
+int nsa_bind(int sockfd, struct sockaddr* my_addr, socklen_t addrlen);
+int nsa_connect(int sockfd, const struct sockaddr* serv_addr, socklen_t addrlen);
+int nsa_listen(int s, int backlog);
+int nsa_accept(int s,  struct  sockaddr * addr,  socklen_t* addrlen);
+int nsa_shutdown(int s, int how);
+int nsa_close(int fd);
 */

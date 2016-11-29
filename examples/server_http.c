@@ -29,9 +29,9 @@ static char *config_property = "{\
     ]\
 }";
 static uint16_t config_log_level = 1;
-static const char *response = "HTTP/1.0 200 OK\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n<h1>Welcome to neat!</h1>\r\n";
+static const char *response_header = "HTTP/1.0 200 OK\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 
-#define BUFFERSIZE 1024
+#define BUFFERSIZE 33768
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
 
@@ -146,26 +146,9 @@ on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s", stats);
     }
 
-    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) response, strlen(response), NULL, 0);
-    if (code != NEAT_OK) {
-        fprintf(stderr, "%s - neat_write failed - code: %d\n", __func__, (int)code);
-        return on_error(opCB);
-    }
+    snprintf(buffer, BUFFERSIZE, "%s%s%s%s%s\r\n", response_header, "<h1>Welcome to NEAT</h1>", "<pre>", stats, "</pre>");
 
-    snprintf(buffer, BUFFERSIZE, "<pre>");
-    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) buffer, strlen(buffer), NULL, 0);
-    if (code != NEAT_OK) {
-        fprintf(stderr, "%s - neat_write failed - code: %d\n", __func__, (int)code);
-        return on_error(opCB);
-    }
 
-    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) stats, strlen(stats), NULL, 0);
-    if (code != NEAT_OK) {
-        fprintf(stderr, "%s - neat_write failed - code: %d\n", __func__, (int)code);
-        return on_error(opCB);
-    }
-
-    snprintf(buffer, BUFFERSIZE, "</pre>");
     code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) buffer, strlen(buffer), NULL, 0);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write failed - code: %d\n", __func__, (int)code);

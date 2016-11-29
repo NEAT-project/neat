@@ -173,7 +173,8 @@ struct neat_ctx *neat_init_ctx()
 neat_error_code
 neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    if (run_mode == NEAT_RUN_DEFAULT)
+        neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     uv_run(nc->loop, (uv_run_mode) run_mode);
     uv_loop_close(nc->loop);
@@ -228,6 +229,12 @@ static void neat_walk_cb(uv_handle_t *handle, void *arg)
     }
 
     if (!uv_is_closing(handle)) {
+        // If this assert triggers, then some handle is not being closed
+        // correctly. A handle with a data pointer should already be closed
+        // before this point since the next uv_close operation will not free
+        // any handles. In other words, you have a memory leak.
+        assert(handle->data);
+
         neat_log(NEAT_LOG_DEBUG, "%s - closing handle", __func__);
         uv_close(handle, NULL);
     }
@@ -236,6 +243,10 @@ static void neat_walk_cb(uv_handle_t *handle, void *arg)
 static void neat_close_loop(struct neat_ctx *nc)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    // Some handles may be closed inside uv_close callbacks.
+    // Give those callbacks an opportunity to run first before executing uv_walk.
+    uv_run(nc->loop, UV_RUN_NOWAIT);
 
     uv_walk(nc->loop, neat_walk_cb, nc);
 
@@ -1332,6 +1343,8 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     const char *home_dir;
     const char *socket_path;
     char socket_path_buf[128];
+    json_t *prop_obj = NULL;
+    json_t *result_obj = NULL;
     json_t *result_array = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1354,18 +1367,55 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         socket_path = socket_path_buf;
     }
 
-    result_array = json_pack("[{s:[{s:{ss}}],s:b,s:{s:{ss},s:{ss},s:{si},s:{sbsisi}}}]",
-        "match", "interface", "value", he_res->interface, "link", true, "properties", "transport",
-        "value", stack_to_string(he_res->transport ), "remote_ip", "value", he_res->remote_ip,
-        "remote_port", "value", he_res->remote_port, "cached", "value", (result)?1:0, "precedence",
-        2, "score", 5);
+    prop_obj = json_pack("{s:{ss},s:{ss},s:{si},s:{sbsisi}}",
+        "transport", "value", stack_to_string(he_res->transport ),
+        "remote_ip", "value", he_res->remote_ip,
+        "remote_port", "value", he_res->remote_port,
+        "cached", "value", (result)?1:0, "precedence", 2, "score", 5);
+    if (prop_obj == NULL) {
+        goto end;
+    }
 
+    if (json_object_update_missing(prop_obj, flow->properties) == -1) {
+        goto end;
+    }
+
+    result_obj = json_pack("{s:[{s:{ss}}],s:b}",
+       "match", "interface", "value", he_res->interface,
+       "link", true);
+    if (result_obj == NULL) {
+        goto end;
+    }
+  
+    if (json_object_set(result_obj, "properties", prop_obj) == -1) {
+        goto end;
+    }
+    json_decref(prop_obj);
+
+    result_array = json_array();
+    if (result_array == NULL) {
+        goto end;
+    }
+
+    if (json_array_append(result_array, result_obj) == -1) {
+        goto end;
+    }
+    json_decref(result_obj);
+   
     neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
 
 end:
     free(he_res->interface);
     free(he_res->remote_ip);
     free(he_res);
+
+    if (prop_obj) {
+        json_decref(prop_obj);
+    }
+
+    if (result_obj) {
+        json_decref(result_obj);
+    }
 
     if (result_array) {
         json_decref(result_array);
@@ -1721,6 +1771,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->operations->on_error = flow->operations->on_error;
     newFlow->operations->ctx = ctx;
     newFlow->operations->flow = flow;
+    newFlow->operations->userData = flow->operations->userData;
 
     switch (newFlow->socket->stack) {
     case NEAT_STACK_SCTP_UDP:
@@ -1827,6 +1878,27 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
 
             newFlow->socket->handle->data = newFlow->socket;
+
+            if (newFlow->socket->fd > 0) {
+                int rc;
+                void *ptr;
+                json_t *json;
+                struct sockaddr_storage sockaddr;
+                socklen_t socklen = sizeof(sockaddr);
+                char buffer[INET6_ADDRSTRLEN+1];
+                memset(buffer, 0, sizeof(buffer));
+
+                rc = getpeername(newFlow->socket->fd, (struct sockaddr*)&sockaddr, &socklen);
+                assert(rc == 0);
+
+                ptr = (void*)inet_ntop(AF_INET, (void*)&((struct sockaddr_in*)(&sockaddr))->sin_addr, buffer, INET6_ADDRSTRLEN);
+                assert(ptr);
+
+                json = json_pack("{ss}", "value", buffer);
+
+                json_object_set(newFlow->properties, "address", json);
+                json_decref(json);
+            }
 
             newFlow->acceptPending = 0;
             if ((newFlow->propertyMask & NEAT_PROPERTY_REQUIRED_SECURITY) &&

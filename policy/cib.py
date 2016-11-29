@@ -328,7 +328,7 @@ class CIB(object):
             cs.update_links_from_match()
 
         self.gen_graph()
-        #self.dump()  # xxx
+        # self.dump()  # xxx
 
     def load_cib_file(self, filename):
         cs = load_json(filename)
@@ -356,7 +356,7 @@ class CIB(object):
 
     def import_json(self, slim, uid=None):
         """
-        Import JSON formatted CIB entries into current cib. Multiple entries can be concatenated in a JSON array
+        Import JSON formatted CIB entries into current cib.
         """
 
         # TODO optimize
@@ -367,27 +367,30 @@ class CIB(object):
             logging.warning('invalid CIB file format')
             return
 
-        # make sure we always get CIB entries as a list
-        if not isinstance(json_slim, list):
-            json_slim = [json_slim]
+        # check if we received multiple objects in a list
+        if isinstance(json_slim, list):
+            for c in json_slim:
+                self.import_json(json.dumps(c))
+            return
 
-        for cib_entry in json_slim:
+        # convert to CIB source object to do sanity check
+        cs = CIBSource(json_slim)
 
-            cs = CIBSource(cib_entry)
+        if uid is not None:
+            cs.uid = uid
 
-            filename = cs.uid
-            slim = cs.json()
+        filename = cs.uid
+        slim = cs.json()
 
-            if not filename:
-                logging.warning("CIB entry has no UID")
-                # generate CIB filename
-                filename = hashlib.md5(slim.encode('utf-8')).hexdigest()
+        if not filename:
+            logging.warning("CIB entry has no UID")
+            # generate CIB filename
+            filename = hashlib.md5(slim.encode('utf-8')).hexdigest()
 
-            filename = filename.lower() + '.slim'
+        filename = '%s.cib' % filename.lower()
 
-            f = open(os.path.join(self.cib_dir, '%s' % filename), 'w')
+        with open(os.path.join(self.cib_dir, '%s' % filename), 'w') as f:
             f.write(slim)
-            f.close()
             logging.info("CIB entry saved as \"%s\"." % filename)
 
         self.reload_files()

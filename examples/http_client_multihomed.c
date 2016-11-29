@@ -1,9 +1,10 @@
+#include <neat.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include "../neat.h"
 
 #ifndef timersub
 #define timersub(tvp, uvp, vvp)                                         \

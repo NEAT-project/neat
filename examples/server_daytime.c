@@ -1,9 +1,10 @@
+#include <neat.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include "../neat.h"
 #include "util.h"
 #include <errno.h>
 

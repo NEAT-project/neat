@@ -46,7 +46,7 @@ class NEATPolicy(object):
             if isinstance(v, str):
                 setattr(self, k, v)
 
-        self.priority = int(policy_dict.get('priority', 0))
+        self.priority = int(policy_dict.get('pririty', 0))
         self.replace_matched = policy_dict.get('replace_matched', False)
 
         self.filename = None
@@ -161,6 +161,46 @@ class PIB(list):
         for filename in os.listdir(policy_dir):
             if filename.endswith(self.file_extension) and not filename.startswith(('.', '#')):
                 self.load_policy(os.path.join(policy_dir, filename))
+
+    def import_json(self, slim, uid=None):
+        """
+        Import a JSON formatted PIB entry into current pib.
+        """
+
+        try:
+            pib_entry = json.loads(slim)
+        except json.decoder.JSONDecodeError:
+            logging.warning('invalid PIB file format')
+            return
+
+        # check if we received multiple objects in a list
+        if isinstance(pib_entry, list):
+            for p in pib_entry:
+                self.import_json(json.dumps(p))
+            return
+
+        policy = NEATPolicy(pib_entry)
+        if uid is not None:
+            policy.uid = uid
+
+        filename = policy.uid
+
+        # if not filename:
+        #    # generate hash policy filename
+        #   filename = hashlib.md5('json_slim'.encode('utf-8')).hexdigest()
+
+        filename = '%s.policy' % filename.lower()
+        policy.filename = filename
+
+        filename = os.path.join(self.policy_dir, filename)
+
+        with open(filename, 'w') as f:
+            f.write(policy.json())
+
+        logging.info("Policy saved as \"%s\"." % filename)
+
+        # FIXME register
+        self.reload()
 
     def load_policy(self, filename):
         """Load policy.

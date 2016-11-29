@@ -1,8 +1,9 @@
+#include <neat.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include "../neat.h"
 
 /**********************************************************************
 
@@ -148,7 +149,7 @@ main(int argc, char *argv[])
 
     snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
 
-    while ((arg = getopt(argc, argv, "u:n:")) != -1) {
+    while ((arg = getopt(argc, argv, "u:n:v:")) != -1) {
         switch(arg) {
         case 'u':
             snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);

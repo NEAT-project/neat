@@ -1248,7 +1248,14 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
+    struct neat_pollable_socket *pollable_socket = handle->data;
+    int newEvents = 0;
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    assert(flow);
+    assert(flow->socket);
+    assert(flow->socket->handle);
 
     if (flow->socket->handle != NULL) {
         if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->socket->handle)) {
@@ -1256,41 +1263,69 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
         }
     }
 
-    int newEvents = 0;
-    if (flow->operations) {
-#if !defined(MSG_NOTIFICATION)
-        if (flow->operations->on_readable)
-#else
-        // If a flow has on_readable set, poll for reading.
-        // If a flow is using SCTP for transport, also poll for reading if we're
-        // interested in various SCTP events that is reported via SCTP_EVENT etc.
-        if (flow->operations->on_readable ||
-            (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP &&
-            (flow->operations->on_close ||
-            flow->operations->on_network_status_changed ||
-            flow->operations->on_send_failure)))
-#endif
-        {
-            newEvents |= UV_READABLE;
+    if (pollable_socket->multistream) {
+        flow = LIST_FIRST(&ctx->flows);
+        neat_log(NEAT_LOG_DEBUG, "%s - multistreaming - taking first flow from ctx", __func__);
+        assert(flow);
+    }
+
+    do {
+        neat_log(NEAT_LOG_DEBUG, "%s - iterating flows ...", __func__);
+        assert(flow);
+
+        if (pollable_socket != flow->socket) {
+            neat_log(NEAT_LOG_DEBUG, "%s - multistreaming - skipping flow", __func__);
+            flow = LIST_NEXT(flow, next_flow);
+            continue;
         }
 
-        if (flow->operations->on_writable) {
+        flow->isPolling = 0;
+
+        if (flow->operations) {
+    #if !defined(MSG_NOTIFICATION)
+            if (flow->operations->on_readable)
+    #else
+            // If a flow has on_readable set, poll for reading.
+            // If a flow is using SCTP for transport, also poll for reading if we're
+            // interested in various SCTP events that is reported via SCTP_EVENT etc.
+            if (flow->operations->on_readable ||
+                (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP &&
+                (flow->operations->on_close ||
+                flow->operations->on_network_status_changed ||
+                flow->operations->on_send_failure)))
+    #endif
+            {
+                newEvents |= UV_READABLE;
+                flow->isPolling = 1;
+            }
+
+            if (flow->operations->on_writable) {
+                newEvents |= UV_WRITABLE;
+                flow->isPolling = 1;
+            }
+        }
+
+        if (flow->isDraining) {
             newEvents |= UV_WRITABLE;
+            flow->isPolling = 1;
         }
-    }
 
-    if (flow->isDraining) {
-        newEvents |= UV_WRITABLE;
-    }
+        flow = LIST_NEXT(flow, next_flow);
+        neat_log(NEAT_LOG_DEBUG, "%s - next flow : %p", __func__, flow);
+
+    // iterate through all flows
+    } while (pollable_socket->multistream && flow);
+
+    flow = pollable_socket->flow;
 
     if (newEvents) {
-        flow->isPolling = 1;
         if (flow->socket->handle != NULL) {
+            neat_log(NEAT_LOG_DEBUG, "events");
             uv_poll_start(handle, newEvents, uvpollable_cb);
         }
     } else {
-        flow->isPolling = 0;
         if (flow->socket->handle != NULL) {
+            neat_log(NEAT_LOG_DEBUG, "no events");
             uv_poll_stop(handle);
         }
     }
@@ -1365,7 +1400,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         "value", stack_to_string(he_res->transport ), "remote_ip", "value", he_res->remote_ip,
         "remote_port", "value", he_res->remote_port, "cached", "value", (result)?1:0, "precedence",
         2, "score", 5);
-     
+
     neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
 
 end:
@@ -1552,75 +1587,76 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     neat_ctx *ctx = flow->ctx;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (pollable_socket->multistream) {
-        neat_log(NEAT_LOG_DEBUG, "%s - traversing flows", __func__);
-        LIST_FOREACH(flow, &ctx->flows, next_flow) {
-            if (flow->pollable_socket != pollable_socket) {
-                neat_log(NEAT_LOG_DEBUG, "%s - wrong flow", __func__);
-                continue;
-            }
-
-            if ((events & UV_WRITABLE) && flow->firstWritePending) {
-                flow->firstWritePending = 0;
-                READYCALLBACKSTRUCT;
-                flow->operations->on_connected(flow->operations);
-            }
-
-
+    if ((events & UV_READABLE) && flow->acceptPending) {
+        if(pollable_socket->stack == NEAT_STACK_UDP ||
+           pollable_socket->stack == NEAT_STACK_UDPLITE) {
+            neat_log(NEAT_LOG_DEBUG, "io_readable for UDP or UDPLite accept flow");
+            io_readable(ctx, flow, pollable_socket, NEAT_OK);
+        } else {
+            do_accept(ctx, flow, pollable_socket);
         }
+        return;
+    }
 
-    } else {
-        if ((events & UV_READABLE) && flow->acceptPending) {
-            if(pollable_socket->stack == NEAT_STACK_UDP ||
-               pollable_socket->stack == NEAT_STACK_UDPLITE) {
-                neat_log(NEAT_LOG_DEBUG, "io_readable for UDP or UDPLite accept flow");
-                io_readable(ctx, flow, pollable_socket, NEAT_OK);
-            } else {
-                do_accept(ctx, flow, pollable_socket);
-            }
-            return;
-        }
-
-        // TODO: Are there cases when we should keep polling?
-        if (status < 0) {
-            neat_log(NEAT_LOG_DEBUG, "ERROR: %s", uv_strerror(status));
+    // TODO: Are there cases when we should keep polling?
+    if (status < 0) {
+        neat_log(NEAT_LOG_DEBUG, "ERROR: %s", uv_strerror(status));
 
 #if !defined(USRSCTP_SUPPORT)
-            if (neat_base_stack(pollable_socket->stack) == NEAT_STACK_TCP ||
-                neat_base_stack(pollable_socket->stack) == NEAT_STACK_SCTP)
+        if (neat_base_stack(pollable_socket->stack) == NEAT_STACK_TCP ||
+            neat_base_stack(pollable_socket->stack) == NEAT_STACK_SCTP)
 #else
-            if (neat_base_stack(pollable_socket->stack) == NEAT_STACK_TCP)
+        if (neat_base_stack(pollable_socket->stack) == NEAT_STACK_TCP)
 #endif
-            { // special bracing beacuse of ifdef
-                int so_error = 0;
-                unsigned int len = sizeof(so_error);
-                if (getsockopt(flow->socket->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
-                    neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed: %s", strerror(errno));
-                    neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
-                    return;
-                }
-
-                neat_log(NEAT_LOG_DEBUG, "Socket layer errno: %d (%s)", so_error, strerror(so_error));
-
-                if (so_error == ETIMEDOUT) {
-                    io_timeout(ctx, flow);
-                    return;
-                } else if (so_error == ECONNRESET) {
-                    neat_notify_aborted(flow);
-                }
+        { // special bracing beacuse of ifdef
+            int so_error = 0;
+            unsigned int len = sizeof(so_error);
+            if (getsockopt(flow->socket->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
+                neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed: %s", strerror(errno));
+                neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
+                return;
             }
 
+            neat_log(NEAT_LOG_DEBUG, "Socket layer errno: %d (%s)", so_error, strerror(so_error));
 
-            neat_log(NEAT_LOG_ERROR, "Unspecified internal error when polling socket");
-            neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
-
-            return;
+            if (so_error == ETIMEDOUT) {
+                io_timeout(ctx, flow);
+                return;
+            } else if (so_error == ECONNRESET) {
+                neat_notify_aborted(flow);
+            }
         }
 
-        if (!events && status < 0) {
-            neat_io_error(ctx, flow, NEAT_ERROR_IO);
-            return;
+
+        neat_log(NEAT_LOG_ERROR, "Unspecified internal error when polling socket");
+        neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
+
+        return;
+    }
+
+    if (!events && status < 0) {
+        neat_io_error(ctx, flow, NEAT_ERROR_IO);
+        return;
+    }
+
+    if (pollable_socket->multistream) {
+        flow = LIST_FIRST(&ctx->flows);
+        neat_log(NEAT_LOG_DEBUG, "%s - multistreaming - taking first flow from ctx", __func__);
+        assert(flow);
+    }
+
+    neat_log(NEAT_LOG_DEBUG, "%s - Starting... ", __func__);
+
+    do {
+        neat_log(NEAT_LOG_DEBUG, "%s - iterating flows ...", __func__);
+        assert(flow);
+
+        if (pollable_socket != flow->socket) {
+            neat_log(NEAT_LOG_DEBUG, "%s - multistreaming - skipping flow", __func__);
+            flow = LIST_NEXT(flow, next_flow);
+            continue;
         }
+
         if ((events & UV_WRITABLE) && flow->firstWritePending) {
             flow->firstWritePending = 0;
             io_connected(ctx, flow, NEAT_OK);
@@ -1641,8 +1677,19 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         if (events & UV_READABLE) {
             io_readable(ctx, flow, pollable_socket, NEAT_OK);
         }
-        updatePollHandle(ctx, flow, handle);
-    }
+
+        // next flow
+        flow = LIST_NEXT(flow, next_flow);
+        neat_log(NEAT_LOG_DEBUG, "%s - next flow : %p", __func__, flow);
+
+        // iterate through all flows
+    } while (pollable_socket->multistream && flow);
+
+    neat_log(NEAT_LOG_DEBUG, "%s - finished", __func__);
+
+    flow = pollable_socket->flow;
+    updatePollHandle(ctx, flow, handle);
+
 }
 
 static neat_flow *

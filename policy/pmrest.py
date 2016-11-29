@@ -9,8 +9,9 @@ except ImportError as e:
 LOCAL_IP = '0.0.0.0'
 REST_PORT = 45888
 
-pib = None
+profiles = None
 cib = None
+pib = None
 
 server = None
 
@@ -29,6 +30,22 @@ async def handle_pib(request):
         return web.Response(status=404, text='unknown UID')
 
     return web.Response(text=text)
+
+async def handle_pib_put(request):
+    """
+
+    Test using: curl -H 'Content-Type: application/json' -T test.policy localhost:45888/pib/23423
+    """
+
+    uid = request.match_info.get('uid')
+
+    assert request.content_type == 'application/json'
+
+    logging.info("Received new policy entry with uid %s" % (uid))
+
+    new_cib = await request.text()
+    pib.import_json(new_cib, uid)
+    return web.Response(text="OK")
 
 
 async def handle_cib_rows(request):
@@ -65,7 +82,7 @@ async def handle_cib_put(request):
     logging.info("new CIB entry with uid %s" % (uid))
 
     new_cib = await request.text()
-    cib.import_json(new_cib)
+    cib.import_json(new_cib, uid)
     return web.Response(text="OK")
 
 
@@ -80,7 +97,7 @@ async def handle_rest(request):
     return web.Response(text=text)
 
 
-def init_rest_server(asyncio_loop, pib_ref, cib_ref, rest_port=None):
+def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=None):
     """ Register REST server
 
     curl  -H 'Content-Type: application/json' -X PUT -d'["adfd",123]'ocalhost:45888/cib/23423
@@ -91,8 +108,9 @@ def init_rest_server(asyncio_loop, pib_ref, cib_ref, rest_port=None):
 
     global pib, cib, REST_PORT, server
 
-    pib = pib_ref
+    profiles = profiles_ref
     cib = cib_ref
+    pib = pib_ref
 
     if rest_port:
         REST_PORT = rest_port
@@ -107,6 +125,7 @@ def init_rest_server(asyncio_loop, pib_ref, cib_ref, rest_port=None):
     app.router.add_get('/cib/{uid}', handle_cib)
 
     app.router.add_put('/cib/{uid}', handle_cib_put)
+    app.router.add_put('/pib/{uid}', handle_pib_put)
 
     handler = app.make_handler()
 

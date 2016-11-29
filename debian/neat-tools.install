@@ -1,0 +1,10 @@
+/usr/bin/client
+/usr/bin/client_http_get
+/usr/bin/client_https_get
+/usr/bin/http_client_multihomed
+/usr/bin/peer
+/usr/bin/server_chargen
+/usr/bin/server_daytime
+/usr/bin/server_discard
+/usr/bin/server_echo
+/usr/bin/tneat

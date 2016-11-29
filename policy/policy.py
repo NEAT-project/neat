@@ -2,6 +2,7 @@ import copy
 import json
 import logging
 import numbers
+import shutil
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
@@ -132,17 +133,21 @@ class PropertyValue(object):
                 print(e)
                 raise IndexError("Invalid property range definition")
             self.is_range = True
-        # numeric range as tuple
+        # numeric ranges stored as tuples
         elif isinstance(value, (tuple,)) and len(value) == 2:
             self._value = value
             self.is_range = True
-        # set of values ["TCP", "UDP"]
+        # sets of values ["TCP", "UDP"]
         elif isinstance(value, (list, set)):
             if len(value) == 1:
                 self._value = value.pop()
                 self.is_single = True
             else:
-                self._value = set(value)
+                try:
+                    self._value = set(value)
+                except TypeError:
+                    import code
+                    code.interact(local=locals(), banner='here')
                 self.is_set = True
         elif isinstance(value, PropertyValue):
             self._value = value._value
@@ -260,6 +265,7 @@ class NEATProperty(object):
 
     IMMUTABLE = 2
     OPTIONAL = 1
+    BASE = 0
 
     def __init__(self, key_val, precedence=OPTIONAL, score=0, banned=None):
         self.key = key_val[0]
@@ -335,6 +341,13 @@ class NEATProperty(object):
         """
         Create a new property by updating the first one with the second. Returns a new NEATProperty object.
         """
+
+        # experimental: reverse comparison order if precedence is zero. Used to specify default policies
+        if other.precedence == NEATProperty.BASE:
+            new_prop = copy.deepcopy(other)
+            new_prop.update(self, evaluate=False)
+            return new_prop
+
         new_prop = copy.deepcopy(self)
         new_prop.update(other)
         return new_prop
@@ -353,7 +366,7 @@ class NEATProperty(object):
         except InvalidPropertyError:
             return False
 
-    def update(self, other):
+    def update(self, other, evaluate=True):
         """ Update the current property value with a different one and update the score."""
         assert isinstance(other, NEATProperty)
 
@@ -364,7 +377,7 @@ class NEATProperty(object):
         old_self_str = str(self)
         other_str = str(other)
 
-        self.evaluated = True
+        self.evaluated = evaluate
         self.banned.extend(other.banned)
 
         value_match = self == other
@@ -431,6 +444,8 @@ class NEATProperty(object):
             property_str = '[%s]%s' % (keyval_str, score_str)
         elif self.precedence == NEATProperty.OPTIONAL:
             property_str = '(%s)%s' % (keyval_str, score_str)
+        elif self.precedence == NEATProperty.BASE:
+            property_str = '%s%s' % (keyval_str, score_str)
         else:
             property_str = '?%s?%s' % (keyval_str, score_str)
 
@@ -475,6 +490,14 @@ class PropertyArray(dict):
         # return symmetric difference, i.e., non overlapping properties
         diff = [k for k in self.keys() ^ other.keys()]
         return PropertyArray(*[other[k] for k in diff if k in other], *[self[k] for k in diff if k in self])
+
+    def __le__(self, other):
+        """Check if current properties are a full subset of another PropertyArray"""
+        if isinstance(other, PropertyArray):
+            return set(self.values()) <= set(other.values())
+        else:
+            return set(self.values()) <= other
+
 
     def intersection(self, other):
         return self & other
@@ -562,6 +585,25 @@ class PropertyMultiArray(dict):
         for i in self.values():
             slist.append(str(i))
         return '╠═' + '══'.join(slist) + '═╣'  # UTF8
+
+
+# TODO move to pm_util
+def term_separator(text='', line_char='═', offset=0):
+    """
+    Get a separator line with the width of the terminal with a centered text
+    """
+
+    # Get the width of the terminal
+    ts = shutil.get_terminal_size()
+    tcol = ts.columns - offset
+
+    if text: text = ' %s ' % text
+
+    tlen = len(text)
+    s = line_char * int((tcol - tlen) / 2) + text + line_char * int((tcol - tlen) / 2)
+    # pad right
+    s += max(tcol - len(s), 0) * line_char
+    return s
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ PROJECT(libneat)
 
 set(BUILD_MAJOR "0")
 set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td100")
+set(BUILD_PATCH "1~td104")
 set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 # INSTALLATION_DIRECTORIES
@@ -42,7 +42,7 @@ set(CPACK_SOURCE_GENERATOR "TGZ")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME
    "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
 set(CPACK_SOURCE_IGNORE_FILES
-   "/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;/${CMAKE_PROJECT_NAME}-.*orig/;/${CMAKE_PROJECT_NAME}-[0-9]*.[0-9]*.*/;.cmake$;.tar.gz$;/Makefile$;~$;${CPACK_SOURCE_IGNORE_FILES}")
+   "/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;/${CMAKE_PROJECT_NAME}-*;/${CMAKE_PROJECT_NAME}_*;.cmake$;.tar.gz$;/Makefile$;~$;/build-deb;/clean-deb;/filter-empty-entries;/make-symbols;/make-ppa;/make-deb;/debian.conf;${CPACK_SOURCE_IGNORE_FILES}")
 include(CPack)
 
 add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
@@ -267,11 +267,13 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -Wall -Wextra -Werror -Wn
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
 ENDIF()
 
 # LIBRARIES
 #################################################
+include_directories(.)
+
 LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}

@@ -3,15 +3,18 @@ import hashlib
 import json
 import logging
 import os
-import shutil
 import time
 
-from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError
+from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
 POLICY_DIR = "pib/examples/"
 PIB_EXTENSIONS = ('.policy', '.profile', '.pib')
+
+
+class NEATPIBError(Exception):
+    pass
 
 
 def load_policy_json(filename):
@@ -21,11 +24,11 @@ def load_policy_json(filename):
         policy_dict = json.load(policy_file)
     except OSError as e:
         logging.error('Policy ' + filename + ' not found.')
-        return
+        raise NEATPIBError(e)
     except json.decoder.JSONDecodeError as e:
         logging.error('Error parsing policy file ' + filename)
         print(e)
-        return
+        raise NEATPIBError(e)
 
     p = NEATPolicy(policy_dict)
     return p
@@ -42,7 +45,7 @@ class NEATPolicy(object):
             if isinstance(v, str):
                 setattr(self, k, v)
 
-        self.priority = int(policy_dict.get('priority', 0))
+        self.priority = int(policy_dict.get('pririty', 0))
         self.replace_matched = policy_dict.get('replace_matched', False)
 
         self.filename = None
@@ -158,6 +161,46 @@ class PIB(list):
             if filename.endswith(self.file_extension) and not filename.startswith(('.', '#')):
                 self.load_policy(os.path.join(policy_dir, filename))
 
+    def import_json(self, slim, uid=None):
+        """
+        Import a JSON formatted PIB entry into current pib.
+        """
+
+        try:
+            pib_entry = json.loads(slim)
+        except json.decoder.JSONDecodeError:
+            logging.warning('invalid PIB file format')
+            return
+
+        # check if we received multiple objects in a list
+        if isinstance(pib_entry, list):
+            for p in pib_entry:
+                self.import_json(json.dumps(p))
+            return
+
+        policy = NEATPolicy(pib_entry)
+        if uid is not None:
+            policy.uid = uid
+
+        filename = policy.uid
+
+        # if not filename:
+        #    # generate hash policy filename
+        #   filename = hashlib.md5('json_slim'.encode('utf-8')).hexdigest()
+
+        filename = '%s.policy' % filename.lower()
+        policy.filename = filename
+
+        filename = os.path.join(self.policy_dir, filename)
+
+        with open(filename, 'w') as f:
+            f.write(policy.json())
+
+        logging.info("Policy saved as \"%s\"." % filename)
+
+        # FIXME register
+        self.reload()
+
     def load_policy(self, filename):
         """Load policy.
         """
@@ -168,7 +211,12 @@ class PIB(list):
         t = stat.st_mtime_ns
         if filename not in self.files or self.files[filename].timestamp != t:
             logging.info("Loading policy %s...", filename)
-            p = load_policy_json(filename)
+            try:
+                p = load_policy_json(filename)
+            except NEATPIBError as e:
+                logging.error("Unable not load policy %s" % filename)
+                return
+
             # update filename and timestamp
             p.filename = filename
             p.timestamp = t
@@ -201,12 +249,12 @@ class PIB(list):
     def register(self, policy):
         """Register new policy
 
-        Policies are ordered
+        Policies are ordered by their priority attribute
         """
         # check for existing policies with identical match properties
         if policy.match in [p.match for p in self.policies]:
-            logging.debug("Policy match fields for policy %s already registered. " % (policy.uid))
-            # return
+            # logging.debug("Policy match fields for policy %s already registered. " % (policy.uid))
+            pass
 
         # TODO tie breaker using match_len?
         uid = bisect.bisect([p.priority for p in self.policies], policy.priority)
@@ -228,7 +276,7 @@ class PIB(list):
 
         assert isinstance(input_properties, PropertyArray)
         if cand_id is None:
-            cand_id = ""
+            cand_id = ''
 
         logging.info("matching policies for candidate %s" % cand_id)
 
@@ -248,7 +296,6 @@ class PIB(list):
                         if p.replace_matched:
                             for key in p.match:
                                 del candidate[key]
-                                logging.debug('    removing property:' + key)
 
                         for policy_properties in p.properties.expand():
                             try:
@@ -265,21 +312,10 @@ class PIB(list):
         return candidates
 
     def dump(self):
-        ts = shutil.get_terminal_size()
-        tcol = ts.columns
-        s = "=" * int((tcol - 11) / 2) + " PIB START " + "=" * int((tcol - 11) / 2) + "\n"
+        print(term_separator("PIB START"))
         for p in self.policies:
-            s += str(p) + '\n'
-        s += "=" * int((tcol - 9) / 2) + " PIB END " + "=" * int((tcol - 9) / 2) + "\n"
-        print(s)
-
-
-def term_col():
-    """
-    Get the width of the terminal
-    """
-    ts = shutil.get_terminal_size()
-    return ts.columns
+            print(str(p))
+        print(term_separator("PIB END"))
 
 
 if __name__ == "__main__":

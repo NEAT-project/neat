@@ -3,7 +3,7 @@
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
-	dh $@ --with=sphinxdoc
+	dh $@ --parallel --with=sphinxdoc
 
 override_dh_auto_build:
 

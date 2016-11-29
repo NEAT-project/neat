@@ -1,8 +1,6 @@
 #!/usr/bin/env python3.5
 import argparse
 import asyncio
-import hashlib
-import json
 import logging
 import os
 from copy import deepcopy
@@ -21,8 +19,9 @@ parser.add_argument('--sock', type=str, default=None, help='set Unix domain sock
 parser.add_argument('--debug', type=bool, default=True, help='enable debugging')
 parser.add_argument('--rest', type=bool, default=True, help='enable REST API')
 
-args = parser.parse_args()
+parser.add_argument('--bypass', type=bool, default=False, help='enable debugging')
 
+args = parser.parse_args()
 if args.sock:
     DOMAIN_SOCK = args.sock
 else:
@@ -43,6 +42,42 @@ try:
 except OSError:
     if os.path.exists(DOMAIN_SOCK):
         raise
+
+
+def process_special_properties(r):
+    if 'local_endpoint' in r:
+        # the local_endpoint property has the format a.b.c.d@eth0 so we need to split it
+        local_endpoint = r.get('local_endpoint')
+        ip, eth = local_endpoint.value.split('@')
+
+        # create two new NEATProperties for the ip and interfaces
+        local_ip = deepcopy(local_endpoint)
+        local_ip.key = 'local_ip'
+        local_ip.value = ip
+        r.add(local_ip)
+
+        interface = deepcopy(local_endpoint)
+        interface.key = 'interface'
+        interface.value = eth
+        r.add(interface)
+
+        del r['local_endpoint']
+
+    # add some default properties
+    if 'transport' not in r:
+        p = policy.NEATProperty(('transport', 'unknown'), precedence=policy.NEATProperty.OPTIONAL, score=0.0)
+        r.add(p)
+
+    # add hook to trigger default policy profile
+    p = policy.NEATProperty(('default_profile', True), precedence=policy.NEATProperty.OPTIONAL, score=0.0)
+    r.add(p)
+
+
+def cleanup_special_properties(r):
+    if 'default_profile' in r:
+        del r['default_profile']
+    if 'uid' in r:
+        del r['uid']
 
 
 def process_request(json_str, num_candidates=10):
@@ -73,28 +108,7 @@ def process_request(json_str, num_candidates=10):
     # local_endpoint handling
     # let's try to avoid any other special handling of properties!
     for r in requests:
-        if 'local_endpoint' in r:
-            # the local_endpoint property has the format a.b.c.d@eth0 so we need to split it
-            local_endpoint = r.get('local_endpoint')
-            ip, eth = local_endpoint.value.split('@')
-
-            # create two new NEATProperties for the ip and interfaces
-            local_ip = deepcopy(local_endpoint)
-            local_ip.key = 'local_ip'
-            local_ip.value = ip
-            r.add(local_ip)
-
-            interface = deepcopy(local_endpoint)
-            interface.key = 'interface'
-            interface.value = eth
-            r.add(interface)
-
-            del r['local_endpoint']
-
-        # FIXME
-        p_cached = policy.NEATProperty(('cached', False), precedence=policy.NEATProperty.OPTIONAL, score=1.0)
-
-        r.add(p_cached)
+        process_special_properties(r)
 
     print('Received %d NEAT requests' % len(requests))
     # for i, request in enumerate(requests):
@@ -105,7 +119,8 @@ def process_request(json_str, num_candidates=10):
     # main lookup sequence
     for i, request in enumerate(requests):
         logging.info("\n")
-        logging.info("------ processing request %d/%d -------" % (i + 1, len(requests)))
+        logging.info(
+            policy.term_separator("processing request %d/%d" % (i + 1, len(requests)), offset=8, line_char='─'))
         logging.info("    %s" % request)
 
         print('Profile lookup...')
@@ -128,52 +143,48 @@ def process_request(json_str, num_candidates=10):
             candidates.extend(pib.lookup(candidate, cand_id=i + 1))
 
         for c in candidates:  # XXXX
-            print(' -~>   ', c)
+            print(' ~~>   ', c)
 
     candidates.sort(key=attrgetter('score'), reverse=True)
-    logging.info("%d candidates generated in total. Top %d:" % (len(candidates), num_candidates))
 
-    for candidate in candidates[:num_candidates]:
+    top_candidates = candidates[:num_candidates]
+
+    for candidate in top_candidates:
+        cleanup_special_properties(candidate)
+
+    # print candidates before returning
+    logging.info("%d candidates generated in total." % (len(candidates)))
+    print(policy.term_separator('Top %d' % num_candidates))
+    for candidate in top_candidates:
         print(candidate, candidate.score)
     # TODO check if candidates contain the minimum src/dst/transport tuple
+    print(policy.term_separator())
 
-    return candidates[:num_candidates]
+    return top_candidates
 
 
 class PIBProtocol(asyncio.Protocol):
+    """
+
+    test using
+       socat -d -d -d  FILE:test.pib UNIX-CONNECT:$HOME/.neat/neat_pib_socket
+    """
+
+    def __init__(self):
+        self.slim = ''
+        self.transport = None
+
     def connection_made(self, transport):
         peername = transport.get_extra_info('sockname')
         self.transport = transport
-        self.slim = ''
 
     def data_received(self, data):
         self.slim += data.decode()
 
     def eof_received(self):
         logging.info("New PIB object received (%dB)." % len(self.slim))
-        # TODO do a sanity check
-        try:
-            json_slim = json.loads(self.slim)
-        except json.decoder.JSONDecodeError:
-            logging.warning('invalid PIB file format')
-            return
-
-        filename = json_slim.get('uid')
-        if not filename:
-            # generate hash policy filename
-            filename = hashlib.md5('json_slim'.encode('utf-8')).hexdigest()
-
-        filename = filename.lower()
-
-        filename = os.path.join(PIB_DIR, '%s.policy' % filename)
-
-        f = open(filename, 'w')
-        f.write(self.slim)
-        f.close()
-        logging.info("Policy saved as \"%s\"." % filename)
-
+        pib.import_json(self.slim)
         self.transport.close()
-        pib.reload()
 
 
 class CIBProtocol(asyncio.Protocol):
@@ -189,9 +200,7 @@ class CIBProtocol(asyncio.Protocol):
 
     def eof_received(self):
         logging.info("New CIB object received (%dB)" % len(self.slim))
-
         cib.import_json(self.slim)
-
         self.transport.close()
 
 
@@ -206,7 +215,15 @@ class PMProtocol(asyncio.Protocol):
 
     def eof_received(self):
         logging.info("New JSON request received (%dB)" % len(self.request))
-        candidates = process_request(self.request.strip())
+        # TODO remove for production
+        # for debugging neat core skip all calls to CIB/PIB
+        if args.bypass:
+            data = self.request.strip().encode(encoding='utf-8')
+            self.transport.write(data)
+            self.transport.close()
+            return
+        else:
+            candidates = process_request(self.request.strip())
 
         # create JSON string for NEAT logic reply
         try:
@@ -260,7 +277,7 @@ if __name__ == "__main__":
     coro_cib = loop.create_unix_server(CIBProtocol, CIB_SOCK)
     cib_server = loop.run_until_complete(coro_cib)
 
-    pmrest.init_rest_server(loop, pib, cib, rest_port=REST_PORT)
+    pmrest.init_rest_server(loop, profiles, cib, pib, rest_port=REST_PORT)
 
     print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))
     try:

@@ -1,8 +1,6 @@
 #!/usr/bin/env python3.5
 import argparse
 import asyncio
-import hashlib
-import json
 import logging
 import os
 from copy import deepcopy
@@ -78,6 +76,8 @@ def process_special_properties(r):
 def cleanup_special_properties(r):
     if 'default_profile' in r:
         del r['default_profile']
+    if 'uid' in r:
+        del r['uid']
 
 
 def process_request(json_str, num_candidates=10):
@@ -119,7 +119,8 @@ def process_request(json_str, num_candidates=10):
     # main lookup sequence
     for i, request in enumerate(requests):
         logging.info("\n")
-        logging.info("------ processing request %d/%d -------" % (i + 1, len(requests)))
+        logging.info(
+            policy.term_separator("processing request %d/%d" % (i + 1, len(requests)), offset=8, line_char='─'))
         logging.info("    %s" % request)
 
         print('Profile lookup...')
@@ -142,55 +143,48 @@ def process_request(json_str, num_candidates=10):
             candidates.extend(pib.lookup(candidate, cand_id=i + 1))
 
         for c in candidates:  # XXXX
-            print(' -~>   ', c)
+            print(' ~~>   ', c)
 
     candidates.sort(key=attrgetter('score'), reverse=True)
-    logging.info("%d candidates generated in total. Top %d:" % (len(candidates), num_candidates))
-
-    for candidate in candidates[:num_candidates]:
-        print(candidate, candidate.score)
-    # TODO check if candidates contain the minimum src/dst/transport tuple
 
     top_candidates = candidates[:num_candidates]
-    for c in top_candidates:
-        cleanup_special_properties(c)
+
+    for candidate in top_candidates:
+        cleanup_special_properties(candidate)
+
+    # print candidates before returning
+    logging.info("%d candidates generated in total." % (len(candidates)))
+    print(policy.term_separator('Top %d' % num_candidates))
+    for candidate in top_candidates:
+        print(candidate, candidate.score)
+    # TODO check if candidates contain the minimum src/dst/transport tuple
+    print(policy.term_separator())
+
     return top_candidates
 
 
 class PIBProtocol(asyncio.Protocol):
+    """
+
+    test using
+       socat -d -d -d  FILE:test.pib UNIX-CONNECT:$HOME/.neat/neat_pib_socket
+    """
+
+    def __init__(self):
+        self.slim = ''
+        self.transport = None
+
     def connection_made(self, transport):
         peername = transport.get_extra_info('sockname')
         self.transport = transport
-        self.slim = ''
 
     def data_received(self, data):
         self.slim += data.decode()
 
     def eof_received(self):
         logging.info("New PIB object received (%dB)." % len(self.slim))
-        # TODO do a sanity check
-        try:
-            json_slim = json.loads(self.slim)
-        except json.decoder.JSONDecodeError:
-            logging.warning('invalid PIB file format')
-            return
-
-        filename = json_slim.get('uid')
-        if not filename:
-            # generate hash policy filename
-            filename = hashlib.md5('json_slim'.encode('utf-8')).hexdigest()
-
-        filename = filename.lower()
-
-        filename = os.path.join(PIB_DIR, '%s.policy' % filename)
-
-        f = open(filename, 'w')
-        f.write(self.slim)
-        f.close()
-        logging.info("Policy saved as \"%s\"." % filename)
-
+        pib.import_json(self.slim)
         self.transport.close()
-        pib.reload()
 
 
 class CIBProtocol(asyncio.Protocol):
@@ -206,9 +200,7 @@ class CIBProtocol(asyncio.Protocol):
 
     def eof_received(self):
         logging.info("New CIB object received (%dB)" % len(self.slim))
-
         cib.import_json(self.slim)
-
         self.transport.close()
 
 
@@ -285,7 +277,7 @@ if __name__ == "__main__":
     coro_cib = loop.create_unix_server(CIBProtocol, CIB_SOCK)
     cib_server = loop.run_until_complete(coro_cib)
 
-    pmrest.init_rest_server(loop, pib, cib, rest_port=REST_PORT)
+    pmrest.init_rest_server(loop, profiles, cib, pib, rest_port=REST_PORT)
 
     print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))
     try:

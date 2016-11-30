@@ -272,6 +272,8 @@ ENDIF()
 
 # LIBRARIES
 #################################################
+include_directories(.)
+
 LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}

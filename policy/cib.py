@@ -6,10 +6,9 @@ import json
 import logging
 import operator
 import os
-import shutil
 from collections import ChainMap
 
-from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError
+from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
 from policy import dict_to_properties
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
@@ -81,9 +80,18 @@ class CIBSource(object):
             s = self.json(indent=0)
             self.uid = hashlib.md5(s.encode('utf-8')).hexdigest()
 
-        for p in self.properties:
-            # include UID as a NEATProperty
-            p.add(NEATProperty(('uid', self.uid), score=0, precedence=NEATProperty.IMMUTABLE))
+            # for p in self.properties:
+            #     # include UID as a NEATProperty with set value
+            #     # TODO maybe we should look up UIDs explicitly
+            #     # TODO replace uids back to uid
+            #     if 'uids' in p.keys():
+            #         for i in p['uids']:
+            #             if isinstance(i.value, set):
+            #                 i.value |= {self.uid}
+            #             else:
+            #                 i.value = {i.value} | {self.uid}
+            #     else:
+            #         p.add(NEATProperty(('uids', [self.uid]), score=0, precedence=NEATProperty.IMMUTABLE))
 
     def dict(self):
         d = {}
@@ -132,7 +140,7 @@ class CIBSource(object):
 
     def match_entry(self, entry):
         for match_properties in self.match:
-            if set(match_properties.values()) <= set(entry.values()):
+            if match_properties <= entry:
                 return True
         return False
 
@@ -143,17 +151,18 @@ class CIBSource(object):
 
     def update_links_from_match(self):
         """
-        Look at the list elements in self.match and try to match all of its properties to another CIB entry. Return a list
-         containing the uids of the matched rows.
+        Look at the list elements in self.match and try to match all of its properties to another CIB entry. Generates a
+         list containing the UIDs of the matched rows. The list is store in self.links.
         """
         links = set()
+        uid_property = {NEATProperty(('uid', self.uid), score=0, precedence=NEATProperty.IMMUTABLE)}
         for match_properties in self.match:
-            for i in self.cib.uid.keys() - self.uid:
-                for p in self.cib.uid[i].expand():
-                    # check if the properties in the match list are a full subset of some CIB properties
-                    if set(match_properties.values()) <= set(p.values()):
-                        # logging.debug("%s is in %s uid:%s " % (match_properties, p, self.cib.uid[i].uid))
-                        links.add(self.cib.uid[i].uid)
+            for uid in self.cib.uid.keys() - self.uid:
+                for p in self.cib.uid[uid].expand():
+                    # Check if the properties in the match list are a full subset of some CIB properties.
+                    # We include our own UID in the property list to enable matching against UIDs.
+                    if match_properties <= set(p.values()) | uid_property:
+                        links.add(uid)
         self.links = links
 
     def resolve_graph(self, path=None):
@@ -193,7 +202,7 @@ class CIBSource(object):
         return new_paths
 
     def gen_rows(self, apply_extended=True):
-        """Generate rows by expanding all CIBs pointing to current CIB """
+        """Generate CIB rows by expanding all CIBs pointing to current CIB """
         paths = self.resolve_graph()
 
         # for storing expanded rows
@@ -203,37 +212,44 @@ class CIBSource(object):
             expanded_properties = (self.cib[uid].expand() for uid in path)
             for pas in itertools.product(*expanded_properties):
                 chain = ChainMap(*pas)
-                # get list of UIDs of all CIBs in chain and add the in first position of the chain
-                uid_list = [p['uid'].value for p in pas]
 
-                chain.maps.insert(0, PropertyArray(NEATProperty(('uid', uid_list))))
+                # get a list of UIDs of all CIB sources in chain and add the list in first position of the chain map
+                # TODO DELETE
+                # uid_list = [p['uids'].value for p in pas]
+                # chain.maps.insert(0, PropertyArray(NEATProperty(('uid', uid_list))))
+
+                # For debugging purposes, add the path list to the chain.
+                # Store as string to preserve path order (NEAT properties are not ordered).
+                dbg_path = '<<'.join(uid for uid in path)
+                # insert at position 0 to override any existing entries
+                chain.maps.insert(0, PropertyArray(NEATProperty(('cib_uids', dbg_path))))
 
                 # convert back to normal PropertyArrays
-                rows.append(PropertyArray(*(c for c in chain.values())))
+                rows.append(PropertyArray(*(p for p in chain.values())))
 
         if not apply_extended:
             return rows
 
         if not self.cib.extenders:
-            return rows  # TODO optimize
+            # no extender CIB sources loaded
+            return rows
 
+        # TODO optimize
         extended_rows = rows.copy()
         for entry in rows:
             # TODO take priorities into account
             # iterate extender cib_sources
-            for xcs in self.cib.extenders.values():
-                for pa in xcs.expand():
-                    if xcs.match_entry(entry):
+            for uid, xs in self.cib.extenders.items():
+                for pa in xs.expand():
+                    if xs.match_entry(entry):
                         entry_copy = copy.deepcopy(entry)
                         chain = ChainMap(pa, entry_copy)
-                        new_pa = PropertyArray(*(c for c in chain.values()))
+                        new_pa = PropertyArray(*(p for p in chain.values()))
                         try:
                             del new_pa['uid']
                         except KeyError:
                             pass
                         extended_rows.append(new_pa)
-                        #                    else:
-                        #                        print('noo')
 
         return extended_rows
 
@@ -318,7 +334,7 @@ class CIB(object):
         for filename in removed_files:
             logging.info("CIB source %s has been removed", filename)
             del self.files[filename]
-            deleted_cs = [cs for cs in cib.uid.values() if cs.filename == filename]
+            deleted_cs = [cs for cs in self.uid.values() if cs.filename == filename]
             # remove corresponding CIBSource object
             for cs in deleted_cs:
                 self.uid.pop(uid, None)
@@ -328,7 +344,7 @@ class CIB(object):
             cs.update_links_from_match()
 
         self.gen_graph()
-        #self.dump()  # xxx
+        # self.dump()  # xxx
 
     def load_cib_file(self, filename):
         cs = load_json(filename)
@@ -356,7 +372,7 @@ class CIB(object):
 
     def import_json(self, slim, uid=None):
         """
-        Import JSON formatted CIB entries into current cib. Multiple entries can be concatenated in a JSON array
+        Import JSON formatted CIB entries into current cib.
         """
 
         # TODO optimize
@@ -367,27 +383,30 @@ class CIB(object):
             logging.warning('invalid CIB file format')
             return
 
-        # make sure we always get CIB entries as a list
-        if not isinstance(json_slim, list):
-            json_slim = [json_slim]
+        # check if we received multiple objects in a list
+        if isinstance(json_slim, list):
+            for c in json_slim:
+                self.import_json(json.dumps(c))
+            return
 
-        for cib_entry in json_slim:
+        # convert to CIB source object to do sanity check
+        cs = CIBSource(json_slim)
 
-            cs = CIBSource(cib_entry)
+        if uid is not None:
+            cs.uid = uid
 
-            filename = cs.uid
-            slim = cs.json()
+        filename = cs.uid
+        slim = cs.json()
 
-            if not filename:
-                logging.warning("CIB entry has no UID")
-                # generate CIB filename
-                filename = hashlib.md5(slim.encode('utf-8')).hexdigest()
+        if not filename:
+            logging.warning("CIB entry has no UID")
+            # generate CIB filename
+            filename = hashlib.md5(slim.encode('utf-8')).hexdigest()
 
-            filename = filename.lower() + '.slim'
+        filename = '%s.cib' % filename.lower()
 
-            f = open(os.path.join(self.cib_dir, '%s' % filename), 'w')
+        with open(os.path.join(self.cib_dir, '%s' % filename), 'w') as f:
             f.write(slim)
-            f.close()
             logging.info("CIB entry saved as \"%s\"." % filename)
 
         self.reload_files()
@@ -406,9 +425,12 @@ class CIB(object):
         candidates = [input_properties]
         for e in self.rows:
             try:
-                # FIXME better check whether all input properties are included in row
-
-                if len(input_properties & e) != len(input_properties):
+                # FIXME better check whether all input properties are included in row - improve matching
+                import code
+                # code.interact(local=locals(), banner='herexxx')
+                # ignore optional properties in input request
+                i = PropertyArray(*(p for p in input_properties.values() if p.precedence > NEATProperty.OPTIONAL))
+                if len(i & e) != len(i):
                     continue
 
             except ImmutablePropertyError:
@@ -424,15 +446,12 @@ class CIB(object):
         return sorted(candidates, key=operator.attrgetter('score'), reverse=True)[:candidate_num]
 
     def dump(self, show_all=False):
-        ts = shutil.get_terminal_size()
-        tcol = ts.columns
-
-        print("=" * int((tcol - 11) / 2) + " CIB START " + "=" * int((tcol - 11) / 2))
+        print(term_separator("CIB START"))
         # ============================================================================
         for e in self.rows:
             print(str(e) + '\n')
         # ============================================================================
-        print("=" * int((tcol - 9) / 2) + " CIB END " + "=" * int((tcol - 9) / 2))
+        print(term_separator("CIB END"))
 
     def __repr__(self):
         return 'CIB<%d>' % (len(self.uid))

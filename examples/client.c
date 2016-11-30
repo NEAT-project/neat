@@ -1,11 +1,12 @@
+#include <neat.h>
+#include <neat_internal.h>
+#include "util.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <uv.h>
-#include "../neat.h"
-#include "../neat_internal.h"
-#include "util.h"
 
 /**********************************************************************
 

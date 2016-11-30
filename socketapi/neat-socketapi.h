@@ -212,14 +212,14 @@ int nsa_unmap_socket(int neatSD);
 int nsa_socket(int domain, int type, int protocol, const char* properties);
 int nsa_close(int fd);
 int nsa_fcntl(int fd, int cmd, ...);
-
-int nsa_open(const char* pathname, int flags, mode_t mode);
-int nsa_creat(const char* pathname, mode_t mode);
 int nsa_bind(int sockfd, struct sockaddr* my_addr, socklen_t addrlen);
 int nsa_connect(int sockfd, const struct sockaddr* serv_addr, socklen_t addrlen);
 int nsa_listen(int sockfd, int backlog);
-int nsa_accept(int sockfd,  struct  sockaddr * addr,  socklen_t* addrlen);
+int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen);
 int nsa_shutdown(int sockfd, int how);
+
+int nsa_open(const char* pathname, int flags, mode_t mode);
+int nsa_creat(const char* pathname, mode_t mode);
 int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen);
 int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen);
 int nsa_ioctl(int fd, int request, const void* argp);

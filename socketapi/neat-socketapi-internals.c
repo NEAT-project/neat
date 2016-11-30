@@ -95,14 +95,13 @@ struct neat_socketapi_internals* nsa_initialize()
       /* ====== Initialize identifier bitmap ============================= */
       gSocketAPIInternals->socket_identifier_bitmap = ibm_new(FD_SETSIZE);
       if(gSocketAPIInternals->socket_identifier_bitmap != NULL) {
-         /* ====== Map stdin, stdout, stderr file descriptors ============ */
-         assert(nsa_map_socket(STDOUT_FILENO, STDOUT_FILENO) == STDOUT_FILENO);
-         assert(nsa_map_socket(STDIN_FILENO,  STDIN_FILENO)  == STDIN_FILENO);
-         assert(nsa_map_socket(STDERR_FILENO, STDERR_FILENO) == STDERR_FILENO);
-
          /* ====== NEAT context ========================================== */
          gSocketAPIInternals->neat_context = neat_init_ctx();
          if(gSocketAPIInternals->neat_context != NULL) {
+            /* ====== Map stdin, stdout, stderr file descriptors ========= */
+            assert(nsa_map_socket(STDOUT_FILENO, STDOUT_FILENO) == STDOUT_FILENO);
+            assert(nsa_map_socket(STDIN_FILENO,  STDIN_FILENO)  == STDIN_FILENO);
+            assert(nsa_map_socket(STDERR_FILENO, STDERR_FILENO) == STDERR_FILENO);
 
             /* ====== Initialize main loop =============================== */
             if(pipe((int*)&gSocketAPIInternals->main_loop_pipe) >= 0) {
@@ -149,6 +148,9 @@ void nsa_cleanup()
          close(gSocketAPIInternals->main_loop_pipe[1]);
          gSocketAPIInternals->main_loop_pipe[1] = -1;
       }
+      nsa_unmap_socket(STDERR_FILENO);
+      nsa_unmap_socket(STDIN_FILENO);
+      nsa_unmap_socket(STDOUT_FILENO);
       if(gSocketAPIInternals->neat_context) {
          neat_free_ctx(gSocketAPIInternals->neat_context);
          gSocketAPIInternals->neat_context = NULL;
@@ -376,21 +378,21 @@ int nsa_socket_internal(int domain, int type, int protocol,
 /* ###### Print socket ################################################### */
 void nsa_socket_print_function(const void* node, FILE* fd)
 {
-   const struct neat_socket* rserpoolSocket = (const struct neat_socket*)node;
-   fprintf(fd, "%d ", rserpoolSocket->descriptor);
+   const struct neat_socket* neatSocket = (const struct neat_socket*)node;
+   fprintf(fd, "%d ", neatSocket->descriptor);
 }
 
 
 /* ###### Compare sockets ################################################ */
 int nsa_socket_comparison_function(const void* node1, const void* node2)
 {
-   const struct neat_socket* rserpoolSocket1 = (const struct neat_socket*)node1;
-   const struct neat_socket* rserpoolSocket2 = (const struct neat_socket*)node2;
+   const struct neat_socket* neatSocket1 = (const struct neat_socket*)node1;
+   const struct neat_socket* neatSocket2 = (const struct neat_socket*)node2;
 
-   if(rserpoolSocket1->descriptor < rserpoolSocket2->descriptor) {
+   if(neatSocket1->descriptor < neatSocket2->descriptor) {
       return(-1);
    }
-   else if(rserpoolSocket1->descriptor > rserpoolSocket2->descriptor) {
+   else if(neatSocket1->descriptor > neatSocket2->descriptor) {
       return(1);
    }
    return(0);
@@ -400,19 +402,15 @@ int nsa_socket_comparison_function(const void* node1, const void* node2)
 /* ###### Find socket #################################################### */
 struct neat_socket* nsa_get_socket_for_descriptor(int sd)
 {
-   struct neat_socket* rserpoolSocket;
+   struct neat_socket* neatSocket;
    struct neat_socket  cmpSocket;
 
    cmpSocket.descriptor = sd;
    pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
-   rserpoolSocket = (struct neat_socket*)rbt_find(&gSocketAPIInternals->socket_set,
-                                                  &cmpSocket.node);
+   neatSocket = (struct neat_socket*)rbt_find(&gSocketAPIInternals->socket_set,
+                                              &cmpSocket.node);
    pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
-   if(rserpoolSocket == NULL) {
-      fprintf(stderr, "Bad NEAT socket descriptor %d\n", sd);
-      abort();
-   }
-   return(rserpoolSocket);
+   return(neatSocket);
 }
 
 

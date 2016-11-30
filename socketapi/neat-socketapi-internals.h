@@ -87,7 +87,7 @@ struct neat_socket
 
 #define GET_NEAT_SOCKET(fd) \
    struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(fd); \
-   if(neatSocket != NULL) { \
+   if(neatSocket == NULL) { \
       errno = EBADF; \
       return(-1); \
    }

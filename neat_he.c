@@ -253,6 +253,8 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
                 candidate = next_candidate;
             }
 
+            neat_sctp_open_stream(flow->socket, flow->multistream_id);
+
             uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
             return NEAT_ERROR_OK;
 

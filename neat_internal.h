@@ -185,6 +185,8 @@ struct neat_pollable_socket
     uint16_t    sctp_streams_used;
     struct neat_flow_list_head  sctp_multistream_flows;
 
+    struct neat_pollable_socket *listen_socket;
+
     uv_poll_t *handle;
 
     TAILQ_ENTRY(neat_pollable_socket) next;
@@ -227,10 +229,10 @@ struct neat_flow
 
     size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.
-    unsigned char *readBuffer;    // memory for read buffer
-    size_t readBufferSize;        // amount of received data
-    size_t readBufferAllocation;  // size of buffered allocation
-    int readBufferMsgComplete;    // it contains a complete user message
+    unsigned char   *readBuffer;    // memory for read buffer
+    size_t          readBufferSize;        // amount of received data
+    size_t          readBufferAllocation;  // size of buffered allocation
+    int             readBufferMsgComplete;    // it contains a complete user message
 
     json_t *properties;
 
@@ -550,5 +552,7 @@ neat_error_code neat_security_install(neat_ctx *ctx, neat_flow *flow);
 void            neat_security_init(neat_ctx *ctx);
 void            neat_security_close(neat_ctx *ctx);
 void uvpollable_cb(uv_poll_t *handle, int status, int events);
+
+neat_error_code neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
 
 #endif

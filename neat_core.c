@@ -1422,7 +1422,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     const char *socket_path;
     char socket_path_buf[128];
     json_t *prop_obj = NULL;
-    //json_t *result_obj = NULL;
+    json_t *result_obj = NULL;
     json_t *result_array = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1458,8 +1458,20 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         goto end;
     }
 
+    json_object_del(prop_obj, "interface");
+
+    result_obj = json_pack("{s:[{s:{ss}}],s:b}",
+    "match", "interface", "value", he_res->interface, "link", true);
+    if (result_obj == NULL) {
+        goto end;
+    }
+  
+    if (json_object_set(result_obj, "properties", prop_obj) == -1) {
+        goto end;
+    }
+
     // TODO: Remove this.
-    char *json_str = json_dumps(prop_obj, JSON_INDENT(2));
+    char *json_str = json_dumps(result_obj, JSON_INDENT(2));
     neat_log(NEAT_LOG_DEBUG, json_str);
     free(json_str);
    
@@ -1481,11 +1493,9 @@ end:
         json_decref(prop_obj);
     }
 
-#if 0
     if (result_obj) {
         json_decref(result_obj);
     }
-#endif
 
     if (result_array) {
         json_decref(result_array);

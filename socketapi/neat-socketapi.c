@@ -93,20 +93,26 @@ int nsa_close(int fd)
 {
    GET_NEAT_SOCKET(fd)
 
+   pthread_mutex_lock(&neatSocket->mutex);
+
+   /* ====== Close socket ================================================ */
    if(neatSocket->flow != NULL) {
-      pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
       neat_close(gSocketAPIInternals->neat_context, neatSocket->flow);
       neatSocket->flow = NULL;
-      pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
    }
    else if(neatSocket->socket_sd >= 0) {
       if(neatSocket->flags & NSAF_CLOSE_ON_REMOVAL) {
-         printf("close(%d)\n", neatSocket->socket_sd);;
          close(neatSocket->socket_sd);
-         neatSocket->socket_sd = -1;
       }
-      else   printf("not close(%d)\n", neatSocket->socket_sd);;
+      neatSocket->socket_sd = -1;
    }
+
+   /* ====== Remove socket ===============================================*/
+   pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+   rbt_remove(&gSocketAPIInternals->socket_set, &neatSocket->node);
+   pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+
+   pthread_mutex_unlock(&neatSocket->mutex);
    pthread_mutex_destroy(&neatSocket->mutex);
    free(neatSocket);
    return(0);

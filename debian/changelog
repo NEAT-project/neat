@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-libneat (0.0.1~td104-1ubuntu1) xenial; urgency=high
-=======
-libneat (0.0.1~td107-1ppa1) xenial; urgency=high
->>>>>>> df1c1f7... Packaging script updates.
+libneat (0.0.1~td108-1ppa1) xenial; urgency=high
 
   * Initial release.
 

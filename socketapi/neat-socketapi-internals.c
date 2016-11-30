@@ -165,7 +165,7 @@ void nsa_cleanup()
 }
 
 
-/* ###### NEAT on_error() callback ################################### */
+/* ###### NEAT on_error() callback ####################################### */
 static neat_error_code on_error(struct neat_flow_operations* opCB)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
@@ -205,6 +205,81 @@ static neat_error_code on_writable(struct neat_flow_operations* opCB)
 }
 
 
+/* ###### NEAT on_all_written() callback ################################# */
+static neat_error_code on_all_written(struct neat_flow_operations* opCB)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+   neatSocket->flags |= NSAF_WRITABLE;
+   return(0);
+}
+
+
+/* ###### NEAT on_network_status_changed() callback ###################### */
+static neat_error_code on_network_status_changed(struct neat_flow_operations* opCB)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+   return(0);
+}
+
+
+/* ###### NEAT on_aborted() callback ##################################### */
+static neat_error_code on_aborted(struct neat_flow_operations* opCB)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+   neatSocket->flags |= NSAF_BAD;
+   return(0);
+}
+
+
+/* ###### NEAT on_timeout() callback ##################################### */
+static neat_error_code on_timeout(struct neat_flow_operations* opCB)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+   neatSocket->flags |= NSAF_BAD;
+   return(0);
+}
+
+
+/* ###### NEAT on_close() callback ####################################### */
+static neat_error_code on_close(struct neat_flow_operations* opCB)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+   neatSocket->flags |= NSAF_BAD;
+   return(0);
+}
+
+
+/* ###### NEAT on_send_failure() callback ################################ */
+static void on_send_failure(struct neat_flow_operations* opCB,
+                            int context, const unsigned char* unsent)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+   neatSocket->flags |= NSAF_BAD;
+}
+
+
+/* ###### NEAT on_slowdown() callback #################################### */
+static void on_slowdown(struct neat_flow_operations* opCB, int ecn, uint32_t rate)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+}
+
+
+/* ###### NEAT on_rate_hint() callback ################################### */
+static void on_rate_hint(struct neat_flow_operations* opCB, uint32_t new_rate)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+}
+
+
 /* ###### NEAT socket() implementation internals ######################### */
 int nsa_socket_internal(int domain, int type, int protocol,
                         int customFD, struct neat_flow* flow, int requestedSD)
@@ -223,11 +298,19 @@ int nsa_socket_internal(int domain, int type, int protocol,
       neatSocket->flow      = flow;
 
       memset(&neatSocket->flow_ops, 0, sizeof(neatSocket->flow_ops));
-      neatSocket->flow_ops.on_error     = &on_error;
-      neatSocket->flow_ops.on_connected = &on_connected;
-      neatSocket->flow_ops.on_readable  = &on_readable;
-      neatSocket->flow_ops.on_writable  = &on_writable;
-      neatSocket->flow_ops.userData     = neatSocket;
+      neatSocket->flow_ops.userData                  = neatSocket;
+      neatSocket->flow_ops.on_error                  = &on_error;
+      neatSocket->flow_ops.on_connected              = &on_connected;
+      neatSocket->flow_ops.on_readable               = &on_readable;
+      neatSocket->flow_ops.on_writable               = &on_writable;
+      neatSocket->flow_ops.on_all_written            = &on_all_written;
+      neatSocket->flow_ops.on_network_status_changed = &on_network_status_changed;
+      neatSocket->flow_ops.on_aborted                = &on_aborted;
+      neatSocket->flow_ops.on_timeout                = &on_timeout;
+      neatSocket->flow_ops.on_close                  = &on_close;
+      neatSocket->flow_ops.on_send_failure           = &on_send_failure;
+      neatSocket->flow_ops.on_slowdown               = &on_slowdown;
+      neatSocket->flow_ops.on_rate_hint              = &on_rate_hint;
       neat_set_operations(gSocketAPIInternals->neat_context,
                           neatSocket->flow, &neatSocket->flow_ops);
    }

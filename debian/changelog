@@ -1,5 +1,5 @@
-libneat (0.0.1~td107-1ppa1) xenial; urgency=high
+libneat (0.0.1~td108-1ppa1) xenial; urgency=high
 
   * Initial release.
 
- -- NEAT Project <neat@neat-project.org>  Fri, 25 Nov 2016 14:47:26 +0100
+ -- Thomas Dreibholz <dreibh@iem.uni-due.de>  Wed, 30 Nov 2016 08:08:08 +0800

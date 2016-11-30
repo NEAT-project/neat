@@ -64,6 +64,8 @@ struct neat_socketapi_internals
 #define NSAF_WRITABLE         (1 << 1)
 #define NSAF_CONNECTED        (1 << 2)
 #define NSAF_BAD              (1 << 3)
+
+#define NSAF_NONBLOCKING      (1 << 6)
 #define NSAF_CLOSE_ON_REMOVAL (1 << 7)
 
 struct neat_socket
@@ -81,6 +83,14 @@ struct neat_socket
    int                         socket_protocol;
    int                         socket_sd;
 };
+
+
+#define GET_NEAT_SOCKET(fd) \
+   struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(fd); \
+   if(neatSocket != NULL) { \
+      errno = EBADF; \
+      return(-1); \
+   }
 
 
 #ifdef __cplusplus

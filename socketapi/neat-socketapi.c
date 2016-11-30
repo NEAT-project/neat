@@ -36,6 +36,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -90,27 +91,57 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
 /* ###### NEAT close() implementation #################################### */
 int nsa_close(int fd)
 {
-   struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(fd);
-   if(neatSocket != NULL) {
-      if(neatSocket->flow != NULL) {
-         pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
-         neat_close(gSocketAPIInternals->neat_context, neatSocket->flow);
-         neatSocket->flow = NULL;
-         pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+   GET_NEAT_SOCKET(fd)
+
+   if(neatSocket->flow != NULL) {
+      pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+      neat_close(gSocketAPIInternals->neat_context, neatSocket->flow);
+      neatSocket->flow = NULL;
+      pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+   }
+   else if(neatSocket->socket_sd >= 0) {
+      if(neatSocket->flags & NSAF_CLOSE_ON_REMOVAL) {
+         printf("close(%d)\n", neatSocket->socket_sd);;
+         close(neatSocket->socket_sd);
+         neatSocket->socket_sd = -1;
       }
-      else if(neatSocket->socket_sd >= 0) {
-         if(neatSocket->flags & NSAF_CLOSE_ON_REMOVAL) {
-            printf("close(%d)\n", neatSocket->socket_sd);;
-            close(neatSocket->socket_sd);
-            neatSocket->socket_sd = -1;
-         }
-         else   printf("not close(%d)\n", neatSocket->socket_sd);;
+      else   printf("not close(%d)\n", neatSocket->socket_sd);;
+   }
+   pthread_mutex_destroy(&neatSocket->mutex);
+   free(neatSocket);
+   return(0);
+}
+
+
+/* ###### NEAT close() implementation #################################### */
+int nsa_fcntl(int fd, int cmd, ...)
+{
+   GET_NEAT_SOCKET(fd)
+
+   va_list va;
+   unsigned long int arg;
+   va_start (va, cmd);
+   arg = va_arg (va, unsigned long int);
+   va_end (va);
+
+   if(cmd == F_GETFL) {
+      int flags = 0;
+      if(neatSocket->flags & NSAF_NONBLOCKING) {
+         flags |= O_NONBLOCK;
       }
-      pthread_mutex_destroy(&neatSocket->mutex);
-      free(neatSocket);
+      return(flags);
+   }
+   else {
+      if(arg & O_NONBLOCK) {
+         neatSocket->flags |= NSAF_NONBLOCKING;
+      }
+      else {
+         neatSocket->flags &= ~NSAF_NONBLOCKING;
+      }
       return(0);
    }
-   errno = EBADF;
+
+   errno = ENXIO;
    return(-1);
 }
 

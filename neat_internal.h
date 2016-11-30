@@ -179,12 +179,11 @@ struct neat_pollable_socket
     struct sockaddr srcAddr;
     struct sockaddr dstAddr;
 
-    uint8_t                     multistream;
-    uint8_t                     sctp_neat_peer;         // peer supports neat
-    uint16_t                    sctp_streams_available;
-    uint16_t                    sctp_streams_used;
-
-    //struct neat_flow_list_head  sctp_multistream_flows;
+    uint8_t     multistream;
+    uint8_t     sctp_neat_peer;         // peer supports neat
+    uint16_t    sctp_streams_available;
+    uint16_t    sctp_streams_used;
+    struct neat_flow_list_head  sctp_multistream_flows;
 
     uv_poll_t *handle;
 
@@ -261,6 +260,7 @@ struct neat_flow
     unsigned int isServer : 1; // i.e. created via accept()
     unsigned int multistream : 1;
     unsigned int multistreamCheck : 1;
+    unsigned int multistreamShutdown: 1;
 
     struct neat_he_candidates *candidate_list;
 
@@ -269,6 +269,7 @@ struct neat_flow
     uv_poll_cb callback_fx;
 
     LIST_ENTRY(neat_flow) next_flow;
+    LIST_ENTRY(neat_flow) next_multistream_flow;
 };
 
 typedef struct neat_flow neat_flow;

@@ -1177,9 +1177,9 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 #endif // else !defined(USRSCTP_SUPPORT)
         // Same handling for both kernel and userspace SCTP
 #if defined(MSG_NOTIFICATION)
-	if (flags & MSG_NOTIFICATION) {
-	    // Event notification
-	    neat_log(NEAT_LOG_INFO, "SCTP event notification");
+    if (flags & MSG_NOTIFICATION) {
+        // Event notification
+        neat_log(NEAT_LOG_INFO, "SCTP event notification");
 
         if (!(flags & MSG_EOR)) {
             neat_log(NEAT_LOG_WARNING, "buffer overrun reading SCTP notification");
@@ -1187,13 +1187,11 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             neat_log(NEAT_LOG_DEBUG, "Exit 10");
             return READ_WITH_ERROR;
         }
-	    handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer
-								  + flow->readBufferSize));
+        handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer + flow->readBufferSize));
 
-
-	    //We don't update readBufferSize, so buffer is implicitly "freed"
-	    return READ_OK;
-	}
+        //We don't update readBufferSize, so buffer is implicitly "freed"
+        return READ_OK;
+    }
 #endif //defined(MSG_NOTIFICATION)
 
 // TODO KAH: the code below seems to do the same thing in both cases!
@@ -1419,7 +1417,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
          "value", stack_to_string(he_res->transport ), "remote_ip", "value", he_res->remote_ip,
          "remote_port", "value", he_res->remote_port, "cached", "value", (result)?1:0, "precedence",
          2, "score", 5);
-   
+
     neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
 
 end:
@@ -3640,6 +3638,11 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+
+    if (flow->multistream) {
+        stream_id = flow->multistream_id;
+    }
+
     HANDLE_OPTIONAL_ARGUMENTS_START()
         OPTIONAL_INTEGER_PRESENT(NEAT_TAG_STREAM_ID, stream_id, has_stream_id)
         // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_CONTEXT, context, has_context)
@@ -4399,7 +4402,26 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 static int
 neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
+    neat_flow *flow_itr = NULL;
+    uint8_t shutdown_ready = 1;
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    return NEAT_OK;
+
+    // check for all multistream flows if they are ready to shutdown/close
+    if (flow->socket->multistream) {
+        flow->multistreamShutdown = 1;
+        LIST_FOREACH(flow_itr, &flow->socket->sctp_multistream_flows, next_flow) {
+            if (flow_itr->multistreamShutdown == 0) {
+                shutdown_ready = 0;
+            }
+        }
+
+        if (!shutdown_ready) {
+            return NEAT_OK;
+        }
+    }
 
     if (shutdown(flow->socket->fd, SHUT_WR) == 0) {
         return NEAT_OK;

@@ -29,10 +29,6 @@ static char *config_property = "{\
         {\
             \"value\": \"SCTP\",\
             \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
         }\
     ]\
 }";\
@@ -138,7 +134,7 @@ main(int argc, char *argv[])
     struct neat_flow_operations ops[config_max_flows];
     int result = 0;
     int arg = 0;
-    uint32_t num_flows = 1;
+    uint32_t num_flows = 2;
     uint32_t i = 0;
     result = EXIT_SUCCESS;
 

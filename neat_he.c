@@ -143,7 +143,7 @@ delayed_he_open(struct neat_flow *flow, uv_poll_cb callback_fx)
     flow->multistreamCheck = 1;
 
     uv_timer_init(flow->ctx->loop, flow->multistream_timer);
-    uv_timer_start(flow->multistream_timer, on_delayed_he_open, 100, 0);
+    uv_timer_start(flow->multistream_timer, on_delayed_he_open, 200, 0);
     flow->callback_fx = callback_fx;
     flow->multistream_timer->data = (void *) flow;
 }
@@ -156,7 +156,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     const char *family;
     struct neat_he_candidate *candidate;
     struct neat_he_candidate *next_candidate;
-    uint8_t check_multistream = 0;
+    uint8_t multistream_probe = 0;
     struct neat_flow *piggyback_flow = NULL;
 
     i = 0;
@@ -169,7 +169,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             proto = "TCP";
             break;
         case NEAT_STACK_SCTP:
-            check_multistream = 1;
+            multistream_probe = 1;
             proto = "SCTP";
             break;
         case NEAT_STACK_SCTP_UDP:
@@ -218,19 +218,24 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     candidate = candidate_list->tqh_first;
 
     // SCTP is generally allowed
-    if (check_multistream) {
+    if (multistream_probe) {
         // check if there is already a piggyback assoc
         if ((piggyback_flow = neat_find_multistream_assoc(ctx, flow)) != NULL) {
             neat_log(NEAT_LOG_DEBUG, "%s - using piggyback assoc", __func__);
             // we have a piggyback assoc...
 
-            piggyback_flow->multistream = 1;
-            piggyback_flow->socket->multistream = 1;
+            if (piggyback_flow->multistream == 0) {
+                piggyback_flow->multistream = 1;
+                piggyback_flow->socket->multistream = 1;
+                LIST_INSERT_HEAD(&piggyback_flow->socket->sctp_multistream_flows, piggyback_flow, next_multistream_flow);
+            }
+
+            LIST_INSERT_HEAD(&piggyback_flow->socket->sctp_multistream_flows, flow, next_multistream_flow);
 
             flow->multistream = 1;
+            flow->multistream_id = ++(flow->socket->sctp_streams_used);
             flow->everConnected = 1;
             flow->isPolling = 1;
-            flow->multistream_id = ++(flow->socket->sctp_streams_used);
             flow->firstWritePending = 1;
 
             json_decref(flow->properties);

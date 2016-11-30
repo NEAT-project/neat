@@ -30,6 +30,8 @@ static char *config_property = "{\
 }";
 static uint16_t config_log_level = 1;
 static const char *response_header = "HTTP/1.0 200 OK\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
+static const char *response_body_a = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>NEAT Webserver</title></head><body><h1>Welcome to NEAT!</h1>";
+static const char *response_body_b = "</body></html>";
 
 #define BUFFERSIZE 33768
 
@@ -146,7 +148,7 @@ on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s", stats);
     }
 
-    snprintf(buffer, BUFFERSIZE, "%s%s%s%s%s\r\n", response_header, "<h1>Welcome to NEAT</h1>", "<pre>", stats, "</pre>");
+    snprintf(buffer, BUFFERSIZE, "%s%s%s%s%s%s\r\n", response_header, response_body_a, "<pre>", stats, "</pre>", response_body_b);
 
 
     code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) buffer, strlen(buffer), NULL, 0);
@@ -267,7 +269,7 @@ main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, 8080, NULL, 0)) {
+    if (neat_accept(ctx, flow, 80, NULL, 0)) {
         fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;

@@ -1336,7 +1336,7 @@ install_security(struct neat_he_candidate *candidate)
 
 static void on_pm_he_error(struct neat_ctx *ctx, struct neat_flow *flow, int error);
 
-#if 0
+#if 1
 static void
 send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_he_res *he_res, _Bool result)
 {
@@ -1385,6 +1385,7 @@ end:
 }
 #endif
 
+#if 0
 static void
 send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_he_res *he_res, _Bool result)
 {
@@ -1470,6 +1471,7 @@ end:
         json_decref(result_array);
     }
 }
+#endif
 
 static void
 he_connected_cb(uv_poll_t *handle, int status, int events)

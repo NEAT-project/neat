@@ -1336,6 +1336,7 @@ install_security(struct neat_he_candidate *candidate)
 
 static void on_pm_he_error(struct neat_ctx *ctx, struct neat_flow *flow, int error);
 
+#if 0
 static void
 send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_he_res *he_res, _Bool result)
 {
@@ -1377,6 +1378,93 @@ end:
     free(he_res->interface);
     free(he_res->remote_ip);
     free(he_res);
+
+    if (result_array) {
+        json_decref(result_array);
+    }
+}
+#endif
+
+static void
+send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_he_res *he_res, _Bool result)
+{
+    int rc;
+    const char *home_dir;
+    const char *socket_path;
+    char socket_path_buf[128];
+    json_t *prop_obj = NULL;
+    json_t *result_obj = NULL;
+    json_t *result_array = NULL;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    assert(he_res);
+
+    socket_path = getenv("NEAT_PM_SOCKET");
+    if (!socket_path) {
+        if ((home_dir = getenv("HOME")) == NULL) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");
+            goto end;
+        }
+
+        rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_cib_socket", home_dir);
+        if (rc < 0 || rc >= 128) {
+            neat_log(NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
+            goto end;
+        }
+
+        socket_path = socket_path_buf;
+    }
+
+    prop_obj = json_pack("{s:{ss},s:{ss},s:{si},s:{sbsisi}}",
+        "transport", "value", stack_to_string(he_res->transport ),
+        "remote_ip", "value", he_res->remote_ip,
+        "remote_port", "value", he_res->remote_port,
+        "cached", "value", (result)?1:0, "precedence", 2, "score", 5);
+    if (prop_obj == NULL) {
+        goto end;
+    }
+
+    if (json_object_update_missing(prop_obj, flow->properties) == -1) {
+        goto end;
+    }
+
+    result_obj = json_pack("{s:[{s:{ss}}],s:b}",
+       "match", "interface", "value", he_res->interface,
+       "link", true);
+    if (result_obj == NULL) {
+        goto end;
+    }
+  
+    if (json_object_set(result_obj, "properties", prop_obj) == -1) {
+        goto end;
+    }
+    json_decref(prop_obj);
+
+    result_array = json_array();
+    if (result_array == NULL) {
+        goto end;
+    }
+
+    if (json_array_append(result_array, result_obj) == -1) {
+        goto end;
+    }
+    json_decref(result_obj);
+   
+    neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
+
+end:
+    free(he_res->interface);
+    free(he_res->remote_ip);
+    free(he_res);
+
+    if (prop_obj) {
+        json_decref(prop_obj);
+    }
+
+    if (result_obj) {
+        json_decref(result_obj);
+    }
 
     if (result_array) {
         json_decref(result_array);

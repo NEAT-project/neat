@@ -82,8 +82,9 @@ struct neat_socket
 extern "C" {
 #endif
 
+extern struct neat_socketapi_internals* gSocketAPIInternals;
+
 struct neat_socketapi_internals* nsa_initialize();
-struct neat_socketapi_internals* nsa_get();
 
 int nsa_socket_internal(int domain, int type, int protocol,
                         int customFD, struct neat_flow* flow, int requestedSD);

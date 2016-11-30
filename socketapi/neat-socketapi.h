@@ -209,7 +209,7 @@ void nsa_cleanup();
 int nsa_map_socket(int systemSD, int neatSD);
 int nsa_unmap_socket(int neatSD);
 
-int nsa_socket(int domain, int type, int protocol);
+int nsa_socket(int domain, int type, int protocol, const char* properties);
 int nsa_open(const char* pathname, int flags, mode_t mode);
 int nsa_creat(const char* pathname, mode_t mode);
 int nsa_bind(int sockfd, struct sockaddr* my_addr, socklen_t addrlen);

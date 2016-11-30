@@ -128,13 +128,6 @@ struct neat_socketapi_internals* nsa_initialize()
 }
 
 
-/* ###### Initialize ##################################################### */
-struct neat_socketapi_internals* nsa_get()
-{
-   return(gSocketAPIInternals);
-}
-
-
 /* ###### Clean up ####################################################### */
 void nsa_cleanup()
 {
@@ -186,7 +179,7 @@ int nsa_socket_internal(int domain, int type, int protocol,
 
    if(flow == NULL) {   /* NEAT flow */
       neatSocket->socket_sd = -1;
-//       neatSocket->flow = ...
+      neatSocket->flow = flow;
    }
    else if(customFD < 0) {   /* System socket to be created */
       neatSocket->socket_sd = socket(domain, type, protocol);

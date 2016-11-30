@@ -58,13 +58,32 @@ int nsa_unmap_socket(int neatSD)
 
 
 /* ###### NEAT socket() implementation ################################### */
-int nsa_socket(int domain, int type, int protocol)
+int nsa_socket(int domain, int type, int protocol, const char* properties)
 {
-   if(nsa_initialize() == NULL) {
-      return(-1);
-   }
+   int result = -1;
 
-   return(nsa_socket_internal(domain, type, protocol, -1, NULL, -1));
+   if(nsa_initialize() != NULL) {
+
+      if(properties != NULL) {
+         pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+         struct neat_flow* flow = neat_new_flow(gSocketAPIInternals->neat_context);
+         if(flow != NULL) {
+            result = nsa_socket_internal(AF_UNSPEC, 0, 0, -1, flow, -1);
+         }
+         else {
+            errno = EINVAL;
+         }
+         pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+      }
+      else {
+         result = nsa_socket_internal(domain, type, protocol, -1, NULL, -1);
+      }
+
+   }
+   else {
+      errno = EUNATCH;
+   }
+   return(result);
 }
 
 
@@ -74,7 +93,10 @@ int nsa_close(int fd)
    struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(fd);
    if(neatSocket != NULL) {
       if(neatSocket->flow != NULL) {
-
+         pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+         neat_close(gSocketAPIInternals->neat_context, neatSocket->flow);
+         neatSocket->flow = NULL;
+         pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
       }
       else if(neatSocket->socket_sd >= 0) {
          if(neatSocket->flags & NSAF_CLOSE_ON_REMOVAL) {

@@ -293,6 +293,62 @@ void nsa_notify_main_loop()
 /* ###### Main loop ###################################################### */
 static void* nsa_main_loop(void* args)
 {
-   puts("MAIN LOOP!");
+   /* Get the underlying single file descriptor from libuv. Wait on this
+      descriptor to become readable to know when to ask NEAT to run another
+      loop ONCE on everything that it might have to work on. */
+   const int backendFD = neat_get_backend_fd(gSocketAPIInternals->neat_context);
+
+   /* kick off the event loop first */
+// ???? Is this really necessary here? ????
+   pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+   neat_start_event_loop(gSocketAPIInternals->neat_context, NEAT_RUN_ONCE);
+   pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+
+
+   puts("MAIN LOOP START!");
+
+   for(;;) {
+      /* ====== Prepare parameters for poll() ============================ */
+      pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+
+      const bool    isShuttingDown = gSocketAPIInternals->main_loop_thread_shutdown;
+      int           timeout        = neat_get_backend_timeout(gSocketAPIInternals->neat_context);
+
+      const int     nfds = 2;
+      struct pollfd ufds[nfds];
+      ufds[0].fd      = gSocketAPIInternals->main_loop_pipe[0];   /* The wake-up pipe */
+      ufds[0].events  = POLLIN;
+      ufds[0].revents = 0;
+      ufds[1].fd      = backendFD;   /* The back-end */
+      ufds[1].events  = POLLERR|POLLIN|POLLHUP;
+      ufds[1].revents = 0;
+
+      pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+
+
+      /* ====== Call poll() ============================================== */
+      if(isShuttingDown) {
+         break;
+      }
+      int results = poll((struct pollfd*)&ufds, nfds, timeout);
+
+
+      /* ====== Handle poll() results ==================================== */
+      if(results > 0) {
+         if(ufds[0].revents & POLLIN) {   /* The wake-up pipe */
+            char      buffer[128];
+            const int r = read(gSocketAPIInternals->main_loop_pipe[0],
+                               (char*)&buffer, sizeof(buffer));
+            printf("MAIN LOOP WAKE-UP: r=%d\n", r);
+         }
+      }
+
+      pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+      neat_start_event_loop(gSocketAPIInternals->neat_context, NEAT_RUN_ONCE);
+      pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+   }
+
+   puts("MAIN LOOP STOP!");
+
    return(NULL);
 }

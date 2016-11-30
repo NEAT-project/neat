@@ -84,21 +84,21 @@ struct redblacktree_node* rbt_get_first(const struct redblacktree* rbt);
 struct redblacktree_node* rbt_get_last(const struct redblacktree* rbt);
 struct redblacktree_node* rbt_get_prev(const struct redblacktree*     rbt,
                                        const struct redblacktree_node* node);
-struct redblacktree_node* rbt_get_next(const struct redblacktree*     rbt,
+struct redblacktree_node* rbt_get_next(const struct redblacktree*      rbt,
                                        const struct redblacktree_node* node);
 struct redblacktree_node* rbt_get_nearest_prev(const struct redblacktree*      rbt,
                                                const struct redblacktree_node* cmpNode);
-struct redblacktree_node* rbt_get_nearest_next(const struct redblacktree*     rbt,
+struct redblacktree_node* rbt_get_nearest_next(const struct redblacktree*      rbt,
                                                const struct redblacktree_node* cmpNode);
 size_t rbt_get_elements(const struct redblacktree* rbt);
-struct redblacktree_node* rbt_insert(struct redblacktree*     rbt,
+struct redblacktree_node* rbt_insert(struct redblacktree*      rbt,
                                      struct redblacktree_node* node);
-struct redblacktree_node* rbt_remove(struct redblacktree*     rbt,
+struct redblacktree_node* rbt_remove(struct redblacktree*      rbt,
                                      struct redblacktree_node* node);
-struct redblacktree_node* rbt_find(const struct redblacktree*     rbt,
+struct redblacktree_node* rbt_find(const struct redblacktree*      rbt,
                                    const struct redblacktree_node* cmpNode);
 redblacktree_node_value_type rbt_get_value_sum(const struct redblacktree* rbt);
-struct redblacktree_node* rbt_get_node_by_value(const struct redblacktree* rbt,
+struct redblacktree_node* rbt_get_node_by_value(const struct redblacktree*    rbt,
                                                 redblacktree_node_value_type  value);
 
 #ifdef __cplusplus

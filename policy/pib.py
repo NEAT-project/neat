@@ -3,10 +3,9 @@ import hashlib
 import json
 import logging
 import os
-import shutil
 import time
 
-from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError
+from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
@@ -250,12 +249,12 @@ class PIB(list):
     def register(self, policy):
         """Register new policy
 
-        Policies are ordered
+        Policies are ordered by their priority attribute
         """
         # check for existing policies with identical match properties
         if policy.match in [p.match for p in self.policies]:
-            logging.debug("Policy match fields for policy %s already registered. " % (policy.uid))
-            # return
+            # logging.debug("Policy match fields for policy %s already registered. " % (policy.uid))
+            pass
 
         # TODO tie breaker using match_len?
         uid = bisect.bisect([p.priority for p in self.policies], policy.priority)
@@ -277,7 +276,7 @@ class PIB(list):
 
         assert isinstance(input_properties, PropertyArray)
         if cand_id is None:
-            cand_id = ""
+            cand_id = ''
 
         logging.info("matching policies for candidate %s" % cand_id)
 
@@ -313,21 +312,10 @@ class PIB(list):
         return candidates
 
     def dump(self):
-        ts = shutil.get_terminal_size()
-        tcol = ts.columns
-        s = "=" * int((tcol - 11) / 2) + " PIB START " + "=" * int((tcol - 11) / 2) + "\n"
+        print(term_separator("PIB START"))
         for p in self.policies:
-            s += str(p) + '\n'
-        s += "=" * int((tcol - 9) / 2) + " PIB END " + "=" * int((tcol - 9) / 2) + "\n"
-        print(s)
-
-
-def term_col():
-    """
-    Get the width of the terminal
-    """
-    ts = shutil.get_terminal_size()
-    return ts.columns
+            print(str(p))
+        print(term_separator("PIB END"))
 
 
 if __name__ == "__main__":

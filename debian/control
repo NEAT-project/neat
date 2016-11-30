@@ -1,6 +1,6 @@
 Source: libneat
 Maintainer: NEAT Project <neat@neat-project.org>
-Section: net
+Section: libdevel
 Priority: optional
 Build-Depends: cmake,
                debhelper (>= 9),

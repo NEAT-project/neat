@@ -1454,6 +1454,10 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         goto end;
     }
 
+    if (json_object_update_missing(prop_obj, flow->properties) == -1) {
+        goto end;
+    }
+
     // TODO: Remove this.
     char *json_str = json_dumps(prop_obj, JSON_INDENT(2));
     neat_log(NEAT_LOG_DEBUG, json_str);

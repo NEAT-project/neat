@@ -60,21 +60,26 @@ struct neat_socketapi_internals
 };
 
 
-#define NSAF_CLOSE_ON_REMOVAL (1 << 0)
+#define NSAF_READABLE         (1 << 0)
+#define NSAF_WRITABLE         (1 << 1)
+#define NSAF_CONNECTED        (1 << 2)
+#define NSAF_BAD              (1 << 3)
+#define NSAF_CLOSE_ON_REMOVAL (1 << 7)
 
 struct neat_socket
 {
-   struct redblacktree_node node;
-   pthread_mutex_t          mutex;
-   int                      descriptor;
+   struct redblacktree_node    node;
+   pthread_mutex_t             mutex;
+   int                         descriptor;
 
-   int                      flags;
+   int                         flags;
 
-   struct neat_flow*        flow;
-   int                      socket_domain;
-   int                      socket_type;
-   int                      socket_protocol;
-   int                      socket_sd;
+   struct neat_flow*           flow;
+   struct neat_flow_operations flow_ops;
+   int                         socket_domain;
+   int                         socket_type;
+   int                         socket_protocol;
+   int                         socket_sd;
 };
 
 

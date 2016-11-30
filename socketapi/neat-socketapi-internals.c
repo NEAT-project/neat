@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <errno.h>
 #include <assert.h>
 #include <sys/socket.h>
@@ -164,6 +165,46 @@ void nsa_cleanup()
 }
 
 
+/* ###### NEAT on_error() callback ################################### */
+static neat_error_code on_error(struct neat_flow_operations* opCB)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+   neatSocket->flags |= NSAF_BAD;
+   return(0);
+}
+
+
+/* ###### NEAT on_connected() callback ################################### */
+static neat_error_code on_connected(struct neat_flow_operations* opCB)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+   neatSocket->flags |= NSAF_CONNECTED;
+   return(0);
+}
+
+
+/* ###### NEAT on_readable() callback #################################### */
+static neat_error_code on_readable(struct neat_flow_operations* opCB)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+   neatSocket->flags |= NSAF_READABLE;
+   return(0);
+}
+
+
+/* ###### NEAT on_writable() callback #################################### */
+static neat_error_code on_writable(struct neat_flow_operations* opCB)
+{
+   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   assert(neatSocket != NULL);
+   neatSocket->flags |= NSAF_WRITABLE;
+   return(0);
+}
+
+
 /* ###### NEAT socket() implementation internals ######################### */
 int nsa_socket_internal(int domain, int type, int protocol,
                         int customFD, struct neat_flow* flow, int requestedSD)
@@ -177,13 +218,22 @@ int nsa_socket_internal(int domain, int type, int protocol,
       return(-1);
    }
 
-   if(flow == NULL) {   /* NEAT flow */
+   if(flow != NULL) {   /* NEAT flow */
       neatSocket->socket_sd = -1;
-      neatSocket->flow = flow;
+      neatSocket->flow      = flow;
+
+      memset(&neatSocket->flow_ops, 0, sizeof(neatSocket->flow_ops));
+      neatSocket->flow_ops.on_error     = &on_error;
+      neatSocket->flow_ops.on_connected = &on_connected;
+      neatSocket->flow_ops.on_readable  = &on_readable;
+      neatSocket->flow_ops.on_writable  = &on_writable;
+      neatSocket->flow_ops.userData     = neatSocket;
+      neat_set_operations(gSocketAPIInternals->neat_context,
+                          neatSocket->flow, &neatSocket->flow_ops);
    }
    else if(customFD < 0) {   /* System socket to be created */
       neatSocket->socket_sd = socket(domain, type, protocol);
-      neatSocket->flags     = NSAF_CLOSE_ON_REMOVAL;
+      neatSocket->flags |= NSAF_CLOSE_ON_REMOVAL;
    }
    else {   /* Existing socket, given by its socket descriptor */
       neatSocket->socket_sd = customFD;
@@ -203,7 +253,6 @@ int nsa_socket_internal(int domain, int type, int protocol,
    neatSocket->socket_protocol = protocol;
 
    /* ====== Add new socket to socket storage ============================ */
-   pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
    if(requestedSD < 0) {
       neatSocket->descriptor = ibm_allocate_id(gSocketAPIInternals->socket_identifier_bitmap);
    }
@@ -214,7 +263,6 @@ int nsa_socket_internal(int domain, int type, int protocol,
    if(neatSocket->descriptor >= 0) {
       assert(rbt_insert(&gSocketAPIInternals->socket_set, &neatSocket->node) == &neatSocket->node);
    }
-   pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
 
    /* ====== Has there been a problem? =================================== */
    if(neatSocket->descriptor < 0) {

@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 
-static char* properties = "{\
+static const char* properties = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\

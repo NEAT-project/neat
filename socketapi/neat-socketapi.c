@@ -63,9 +63,9 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
    int result = -1;
 
    if(nsa_initialize() != NULL) {
+      pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
 
       if(properties != NULL) {
-         pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
          struct neat_flow* flow = neat_new_flow(gSocketAPIInternals->neat_context);
          if(flow != NULL) {
             result = nsa_socket_internal(AF_UNSPEC, 0, 0, -1, flow, -1);
@@ -73,12 +73,12 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
          else {
             errno = EINVAL;
          }
-         pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
       }
       else {
          result = nsa_socket_internal(domain, type, protocol, -1, NULL, -1);
       }
 
+      pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
    }
    else {
       errno = EUNATCH;

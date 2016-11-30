@@ -166,9 +166,9 @@ void nsa_cleanup()
 
 
 /* ###### NEAT on_error() callback ####################################### */
-static neat_error_code on_error(struct neat_flow_operations* opCB)
+static neat_error_code on_error(struct neat_flow_operations* ops)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
    neatSocket->flags |= NSAF_BAD;
    return(0);
@@ -176,9 +176,9 @@ static neat_error_code on_error(struct neat_flow_operations* opCB)
 
 
 /* ###### NEAT on_connected() callback ################################### */
-static neat_error_code on_connected(struct neat_flow_operations* opCB)
+static neat_error_code on_connected(struct neat_flow_operations* ops)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
    neatSocket->flags |= NSAF_CONNECTED;
    return(0);
@@ -186,9 +186,9 @@ static neat_error_code on_connected(struct neat_flow_operations* opCB)
 
 
 /* ###### NEAT on_readable() callback #################################### */
-static neat_error_code on_readable(struct neat_flow_operations* opCB)
+static neat_error_code on_readable(struct neat_flow_operations* ops)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
    neatSocket->flags |= NSAF_READABLE;
    return(0);
@@ -196,9 +196,9 @@ static neat_error_code on_readable(struct neat_flow_operations* opCB)
 
 
 /* ###### NEAT on_writable() callback #################################### */
-static neat_error_code on_writable(struct neat_flow_operations* opCB)
+static neat_error_code on_writable(struct neat_flow_operations* ops)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
    neatSocket->flags |= NSAF_WRITABLE;
    return(0);
@@ -206,9 +206,9 @@ static neat_error_code on_writable(struct neat_flow_operations* opCB)
 
 
 /* ###### NEAT on_all_written() callback ################################# */
-static neat_error_code on_all_written(struct neat_flow_operations* opCB)
+static neat_error_code on_all_written(struct neat_flow_operations* ops)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
    neatSocket->flags |= NSAF_WRITABLE;
    return(0);
@@ -216,18 +216,18 @@ static neat_error_code on_all_written(struct neat_flow_operations* opCB)
 
 
 /* ###### NEAT on_network_status_changed() callback ###################### */
-static neat_error_code on_network_status_changed(struct neat_flow_operations* opCB)
+static neat_error_code on_network_status_changed(struct neat_flow_operations* ops)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
    return(0);
 }
 
 
 /* ###### NEAT on_aborted() callback ##################################### */
-static neat_error_code on_aborted(struct neat_flow_operations* opCB)
+static neat_error_code on_aborted(struct neat_flow_operations* ops)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
    neatSocket->flags |= NSAF_BAD;
    return(0);
@@ -235,9 +235,9 @@ static neat_error_code on_aborted(struct neat_flow_operations* opCB)
 
 
 /* ###### NEAT on_timeout() callback ##################################### */
-static neat_error_code on_timeout(struct neat_flow_operations* opCB)
+static neat_error_code on_timeout(struct neat_flow_operations* ops)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
    neatSocket->flags |= NSAF_BAD;
    return(0);
@@ -245,9 +245,9 @@ static neat_error_code on_timeout(struct neat_flow_operations* opCB)
 
 
 /* ###### NEAT on_close() callback ####################################### */
-static neat_error_code on_close(struct neat_flow_operations* opCB)
+static neat_error_code on_close(struct neat_flow_operations* ops)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
    neatSocket->flags |= NSAF_BAD;
    return(0);
@@ -255,27 +255,27 @@ static neat_error_code on_close(struct neat_flow_operations* opCB)
 
 
 /* ###### NEAT on_send_failure() callback ################################ */
-static void on_send_failure(struct neat_flow_operations* opCB,
+static void on_send_failure(struct neat_flow_operations* ops,
                             int context, const unsigned char* unsent)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
    neatSocket->flags |= NSAF_BAD;
 }
 
 
 /* ###### NEAT on_slowdown() callback #################################### */
-static void on_slowdown(struct neat_flow_operations* opCB, int ecn, uint32_t rate)
+static void on_slowdown(struct neat_flow_operations* ops, int ecn, uint32_t rate)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
 }
 
 
 /* ###### NEAT on_rate_hint() callback ################################### */
-static void on_rate_hint(struct neat_flow_operations* opCB, uint32_t new_rate)
+static void on_rate_hint(struct neat_flow_operations* ops, uint32_t new_rate)
 {
-   struct neat_socket* neatSocket = (struct neat_socket*)opCB->userData;
+   struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
 }
 

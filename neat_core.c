@@ -1385,35 +1385,6 @@ end:
 }
 #endif
 
-#if 0
-    if (json_object_update_missing(prop_obj, flow->properties) == -1) {
-        goto end;
-    }
-
-    result_obj = json_pack("{s:[{s:{ss}}],s:b}",
-       "match", "interface", "value", he_res->interface,
-       "link", true);
-    if (result_obj == NULL) {
-        goto end;
-    }
-  
-    if (json_object_set(result_obj, "properties", prop_obj) == -1) {
-        goto end;
-    }
-    json_decref(prop_obj);
-
-    result_array = json_array();
-    if (result_array == NULL) {
-        goto end;
-    }
-
-    if (json_array_append(result_array, result_obj) == -1) {
-        goto end;
-    }
-    json_decref(result_obj);
-#endif
-
-#if 1
 static void
 send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_he_res *he_res, _Bool result)
 {
@@ -1470,18 +1441,20 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         goto end;
     }
 
+    result_array = json_array();
+    if (result_array == NULL) {
+        goto end;
+    }
+
+    if (json_array_append(result_array, result_obj) == -1) {
+        goto end;
+    }
+
     // TODO: Remove this.
-    char *json_str = json_dumps(result_obj, JSON_INDENT(2));
+    char *json_str = json_dumps(result_array, JSON_INDENT(2));
     neat_log(NEAT_LOG_DEBUG, json_str);
     free(json_str);
    
-    // TODO: Remove this.  
-    result_array = json_pack("[{s:[{s:{ss}}],s:b,s:{s:{ss},s:{ss},s:{si},s:{sbsisi}}}]",
-        "match", "interface", "value", he_res->interface, "link", true, "properties", "transport",
-        "value", stack_to_string(he_res->transport ), "remote_ip", "value", he_res->remote_ip,
-        "remote_port", "value", he_res->remote_port, "cached", "value", (result)?1:0, "precedence",
-        2, "score", 5);
-
     neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
 
 end:
@@ -1501,7 +1474,6 @@ end:
         json_decref(result_array);
     }
 }
-#endif
 
 static void
 he_connected_cb(uv_poll_t *handle, int status, int events)

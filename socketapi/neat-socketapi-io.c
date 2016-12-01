@@ -62,16 +62,16 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
              errno = EAGAIN;
              return(-1);
           break;
+         case NEAT_ERROR_IO:
+             errno = EIO;
+             return(-1);
+          break;
          case NEAT_ERROR_BAD_ARGUMENT:
              errno = EINVAL;
              return(-1);
           break;
          case NEAT_ERROR_OUT_OF_MEMORY:
              errno = ENOMEM;
-             return(-1);
-          break;
-         case NEAT_ERROR_IO:
-             errno = EIO;
              return(-1);
           break;
       }
@@ -91,7 +91,41 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->flow != NULL) {
 
-      return(0);
+      // FIXME: Scatter/gather I/O not yet implemented!
+      assert(msg->msg_iovlen == 1);
+
+      uint32_t actual_amount = 0;
+      pthread_mutex_lock(&neatSocket->mutex);
+      const neat_error_code result =
+         neat_read(gSocketAPIInternals->neat_context, neatSocket->flow,
+                   msg->msg_iov[0].iov_base, msg->msg_iov[0].iov_len, &actual_amount,
+                   NULL, 0);
+      pthread_mutex_unlock(&neatSocket->mutex);
+
+      switch(result) {
+         case NEAT_OK:
+            return((ssize_t)actual_amount);
+          break;
+         case NEAT_ERROR_WOULD_BLOCK:
+             errno = EAGAIN;
+             return(-1);
+          break;
+         case NEAT_ERROR_IO:
+             errno = EIO;
+             return(-1);
+          break;
+         case NEAT_ERROR_MESSAGE_TOO_BIG:
+             errno = EMSGSIZE;
+             return(-1);
+          break;
+         case NEAT_ERROR_BAD_ARGUMENT:
+             errno = EINVAL;
+             return(-1);
+          break;
+      }
+
+      errno = ENOENT;   /* Unexpected error from NEAT Core */
+      return(-1);
    }
    else {
       return(recvmsg(neatSocket->socket_sd, msg, flags));

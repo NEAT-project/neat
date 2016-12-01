@@ -227,6 +227,10 @@ struct neat_flow
     size_t buffer_count;
     struct neat_flow_statistics flow_stats;
 
+    // The memory buffer for reading
+    struct neat_message_queue_head buffered_message_in;
+    size_t buffer_size_in;
+
     size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.
     unsigned char   *readBuffer;    // memory for read buffer

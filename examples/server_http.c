@@ -29,10 +29,9 @@ static char *config_property = "{\
     ]\
 }";
 static uint16_t config_log_level = 1;
-static const char *response_header = "HTTP/1.0 200 OK\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static const char *response_body_a = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>NEAT Webserver</title></head><body><h1>Welcome to NEAT!</h1>";
-static const char *response_body_b = "</body></html>";
-
+static const char *response_header      = "HTTP/1.0 200 OK\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
+static const char *response_body_a      = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>NEAT Webserver</title></head><body><h1>Welcome to NEAT!</h1>";
+static const char *response_body_b      = "</body></html>";
 #define BUFFERSIZE 33768
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);

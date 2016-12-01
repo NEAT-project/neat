@@ -1071,6 +1071,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 #endif
 #if (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
     struct cmsghdr *cmsg;
+    unsigned char *multistream_buffer;
 #endif
 
     struct msghdr msghdr;
@@ -1162,16 +1163,38 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     }
 
     if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) &&
-        (!flow->readBufferMsgComplete)) {
+#if !defined(USRSCTP_SUPPORT)
+        ((!flow->readBufferMsgComplete) || flow->socket->multistream)) {
+#else // !defined(USRSCTP_SUPPORT)
+        (!flow->readBufferMsgComplete) {
 
         if (resize_read_buffer(flow) != READ_OK) {
             neat_log(NEAT_LOG_DEBUG, "Exit 7");
             return READ_WITH_ERROR;
         }
+#endif // !defined(USRSCTP_SUPPORT)
 
 #if !defined(USRSCTP_SUPPORT)
-        iov.iov_base = flow->readBuffer + flow->readBufferSize;
-        iov.iov_len = flow->readBufferAllocation - flow->readBufferSize;
+        if (flow->socket->multistream) {
+            if ((multistream_buffer = malloc(flow->readSize)) == NULL) {
+                neat_log(NEAT_LOG_ERROR, "%s - allocating multistream buffer faield", __func__);
+                return READ_WITH_ERROR;
+            }
+
+            iov.iov_base = multistream_buffer;
+            iov.iov_len = flow->readSize;
+
+        } else {
+            if (resize_read_buffer(flow) != READ_OK) {
+                neat_log(NEAT_LOG_DEBUG, "Exit 7");
+                return READ_WITH_ERROR;
+            }
+
+            iov.iov_base = flow->readBuffer + flow->readBufferSize;
+            iov.iov_len = flow->readBufferAllocation - flow->readBufferSize;
+        }
+
+
         msghdr.msg_name = NULL;
         msghdr.msg_namelen = 0;
         msghdr.msg_iov = &iov;
@@ -1254,6 +1277,12 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer + flow->readBufferSize));
 
             //We don't update readBufferSize, so buffer is implicitly "freed"
+#if !defined(USRSCTP_SUPPORT)
+            if (flow->socket->multistream) {
+                free(multistream_buffer);
+            }
+#endif
+
             return READ_OK;
         }
 #endif //defined(MSG_NOTIFICATION)
@@ -1262,49 +1291,63 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             if ((flow_temp = neat_sctp_get_flow_by_sid(socket, stream_id)) == NULL) {
                 neat_log(NEAT_LOG_DEBUG, "%s - new incoming flow!", __func__);
 
+                neat_flow *listen_flow = flow->socket->listen_socket->flow;
                 neat_flow *new_flow = neat_new_flow(ctx);
-                new_flow->name = strdup (flow->name);
+                new_flow->name = strdup (listen_flow->name);
 
-                new_flow->port = flow->port;
-                new_flow->propertyMask = flow->propertyMask;
-                new_flow->propertyAttempt = flow->propertyAttempt;
-                new_flow->propertyUsed = flow->propertyUsed;
+                new_flow->port = listen_flow->port;
+                new_flow->propertyMask = listen_flow->propertyMask;
+                new_flow->propertyAttempt = listen_flow->propertyAttempt;
+                new_flow->propertyUsed = listen_flow->propertyUsed;
                 new_flow->everConnected = 1;
                 new_flow->socket = flow->socket;
 
                 new_flow->ctx = ctx;
-                new_flow->writeLimit = flow->writeLimit;
-                new_flow->writeSize = flow->writeSize;
-                new_flow->readSize = flow->readSize;
+                new_flow->writeLimit = listen_flow->writeLimit;
+                new_flow->writeSize = listen_flow->writeSize;
+                new_flow->readSize = listen_flow->readSize;
 
                 new_flow->ownedByCore = 1;
                 new_flow->isServer = 1;
-                new_flow->isSCTPExplicitEOR = flow->isSCTPExplicitEOR;
+                new_flow->isSCTPExplicitEOR = listen_flow->isSCTPExplicitEOR;
                 new_flow->operations = calloc (sizeof(struct neat_flow_operations), 1);
 
-                new_flow->operations->on_connected = flow->operations->on_connected;
-                new_flow->operations->on_readable = flow->operations->on_readable;
-                new_flow->operations->on_writable = flow->operations->on_writable;
-                new_flow->operations->on_error = flow->operations->on_error;
+                new_flow->operations->on_connected = listen_flow->operations->on_connected;
+                new_flow->operations->on_readable = listen_flow->operations->on_readable;
+                new_flow->operations->on_writable = listen_flow->operations->on_writable;
+                new_flow->operations->on_error = listen_flow->operations->on_error;
                 new_flow->operations->ctx = ctx;
-                new_flow->operations->flow = flow;
-                new_flow->operations->userData = flow->operations->userData;
+                new_flow->operations->flow = new_flow;
+                new_flow->operations->userData = listen_flow->operations->userData;
 
                 new_flow->multistream = 1;
                 new_flow->multistream_id = stream_id;
+
+                LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, new_flow, next_multistream_flow);
+
+                new_flow->operations->on_connected(new_flow->operations);
+
+#if !defined(USRSCTP_SUPPORT)
+                if (flow->socket->multistream) {
+                    free(multistream_buffer);
+                }
+#endif
+                return READ_OK;
             }
         }
 
 // TODO KAH: the code below seems to do the same thing in both cases!
 // Should refactor it into one code path.
 #if !defined(USRSCTP_SUPPORT)
-        flow->readBufferSize += n;
-        if ((msghdr.msg_flags & MSG_EOR) || (n == 0)) {
-            flow->readBufferMsgComplete = 1;
-        }
-        if (!flow->readBufferMsgComplete) {
-            neat_log(NEAT_LOG_DEBUG, "Exit 11");
-            return READ_WITH_ERROR;
+        if (flow->socket->multistream) {
+            flow->readBufferSize += n;
+            if ((msghdr.msg_flags & MSG_EOR) || (n == 0)) {
+                flow->readBufferMsgComplete = 1;
+            }
+            if (!flow->readBufferMsgComplete) {
+                neat_log(NEAT_LOG_DEBUG, "Exit 11");
+                return READ_WITH_ERROR;
+            }
         }
 #else // !defined(USRSCTP_SUPPORT)
         neat_log(NEAT_LOG_INFO, " %zd bytes received", n);
@@ -4529,8 +4572,6 @@ neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
     uint8_t shutdown_ready = 1;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
-    return NEAT_OK;
 
     // check for all multistream flows if they are ready to shutdown/close
     if (flow->socket->multistream) {

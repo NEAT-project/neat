@@ -1071,8 +1071,9 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 #endif
 #if (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
     struct cmsghdr *cmsg;
-    unsigned char *multistream_buffer;
 #endif
+
+    unsigned char *multistream_buffer;
 
     struct msghdr msghdr;
     struct iovec iov;
@@ -5365,6 +5366,8 @@ neat_sctp_get_flow_by_sid(struct neat_pollable_socket *socket, uint16_t sid)
 static void
 neat_sctp_reset_stream(struct neat_pollable_socket *socket, uint16_t sid)
 {
+
+#ifdef SCTP_RESET_STREAMS
     struct sctp_reset_streams *srs;
     size_t len;
 
@@ -5383,6 +5386,8 @@ neat_sctp_reset_stream(struct neat_pollable_socket *socket, uint16_t sid)
         neat_log(NEAT_LOG_ERROR, "%s - resetting outgoing stream failed : %s", __func__, strerror(errno));
     }
     free(srs);
+#endif // SCTP_RESET_STREAMS
+    return;
 }
 
 neat_error_code

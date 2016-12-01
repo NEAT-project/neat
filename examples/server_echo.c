@@ -27,11 +27,7 @@ static uint16_t config_number_of_streams = 1988;
 static char *config_property = "{\n\
     \"transport\": [\n\
         {\n\
-            \"value\": \"SCTP\",\n\
-            \"precedence\": 1\n\
-        },\n\
-        {\n\
-            \"value\": \"TCP\",\n\
+            \"value\": \"SCTP/UDP\",\n\
             \"precedence\": 1\n\
         }\n\
     ]\n\
@@ -277,7 +273,7 @@ main(int argc, char *argv[])
     } else {
         neat_log_level(NEAT_LOG_DEBUG);
     }
-
+neat_log_level(NEAT_LOG_DEBUG);
     if (optind != argc) {
         fprintf(stderr, "%s - argument error\n", __func__);
         print_usage();
@@ -324,7 +320,7 @@ main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, 8080, NEAT_OPTARGS, NEAT_OPTARGS_COUNT)) {
+    if (neat_accept(ctx, flow, 80, NEAT_OPTARGS, NEAT_OPTARGS_COUNT)) {
         fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;

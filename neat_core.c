@@ -1152,11 +1152,13 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 #ifdef HAVE_SIN_LEN
 	addr.sin_len = sizeof(struct sockaddr_in);
 #endif
-	addr.sin_family = AF_INET;
+        addr.sin_family = AF_INET;
+        flags = 0;
         n = usrsctp_recvv(socket->usrsctp_socket, flow->readBuffer + flow->readBufferSize,
                                flow->readBufferAllocation - flow->readBufferSize,
                                (struct sockaddr *) &addr, &len, (void *)&rn,
                                 &infolen, &infotype, &flags);
+        printf("flags=%d\n", flags);
         if (n < 0) {
             neat_log(NEAT_LOG_DEBUG, "usrsctp_recvv error");
 
@@ -4562,7 +4564,6 @@ static void handle_upcall(struct socket *sock, void *arg, int flags)
 
         if (events & SCTP_EVENT_READ) {
             neat_error_code code;
-
             do {
                 code = io_readable(ctx, flow, pollable_socket, NEAT_OK);
             } while (code == READ_OK);
@@ -4868,12 +4869,14 @@ void neat_notify_close(neat_flow *flow)
     neat_ctx *ctx = flow->ctx;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
+printf("flow=%p\n", (void *)flow);
     if (!flow->operations || !flow->operations->on_close) {
+    printf("no on_close anymore\n");
         return;
     }
 
     READYCALLBACKSTRUCT;
+    printf("App: call on_close\n");
     flow->operations->on_close(flow->operations);
 }
 

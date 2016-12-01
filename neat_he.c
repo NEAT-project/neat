@@ -98,7 +98,7 @@ static void on_he_connect_req(uv_timer_t *handle)
                 "%s: Connect successful for fd %d, ret = %d",
                 __func__,
                 candidate->pollable_socket->fd, ret);
-
+printf("flow=%p\n", (void *)candidate->pollable_socket->flow);
    }
 }
 
@@ -251,6 +251,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             } else {
 
                 neat_log(NEAT_LOG_DEBUG, "%s: Connect successful for fd %d, ret = %d", __func__, candidate->pollable_socket->fd, ret);
+                printf("neat_he_open flow=%p\n", (void *)candidate->pollable_socket->flow);
                 candidate->pollable_socket->flow->heConnectAttemptCount++;
                 candidate = TAILQ_NEXT(candidate, next);
 

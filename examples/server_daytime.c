@@ -21,11 +21,7 @@
 static char *config_property = "{\
     \"transport\": [\
         {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
+            \"value\": \"SCTP/UDP\",\
             \"precedence\": 1\
         }\
     ]\
@@ -214,6 +210,8 @@ main(int argc, char *argv[])
     } else {
         neat_log_level(NEAT_LOG_DEBUG);
     }
+
+    neat_log_level(NEAT_LOG_DEBUG);
 
     if (optind != argc) {
         fprintf(stderr, "%s - argument error\n", __func__);

@@ -25,11 +25,7 @@ static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection
 static char *config_property = "{\
     \"transport\": [\
         {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
+            \"value\": \"SCTP/UDP\",\
             \"precedence\": 1\
         }\
     ]\

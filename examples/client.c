@@ -37,11 +37,7 @@ static char *config_primary_dest_addr = NULL;
 static char *config_property = "{\n\
     \"transport\": [\n\
         {\n\
-            \"value\": \"SCTP\",\n\
-            \"precedence\": 1\n\
-        },\n\
-        {\n\
-            \"value\": \"TCP\",\n\
+            \"value\": \"SCTP/UDP\",\n\
             \"precedence\": 1\n\
         }\n\
     ]\n\
@@ -455,6 +451,8 @@ main(int argc, char *argv[])
     } else {
         neat_log_level(NEAT_LOG_DEBUG);
     }
+
+    neat_log_level(NEAT_LOG_DEBUG);
 
     if (optind + 2 != argc) {
         fprintf(stderr, "%s - error: option - argument error\n", __func__);

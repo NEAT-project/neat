@@ -241,7 +241,7 @@ int nsa_shutdown(int sockfd, int how)
 }
 
 
-/* ###### NEAT shutdown() implementation ################################# */
+/* ###### NEAT open() implementation ##################################### */
 int nsa_open(const char* pathname, int flags, mode_t mode)
 {
    int fd = open(pathname, flags, mode);
@@ -257,7 +257,7 @@ int nsa_open(const char* pathname, int flags, mode_t mode)
 }
 
 
-/* ###### NEAT shutdown() implementation ################################# */
+/* ###### NEAT creat() implementation #################################### */
 int nsa_creat(const char* pathname, mode_t mode)
 {
    int fd = creat(pathname, mode);
@@ -273,7 +273,7 @@ int nsa_creat(const char* pathname, mode_t mode)
 }
 
 
-/* ###### NEAT shutdown() implementation ################################# */
+/* ###### NEAT pipe() implementation ##################################### */
 int nsa_pipe(int fds[2])
 {
    int sysFDs[2];

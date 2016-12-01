@@ -323,5 +323,6 @@ neat_unix_json_close(struct neat_ipc_context *context, close_callback cb, void *
     context->pipe->data = context;
     context->data = data;
     context->on_close = cb;
-    uv_close((uv_handle_t*)context->pipe, on_pipe_close);
+    if (!uv_is_closing((uv_handle_t*)context->pipe))
+        uv_close((uv_handle_t*)context->pipe, on_pipe_close);
 }

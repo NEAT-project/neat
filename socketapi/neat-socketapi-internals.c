@@ -88,6 +88,21 @@ size_t get_socklen(const struct sockaddr* address)
 }
 
 
+/* ###### Get port ####################################################### */
+int get_port(const struct sockaddr* address)
+{
+   if(address != NULL) {
+      switch(address->sa_family) {
+         case AF_INET:
+            return((int)ntohs(((struct sockaddr_in*)address)->sin_port));
+         case AF_INET6:
+            return((int)ntohs(((struct sockaddr_in6*)address)->sin6_port));
+      }
+   }
+   return(-1);
+}
+
+
 /* ###### Initialize ##################################################### */
 struct neat_socketapi_internals* nsa_initialize()
 {

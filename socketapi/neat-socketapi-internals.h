@@ -101,6 +101,7 @@ extern struct neat_socketapi_internals* gSocketAPIInternals;
 
 
 size_t get_socklen(const struct sockaddr* address);
+int get_port(const struct sockaddr* address);
 
 struct neat_socketapi_internals* nsa_initialize();
 int nsa_socket_internal(int domain, int type, int protocol,

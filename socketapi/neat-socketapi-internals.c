@@ -74,6 +74,20 @@ static bool set_non_blocking(int fd)
 }
 
 
+/* ###### Get socklen for given address ################################## */
+size_t get_socklen(const struct sockaddr* address)
+{
+   switch(address->sa_family) {
+      case AF_INET:
+         return(sizeof(struct sockaddr_in));
+      case AF_INET6:
+         return(sizeof(struct sockaddr_in6));
+      default:
+         return(0);
+   }
+}
+
+
 /* ###### Initialize ##################################################### */
 struct neat_socketapi_internals* nsa_initialize()
 {

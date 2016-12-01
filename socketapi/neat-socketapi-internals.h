@@ -99,16 +99,18 @@ extern "C" {
 
 extern struct neat_socketapi_internals* gSocketAPIInternals;
 
-struct neat_socketapi_internals* nsa_initialize();
 
+size_t get_socklen(const struct sockaddr* address);
+
+struct neat_socketapi_internals* nsa_initialize();
 int nsa_socket_internal(int domain, int type, int protocol,
                         int customFD, struct neat_flow* flow, int requestedSD);
+void nsa_notify_main_loop();
 
 void nsa_socket_print_function(const void* node, FILE* fd);
 int nsa_socket_comparison_function(const void* node1, const void* node2);
 struct neat_socket* nsa_get_socket_for_descriptor(int sd);
 
-void nsa_notify_main_loop();
 
 #ifdef __cplusplus
 }

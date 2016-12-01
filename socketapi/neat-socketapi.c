@@ -43,6 +43,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <sys/ioctl.h>
+#include <netinet/sctp.h>
 
 
 /* ###### Map system socket into NEAT socket descriptor space ############ */
@@ -120,6 +121,117 @@ int nsa_close(int fd)
 }
 
 
+/* ###### NEAT bindx() implementation #################################### */
+int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags)
+{
+   GET_NEAT_SOCKET(sockfd)
+   if(neatSocket->flow != NULL) {
+
+      return(0);
+   }
+   else {
+       if( (addrcnt == 1) && (flags == 0) ) {
+          return(bind(neatSocket->socket_sd, addrs, get_socklen(addrs)));
+       }
+       else {
+          abort();   // FIXME!
+//           return(sctp_bindx(neatSocket->socket_sd, (struct sockaddr*)addrs, addrcnt, flags));
+       }
+   }
+}
+
+
+/* ###### NEAT bind() implementation ##################################### */
+int nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+{
+   return(nsa_bindx(sockfd, addr, 1, 0));
+}
+
+
+/* ###### NEAT connectx() implementation ################################# */
+int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_assoc_t* id)
+{
+   GET_NEAT_SOCKET(sockfd)
+   if(neatSocket->flow != NULL) {
+
+      return(0);
+   }
+   else {
+       if( (addrcnt == 1) && (id == NULL) ) {
+          return(connect(neatSocket->socket_sd, addrs, get_socklen(addrs)));
+       }
+       else {
+          abort();   // FIXME!
+//           return(sctp_connectx(neatSocket->socket_sd, addrs, addrcnt, id));
+       }
+   }
+}
+
+
+/* ###### NEAT connect() implementation ################################## */
+int nsa_connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+{
+   return(nsa_connectx(sockfd, addr, 1, NULL));
+}
+
+
+/* ###### NEAT listen() implementation ################################### */
+int nsa_listen(int sockfd, int backlog)
+{
+   GET_NEAT_SOCKET(sockfd)
+   if(neatSocket->flow != NULL) {
+
+      return(0);
+   }
+   else {
+      return(listen(neatSocket->socket_sd, backlog));
+   }
+}
+
+
+/* ###### NEAT accept() implementation ################################### */
+int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+{
+   GET_NEAT_SOCKET(sockfd)
+   if(neatSocket->flow != NULL) {
+
+      return(0);
+   }
+   else {
+      return(accept(neatSocket->socket_sd, addr, addrlen));
+   }
+}
+
+
+/* ###### NEAT peeloff() implementation ################################## */
+int nsa_peeloff(int sockfd, neat_assoc_t id)
+{
+   GET_NEAT_SOCKET(sockfd)
+   if(neatSocket->flow != NULL) {
+
+      return(0);
+   }
+   else {
+      abort();   // FIXME!
+//      return(sctp_peeloff(neatSocket->socket_sd, id));
+   }
+}
+
+
+/* ###### NEAT shutdown() implementation ################################# */
+int nsa_shutdown(int sockfd, int how)
+{
+   GET_NEAT_SOCKET(sockfd)
+   if(neatSocket->flow != NULL) {
+
+      return(0);
+   }
+   else {
+      return(shutdown(neatSocket->socket_sd, how));
+   }
+}
+
+
 /* ###### NEAT close() implementation #################################### */
 int nsa_fcntl(int fd, int cmd, ...)
 {
@@ -167,76 +279,6 @@ int nsa_ioctl(int fd, int request, const void* argp)
    }
    else {
       return(ioctl(neatSocket->socket_sd, fd, request, argp));
-   }
-}
-
-
-/* ###### NEAT bind() implementation ##################################### */
-int nsa_bind(int sockfd, struct sockaddr* my_addr, socklen_t addrlen)
-{
-   GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
-
-      return(0);
-   }
-   else {
-      return(bind(neatSocket->socket_sd, my_addr, addrlen));
-   }
-}
-
-
-/* ###### NEAT connect() implementation ################################## */
-int nsa_connect(int sockfd, const struct sockaddr* serv_addr, socklen_t addrlen)
-{
-   GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
-
-      return(0);
-   }
-   else {
-      return(connect(neatSocket->socket_sd, serv_addr, addrlen));
-   }
-}
-
-
-/* ###### NEAT listen() implementation ################################### */
-int nsa_listen(int sockfd, int backlog)
-{
-   GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
-
-      return(0);
-   }
-   else {
-      return(listen(neatSocket->socket_sd, backlog));
-   }
-}
-
-
-/* ###### NEAT accept() implementation ################################### */
-int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
-{
-   GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
-
-      return(0);
-   }
-   else {
-      return(accept(neatSocket->socket_sd, addr, addrlen));
-   }
-}
-
-
-/* ###### NEAT shutdown() implementation ################################# */
-int nsa_shutdown(int sockfd, int how)
-{
-   GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
-
-      return(0);
-   }
-   else {
-      return(shutdown(neatSocket->socket_sd, how));
    }
 }
 

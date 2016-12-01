@@ -81,21 +81,21 @@ int main(int argc, char** argv)
    // ====== Create socket of appropriate type ===============================
    int sd = nsa_socket(ainfo->ai_family, ainfo->ai_socktype, ainfo->ai_protocol, properties);
    if(sd <= 0) {
-      perror("Unable to create socket");
+      perror("nsa_socket() call failed");
       exit(1);
    }
 
 
    // ====== Bind to local port ==============================================
    if(nsa_bind(sd, ainfo->ai_addr, ainfo->ai_addrlen) < 0) {
-      perror("bind() call failed");
+      perror("nsa_bind() call failed");
       exit(1);
    }
 
 
    // ====== Turn socket into "listen" mode ==================================
    if(nsa_listen(sd, 10) < 0) {
-      perror("listen() call failed!");
+      perror("nsa_listen() call failed");
    }
 
 
@@ -121,7 +121,7 @@ int main(int argc, char** argv)
       socklen_t        remoteAddressLength = sizeof(remoteAddress);
       int newSD = nsa_accept(sd, (sockaddr*)&remoteAddress, &remoteAddressLength);
       if(newSD < 0) {
-         perror("accept() call failed");
+         perror("nsa_accept() call failed");
          break;
       }
 
@@ -215,7 +215,7 @@ int main(int argc, char** argv)
 
    // ====== Clean up ========================================================
    freeaddrinfo(ainfo);
-   close(sd);
+   nsa_close(sd);
 
    cout << endl << "Terminated!" << endl;
    return(0);

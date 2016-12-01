@@ -33,14 +33,16 @@
 #define NEAT_SOCKETAPI_H
 
 
+#include <inttypes.h>
+#include <poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
 #include <sys/fcntl.h>
 #include <sys/time.h>
-#include <inttypes.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
-#include <poll.h>
 
 
 typedef unsigned int   neat_assoc_t;
@@ -232,8 +234,8 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags);
 ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags);
 ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags, const struct sockaddr* to, socklen_t tolen);
 ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags);
-ssize_t nsa_read(int fd, void* buf, size_t count);
-ssize_t nsa_write(int fd, const void* buf, size_t count);
+ssize_t nsa_read(int fd, void* buf, size_t len);
+ssize_t nsa_write(int fd, const void* buf, size_t len);
 
 int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout);
 int nsa_poll(struct pollfd* fdlist, long unsigned int count, int time);

@@ -132,18 +132,22 @@ int nsa_fcntl(int fd, int cmd, ...)
 
    if(cmd == F_GETFL) {
       int flags = 0;
+      pthread_mutex_lock(&neatSocket->mutex);
       if(neatSocket->flags & NSAF_NONBLOCKING) {
          flags |= O_NONBLOCK;
       }
+      pthread_mutex_unlock(&neatSocket->mutex);
       return(flags);
    }
    else {
+       pthread_mutex_lock(&neatSocket->mutex);
       if(arg & O_NONBLOCK) {
          neatSocket->flags |= NSAF_NONBLOCKING;
       }
       else {
          neatSocket->flags &= ~NSAF_NONBLOCKING;
       }
+      pthread_mutex_unlock(&neatSocket->mutex);
       return(0);
    }
 

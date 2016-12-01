@@ -183,6 +183,7 @@ printf("on_writeable\n");
     // set callbacks
     opCB->on_writable = NULL;
     opCB->on_all_written = on_all_written;
+    opCB->on_close = on_close;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     // increase stats

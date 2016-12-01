@@ -500,6 +500,7 @@ static void synchronous_free(neat_flow *flow)
        neat_log(NEAT_LOG_DEBUG, "NOT neat_resolver_free_results");
     }
     if (flow->ownedByCore) {
+    printf("!!!!!!!!!!free flow->operations !!!!!!!!!\n");
         free(flow->operations);
     }
 
@@ -1375,7 +1376,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
          "value", stack_to_string(he_res->transport ), "remote_ip", "value", he_res->remote_ip,
          "remote_port", "value", he_res->remote_port, "cached", "value", (result)?1:0, "precedence",
          2, "score", 5);
-   
+
     neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
 
 end:
@@ -1398,7 +1399,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     struct neat_flow *flow = candidate->pollable_socket->flow;
     struct neat_he_candidates *candidate_list = flow->candidate_list;
     struct cib_he_res *he_res = NULL;
-
+printf("***********he_connected_cb******\n");
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     c++;
@@ -4413,54 +4414,54 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
     }
 
     candidate->pollable_socket->usrsctp_socket = usrsctp_socket(candidate->pollable_socket->family, candidate->pollable_socket->type, protocol, NULL, NULL, 0, NULL);
-    if (candidate->pollable_socket->usrsctp_socket) {
-        usrsctp_set_non_blocking(candidate->pollable_socket->usrsctp_socket, 1);
-        len = (socklen_t)sizeof(int);
-        if (usrsctp_getsockopt(candidate->pollable_socket->usrsctp_socket, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
-            candidate->writeSize = size;
-        } else {
-            candidate->writeSize = 0;
-        }
-        len = (socklen_t)sizeof(int);
-        if (usrsctp_getsockopt(candidate->pollable_socket->usrsctp_socket, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
-            candidate->readSize = size;
-        } else {
-            candidate->readSize = 0;
-        }
-        // he_ctx->writeLimit =  he_ctx->writeSize / 4;
-        if (candidate->pollable_socket->stack == NEAT_STACK_SCTP_UDP) {
-            struct sctp_udpencaps encaps;
-            memset(&encaps, 0, sizeof(struct sctp_udpencaps));
-            encaps.sue_address.ss_family = AF_INET;
-            encaps.sue_port = htons(SCTP_UDP_TUNNELING_PORT);
-            usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps));
-        }
-
-#ifdef SCTP_NODELAY
-        usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
-#endif
-#ifdef SCTP_EXPLICIT_EOR
-        if (usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
-            candidate->isSCTPExplicitEOR = 1;
-#endif
-
-        // Subscribe to SCTP events
-        neat_sctp_init_events(candidate->pollable_socket->usrsctp_socket);
-
-        neat_log(NEAT_LOG_INFO, "%s: Connect from %s to %s", __func__,
-           inet_ntop(AF_INET, &(((struct sockaddr_in *) &(candidate->pollable_socket->src_sockaddr))->sin_addr), addrsrcbuf, slen),
-           inet_ntop(AF_INET, &(((struct sockaddr_in *) &(candidate->pollable_socket->dst_sockaddr))->sin_addr), addrdstbuf, slen));
-
-        if (!(candidate->pollable_socket->usrsctp_socket) || (usrsctp_connect(candidate->pollable_socket->usrsctp_socket, (struct sockaddr *) &(candidate->pollable_socket->dst_sockaddr), slen) && (errno != EINPROGRESS))) {
-            neat_log(NEAT_LOG_ERROR, "%s: usrsctp_connect failed - %s", __func__, strerror(errno));
-            return -1;
-        } else {
-            neat_log(NEAT_LOG_INFO, "%s: usrsctp_socket connected", __func__);
-        }
-        usrsctp_set_upcall(candidate->pollable_socket->usrsctp_socket, handle_connect, (void *)candidate);
-    } else {
+    if (!candidate->pollable_socket->usrsctp_socket) {
         return -1;
     }
+    usrsctp_set_non_blocking(candidate->pollable_socket->usrsctp_socket, 1);
+    len = (socklen_t)sizeof(int);
+    if (usrsctp_getsockopt(candidate->pollable_socket->usrsctp_socket, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
+        candidate->writeSize = size;
+    } else {
+        candidate->writeSize = 0;
+    }
+    len = (socklen_t)sizeof(int);
+    if (usrsctp_getsockopt(candidate->pollable_socket->usrsctp_socket, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
+        candidate->readSize = size;
+    } else {
+        candidate->readSize = 0;
+    }
+    // he_ctx->writeLimit =  he_ctx->writeSize / 4;
+    if (candidate->pollable_socket->stack == NEAT_STACK_SCTP_UDP) {
+        struct sctp_udpencaps encaps;
+        memset(&encaps, 0, sizeof(struct sctp_udpencaps));
+        encaps.sue_address.ss_family = AF_INET;
+        encaps.sue_port = htons(SCTP_UDP_TUNNELING_PORT);
+        usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps));
+    }
+
+#ifdef SCTP_NODELAY
+    usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
+#endif
+#ifdef SCTP_EXPLICIT_EOR
+    if (usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
+        candidate->isSCTPExplicitEOR = 1;
+#endif
+
+    // Subscribe to SCTP events
+    neat_sctp_init_events(candidate->pollable_socket->usrsctp_socket);
+
+    neat_log(NEAT_LOG_INFO, "%s: Connect from %s to %s", __func__,
+       inet_ntop(AF_INET, &(((struct sockaddr_in *) &(candidate->pollable_socket->src_sockaddr))->sin_addr), addrsrcbuf, slen),
+        inet_ntop(AF_INET, &(((struct sockaddr_in *) &(candidate->pollable_socket->dst_sockaddr))->sin_addr), addrdstbuf, slen));
+
+    if (!(candidate->pollable_socket->usrsctp_socket) || (usrsctp_connect(candidate->pollable_socket->usrsctp_socket, (struct sockaddr *) &(candidate->pollable_socket->dst_sockaddr), slen) && (errno != EINPROGRESS))) {
+        neat_log(NEAT_LOG_ERROR, "%s: usrsctp_connect failed - %s", __func__, strerror(errno));
+        return -1;
+    } else {
+         neat_log(NEAT_LOG_INFO, "%s: usrsctp_socket connected", __func__);
+    }
+    usrsctp_set_upcall(candidate->pollable_socket->usrsctp_socket, handle_connect, (void *)candidate);
+
     return 0;
 }
 
@@ -4489,13 +4490,133 @@ neat_shutdown_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow)
 
 static void handle_connect(struct socket *sock, void *arg, int flags)
 {
+    const char *proto;
+    const char *family;
     struct neat_he_candidate *candidate = (struct neat_he_candidate *) arg;
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-
     struct neat_pollable_socket *poll_socket = candidate->pollable_socket;
     neat_flow *flow = poll_socket->flow;
+    struct neat_he_candidates *candidate_list = flow->candidate_list;
+    struct cib_he_res *he_res = NULL;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    assert(flow);
+
+    switch (candidate->pollable_socket->stack) {
+    case NEAT_STACK_UDP:
+        proto = "UDP";
+        break;
+    case NEAT_STACK_TCP:
+        proto = "TCP";
+        break;
+    case NEAT_STACK_SCTP:
+        proto = "SCTP";
+        break;
+    case NEAT_STACK_SCTP_UDP:
+        proto = "SCTP/UDP";
+        break;
+    case NEAT_STACK_UDPLITE:
+        proto = "UDPLite";
+        break;
+    default:
+        proto = "?";
+        break;
+    };
+
+    switch (candidate->pollable_socket->family) {
+    case AF_INET:
+        family = "IPv4";
+        break;
+    case AF_INET6:
+        family = "IPv6";
+        break;
+    default:
+        family = "?";
+        break;
+    };
+
+    neat_log(NEAT_LOG_DEBUG,
+             "HE Candidate connected: %8s [%2d] %8s/%s <saddr %s> <dstaddr %s> port %5d priority %d",
+             candidate->if_name,
+             candidate->if_idx,
+             proto,
+             family,
+             candidate->pollable_socket->src_address,
+             candidate->pollable_socket->dst_address,
+             candidate->pollable_socket->port,
+             candidate->priority);
+
+    he_res = malloc(sizeof(struct cib_he_res));
+    assert(he_res);
+    he_res->interface = strdup(candidate->if_name);
+    he_res->remote_ip = strdup(candidate->pollable_socket->dst_address);
+    he_res->remote_port = candidate->pollable_socket->port;
+    he_res->transport = candidate->pollable_socket->stack;
+
     if (usrsctp_get_events(sock) & SCTP_EVENT_WRITE) {
         if (flow != NULL && flow->hefirstConnect) {
+            flow->hefirstConnect = 0;
+            neat_log(NEAT_LOG_DEBUG, "First successful connect (flow->hefirstConnect)");
+            assert(flow->socket);
+            flow->socket->fd = -1;
+            flow->socket->usrsctp_socket = sock;
+            flow->socket->flow = flow;
+            assert(flow->socket->handle->loop == NULL);
+            free(flow->socket->handle);
+            flow->socket->handle = poll_socket->handle;
+            flow->socket->handle->data = flow->socket;
+            flow->socket->family = poll_socket->family;
+            flow->socket->stack = poll_socket->stack;
+            flow->socket->type = poll_socket->type;
+
+            if (candidate->properties != flow->properties) {
+                json_incref(candidate->properties);
+                json_decref(flow->properties);
+                flow->properties = candidate->properties;
+            }
+
+            flow->everConnected = 1;
+            flow->writeSize = candidate->writeSize;
+            flow->writeLimit = candidate->writeLimit;
+            flow->readSize = candidate->readSize;
+            flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
+            flow->isPolling = 1;
+
+            send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
+
+            if (!install_security(candidate)) {
+                flow->firstWritePending = 1;
+                usrsctp_set_upcall(sock, handle_upcall, (void*)flow->socket);
+                io_connected(flow->ctx, flow, NEAT_OK);
+            }
+            if ((usrsctp_get_events(sock) & SCTP_EVENT_WRITE) && flow->operations->on_writable) {
+                io_writable(flow->ctx, flow, 0, NEAT_OK);
+            }
+        } else {
+            neat_log(NEAT_LOG_DEBUG, "NOT first connect");
+
+            send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
+
+            neat_log(NEAT_LOG_DEBUG, "%s:Release candidate", __func__);
+            TAILQ_REMOVE(candidate_list, candidate, next);
+            free(candidate->pollable_socket->dst_address);
+            free(candidate->pollable_socket->src_address);
+            free(candidate->pollable_socket);
+            free(candidate->if_name);
+            json_decref(candidate->properties);
+            free(candidate);
+
+            usrsctp_close(sock);
+
+            if (!(--flow->heConnectAttemptCount)) {
+                neat_io_error(flow->ctx, flow, NEAT_ERROR_UNABLE);
+                return;
+            }
+        }
+    }
+/*    if (usrsctp_get_events(sock) & SCTP_EVENT_WRITE) {
+        if (flow != NULL && flow->hefirstConnect) {
+            neat_log(NEAT_LOG_DEBUG, "First successful connect (flow->hefirstConnect)");
             flow->socket->family = poll_socket->family;
             flow->socket->handle = poll_socket->handle;
             flow->socket->handle->data = flow->socket;
@@ -4518,13 +4639,14 @@ static void handle_connect(struct socket *sock, void *arg, int flags)
             usrsctp_set_upcall(sock, handle_upcall, (void*)flow->socket);
             io_connected(flow->ctx, flow, NEAT_OK);
         } else {
+            neat_log(NEAT_LOG_DEBUG, "NOT first connect");
             usrsctp_close(sock);
             return;
         }
     }
     if ((usrsctp_get_events(sock) & SCTP_EVENT_WRITE) && flow->operations->on_writable) {
         io_writable(flow->ctx, flow, 0, NEAT_OK);
-    }
+    }*/
 }
 
 static void handle_upcall(struct socket *sock, void *arg, int flags)

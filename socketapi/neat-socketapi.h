@@ -222,9 +222,11 @@ int nsa_shutdown(int sockfd, int how);
 
 int nsa_open(const char* pathname, int flags, mode_t mode);
 int nsa_creat(const char* pathname, mode_t mode);
+int nsa_pipe(int fds[2]);
+int nsa_ioctl(int fd, int request, const void* argp);
+
 int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen);
 int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen);
-int nsa_ioctl(int fd, int request, const void* argp);
 int nsa_getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optlen);
 int nsa_setsockopt(int sockfd, int level, int optname, const void* optval, socklen_t optlen);
 
@@ -289,8 +291,6 @@ int nsa_opt_info(int sd, neat_assoc_t assocID, int opt, void* arg, socklen_t* si
 //                     socklen_t*              fromlen,
 //                     struct neat_sndrcvinfo* sinfo,
 //                     int*                    msg_flags);
-
-int nsa_pipe(int fds[2]);
 
 
 #ifdef __cplusplus

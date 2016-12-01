@@ -42,6 +42,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <assert.h>
+#include <sys/ioctl.h>
 
 
 /* ###### Map system socket into NEAT socket descriptor space ############ */
@@ -156,6 +157,20 @@ int nsa_fcntl(int fd, int cmd, ...)
 }
 
 
+/* ###### NEAT shutdown() implementation ################################# */
+int nsa_ioctl(int fd, int request, const void* argp)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->flow != NULL) {
+      errno = ENOTSUP;
+      return(0);
+   }
+   else {
+      return(ioctl(neatSocket->socket_sd, fd, request, argp));
+   }
+}
+
+
 /* ###### NEAT bind() implementation ##################################### */
 int nsa_bind(int sockfd, struct sockaddr* my_addr, socklen_t addrlen)
 {
@@ -226,16 +241,55 @@ int nsa_shutdown(int sockfd, int how)
 }
 
 
-/*
-static bool isInitialized = false;
+/* ###### NEAT shutdown() implementation ################################# */
+int nsa_open(const char* pathname, int flags, mode_t mode)
+{
+   int fd = open(pathname, flags, mode);
+   if(fd >= 0) {
+      int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, 0);
+      if(newFD >= 0) {
+         return(newFD);
+      }
+      errno = ENOMEM;
+      close(fd);
+   }
+   return(-1);
+}
 
-int nsa_socket(int domain, int type, int protocol);
-int nsa_open(const char* pathname, int flags, mode_t mode);
-int nsa_creat(const char* pathname, mode_t mode);
-int nsa_bind(int sockfd, struct sockaddr* my_addr, socklen_t addrlen);
-int nsa_connect(int sockfd, const struct sockaddr* serv_addr, socklen_t addrlen);
-int nsa_listen(int s, int backlog);
-int nsa_accept(int s,  struct  sockaddr * addr,  socklen_t* addrlen);
-int nsa_shutdown(int s, int how);
-int nsa_close(int fd);
-*/
+
+/* ###### NEAT shutdown() implementation ################################# */
+int nsa_creat(const char* pathname, mode_t mode)
+{
+   int fd = creat(pathname, mode);
+   if(fd >= 0) {
+      int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, 0);
+      if(newFD >= 0) {
+         return(newFD);
+      }
+      errno = ENOMEM;
+      close(fd);
+   }
+   return(-1);
+}
+
+
+/* ###### NEAT shutdown() implementation ################################# */
+int nsa_pipe(int fds[2])
+{
+   int sysFDs[2];
+   if(pipe((int*)&sysFDs) == 0) {
+      fds[0] = nsa_socket_internal(0, 0, 0, sysFDs[0], NULL, 0);
+      if(fds[0] >= 0) {
+         fds[1] = nsa_socket_internal(0, 0, 0, sysFDs[1], NULL, 0);
+         if(fds[1] >= 0) {
+            return(0);
+         }
+         nsa_close(fds[0]);
+         fds[0] = -1;
+      }
+      errno = ENOMEM;
+      close(sysFDs[0]);
+      close(sysFDs[1]);
+   }
+   return(-1);
+}

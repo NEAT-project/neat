@@ -7,6 +7,7 @@ LIST(APPEND neat_socketapi_headers
 LIST(APPEND neat_socketapi_sources
    neat-socketapi.c
    neat-socketapi-internals.c
+   neat-socketapi-io.c
    neat-socketapi-poll.c
    identifierbitmap.c
    redblacktree.c

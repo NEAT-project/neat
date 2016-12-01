@@ -225,14 +225,16 @@ int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen);
 int nsa_ioctl(int fd, int request, const void* argp);
 int nsa_getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optlen);
 int nsa_setsockopt(int sockfd, int level, int optname, const void* optval, socklen_t optlen);
+
 ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags);
-ssize_t nsa_recvfrom(int  sockfd,  void * buf,  size_t len, int flagsockfd, struct sockaddr* from, socklen_t* fromlen);
+ssize_t nsa_recvfrom(int sockfd, void* buf, size_t len, int flags, struct sockaddr* from, socklen_t* fromlen);
 ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags);
-ssize_t nsa_send(int sockfd, const void* msg, size_t len, int flags);
-ssize_t nsa_sendto(int sockfd, const void* msg, size_t len, int flagsockfd, const struct sockaddr* to, socklen_t tolen);
+ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags);
+ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags, const struct sockaddr* to, socklen_t tolen);
 ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags);
 ssize_t nsa_read(int fd, void* buf, size_t count);
 ssize_t nsa_write(int fd, const void* buf, size_t count);
+
 int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout);
 int nsa_poll(struct pollfd* fdlist, long unsigned int count, int time);
 

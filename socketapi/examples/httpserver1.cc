@@ -1,6 +1,5 @@
 /*
  * httpserver1.cc: HTTP server example
- * $Id: httpserver1.cc 2069 2016-11-28 16:41:11Z dreibh $
  *
  * Copyright (C) 2003-2017 by Thomas Dreibholz
  *

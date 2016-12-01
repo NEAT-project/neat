@@ -4,6 +4,7 @@ Section: libdevel
 Priority: optional
 Build-Depends: cmake,
                debhelper (>= 9),
+               libfile-fcntllock-perl,
                libjansson-dev,
                libldns-dev,
                libmnl-dev,

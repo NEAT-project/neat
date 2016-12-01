@@ -1,10 +1,10 @@
-/usr/bin/client
-/usr/bin/client_http_get
-/usr/bin/client_https_get
-/usr/bin/http_client_multihomed
-/usr/bin/peer
-/usr/bin/server_chargen
-/usr/bin/server_daytime
-/usr/bin/server_discard
-/usr/bin/server_echo
-/usr/bin/tneat
+usr/bin/client                   /usr/lib/neat/
+usr/bin/client_http_get          /usr/lib/neat/
+usr/bin/client_https_get         /usr/lib/neat/
+usr/bin/http_client_multihomed   /usr/lib/neat/
+usr/bin/peer                     /usr/lib/neat/
+usr/bin/server_chargen           /usr/lib/neat/
+usr/bin/server_daytime           /usr/lib/neat/
+usr/bin/server_discard           /usr/lib/neat/
+usr/bin/server_echo              /usr/lib/neat/
+usr/bin/tneat                    /usr/lib/neat/

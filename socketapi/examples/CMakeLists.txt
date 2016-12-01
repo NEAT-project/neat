@@ -2,6 +2,7 @@
 #################################################
 LIST(APPEND neat_socketapi_example_programs
    httpget.cc
+   httpserver1.cc
 )
 
 

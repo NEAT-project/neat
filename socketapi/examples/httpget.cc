@@ -28,12 +28,28 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <neat-socketapi.h>
+
 
 #include "ansistyle.h"
 #include "safeprint.h"
 
 
 using namespace std;
+
+
+static const char* properties = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";\
 
 
 int main(int argc, char** argv)
@@ -60,9 +76,10 @@ int main(int argc, char** argv)
 
 
    // ====== Create socket of appropriate type ===============================
-   int sd = socket(ainfo->ai_family, ainfo->ai_socktype, ainfo->ai_protocol);
+   // int sd = nsa_socket(ainfo->ai_family, ainfo->ai_socktype, ainfo->ai_protocol, NULL);
+   int sd = nsa_socket(0, 0, 0, properties);
    if(sd <= 0) {
-      perror("Unable to create socket");
+      perror("nsa_socket() call failed");
       exit(1);
    }
 
@@ -83,8 +100,8 @@ int main(int argc, char** argv)
 
 
    // ====== Connect to remote node ==========================================
-   if(connect(sd, ainfo->ai_addr, ainfo->ai_addrlen) < 0) {
-      perror("connect() call failed");
+   if(nsa_connect(sd, ainfo->ai_addr, ainfo->ai_addrlen) < 0) {
+      perror("nsa_connect() call failed");
       exit(1);
    }
 
@@ -100,8 +117,8 @@ int main(int argc, char** argv)
    cout << httpGet;
    ansiReset(cout);
    cout.flush();
-   if(write(sd, httpGet, strlen(httpGet)) < 0) {
-      perror("write() call failed");
+   if(nsa_write(sd, httpGet, strlen(httpGet)) < 0) {
+      perror("nsa_write() call failed");
       exit(1);
    }
 
@@ -111,9 +128,9 @@ int main(int argc, char** argv)
    for(;;) {
       char str[128];
 
-      ssize_t received = read(sd, (char*)&str, sizeof(str));
+      ssize_t received = nsa_read(sd, (char*)&str, sizeof(str));
       if(received < 0) {
-         perror("read() call failed");
+         perror("nsa_read() call failed");
          break;
       }
       else if(received == 0) {
@@ -130,7 +147,7 @@ int main(int argc, char** argv)
 
    // ====== Clean up ========================================================
    freeaddrinfo(ainfo);
-   close(sd);
+   nsa_close(sd);
 
    cout << endl << "Terminated!" << endl;
    return(0);

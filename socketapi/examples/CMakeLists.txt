@@ -14,7 +14,7 @@ FOREACH (source_file ${neat_socketapi_example_programs})
         ${source_file}
         safeprint.cc
     )
-    TARGET_LINK_LIBRARIES(${source_file_we} neat-socketapi)
+    TARGET_LINK_LIBRARIES(${source_file_we} neat-socketapi neat)
     INSTALL(TARGETS             ${source_file_we}
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
             BUNDLE DESTINATION  ${CMAKE_INSTALL_BINDIR})

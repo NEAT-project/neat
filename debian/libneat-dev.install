@@ -1,3 +1,4 @@
 usr/include/neat/neat.h
 usr/include/neat/neat_linux.h
 usr/include/neat/neat_queue.h
+usr/lib/libneat*.so

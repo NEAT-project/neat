@@ -64,3 +64,8 @@ FOREACH (source_file ${neat_socketapi_programs})
            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
            BUNDLE DESTINATION  ${CMAKE_INSTALL_BINDIR})
 ENDFOREACH ()
+
+
+# INCLUDE EXAMPLES AND TESTS FOLDER
+#################################################
+ADD_SUBDIRECTORY(examples)

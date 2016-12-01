@@ -32,7 +32,7 @@ on_unix_json_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
             neat_log(NEAT_LOG_DEBUG, error.text);
 
             context->on_error(context->ctx, context->flow, PM_ERROR_INVALID_JSON, context->data);
-        } else {
+        } else if (context->on_reply != NULL) {
             context->on_reply(context->ctx, context->flow, json, context->data);
         }
 
@@ -86,7 +86,7 @@ on_unix_json_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
                         neat_log(NEAT_LOG_DEBUG, error.text);
 
                         context->on_error(context->ctx, context->flow, PM_ERROR_INVALID_JSON, context->data);
-                    } else {
+                    } else if (context->on_reply) {
                         context->on_reply(context->ctx, context->flow, json, context->data);
                         neat_log(NEAT_LOG_DEBUG, "new %d old %d i %d", new_buffer_size, old_buffer_size, i);
                     }

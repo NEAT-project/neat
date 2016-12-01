@@ -1455,7 +1455,8 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     neat_log(NEAT_LOG_DEBUG, json_str);
     free(json_str);
    
-    neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
+    //neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
+    neat_json_send_once(ctx, flow, socket_path, result_array, NULL, on_pm_he_error);
 
 end:
     free(he_res->interface);

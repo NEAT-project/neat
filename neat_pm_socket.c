@@ -152,6 +152,7 @@ error:
     return rc;
 }
 
+#if 0
 neat_error_code
 neat_json_send_he_result_to_pm(struct neat_ctx *ctx, struct neat_flow *flow, const char *path, json_t *json, pm_error_callback err_cb)
 {
@@ -212,3 +213,4 @@ error:
         free(context);
     return rc;
 }
+#endif

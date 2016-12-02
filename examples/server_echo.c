@@ -1,6 +1,4 @@
 #include <neat.h>
-#include <neat_internal.h>
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -106,7 +104,7 @@ on_readable(struct neat_flow_operations *opCB)
     // we got some data
     if (ef->bytes > 0) {
         if (config_log_level >= 1) {
-            printf("received data - %d bytes on stream %d of %d\n", ef->bytes, opCB->stream_id, opCB->flow->stream_count);
+            printf("received data - %d bytes on stream %d\n", ef->bytes, opCB->stream_id);
         }
         if (config_log_level >= 2) {
             fwrite(ef->buffer, sizeof(char), ef->bytes, stdout);
@@ -193,9 +191,11 @@ on_connected(struct neat_flow_operations *opCB)
 {
     struct echo_flow *ef = NULL;
 
+    /*
     if (config_log_level >= 1) {
         printf("%s - available streams : %d\n", __func__, opCB->flow->stream_count);
     }
+    */
 
     if ((opCB->userData = calloc(1, sizeof(struct echo_flow))) == NULL) {
         fprintf(stderr, "%s - could not allocate echo_flow\n", __func__);

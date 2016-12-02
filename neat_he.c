@@ -224,15 +224,14 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             neat_log(NEAT_LOG_DEBUG, "%s - using piggyback assoc", __func__);
             // we have a piggyback assoc...
 
-            if (piggyback_flow->multistream == 0) {
-                piggyback_flow->multistream = 1;
+            if (piggyback_flow->multistream_id == 0) {
+                piggyback_flow->multistream_id = 1;
                 piggyback_flow->socket->multistream = 1;
                 LIST_INSERT_HEAD(&piggyback_flow->socket->sctp_multistream_flows, piggyback_flow, next_multistream_flow);
             }
 
             LIST_INSERT_HEAD(&piggyback_flow->socket->sctp_multistream_flows, flow, next_multistream_flow);
 
-            flow->multistream = 1;
             flow->multistream_id = ++(flow->socket->sctp_streams_used);
             flow->everConnected = 1;
             flow->isPolling = 1;

@@ -183,7 +183,7 @@ on_readable(struct neat_flow_operations *opCB)
     // all fine
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
-            fprintf(stderr, "%s - received %d bytes on stream id %d (%d streams)\n", __func__, buffer_filled, opCB->stream_id, opCB->flow->stream_count);
+            fprintf(stderr, "%s - received %d bytes on stream id %d\n", __func__, buffer_filled, opCB->stream_id);
         }
         fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
         fflush(stdout);
@@ -208,7 +208,7 @@ on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    last_stream = (last_stream + 1) % opCB->flow->stream_count;
+    //last_stream = (last_stream + 1) % opCB->flow->stream_count;
     options[0].tag           = NEAT_TAG_STREAM_ID;
     options[0].type          = NEAT_TYPE_INTEGER;
     options[0].value.integer = last_stream;
@@ -250,9 +250,11 @@ on_connected(struct neat_flow_operations *opCB)
 {
     int rc;
 
+    /*
     if (config_log_level >= 1) {
         printf("%s - available streams : %d\n", __func__, opCB->flow->stream_count);
     }
+    */
 
     last_stream = 0;
 

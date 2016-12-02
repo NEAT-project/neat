@@ -776,7 +776,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             flow->multistream_id = 0;
 
             // number of outbound streams == number of inbound streams
-            neat_log(NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->sctp_streams_available);
+            neat_log(NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->socket->sctp_streams_available);
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
             break;
         case NEAT_STACK_UDPLITE:
@@ -790,7 +790,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             break;
     }
 
-    neat_log(NEAT_LOG_INFO, "Connected: %s/%s - %d streams", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6" ), flow->stream_count);
+    neat_log(NEAT_LOG_INFO, "Connected: %s/%s", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6"));
 
 multistream_skip:
 
@@ -1318,7 +1318,6 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 new_flow->operations->flow = new_flow;
                 new_flow->operations->userData = listen_flow->operations->userData;
 
-                new_flow->multistream = 1;
                 new_flow->multistream_id = stream_id;
 
                 LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, new_flow, next_multistream_flow);
@@ -1576,7 +1575,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     if (result_obj == NULL) {
         goto end;
     }
-  
+
     if (json_object_set(result_obj, "properties", prop_obj) == -1) {
         goto end;
     }
@@ -1589,7 +1588,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     if (json_array_append(result_array, result_obj) == -1) {
         goto end;
     }
-  
+
     neat_json_send_once(ctx, flow, socket_path, result_array, NULL, on_pm_he_error);
 
 end:
@@ -2140,10 +2139,8 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         rc = getsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &optlen);
         if (rc < 0) {
             neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
-            newFlow->stream_count = 1;
             newFlow->socket->sctp_streams_available = 1;
         } else {
-            newFlow->stream_count = MIN(status.sstat_instrms, status.sstat_outstrms);
             newFlow->socket->sctp_streams_available = MIN(status.sstat_instrms, status.sstat_outstrms);
         }
 
@@ -2151,11 +2148,12 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         newFlow->multistream_id = 0;
 
         // number of outbound streams == number of inbound streams
-        neat_log(NEAT_LOG_DEBUG, "%s - SCTP - number of streams: %d", __func__, newFlow->stream_count);
+        neat_log(NEAT_LOG_DEBUG, "%s - SCTP - number of streams: %d", __func__, newFlow->socket->sctp_streams_available);
         break;
 #endif
     default:
-        newFlow->stream_count = 1;
+        //newFlow->sockestream_count = 1;
+        break;
     }
 
     return newFlow;
@@ -3075,7 +3073,7 @@ neat_error_code
 neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
           struct neat_tlv optional[], unsigned int opt_count)
 {
-    int stream_count = 10;
+    int stream_count = 1;
     int group = 0;
     float priority = 0.5f;
     const char *cc_algorithm = NULL;
@@ -3113,7 +3111,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
         return NEAT_ERROR_OUT_OF_MEMORY;
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
-    flow->stream_count = stream_count;
+    //flow->stream_count = stream_count;
     flow->ctx = mgr;
     flow->group = group;
     flow->priority = priority;
@@ -3560,7 +3558,7 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     const char *local_name = NULL;
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM]; /* We only support SCTP, TCP, UDP, and UDPLite */
     uint8_t nr_of_stacks;
-    int stream_count = 10;
+    int stream_count = 1;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     nr_of_stacks = neat_property_translate_protocols(flow->propertyMask, stacks);
@@ -3581,8 +3579,8 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
         neat_log(NEAT_LOG_ERROR, "Stream count must be 1 or more");
         return NEAT_ERROR_BAD_ARGUMENT;
     }
-    flow->stream_count = stream_count;
-    neat_log(NEAT_LOG_DEBUG, "%s - %d streams", __func__, flow->stream_count);
+    flow->streams_requested = stream_count;
+    neat_log(NEAT_LOG_DEBUG, "%s - %d streams", __func__, flow->streams_requested);
 
     if (!local_name)
         local_name = "0.0.0.0";
@@ -3819,11 +3817,6 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-
-    if (flow->multistream) {
-        stream_id = flow->multistream_id;
-    }
-
     HANDLE_OPTIONAL_ARGUMENTS_START()
         OPTIONAL_INTEGER_PRESENT(NEAT_TAG_STREAM_ID, stream_id, has_stream_id)
         // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_CONTEXT, context, has_context)
@@ -3837,18 +3830,19 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     if (has_stream_id && stream_id < 0) {
         neat_log(NEAT_LOG_DEBUG, "Invalid stream id: Must be 0 or greater");
         return NEAT_ERROR_BAD_ARGUMENT;
-    } else if (has_stream_id && flow->stream_count == 1 && stream_id != 0) {
-        neat_log(NEAT_LOG_DEBUG,
-                 "Tried to specify stream id when only a single stream "
-                 "is in use. Ignoring.");
+    } else if (has_stream_id && flow->socket->sctp_streams_available == 1 && stream_id != 0) {
+        neat_log(NEAT_LOG_DEBUG, "Tried to specify stream id when only a single stream is in use. Ignoring.");
         stream_id = 0;
     } else if (has_stream_id && flow->socket->stack != NEAT_STACK_SCTP) {
         // For now, warn about this. Maybe we emulate multistreaming over TCP in
         // the future?
-        neat_log(NEAT_LOG_DEBUG,
-                 "Tried to specify stream id when using a protocol which does "
-                 "not support multistreaming. Ignoring.");
+        neat_log(NEAT_LOG_DEBUG, "Tried to specify stream id when using a protocol which does not support multistreaming. Ignoring.");
         stream_id = 0;
+    }
+
+    // multistream stream_id override - not very pretty
+    if (flow->multistream_id) {
+        stream_id = flow->multistream_id;
     }
 
     switch (flow->socket->stack) {
@@ -4376,8 +4370,8 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #if defined(SCTP_INITMSG)
         struct sctp_initmsg init;
         memset(&init, 0, sizeof(init));
-        init.sinit_num_ostreams = candidate->pollable_socket->flow->stream_count;
-        init.sinit_max_instreams = candidate->pollable_socket->flow->stream_count; // TODO: May depend on policy
+        init.sinit_num_ostreams = candidate->pollable_socket->flow->streams_requested;
+        init.sinit_max_instreams = candidate->pollable_socket->flow->streams_requested; // TODO: May depend on policy
 
         init.sinit_max_init_timeo = 3000;
         init.sinit_max_attempts = 3;
@@ -4559,13 +4553,13 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif // defined(SCTP_ENABLE_STREAM_RESET) && !defined(USRSCTP_SUPPORT)
 #if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
         memset(&initmsg, 0, sizeof(struct sctp_initmsg));
-        initmsg.sinit_num_ostreams = flow->stream_count;
-        initmsg.sinit_max_instreams = flow->stream_count;
+        initmsg.sinit_num_ostreams = flow->streams_requested;
+        initmsg.sinit_max_instreams = flow->streams_requested;
 
         if (setsockopt(fd, IPPROTO_SCTP, SCTP_INITMSG, (char*) &initmsg, sizeof(struct sctp_initmsg)) < 0) {
             neat_log(NEAT_LOG_ERROR, "Unable to set inbound/outbound stream count");
         }
-        neat_log(NEAT_LOG_DEBUG, "Offering %d SCTP streams in/out", flow->stream_count);
+        neat_log(NEAT_LOG_DEBUG, "Offering %d SCTP streams in/out", flow->streams_requested);
 #endif // defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
         flow->writeLimit = flow->writeSize / 4;
 #ifdef SCTP_NODELAY

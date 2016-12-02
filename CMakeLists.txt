@@ -269,7 +269,8 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -Wall -Wextra -Werror -Wn
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+    # _FORTIFY_SOURCE requires compiling with optimization
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
 ENDIF()
 
 # LIBRARIES

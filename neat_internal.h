@@ -9,19 +9,21 @@
 #include "neat_queue.h"
 #include "neat_security.h"
 #include "neat_pm_socket.h"
+
 #ifdef __linux__
-    #include "neat_linux.h"
-#endif
+#include "neat_linux.h"
+#endif //  __linux__
+
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-    #include "neat_bsd.h"
-#endif
+#include "neat_bsd.h"
+#endif // defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 
 #ifdef USRSCTP_SUPPORT
-    #include "neat_usrsctp.h"
-    #include <usrsctp.h>
-#else
-    #define NEAT_INTERNAL_USRSCTP
-#endif
+#include "neat_usrsctp.h"
+#include <usrsctp.h>
+#else // USRSCTP_SUPPORT
+#define NEAT_INTERNAL_USRSCTP
+#endif // USRSCTP_SUPPORT
 
 #include "neat_log.h"
 #include "neat_stat.h"
@@ -114,6 +116,12 @@ struct neat_buffered_message {
     TAILQ_ENTRY(neat_buffered_message) message_next;
 };
 
+struct neat_read_queue_message {
+    unsigned char *buffer;
+    size_t buffer_size;
+    TAILQ_ENTRY(neat_read_queue_message) message_next;
+};
+
 typedef enum {
     NEAT_STACK_UDP = 1,
     NEAT_STACK_UDPLITE,
@@ -126,8 +134,10 @@ typedef enum {
 #define SCTP_UDP_TUNNELING_PORT         9899
 #define SCTP_REMOTE_UDP_ENCAPS_PORT     0x00000024
 #define SCTP_ADAPTATION_NEAT            1207
+#define SCTP_STREAMCOUNT                123
 
 TAILQ_HEAD(neat_message_queue_head, neat_buffered_message);
+TAILQ_HEAD(neat_read_queue_head, neat_read_queue_message);
 
 struct neat_iofilter;
 typedef neat_error_code (*neat_filter_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
@@ -229,8 +239,8 @@ struct neat_flow
     struct neat_flow_statistics flow_stats;
 
     // The memory buffer for reading
-    struct neat_message_queue_head buffered_message_in;
-    size_t buffer_size_in;
+    struct neat_read_queue_head read_queue;
+    size_t read_queue_size;
 
     size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.

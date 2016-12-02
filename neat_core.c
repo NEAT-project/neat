@@ -1010,8 +1010,7 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
         neat_log(NEAT_LOG_DEBUG, "Got SCTP partial delivery event");
         break;
     default:
-        neat_log(NEAT_LOG_WARNING, "Got unhandled SCTP event type %d",
-        notfn->sn_header.sn_type);
+        neat_log(NEAT_LOG_WARNING, "Got unhandled SCTP event type %d", notfn->sn_header.sn_type);
     }
 }
 #endif // defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
@@ -1274,14 +1273,16 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 neat_log(NEAT_LOG_DEBUG, "Exit 10");
                 return READ_WITH_ERROR;
             }
-            handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer + flow->readBufferSize));
 
             //We don't update readBufferSize, so buffer is implicitly "freed"
 #if !defined(USRSCTP_SUPPORT)
             if (flow->socket->multistream) {
+                handle_sctp_event(flow, (union sctp_notification*)(multistream_buffer));
                 free(multistream_buffer);
+                return READ_OK;
             }
 #endif
+            handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer + flow->readBufferSize));
 
             return READ_OK;
         }

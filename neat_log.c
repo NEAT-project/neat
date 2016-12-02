@@ -163,6 +163,10 @@ neat_log(uint8_t level, const char* format, ...)
     va_end(argptr);
 
     fprintf(neat_log_fd, "\n"); // xxx:ugly solution...
+
+    if (isatty(fileno(neat_log_fd))) {
+        fprintf(neat_log_fd, WHT);
+    }
 }
 
 /*

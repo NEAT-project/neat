@@ -1,4 +1,4 @@
-usr/bin/httpget               /usr/lib/neat/
-usr/bin/httpserver1           /usr/lib/neat/
-usr/bin/httpserver2-select    /usr/lib/neat/
-usr/bin/httpserver2-threads   /usr/lib/neat/
+usr/lib/libneat/httpget
+usr/lib/libneat/httpserver1
+usr/lib/libneat/httpserver2-select
+usr/lib/libneat/httpserver2-threads

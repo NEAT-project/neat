@@ -98,6 +98,7 @@ make install DESTDIR=%{buildroot}
 %files examples
 /usr/lib/libneat/client
 /usr/lib/libneat/client_http_get
+/usr/lib/libneat/client_http_run_once
 /usr/lib/libneat/client_https_get
 /usr/lib/libneat/http_client_multihomed
 /usr/lib/libneat/peer

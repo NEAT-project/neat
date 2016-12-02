@@ -1,5 +1,5 @@
 Name: libneat
-Version: 0.0.1~td114
+Version: 0.0.1~td115
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -53,8 +53,6 @@ Requires: %{name} = %{version}-%{release}
 Summary: NEAT (Examples)
 Group: Applications/Internet
 Requires: %{name} = %{version}-%{release}
-Requires: %{name}-docs
-Requires: chrpath
 
 %description examples
  The NEAT project wants to achieve a complete redesign of the way in which

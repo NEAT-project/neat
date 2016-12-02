@@ -1,5 +1,5 @@
 Name: libneat
-Version: 1.0.0~td105
+Version: 1.0.0~td114
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -9,6 +9,12 @@ Source: %{name}-%{version}.tar.gz
 
 AutoReqProv: on
 BuildRequires: cmake
+BuildRequires: jansson-devel
+BuildRequires: ldns-devel
+BuildRequires: libmnl-devel
+BuildRequires: lksctp-tools-devel
+BuildRequires: openssl-devel
+BuildRequires: libuv-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 
 %description

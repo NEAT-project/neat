@@ -10,9 +10,7 @@ Build-Depends: cmake,
                libmnl-dev,
                libsctp-dev,
                libssl-dev,
-               libuv1-dev (>= 1.0.2),
-               python-sphinx,
-               python-sphinx-rtd-theme
+               libuv1-dev (>= 1.0.2)
 Standards-Version: 3.9.8
 Vcs-Browser: https://github.com/NEAT-project/neat
 Vcs-Git: https://github.com/NEAT-project/neat.git

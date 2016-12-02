@@ -3,7 +3,7 @@ PROJECT(libneat)
 
 set(BUILD_MAJOR "0")
 set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td104")
+set(BUILD_PATCH "1~td114")
 set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 # INSTALLATION_DIRECTORIES
@@ -42,7 +42,7 @@ set(CPACK_SOURCE_GENERATOR "TGZ")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME
    "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
 set(CPACK_SOURCE_IGNORE_FILES
-   "/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;/${CMAKE_PROJECT_NAME}-*;/${CMAKE_PROJECT_NAME}_*;.cmake$;.tar.gz$;/Makefile$;~$;/build-deb;/clean-deb;/filter-empty-entries;/make-symbols;/make-ppa;/make-deb;/debian.conf;${CPACK_SOURCE_IGNORE_FILES}")
+   "${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}-*;${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}_*;/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;.cmake$;.tar.gz$;/_CPack_Packages;/Makefile$;~$;/build-deb;/clean-deb;/filter-empty-entries;/make-symbols;/make-ppa;/make-deb;/debian.conf;/make-rpm;/rpm.conf;${CPACK_SOURCE_IGNORE_FILES}")
 include(CPack)
 
 add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
@@ -114,6 +114,8 @@ ELSE()
     MESSAGE(FATAL_ERROR ${CMAKE_SYSTEM_NAME} " not supported (yet?)")
 
 ENDIF()
+
+find_package(Threads REQUIRED)
 
 #################################################
 # CHECK STRUCT MEMBERS
@@ -307,5 +309,6 @@ INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/neat)
 
 # INCLUDE EXAMPLES AND TESTS FOLDER
 #################################################
+ADD_SUBDIRECTORY(socketapi)
 ADD_SUBDIRECTORY(examples)
 ADD_SUBDIRECTORY(tests)

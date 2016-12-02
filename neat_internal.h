@@ -179,11 +179,12 @@ struct neat_pollable_socket
     struct sockaddr srcAddr;
     struct sockaddr dstAddr;
 
-    uint8_t     multistream;
-    uint8_t     sctp_neat_peer;         // peer supports neat
-    uint16_t    sctp_streams_available;
-    uint16_t    sctp_streams_used;
-    struct neat_flow_list_head  sctp_multistream_flows;
+    uint8_t                     multistream;       // multistreaming active
+    uint8_t                     sctp_stream_reset;      // peer supports stream reset
+    uint8_t                     sctp_neat_peer;         // peer supports neat
+    uint16_t                    sctp_streams_available; // available streams
+    uint16_t                    sctp_streams_used;      // used streams
+    struct neat_flow_list_head  sctp_multistream_flows; // multistream flows
 
     struct neat_pollable_socket *listen_socket;
 
@@ -206,7 +207,7 @@ struct neat_flow
     uint64_t propertyMask;
     uint64_t propertyAttempt;
     uint64_t propertyUsed;
-    uint16_t stream_count;
+    //uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
@@ -261,10 +262,10 @@ struct neat_flow
     unsigned int isPolling : 1;
     unsigned int ownedByCore : 1;
     unsigned int everConnected : 1;
-    unsigned int isDraining;
+    unsigned int isDraining : 1;
     unsigned int isSCTPExplicitEOR : 1;
     unsigned int isServer : 1; // i.e. created via accept()
-    unsigned int multistream : 1;
+    //unsigned int multistream : 1;
     unsigned int multistreamCheck : 1;
     unsigned int multistreamShutdown: 1;
 
@@ -272,6 +273,7 @@ struct neat_flow
 
     uv_timer_t *multistream_timer;
     uint16_t multistream_id;
+
     uv_poll_cb callback_fx;
 
     LIST_ENTRY(neat_flow) next_flow;

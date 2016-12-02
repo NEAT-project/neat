@@ -748,11 +748,10 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
     char proto[16];
 
-    if (flow->multistream) {
+    // skip these checks if multistream flag is already set
+    if (flow->socket->multistream) {
         goto multistream_skip;
     }
-
-    flow->stream_count = 1;
 
     switch (flow->socket->stack) {
         case NEAT_STACK_UDP:
@@ -768,10 +767,8 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &optlen);
             if (rc < 0) {
                 neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
-                flow->stream_count = 1;
                 flow->socket->sctp_streams_available = 1;
             } else {
-                flow->stream_count = MIN(status.sstat_outstrms, status.sstat_outstrms);
                 flow->socket->sctp_streams_available = MIN(status.sstat_outstrms, status.sstat_outstrms);
             }
 
@@ -779,7 +776,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             flow->multistream_id = 0;
 
             // number of outbound streams == number of inbound streams
-            neat_log(NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->stream_count);
+            neat_log(NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->sctp_streams_available);
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
             break;
         case NEAT_STACK_UDPLITE:

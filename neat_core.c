@@ -1532,6 +1532,8 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     const char *home_dir;
     const char *socket_path;
     char socket_path_buf[128];
+    json_t *prop_obj = NULL;
+    json_t *result_obj = NULL;
     json_t *result_array = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1554,18 +1556,54 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         socket_path = socket_path_buf;
     }
 
-    result_array = json_pack("[{s:[{s:{ss}}],s:b,s:{s:{ss},s:{ss},s:{si},s:{sbsisi}}}]",
-         "match", "interface", "value", he_res->interface, "link", true, "properties", "transport",
-         "value", stack_to_string(he_res->transport ), "remote_ip", "value", he_res->remote_ip,
-         "remote_port", "value", he_res->remote_port, "cached", "value", (result)?1:0, "precedence",
-         2, "score", 5);
+    prop_obj = json_pack("{s:{ss},s:{ss},s:{si},s:{sbsisi}}",
+        "transport", "value", stack_to_string(he_res->transport ),
+        "remote_ip", "value", he_res->remote_ip,
+        "remote_port", "value", he_res->remote_port,
+        "cached", "value", (result)?1:0, "precedence", 2, "score", 5);
+    if (prop_obj == NULL) {
+        goto end;
+    }
 
-    neat_json_send_he_result_to_pm(ctx, flow, socket_path, result_array, on_pm_he_error);
+    if (json_object_update_missing(prop_obj, flow->properties) == -1) {
+        goto end;
+    }
+
+    json_object_del(prop_obj, "interface");
+
+    result_obj = json_pack("{s:[{s:{ss}}],s:b}",
+    "match", "interface", "value", he_res->interface, "link", true);
+    if (result_obj == NULL) {
+        goto end;
+    }
+  
+    if (json_object_set(result_obj, "properties", prop_obj) == -1) {
+        goto end;
+    }
+
+    result_array = json_array();
+    if (result_array == NULL) {
+        goto end;
+    }
+
+    if (json_array_append(result_array, result_obj) == -1) {
+        goto end;
+    }
+  
+    neat_json_send_once(ctx, flow, socket_path, result_array, NULL, on_pm_he_error);
 
 end:
     free(he_res->interface);
     free(he_res->remote_ip);
     free(he_res);
+
+    if (prop_obj) {
+        json_decref(prop_obj);
+    }
+
+    if (result_obj) {
+        json_decref(result_obj);
+    }
 
     if (result_array) {
         json_decref(result_array);

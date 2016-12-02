@@ -304,7 +304,7 @@ TARGET_LINK_LIBRARIES (neat ${neat_libs})
 #################################################
 MESSAGE(STATUS "Install directory: ${CMAKE_INSTALL_PREFIX}")
 
-INSTALL(TARGETS neat neat-static LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+INSTALL(TARGETS neat neat-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
 INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/neat)
 
 

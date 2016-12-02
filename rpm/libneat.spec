@@ -108,5 +108,5 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat/tneat
 
 %changelog
-* Fri Dec 02 2016 Thomas Dreibholz <dreibh@simula.no> 1.0.0
+* Fri Dec 02 2016 Thomas Dreibholz <dreibh@simula.no> 0.0.1
 - Initial RPM release

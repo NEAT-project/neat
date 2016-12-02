@@ -4,13 +4,12 @@ Write data to a neat flow. Should only be called from within the `on_writable`
 callback specified with `neat_set_operations`.
 
 ```c
-neat_error_code neat_read(struct neat_ctx *ctx,
-                          struct neat_flow *flow,
-                          unsigned char *buffer,
-                          uint32_t amount,
-                          uint32_t *actual_amount,
-                          struct neat_tlv optional[],
-                          unsigned int opt_count);
+neat_error_code neat_write(struct neat_ctx *ctx,
+                           struct neat_flow *flow,
+                           const unsigned char *buffer,
+                           uint32_t amount,
+                           struct neat_tlv optional[],
+                           unsigned int opt_count);
 ```
 
 ### Parameters

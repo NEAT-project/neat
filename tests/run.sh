@@ -3,7 +3,8 @@
 echo " Running NEAT tests"
 echo "########################################"
 
-PREFIX=$1
+PREFIX=`echo "$1" | sed "s/valgrind/valgrind --suppressions=valgrind.suppressions/"`
+echo "$PREFIX"
 EXAMPLES_DIR="../examples"
 RC_GLOBAL=0
 ARG=""

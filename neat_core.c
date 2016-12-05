@@ -1349,6 +1349,8 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
     const char *home_dir;
     const char *socket_path;
     char socket_path_buf[128];
+    json_t *prop_obj = NULL;
+    json_t *result_obj = NULL;
     json_t *result_array = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -1383,6 +1385,14 @@ end:
     free(he_res->interface);
     free(he_res->remote_ip);
     free(he_res);
+
+    if (prop_obj) {
+        json_decref(prop_obj);
+    }
+
+    if (result_obj) {
+        json_decref(result_obj);
+    }
 
     if (result_array) {
         json_decref(result_array);
@@ -5063,8 +5073,8 @@ neat_find_flow(neat_ctx *ctx, struct sockaddr *src, struct sockaddr *dst)
         if (flow->acceptPending == 1)
             continue;
 
-        if ((sockaddr_cmp(&flow->socket->dstAddr, dst) != 0) &&
-               (sockaddr_cmp(&flow->socket->srcAddr, src) != 0)) {
+        if ((sockaddr_cmp(&flow->socket->dstAddr, dst) == 0) &&
+               (sockaddr_cmp(&flow->socket->srcAddr, src) == 0)) {
                        return flow;
         }
     }

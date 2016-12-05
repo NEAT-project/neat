@@ -3,7 +3,7 @@ PROJECT(libneat)
 
 set(BUILD_MAJOR "0")
 set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td114")
+set(BUILD_PATCH "1~td116")
 set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 # INSTALLATION_DIRECTORIES
@@ -269,7 +269,8 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -Wall -Wextra -Werror -Wn
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+    # _FORTIFY_SOURCE requires compiling with optimization
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
 ENDIF()
 
 # LIBRARIES
@@ -303,7 +304,7 @@ TARGET_LINK_LIBRARIES (neat ${neat_libs})
 #################################################
 MESSAGE(STATUS "Install directory: ${CMAKE_INSTALL_PREFIX}")
 
-INSTALL(TARGETS neat LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+INSTALL(TARGETS neat neat-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
 INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/neat)
 
 

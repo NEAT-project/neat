@@ -1308,7 +1308,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     int so_error = 0;
     unsigned int len = sizeof(so_error);
     if (getsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
-    
+
         neat_log(NEAT_LOG_DEBUG, "Call to getsockopt failed: %s", strerror(errno));
         neat_io_error(candidate->ctx, flow, NEAT_ERROR_INTERNAL);
         return;
@@ -2268,8 +2268,12 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             candidate->priority = prio++;
 
             candidate->pollable_socket->family      = result->ai_family;
+            candidate->pollable_socket->src_address = strdup(src_buffer);
+            candidate->pollable_socket->dst_address = strdup(dst_buffer);
             candidate->pollable_socket->port        = flow->port;
             candidate->pollable_socket->stack = stacks[i];
+            candidate->pollable_socket->dst_len     = result->src_addr_len;
+            candidate->pollable_socket->src_len     = result->dst_addr_len;
 
 #if defined(SCTP_MULTIHOMING)
             if (flow->local_name && neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) {
@@ -2294,23 +2298,25 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     struct sockaddr_storage tmpsrc;
                     candidate->pollable_socket->nr_local_addr = 0;
                     TAILQ_FOREACH(cand, candidates, next) {
-                        memcpy(&tmpsrc, &result->src_addr, result->src_addr_len);
-                        if (!strcmp(cand->pollable_socket->dst_address, dst_buffer)) {
-                            dstfound = true;
-                            for (uint16_t i = 0; i < cand->pollable_socket->nr_local_addr; i++) {
-                                memcpy((void *)&(candidate->pollable_socket->local_addr[i]), &(cand->pollable_socket->local_addr[i]), sizeof(cand->pollable_socket->local_addr[i]));
+                        if (neat_base_stack(cand->pollable_socket->stack == NEAT_STACK_SCTP)) {
+                            memcpy(&tmpsrc, &result->src_addr, result->src_addr_len);
+                            if (!strcmp(cand->pollable_socket->dst_address, dst_buffer)) {
+                                dstfound = true;
+                                for (uint16_t i = 0; i < cand->pollable_socket->nr_local_addr; i++) {
+                                    memcpy((void *)&(candidate->pollable_socket->local_addr[i]), &(cand->pollable_socket->local_addr[i]), sizeof(cand->pollable_socket->local_addr[i]));
+                                    candidate->pollable_socket->nr_local_addr++;
+                                }
+                                memcpy(&(candidate->pollable_socket->local_addr[candidate->pollable_socket->nr_local_addr]), &tmpsrc, result->src_addr_len);
                                 candidate->pollable_socket->nr_local_addr++;
+                                candidate->pollable_socket->src_address = strdup(cand->pollable_socket->src_address);
+                                candidate->pollable_socket->src_address =
+                                    realloc(candidate->pollable_socket->src_address,
+                                        strlen(candidate->pollable_socket->src_address) + strlen(src_buffer) + 2 * sizeof(char));
+                                strcat(candidate->pollable_socket->src_address, ",");
+                                strcat(candidate->pollable_socket->src_address, src_buffer);
+                                TAILQ_REMOVE(candidates, cand, next);
+                                break;
                             }
-                            memcpy(&(candidate->pollable_socket->local_addr[candidate->pollable_socket->nr_local_addr]), &tmpsrc, result->src_addr_len);
-                            candidate->pollable_socket->nr_local_addr++;
-                            candidate->pollable_socket->src_address = strdup(cand->pollable_socket->src_address);
-                            candidate->pollable_socket->src_address =
-                                realloc(candidate->pollable_socket->src_address,
-                                    strlen(candidate->pollable_socket->src_address) + strlen(address_name) + 2 * sizeof(char));
-                            strcat(candidate->pollable_socket->src_address, ",");
-                            strcat(candidate->pollable_socket->src_address, address_name);
-                            TAILQ_REMOVE(candidates, cand, next);
-                            break;
                         }
                     }
                     if (!dstfound) {
@@ -2320,12 +2326,14 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     }
                 }
             } else {
-#endif
+                candidate->pollable_socket->src_address = strdup(src_buffer);
+                candidate->pollable_socket->src_len     = result->src_addr_len;
+                memcpy(&candidate->pollable_socket->src_sockaddr, &result->src_addr, result->src_addr_len);
+            }
+#else
             candidate->pollable_socket->src_address = strdup(src_buffer);
             candidate->pollable_socket->src_len     = result->src_addr_len;
             memcpy(&candidate->pollable_socket->src_sockaddr, &result->src_addr, result->src_addr_len);
-#if defined(SCTP_MULTIHOMING)
-            }
 #endif
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
             candidate->pollable_socket->dst_len     = result->dst_addr_len;
@@ -2341,7 +2349,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 ((struct sockaddr_in*) &candidate->pollable_socket->dst_sockaddr)->sin_port =
                     htons(candidate->pollable_socket->port);
             }
-
+printf("insert candidate with src_address %s and stack %d\n", candidate->pollable_socket->src_address, candidate->pollable_socket->stack);
             TAILQ_INSERT_TAIL(candidates, candidate, next);
         }
     }
@@ -2427,7 +2435,7 @@ on_pm_reply_pre_resolve(struct neat_ctx *ctx, struct neat_flow *flow, json_t *js
             neat_log(NEAT_LOG_DEBUG, "Unknown interface %s", candidate->if_name);
             goto loop_error;
         }
-
+printf("set src_address to %s\n", local_ip);
         if ((candidate->pollable_socket->src_address = strdup(local_ip)) == NULL)
             goto loop_oom;
 
@@ -3716,7 +3724,6 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             address_name = strtok(NULL, ",");
         }
         free (tmp);
-
         if (sctp_bindx(candidate->pollable_socket->fd, (struct sockaddr *)candidate->pollable_socket->local_addr, candidate->pollable_socket->nr_local_addr, SCTP_BINDX_ADD_ADDR)) {
             neat_log(NEAT_LOG_ERROR,
                     "Failed to bindx fd %d socket to IP. Error: %s",

@@ -718,6 +718,7 @@ neat_error_code neat_get_stats(neat_ctx *mgr, char **json_stats)
 
 #define READYCALLBACKSTRUCT \
     flow->operations->status = code;\
+    flow->operations->stream_id = stream_id;\
     flow->operations->ctx = ctx;\
     flow->operations->flow = flow;
 
@@ -725,6 +726,7 @@ neat_error_code neat_get_stats(neat_ctx *mgr, char **json_stats)
 void
 neat_io_error(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 {
+    const int stream_id = NEAT_INVALID_STREAM;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations || !flow->operations->on_error) {
@@ -738,6 +740,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
                          neat_error_code code)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    const int stream_id = NEAT_INVALID_STREAM;
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
     unsigned int optlen;
     int rc;
@@ -773,7 +776,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             flow->multistream_id = 0;
 
             // number of outbound streams == number of inbound streams
-            neat_log(NEAT_LOG_INFO, "%s - SCTP - available streams: %d", __func__, flow->socket->sctp_streams_available);
+            neat_log(NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->sctp_streams_available);
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
             break;
         case NEAT_STACK_UDPLITE:
@@ -787,7 +790,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             break;
     }
 
-    neat_log(NEAT_LOG_INFO, "%s - Connected: %s/%s", __func__, proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6"));
+    neat_log(NEAT_LOG_INFO, "Connected: %s/%s - %d streams", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6" ), flow->stream_count);
 
 multistream_skip:
 
@@ -799,7 +802,7 @@ multistream_skip:
     flow->operations->on_connected(flow->operations);
 }
 
-static void io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
+static void io_writable(neat_ctx *ctx, neat_flow *flow, int stream_id, neat_error_code code)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -1050,6 +1053,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 {
     struct sockaddr_storage peerAddr;
     socklen_t peerAddrLen = sizeof(struct sockaddr_storage);
+    int stream_id = 0;
     ssize_t n;
     //Not used when notifications aren't available:
     int flags __attribute__((unused));
@@ -1065,7 +1069,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 #if (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
     struct cmsghdr *cmsg;
 #endif
-    uint16_t rcv_stream_id = 0;
+
     unsigned char *multistream_buffer;
 
     struct msghdr msghdr;
@@ -1091,6 +1095,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
      * anything else will.
      */
     if (!flow->operations->on_readable && flow->acceptPending) {
+
         if (socket->stack != NEAT_STACK_UDP && socket->stack != NEAT_STACK_UDPLITE) {
             neat_log(NEAT_LOG_DEBUG, "Exit 1");
             return READ_WITH_ERROR;
@@ -1221,13 +1226,13 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 if (cmsg->cmsg_type == SCTP_RCVINFO) {
                     rcvinfo = (struct sctp_rcvinfo *)CMSG_DATA(cmsg);
                     neat_log(NEAT_LOG_DEBUG, "%s - Received data on SCTP stream %d", __func__, rcvinfo->rcv_sid);
-                    rcv_stream_id = rcvinfo->rcv_sid;
+                    stream_id = rcvinfo->rcv_sid;
                 }
 #elif defined (SCTP_SNDRCV)
                 if (cmsg->cmsg_type == SCTP_SNDRCV) {
                     sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
                     neat_log(NEAT_LOG_DEBUG, "%s - Received data on SCTP stream %d", __func__, sndrcvinfo->sinfo_stream);
-                    rcv_stream_id = sndrcvinfo->sinfo_stream;
+                    stream_id = sndrcvinfo->sinfo_stream;
                 }
 #endif
             }
@@ -1280,8 +1285,8 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         }
 #endif //defined(MSG_NOTIFICATION)
 
-        if (rcv_stream_id > 0 && socket->sctp_neat_peer) {
-            if ((flow_temp = neat_sctp_get_flow_by_sid(socket, rcv_stream_id)) == NULL) {
+        if (stream_id > 0 && socket->sctp_neat_peer) {
+            if ((flow_temp = neat_sctp_get_flow_by_sid(socket, stream_id)) == NULL) {
                 neat_log(NEAT_LOG_DEBUG, "%s - new incoming flow!", __func__);
 
                 neat_flow *listen_flow = flow->socket->listen_socket->flow;
@@ -1313,7 +1318,8 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 new_flow->operations->flow = new_flow;
                 new_flow->operations->userData = listen_flow->operations->userData;
 
-                new_flow->multistream_id = rcv_stream_id;
+                new_flow->multistream = 1;
+                new_flow->multistream_id = stream_id;
 
                 LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, new_flow, next_multistream_flow);
 
@@ -1369,9 +1375,10 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 }
 
 static void
-io_all_written(neat_ctx *ctx, neat_flow *flow)
+io_all_written(neat_ctx *ctx, neat_flow *flow, int stream_id)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    stream_id = NEAT_INVALID_STREAM;
 
     if (!flow->operations || !flow->operations->on_all_written) {
         return;
@@ -1385,6 +1392,7 @@ static void
 io_timeout(neat_ctx *ctx, neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    const int stream_id = NEAT_INVALID_STREAM;
 
     if (!flow->operations || !flow->operations->on_timeout) {
         return;
@@ -2132,8 +2140,10 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         rc = getsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &optlen);
         if (rc < 0) {
             neat_log(NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
+            newFlow->stream_count = 1;
             newFlow->socket->sctp_streams_available = 1;
         } else {
+            newFlow->stream_count = MIN(status.sstat_instrms, status.sstat_outstrms);
             newFlow->socket->sctp_streams_available = MIN(status.sstat_instrms, status.sstat_outstrms);
         }
 
@@ -2141,9 +2151,11 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         newFlow->multistream_id = 0;
 
         // number of outbound streams == number of inbound streams
-        neat_log(NEAT_LOG_DEBUG, "%s - SCTP - number of streams: %d", __func__, newFlow->socket->sctp_streams_available);
+        neat_log(NEAT_LOG_DEBUG, "%s - SCTP - number of streams: %d", __func__, newFlow->stream_count);
         break;
 #endif
+    default:
+        newFlow->stream_count = 1;
     }
 
     return newFlow;
@@ -3101,6 +3113,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
         return NEAT_ERROR_OUT_OF_MEMORY;
     flow->port = port;
     flow->propertyAttempt = flow->propertyMask;
+    flow->stream_count = stream_count;
     flow->ctx = mgr;
     flow->group = group;
     flow->priority = priority;
@@ -3547,6 +3560,7 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     const char *local_name = NULL;
     neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM]; /* We only support SCTP, TCP, UDP, and UDPLite */
     uint8_t nr_of_stacks;
+    int stream_count = 10;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     nr_of_stacks = neat_property_translate_protocols(flow->propertyMask, stacks);
@@ -3559,8 +3573,16 @@ neat_error_code neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 
     HANDLE_OPTIONAL_ARGUMENTS_START()
         OPTIONAL_STRING(NEAT_TAG_LOCAL_NAME, local_name)
+        OPTIONAL_INTEGER(NEAT_TAG_STREAM_COUNT, stream_count)
         // OPTIONAL_STRING(NEAT_TAG_SERVICE_NAME, service_name)
     HANDLE_OPTIONAL_ARGUMENTS_END();
+
+    if (stream_count < 1) {
+        neat_log(NEAT_LOG_ERROR, "Stream count must be 1 or more");
+        return NEAT_ERROR_BAD_ARGUMENT;
+    }
+    flow->stream_count = stream_count;
+    neat_log(NEAT_LOG_DEBUG, "%s - %d streams", __func__, flow->stream_count);
 
     if (!local_name)
         local_name = "0.0.0.0";
@@ -3635,9 +3657,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
                 sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
                 memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
-		
-		if (flow->multistream_id > 0) {
-		sndinfo->snd_sid = msg->stream_id;
+                sndinfo->snd_sid = msg->stream_id;
 #if defined(SCTP_EOR)
                 if ((flow->isSCTPExplicitEOR) && (len == msg->bufferedSize)) {
                     sndinfo->snd_flags |= SCTP_EOR;
@@ -3701,7 +3721,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 
 static neat_error_code
 neat_write_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
-                                 const unsigned char *buffer, uint32_t amt)
+                                 const unsigned char *buffer, uint32_t amt, int stream_id)
 {
     struct neat_buffered_message *msg;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
@@ -3721,8 +3741,10 @@ neat_write_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
         msg->bufferedOffset = 0;
         msg->bufferedSize = 0;
         msg->bufferedAllocation= 0;
+        msg->stream_id = stream_id;
         TAILQ_INSERT_TAIL(&flow->bufferedMessages, msg, message_next);
     } else {
+        assert(stream_id == 0);
         msg = TAILQ_LAST(&flow->bufferedMessages, neat_message_queue_head);
     }
     // check if there is room to buffer without extending allocation
@@ -3766,6 +3788,8 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     size_t len;
     int atomic;
 
+    int stream_id            = 0;
+    int has_stream_id        = 0;
     // int has_context       = 0;
     // int context           = 0;
     // int has_pr_method     = 0;
@@ -3795,7 +3819,13 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+
+    if (flow->multistream) {
+        stream_id = flow->multistream_id;
+    }
+
     HANDLE_OPTIONAL_ARGUMENTS_START()
+        OPTIONAL_INTEGER_PRESENT(NEAT_TAG_STREAM_ID, stream_id, has_stream_id)
         // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_CONTEXT, context, has_context)
         // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_PARTIAL_RELIABILITY_METHOD, pr_method, has_pr_method)
         // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_PARTIAL_RELIABILITY_VALUE, pr_value, has_pr_value)
@@ -3803,6 +3833,23 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         // OPTIONAL_FLOAT_PRESENT(  NEAT_TAG_PRIORITY, priority, has_priority)
         // OPTIONAL_STRING_PRESENT( NEAT_TAG_DESTINATION_IP_ADDRESS, dest_addr, has_dest_addr)
     HANDLE_OPTIONAL_ARGUMENTS_END();
+
+    if (has_stream_id && stream_id < 0) {
+        neat_log(NEAT_LOG_DEBUG, "Invalid stream id: Must be 0 or greater");
+        return NEAT_ERROR_BAD_ARGUMENT;
+    } else if (has_stream_id && flow->stream_count == 1 && stream_id != 0) {
+        neat_log(NEAT_LOG_DEBUG,
+                 "Tried to specify stream id when only a single stream "
+                 "is in use. Ignoring.");
+        stream_id = 0;
+    } else if (has_stream_id && flow->socket->stack != NEAT_STACK_SCTP) {
+        // For now, warn about this. Maybe we emulate multistreaming over TCP in
+        // the future?
+        neat_log(NEAT_LOG_DEBUG,
+                 "Tried to specify stream id when using a protocol which does "
+                 "not support multistreaming. Ignoring.");
+        stream_id = 0;
+    }
 
     switch (flow->socket->stack) {
     case NEAT_STACK_TCP:
@@ -3858,8 +3905,8 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
             memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
 
-            if (flow->multistream_id) {
-                sndinfo->snd_sid = flow->multistream_id;
+            if (stream_id) {
+                sndinfo->snd_sid = stream_id;
             }
 
 #if defined(SCTP_EOR)
@@ -3877,8 +3924,8 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
             memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
 
-            if (flow->multistream_id) {
-                sndrcvinfo->sinfo_stream = flow->multistream_id;
+            if (stream_id) {
+                sndrcvinfo->sinfo_stream = stream_id;
             }
 #if defined(SCTP_EOR)
             if ((flow->isSCTPExplicitEOR) && (len == amt)) {
@@ -3904,10 +3951,16 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                   0);
 #endif
         }
-        
-	neat_log(NEAT_LOG_DEBUG, "%zd bytes sent", rv);
-        
-	if (rv < 0 ) {
+#ifdef IPPROTO_SCTP
+        if (flow->socket->stack == NEAT_STACK_SCTP) {
+            neat_log(NEAT_LOG_DEBUG, "%zd bytes sent on stream %d", rv, stream_id);
+        } else {
+            neat_log(NEAT_LOG_DEBUG, "%zd bytes sent", rv);
+        }
+#else
+        neat_log(NEAT_LOG_DEBUG, "%zd bytes sent", rv);
+#endif
+        if (rv < 0 ) {
             if (errno != EWOULDBLOCK) {
                 return NEAT_ERROR_IO;
             }
@@ -3921,13 +3974,13 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     /* Update flow statistics with the sent bytes */
     flow->flow_stats.bytes_sent += rv;
 
-    code = neat_write_fillbuffer(ctx, flow, buffer, amt);
+    code = neat_write_fillbuffer(ctx, flow, buffer, amt, stream_id);
     if (code != NEAT_OK) {
         return code;
     }
     if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         flow->isDraining = 0;
-        io_all_written(ctx, flow);
+        io_all_written(ctx, flow, stream_id);
     } else {
         flow->isDraining = 1;
     }
@@ -3945,6 +3998,7 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                      unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
                       struct neat_tlv optional[], unsigned int opt_count)
 {
+    int stream_id = 0;
     ssize_t rv;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -4001,6 +4055,10 @@ end:
     if (optional != NULL && opt_count > 0) {\
         for (unsigned int i = 0; i < opt_count; ++i) {\
             switch (optional[i].tag) {
+            case NEAT_TAG_STREAM_ID:
+                optional[i].value.integer = stream_id;
+                optional[i].type = NEAT_TYPE_INTEGER;
+                break;
             case NEAT_TAG_PARTIAL_MESSAGE_RECEIVED:
             case NEAT_TAG_PARTIAL_SEQNUM:
             case NEAT_TAG_UNORDERED:
@@ -4318,8 +4376,8 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #if defined(SCTP_INITMSG)
         struct sctp_initmsg init;
         memset(&init, 0, sizeof(init));
-        init.sinit_num_ostreams = NEAT_SCTP_MAX_STREAMS;
-        init.sinit_max_instreams = NEAT_SCTP_MAX_STREAMS;
+        init.sinit_num_ostreams = candidate->pollable_socket->flow->stream_count;
+        init.sinit_max_instreams = candidate->pollable_socket->flow->stream_count; // TODO: May depend on policy
 
         init.sinit_max_init_timeo = 3000;
         init.sinit_max_attempts = 3;
@@ -4501,13 +4559,13 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif // defined(SCTP_ENABLE_STREAM_RESET) && !defined(USRSCTP_SUPPORT)
 #if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
         memset(&initmsg, 0, sizeof(struct sctp_initmsg));
-        initmsg.sinit_num_ostreams = NEAT_SCTP_MAX_STREAMS;
-        initmsg.sinit_max_instreams = NEAT_SCTP_MAX_STREAMS;
+        initmsg.sinit_num_ostreams = flow->stream_count;
+        initmsg.sinit_max_instreams = flow->stream_count;
 
         if (setsockopt(fd, IPPROTO_SCTP, SCTP_INITMSG, (char*) &initmsg, sizeof(struct sctp_initmsg)) < 0) {
             neat_log(NEAT_LOG_ERROR, "Unable to set inbound/outbound stream count");
         }
-        neat_log(NEAT_LOG_DEBUG, "Offering %d SCTP streams in/out", NEAT_SCTP_MAX_STREAMS);
+        neat_log(NEAT_LOG_DEBUG, "Offering %d SCTP streams in/out", flow->stream_count);
 #endif // defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
         flow->writeLimit = flow->writeSize / 4;
 #ifdef SCTP_NODELAY
@@ -5054,6 +5112,7 @@ error:
 // Set rate to non-zero if wanting to signal a new *maximum* bitrate
 void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate)
 {
+    const int stream_id = NEAT_INVALID_STREAM;
     //READYCALLBACKSTRUCT expects this:
     neat_error_code code = NEAT_ERROR_OK;
     neat_ctx *ctx = flow->ctx;
@@ -5072,6 +5131,7 @@ void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate)
 // Set rate to the new advised maximum bitrate
 void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate)
 {
+    const int stream_id = NEAT_INVALID_STREAM;
     //READYCALLBACKSTRUCT expects this:
     neat_error_code code = NEAT_ERROR_OK;
     neat_ctx *ctx = flow->ctx;
@@ -5093,6 +5153,7 @@ void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate)
 void neat_notify_send_failure(neat_flow *flow, neat_error_code code,
 			      int context, const unsigned char *unsent_buffer)
 {
+    const int stream_id = NEAT_INVALID_STREAM;
     //READYCALLBACKSTRUCT expects this:
     neat_ctx *ctx = flow->ctx;
 
@@ -5109,6 +5170,7 @@ void neat_notify_send_failure(neat_flow *flow, neat_error_code code,
 // Notify application about timeout
 void neat_notify_timeout(neat_flow *flow)
 {
+    const int stream_id = NEAT_INVALID_STREAM;
     //READYCALLBACKSTRUCT expects this:
     neat_error_code code = NEAT_ERROR_OK;
     neat_ctx *ctx = flow->ctx;
@@ -5127,6 +5189,7 @@ void neat_notify_timeout(neat_flow *flow)
 // TODO: this should perhaps return a status code?
 void neat_notify_aborted(neat_flow *flow)
 {
+    const int stream_id = NEAT_INVALID_STREAM;
     //READYCALLBACKSTRUCT expects this:
     neat_error_code code = NEAT_ERROR_OK;
     neat_ctx *ctx = flow->ctx;
@@ -5144,6 +5207,7 @@ void neat_notify_aborted(neat_flow *flow)
 // Notify application a connection has closed
 void neat_notify_close(neat_flow *flow)
 {
+    const int stream_id = NEAT_INVALID_STREAM;
     //READYCALLBACKSTRUCT expects this:
     neat_error_code code = NEAT_ERROR_OK;
     neat_ctx *ctx = flow->ctx;
@@ -5162,6 +5226,7 @@ void neat_notify_close(neat_flow *flow)
 // Code should identify what happened.
 void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code)
 {
+    const int stream_id = NEAT_INVALID_STREAM;
     //READYCALLBACKSTRUCT expects this:
     neat_ctx *ctx = flow->ctx;
 

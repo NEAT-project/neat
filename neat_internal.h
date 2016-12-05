@@ -33,7 +33,6 @@
     uint8_t src_addr_cnt
 
 #define NEAT_MAX_NUM_PROTO 4
-#define NEAT_SCTP_MAX_STREAMS 100
 
 struct neat_event_cb;
 struct neat_addr;
@@ -180,7 +179,7 @@ struct neat_pollable_socket
     struct sockaddr srcAddr;
     struct sockaddr dstAddr;
 
-    uint8_t                     multistream;            // multistreaming active
+    uint8_t                     multistream;       // multistreaming active
     uint8_t                     sctp_stream_reset;      // peer supports stream reset
     uint8_t                     sctp_neat_peer;         // peer supports neat
     uint16_t                    sctp_streams_available; // available streams

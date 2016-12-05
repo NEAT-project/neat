@@ -1,5 +1,5 @@
 Name: libneat
-Version: 0.0.1~td115
+Version: 0.0.1~td116
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -90,8 +90,8 @@ make install DESTDIR=%{buildroot}
 /usr/include/neat/neat.h
 /usr/include/neat/neat_linux.h
 /usr/include/neat/neat_queue.h
-/usr/lib/libneat*.a
-/usr/lib/libneat*.so
+/usr/lib/libneat-static.a
+/usr/lib/libneat[^\-]*so
 
 %files examples
 /usr/lib/libneat/client

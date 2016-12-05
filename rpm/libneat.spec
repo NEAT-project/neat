@@ -147,7 +147,7 @@ make install DESTDIR=%{buildroot}
 
 %files socketapi-devel
 /usr/include/neat/neat-socketapi.h
-/usr/lib/libneat-socketapi*.a
+/usr/lib/libneat-socketapi-static.a
 /usr/lib/libneat-socketapi*.so
 
 %files socketapi-examples

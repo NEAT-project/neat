@@ -44,7 +44,7 @@ TARGET_LINK_LIBRARIES (neat-socketapi ${neat_socketapi_libs} "${CMAKE_THREAD_LIB
 #################################################
 MESSAGE(STATUS "Install directory: ${CMAKE_INSTALL_PREFIX}")
 
-INSTALL(TARGETS neat-socketapi LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+INSTALL(TARGETS neat-socketapi neat-socketapi-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
 INSTALL(FILES ${neat_socketapi_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/neat)
 
 
@@ -60,9 +60,9 @@ FOREACH (source_file ${neat_socketapi_programs})
       TARGET_COMPILE_OPTIONS(PUBLIC ${source_file_we} "-pthread")
    endif()
    TARGET_LINK_LIBRARIES(${source_file_we} neat-socketapi neat "${CMAKE_THREAD_LIBS_INIT}" m)
-   INSTALL(TARGETS             ${source_file_we}
-           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-           BUNDLE DESTINATION  ${CMAKE_INSTALL_BINDIR})
+   # INSTALL(TARGETS             ${source_file_we}
+   #         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+   #         BUNDLE DESTINATION  ${CMAKE_INSTALL_BINDIR})
 ENDFOREACH ()
 
 

@@ -31,7 +31,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-build
 
 
 %package devel
-Summary: NEAT (Development Files)
+Summary: NEAT (Core API Development Files)
 Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
 
@@ -50,7 +50,7 @@ Requires: %{name} = %{version}-%{release}
 
 
 %package examples
-Summary: NEAT (Examples)
+Summary: NEAT (Core API Examples)
 Group: Applications/Internet
 Requires: %{name} = %{version}-%{release}
 
@@ -66,6 +66,44 @@ Requires: %{name} = %{version}-%{release}
  applications to seamlessly and more easily take advantage of new network
  features as they evolve.
  This package contains the built examples for the NEAT Core API.
+
+
+%package socketapi-devel
+Summary: NEAT (Socket API Development Files)
+Group: Development/Libraries
+Requires: %{name} = %{version}-%{release}
+
+%description socketapi-devel
+ The NEAT project wants to achieve a complete redesign of the way in which
+ Internet applications interact with the network. Our goal is to allow network
+ “services” offered to applications – such as reliability, low-delay
+ communication or security – to be dynamically tailored based on application
+ demands, current network conditions, hardware capabilities or local policies,
+ and also to support the integration of new network functionality in an
+ evolutionary fashion, without applications having to be rewritten. This
+ architectural change will make the Internet truly “enhanceable”, by allowing
+ applications to seamlessly and more easily take advantage of new network
+ features as they evolve.
+ This package contains the built examples for the NEAT (Socket API.
+
+
+%package socketapi-examples
+Summary: NEAT (Socket API Examples)
+Group: Applications/Internet
+Requires: %{name} = %{version}-%{release}
+
+%description socketapi-examples
+ The NEAT project wants to achieve a complete redesign of the way in which
+ Internet applications interact with the network. Our goal is to allow network
+ “services” offered to applications – such as reliability, low-delay
+ communication or security – to be dynamically tailored based on application
+ demands, current network conditions, hardware capabilities or local policies,
+ and also to support the integration of new network functionality in an
+ evolutionary fashion, without applications having to be rewritten. This
+ architectural change will make the Internet truly “enhanceable”, by allowing
+ applications to seamlessly and more easily take advantage of new network
+ features as they evolve.
+ This package contains the built examples for the NEAT (Socket API.
 
 
 %prep
@@ -85,13 +123,14 @@ make install DESTDIR=%{buildroot}
 %files
 %defattr(-,root,root,-)
 /usr/lib/libneat.so*
+/usr/lib/libneat-socketapi.so*
 
 %files devel
 /usr/include/neat/neat.h
 /usr/include/neat/neat_linux.h
 /usr/include/neat/neat_queue.h
-/usr/lib/libneat*.a
-/usr/lib/libneat*.so
+/usr/lib/libneat-static.a
+/usr/lib/libneat[^\.]*.so
 
 %files examples
 /usr/lib/libneat/client
@@ -105,6 +144,17 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat/server_discard
 /usr/lib/libneat/server_echo
 /usr/lib/libneat/tneat
+
+%files socketapi-devel
+/usr/include/neat/neat-socketapi.h
+/usr/lib/libneat-socketapi*.a
+/usr/lib/libneat-socketapi*.so
+
+%files socketapi-examples
+/usr/lib/libneat/httpget
+/usr/lib/libneat/httpserver1
+/usr/lib/libneat/httpserver2-select
+/usr/lib/libneat/httpserver2-threads
 
 %changelog
 * Fri Dec 02 2016 Thomas Dreibholz <dreibh@simula.no> 0.0.1

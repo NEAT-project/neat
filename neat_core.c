@@ -778,7 +778,9 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             }
 
             flow->socket->sctp_streams_used = 1;
+#ifdef SCTP_MULTISTREAM
             flow->multistream_id = 0;
+#endif
 
             // number of outbound streams == number of inbound streams
             neat_log(NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->socket->sctp_streams_available);
@@ -1299,7 +1301,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             }
 
             //We don't update readBufferSize, so buffer is implicitly "freed"
-#if !defined(USRSCTP_SUPPORT)
+#ifdef SCTP_MULTISTREAM
             if (flow->socket->multistream) {
                 handle_sctp_event(flow, (union sctp_notification*)(multistream_buffer));
                 free(multistream_buffer);

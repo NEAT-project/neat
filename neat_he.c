@@ -223,9 +223,10 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     flow->candidate_list = candidate_list;
     candidate = candidate_list->tqh_first;
 
-#ifdef SCTP_MULTISTREAMING
+
     // SCTP is generally allowed
     if (multistream_probe) {
+#ifdef SCTP_MULTISTREAMING
         // check if there is already a piggyback assoc
         if ((piggyback_flow = neat_find_multistream_assoc(ctx, flow)) != NULL) {
             neat_log(NEAT_LOG_DEBUG, "%s - using piggyback assoc", __func__);
@@ -270,8 +271,9 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             delayed_he_open(flow, callback_fx);
             return NEAT_ERROR_OK;
         }
-    }
 #endif // SCTP_MULTISTREAMING
+    }
+
 
     flow->hefirstConnect = 1;
     flow->heConnectAttemptCount = 0;

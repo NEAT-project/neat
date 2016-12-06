@@ -934,7 +934,7 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
     }
 }
 
-#if !defined(USRSCTP_SUPPORT)
+#ifdef SCTP_MULTISTREAM
 #ifdef SCTP_RESET_STREAMS
 static void
 handle_sctp_stream_reset(neat_flow *flow, struct sctp_stream_reset_event *strrst)

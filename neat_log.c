@@ -12,6 +12,7 @@
 
 #include "neat_log.h"
 
+#define KNRM  "\x1B[0m"
 #define RED   "\x1B[31m"
 #define GRN   "\x1B[32m"
 #define YEL   "\x1B[33m"
@@ -135,7 +136,7 @@ neat_log(uint8_t level, const char* format, ...)
                 fprintf(neat_log_fd, GRN);
                 break;
             case NEAT_LOG_DEBUG:
-                fprintf(neat_log_fd, WHT);
+                //fprintf(neat_log_fd, WHT);
                 break;
         }
     }
@@ -165,7 +166,7 @@ neat_log(uint8_t level, const char* format, ...)
     fprintf(neat_log_fd, "\n"); // xxx:ugly solution...
 
     if (isatty(fileno(neat_log_fd))) {
-        fprintf(neat_log_fd, WHT);
+        fprintf(neat_log_fd, KNRM);
     }
 }
 

@@ -33,9 +33,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
-
 #include <errno.h>
-#include <math.h>
 
 
 /* ###### NEAT poll() implementation ##################################### */
@@ -86,7 +84,7 @@ int nsa_select(int             n,
    }
 
    /* ====== Call poll() and propagate results to fdsets ================= */
-   waitingTime = (1000 * timeout->tv_sec) + (int)ceil((double)timeout->tv_usec / 1000.0);
+   waitingTime = (1000 * timeout->tv_sec) + (int)((timeout->tv_usec + 999) / 1000);
    result = nsa_poll((struct pollfd*)&ufds, nfds, waitingTime);
    if(result > 0) {
       for(i = 0;i < nfds;i++) {

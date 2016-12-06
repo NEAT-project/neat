@@ -5349,9 +5349,9 @@ neat_find_flow(neat_ctx *ctx, struct sockaddr *src, struct sockaddr *dst)
         if (flow->acceptPending == 1)
             continue;
 
-        if ((sockaddr_cmp(&flow->socket->dstAddr, dst) != 0) &&
-               (sockaddr_cmp(&flow->socket->srcAddr, src) != 0)) {
-            return flow;
+        if ((sockaddr_cmp(&flow->socket->dstAddr, dst) == 0) &&
+               (sockaddr_cmp(&flow->socket->srcAddr, src) == 0)) {
+                       return flow;
         }
     }
     return NULL;

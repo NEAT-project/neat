@@ -2202,7 +2202,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         }
 
         newFlow->socket->sctp_streams_used = 1;
+#ifdef SCTP_MULTISTREAMING
         newFlow->multistream_id = 0;
+#endif
 
         // number of outbound streams == number of inbound streams
         neat_log(NEAT_LOG_DEBUG, "%s - SCTP - number of streams: %d", __func__, newFlow->socket->sctp_streams_available);

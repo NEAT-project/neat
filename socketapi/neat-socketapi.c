@@ -112,8 +112,11 @@ int nsa_close(int fd)
    /* ====== Remove socket ===============================================*/
    pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
    rbt_remove(&gSocketAPIInternals->socket_set, &neatSocket->node);
+   ibm_free_id(gSocketAPIInternals->socket_identifier_bitmap, neatSocket->descriptor);
+   neatSocket->descriptor = -1;
    pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
 
+   nq_delete(&neatSocket->notifications);
    pthread_mutex_unlock(&neatSocket->mutex);
    pthread_mutex_destroy(&neatSocket->mutex);
    free(neatSocket);

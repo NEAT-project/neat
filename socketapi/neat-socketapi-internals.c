@@ -372,6 +372,7 @@ int nsa_socket_internal(int domain, int type, int protocol,
 
    /* ====== Initialize NEAT socket ====================================== */
    rbt_node_new(&neatSocket->node);
+   nq_new(&neatSocket->notifications);
    init_mutex(&neatSocket->mutex);
    neatSocket->descriptor      = -1;   /* to be allocated below */
    neatSocket->socket_domain   = domain;
@@ -379,6 +380,7 @@ int nsa_socket_internal(int domain, int type, int protocol,
    neatSocket->socket_protocol = protocol;
 
    /* ====== Add new socket to socket storage ============================ */
+   pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
    if(requestedSD < 0) {
       neatSocket->descriptor = ibm_allocate_id(gSocketAPIInternals->socket_identifier_bitmap);
    }
@@ -389,6 +391,7 @@ int nsa_socket_internal(int domain, int type, int protocol,
    if(neatSocket->descriptor >= 0) {
       assert(rbt_insert(&gSocketAPIInternals->socket_set, &neatSocket->node) == &neatSocket->node);
    }
+   pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
 
    /* ====== Has there been a problem? =================================== */
    if(neatSocket->descriptor < 0) {

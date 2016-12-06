@@ -95,30 +95,30 @@ int nsa_close(int fd)
 {
    GET_NEAT_SOCKET(fd)
 
-   pthread_mutex_lock(&neatSocket->mutex);
+   pthread_mutex_lock(&neatSocket->ns_mutex);
 
    /* ====== Close socket ================================================ */
-   if(neatSocket->flow != NULL) {
-      neat_close(gSocketAPIInternals->nsi_neat_context, neatSocket->flow);
-      neatSocket->flow = NULL;
+   if(neatSocket->ns_flow != NULL) {
+      neat_close(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow);
+      neatSocket->ns_flow = NULL;
    }
-   else if(neatSocket->socket_sd >= 0) {
-      if(neatSocket->flags & NSAF_CLOSE_ON_REMOVAL) {
-         close(neatSocket->socket_sd);
+   else if(neatSocket->ns_socket_sd >= 0) {
+      if(neatSocket->ns_flags & NSAF_CLOSE_ON_REMOVAL) {
+         close(neatSocket->ns_socket_sd);
       }
-      neatSocket->socket_sd = -1;
+      neatSocket->ns_socket_sd = -1;
    }
 
    /* ====== Remove socket ===============================================*/
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-   rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->node);
-   ibm_free_id(gSocketAPIInternals->nsi_socket_identifier_bitmap, neatSocket->descriptor);
-   neatSocket->descriptor = -1;
+   rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
+   ibm_free_id(gSocketAPIInternals->nsi_socket_identifier_bitmap, neatSocket->ns_descriptor);
+   neatSocket->ns_descriptor = -1;
    pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
-   nq_delete(&neatSocket->notifications);
-   pthread_mutex_unlock(&neatSocket->mutex);
-   pthread_mutex_destroy(&neatSocket->mutex);
+   nq_delete(&neatSocket->ns_notifications);
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+   pthread_mutex_destroy(&neatSocket->ns_mutex);
    free(neatSocket);
    return(0);
 }
@@ -128,17 +128,17 @@ int nsa_close(int fd)
 int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags)
 {
    GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
+   if(neatSocket->ns_flow != NULL) {
 
       return(0);
    }
    else {
        if( (addrcnt == 1) && (flags == 0) ) {
-          return(bind(neatSocket->socket_sd, addrs, get_socklen(addrs)));
+          return(bind(neatSocket->ns_socket_sd, addrs, get_socklen(addrs)));
        }
        else {
           abort();   // FIXME!
-//           return(sctp_bindx(neatSocket->socket_sd, (struct sockaddr*)addrs, addrcnt, flags));
+//           return(sctp_bindx(neatSocket->ns_socket_sd, (struct sockaddr*)addrs, addrcnt, flags));
        }
    }
 }
@@ -155,17 +155,17 @@ int nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
 int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_assoc_t* id)
 {
    GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
+   if(neatSocket->ns_flow != NULL) {
 
       return(0);
    }
    else {
        if( (addrcnt == 1) && (id == NULL) ) {
-          return(connect(neatSocket->socket_sd, addrs, get_socklen(addrs)));
+          return(connect(neatSocket->ns_socket_sd, addrs, get_socklen(addrs)));
        }
        else {
           abort();   // FIXME!
-//           return(sctp_connectx(neatSocket->socket_sd, addrs, addrcnt, id));
+//           return(sctp_connectx(neatSocket->ns_socket_sd, addrs, addrcnt, id));
        }
    }
 }
@@ -182,12 +182,12 @@ int nsa_connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
 int nsa_listen(int sockfd, int backlog)
 {
    GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
+   if(neatSocket->ns_flow != NULL) {
 
       return(0);
    }
    else {
-      return(listen(neatSocket->socket_sd, backlog));
+      return(listen(neatSocket->ns_socket_sd, backlog));
    }
 }
 
@@ -196,12 +196,12 @@ int nsa_listen(int sockfd, int backlog)
 int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 {
    GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
+   if(neatSocket->ns_flow != NULL) {
 
       return(0);
    }
    else {
-      return(accept(neatSocket->socket_sd, addr, addrlen));
+      return(accept(neatSocket->ns_socket_sd, addr, addrlen));
    }
 }
 
@@ -210,13 +210,13 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 int nsa_peeloff(int sockfd, neat_assoc_t id)
 {
    GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
+   if(neatSocket->ns_flow != NULL) {
 
       return(0);
    }
    else {
       abort();   // FIXME!
-//      return(sctp_peeloff(neatSocket->socket_sd, id));
+//      return(sctp_peeloff(neatSocket->ns_socket_sd, id));
    }
 }
 
@@ -225,12 +225,12 @@ int nsa_peeloff(int sockfd, neat_assoc_t id)
 int nsa_shutdown(int sockfd, int how)
 {
    GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
+   if(neatSocket->ns_flow != NULL) {
 
       return(0);
    }
    else {
-      return(shutdown(neatSocket->socket_sd, how));
+      return(shutdown(neatSocket->ns_socket_sd, how));
    }
 }
 
@@ -248,22 +248,22 @@ int nsa_fcntl(int fd, int cmd, ...)
 
    if(cmd == F_GETFL) {
       int flags = 0;
-      pthread_mutex_lock(&neatSocket->mutex);
-      if(neatSocket->flags & NSAF_NONBLOCKING) {
+      pthread_mutex_lock(&neatSocket->ns_mutex);
+      if(neatSocket->ns_flags & NSAF_NONBLOCKING) {
          flags |= O_NONBLOCK;
       }
-      pthread_mutex_unlock(&neatSocket->mutex);
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
       return(flags);
    }
    else {
-       pthread_mutex_lock(&neatSocket->mutex);
+       pthread_mutex_lock(&neatSocket->ns_mutex);
       if(arg & O_NONBLOCK) {
-         neatSocket->flags |= NSAF_NONBLOCKING;
+         neatSocket->ns_flags |= NSAF_NONBLOCKING;
       }
       else {
-         neatSocket->flags &= ~NSAF_NONBLOCKING;
+         neatSocket->ns_flags &= ~NSAF_NONBLOCKING;
       }
-      pthread_mutex_unlock(&neatSocket->mutex);
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
       return(0);
    }
 
@@ -276,12 +276,12 @@ int nsa_fcntl(int fd, int cmd, ...)
 int nsa_ioctl(int fd, int request, const void* argp)
 {
    GET_NEAT_SOCKET(fd)
-   if(neatSocket->flow != NULL) {
+   if(neatSocket->ns_flow != NULL) {
       errno = ENOTSUP;
       return(0);
    }
    else {
-      return(ioctl(neatSocket->socket_sd, fd, request, argp));
+      return(ioctl(neatSocket->ns_socket_sd, fd, request, argp));
    }
 }
 

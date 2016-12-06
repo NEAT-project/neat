@@ -71,20 +71,20 @@ struct neat_socketapi_internals
 
 struct neat_socket
 {
-   struct redblacktree_node    node;
-   pthread_mutex_t             mutex;
-   int                         descriptor;
+   struct redblacktree_node    ns_node;
+   pthread_mutex_t             ns_mutex;
+   int                         ns_descriptor;
 
-   int                         flags;
+   int                         ns_flags;
 
-   struct neat_flow*           flow;
-   struct neat_flow_operations flow_ops;
-   int                         socket_domain;
-   int                         socket_type;
-   int                         socket_protocol;
-   int                         socket_sd;
+   struct neat_flow*           ns_flow;
+   struct neat_flow_operations ns_flow_ops;
+   int                         ns_socket_domain;
+   int                         ns_socket_type;
+   int                         ns_socket_protocol;
+   int                         ns_socket_sd;
 
-   struct notification_queue   notifications;
+   struct notification_queue   ns_notifications;
 };
 
 

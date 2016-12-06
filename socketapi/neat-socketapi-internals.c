@@ -201,7 +201,7 @@ static neat_error_code on_error(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
-   neatSocket->flags |= NSAF_BAD;
+   neatSocket->ns_flags |= NSAF_BAD;
    puts("on_error");
    return(0);
 }
@@ -212,7 +212,7 @@ static neat_error_code on_connected(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
-   neatSocket->flags |= NSAF_CONNECTED;
+   neatSocket->ns_flags |= NSAF_CONNECTED;
    puts("on_connected");
    return(0);
 }
@@ -223,7 +223,7 @@ static neat_error_code on_readable(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
-   neatSocket->flags |= NSAF_READABLE;
+   neatSocket->ns_flags |= NSAF_READABLE;
    puts("on_readable");
    return(0);
 }
@@ -234,7 +234,7 @@ static neat_error_code on_writable(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
-   neatSocket->flags |= NSAF_WRITABLE;
+   neatSocket->ns_flags |= NSAF_WRITABLE;
    puts("on_writable");
    return(0);
 }
@@ -245,7 +245,7 @@ static neat_error_code on_all_written(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
-   neatSocket->flags |= NSAF_WRITABLE;
+   neatSocket->ns_flags |= NSAF_WRITABLE;
    puts("on_all_written");
    return(0);
 }
@@ -266,7 +266,7 @@ static neat_error_code on_aborted(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
-   neatSocket->flags |= NSAF_BAD;
+   neatSocket->ns_flags |= NSAF_BAD;
    puts("on_aborted");
    return(0);
 }
@@ -277,7 +277,7 @@ static neat_error_code on_timeout(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
-   neatSocket->flags |= NSAF_BAD;
+   neatSocket->ns_flags |= NSAF_BAD;
    puts("on_timeout");
    return(0);
 }
@@ -288,7 +288,7 @@ static neat_error_code on_close(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
-   neatSocket->flags |= NSAF_BAD;
+   neatSocket->ns_flags |= NSAF_BAD;
    puts("on_close");
    return(0);
 }
@@ -300,7 +300,7 @@ static void on_send_failure(struct neat_flow_operations* ops,
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
-   neatSocket->flags |= NSAF_BAD;
+   neatSocket->ns_flags |= NSAF_BAD;
    puts("on_send_failure");
 }
 
@@ -337,73 +337,73 @@ int nsa_socket_internal(int domain, int type, int protocol,
    }
 
    if(flow != NULL) {   /* NEAT flow */
-      neatSocket->socket_sd = -1;
-      neatSocket->flow      = flow;
+      neatSocket->ns_socket_sd = -1;
+      neatSocket->ns_flow      = flow;
 
-      memset(&neatSocket->flow_ops, 0, sizeof(neatSocket->flow_ops));
-      neatSocket->flow_ops.userData                  = neatSocket;
-      neatSocket->flow_ops.on_error                  = &on_error;
-      neatSocket->flow_ops.on_connected              = &on_connected;
-      neatSocket->flow_ops.on_readable               = &on_readable;
-      neatSocket->flow_ops.on_writable               = &on_writable;
-      neatSocket->flow_ops.on_all_written            = &on_all_written;
-      neatSocket->flow_ops.on_network_status_changed = &on_network_status_changed;
-      neatSocket->flow_ops.on_aborted                = &on_aborted;
-      neatSocket->flow_ops.on_timeout                = &on_timeout;
-      neatSocket->flow_ops.on_close                  = &on_close;
-      neatSocket->flow_ops.on_send_failure           = &on_send_failure;
-      neatSocket->flow_ops.on_slowdown               = &on_slowdown;
-      neatSocket->flow_ops.on_rate_hint              = &on_rate_hint;
+      memset(&neatSocket->ns_flow_ops, 0, sizeof(neatSocket->ns_flow_ops));
+      neatSocket->ns_flow_ops.userData                  = neatSocket;
+      neatSocket->ns_flow_ops.on_error                  = &on_error;
+      neatSocket->ns_flow_ops.on_connected              = &on_connected;
+      neatSocket->ns_flow_ops.on_readable               = &on_readable;
+      neatSocket->ns_flow_ops.on_writable               = &on_writable;
+      neatSocket->ns_flow_ops.on_all_written            = &on_all_written;
+      neatSocket->ns_flow_ops.on_network_status_changed = &on_network_status_changed;
+      neatSocket->ns_flow_ops.on_aborted                = &on_aborted;
+      neatSocket->ns_flow_ops.on_timeout                = &on_timeout;
+      neatSocket->ns_flow_ops.on_close                  = &on_close;
+      neatSocket->ns_flow_ops.on_send_failure           = &on_send_failure;
+      neatSocket->ns_flow_ops.on_slowdown               = &on_slowdown;
+      neatSocket->ns_flow_ops.on_rate_hint              = &on_rate_hint;
       neat_set_operations(gSocketAPIInternals->nsi_neat_context,
-                          neatSocket->flow, &neatSocket->flow_ops);
+                          neatSocket->ns_flow, &neatSocket->ns_flow_ops);
    }
    else if(customFD < 0) {   /* System socket to be created */
-      neatSocket->socket_sd = socket(domain, type, protocol);
-      neatSocket->flags |= NSAF_CLOSE_ON_REMOVAL;
+      neatSocket->ns_socket_sd = socket(domain, type, protocol);
+      neatSocket->ns_flags |= NSAF_CLOSE_ON_REMOVAL;
    }
    else {   /* Existing socket, given by its socket descriptor */
-      neatSocket->socket_sd = customFD;
+      neatSocket->ns_socket_sd = customFD;
    }
 
    /* ====== Set socket into non-blocking mode =========================== */
-   if(neatSocket->socket_sd >= 0) {
-      set_non_blocking(neatSocket->socket_sd);
+   if(neatSocket->ns_socket_sd >= 0) {
+      set_non_blocking(neatSocket->ns_socket_sd);
    }
 
    /* ====== Initialize NEAT socket ====================================== */
-   rbt_node_new(&neatSocket->node);
-   nq_new(&neatSocket->notifications);
-   init_mutex(&neatSocket->mutex);
-   neatSocket->descriptor      = -1;   /* to be allocated below */
-   neatSocket->socket_domain   = domain;
-   neatSocket->socket_type     = type;
-   neatSocket->socket_protocol = protocol;
+   rbt_node_new(&neatSocket->ns_node);
+   nq_new(&neatSocket->ns_notifications);
+   init_mutex(&neatSocket->ns_mutex);
+   neatSocket->ns_descriptor      = -1;   /* to be allocated below */
+   neatSocket->ns_socket_domain   = domain;
+   neatSocket->ns_socket_type     = type;
+   neatSocket->ns_socket_protocol = protocol;
 
    /* ====== Add new socket to socket storage ============================ */
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
    if(requestedSD < 0) {
-      neatSocket->descriptor = ibm_allocate_id(gSocketAPIInternals->nsi_socket_identifier_bitmap);
+      neatSocket->ns_descriptor = ibm_allocate_id(gSocketAPIInternals->nsi_socket_identifier_bitmap);
    }
    else {
-      neatSocket->descriptor = ibm_allocate_specific_id(gSocketAPIInternals->nsi_socket_identifier_bitmap,
+      neatSocket->ns_descriptor = ibm_allocate_specific_id(gSocketAPIInternals->nsi_socket_identifier_bitmap,
                                                         requestedSD);
    }
-   if(neatSocket->descriptor >= 0) {
-      assert(rbt_insert(&gSocketAPIInternals->nsi_socket_set, &neatSocket->node) == &neatSocket->node);
+   if(neatSocket->ns_descriptor >= 0) {
+      assert(rbt_insert(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node) == &neatSocket->ns_node);
    }
    pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
    /* ====== Has there been a problem? =================================== */
-   if(neatSocket->descriptor < 0) {
-      if(neatSocket->flags & NSAF_CLOSE_ON_REMOVAL) {
-         close(neatSocket->socket_sd);
+   if(neatSocket->ns_descriptor < 0) {
+      if(neatSocket->ns_flags & NSAF_CLOSE_ON_REMOVAL) {
+         close(neatSocket->ns_socket_sd);
       }
-      pthread_mutex_destroy(&neatSocket->mutex);
+      pthread_mutex_destroy(&neatSocket->ns_mutex);
       free(neatSocket);
       errno = EMFILE;
       return(-1);
    }
-   return(neatSocket->descriptor);
+   return(neatSocket->ns_descriptor);
 }
 
 
@@ -411,7 +411,7 @@ int nsa_socket_internal(int domain, int type, int protocol,
 void nsa_socket_print_function(const void* node, FILE* fd)
 {
    const struct neat_socket* neatSocket = (const struct neat_socket*)node;
-   fprintf(fd, "%d ", neatSocket->descriptor);
+   fprintf(fd, "%d ", neatSocket->ns_descriptor);
 }
 
 
@@ -421,10 +421,10 @@ int nsa_socket_comparison_function(const void* node1, const void* node2)
    const struct neat_socket* neatSocket1 = (const struct neat_socket*)node1;
    const struct neat_socket* neatSocket2 = (const struct neat_socket*)node2;
 
-   if(neatSocket1->descriptor < neatSocket2->descriptor) {
+   if(neatSocket1->ns_descriptor < neatSocket2->ns_descriptor) {
       return(-1);
    }
-   else if(neatSocket1->descriptor > neatSocket2->descriptor) {
+   else if(neatSocket1->ns_descriptor > neatSocket2->ns_descriptor) {
       return(1);
    }
    return(0);
@@ -437,10 +437,10 @@ struct neat_socket* nsa_get_socket_for_descriptor(int sd)
    struct neat_socket* neatSocket;
    struct neat_socket  cmpSocket;
 
-   cmpSocket.descriptor = sd;
+   cmpSocket.ns_descriptor = sd;
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
    neatSocket = (struct neat_socket*)rbt_find(&gSocketAPIInternals->nsi_socket_set,
-                                              &cmpSocket.node);
+                                              &cmpSocket.ns_node);
    pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
    return(neatSocket);
 }

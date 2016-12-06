@@ -42,17 +42,17 @@
 ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
 {
    GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
+   if(neatSocket->ns_flow != NULL) {
 
       // FIXME: Scatter/gather I/O not yet implemented!
       assert(msg->msg_iovlen == 1);
 
-      pthread_mutex_lock(&neatSocket->mutex);
+      pthread_mutex_lock(&neatSocket->ns_mutex);
       const neat_error_code result =
-         neat_write(gSocketAPIInternals->nsi_neat_context, neatSocket->flow,
+         neat_write(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
                     msg->msg_iov[0].iov_base, msg->msg_iov[0].iov_len,
                     NULL, 0);
-      pthread_mutex_unlock(&neatSocket->mutex);
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
 
       switch(result) {
          case NEAT_OK:
@@ -80,7 +80,7 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
       return(-1);
    }
    else {
-      return(sendmsg(neatSocket->socket_sd, msg, flags));
+      return(sendmsg(neatSocket->ns_socket_sd, msg, flags));
    }
 }
 
@@ -89,18 +89,18 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
 ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
 {
    GET_NEAT_SOCKET(sockfd)
-   if(neatSocket->flow != NULL) {
+   if(neatSocket->ns_flow != NULL) {
 
       // FIXME: Scatter/gather I/O not yet implemented!
       assert(msg->msg_iovlen == 1);
 
       uint32_t actual_amount = 0;
-      pthread_mutex_lock(&neatSocket->mutex);
+      pthread_mutex_lock(&neatSocket->ns_mutex);
       const neat_error_code result =
-         neat_read(gSocketAPIInternals->nsi_neat_context, neatSocket->flow,
+         neat_read(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
                    msg->msg_iov[0].iov_base, msg->msg_iov[0].iov_len, &actual_amount,
                    NULL, 0);
-      pthread_mutex_unlock(&neatSocket->mutex);
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
 
       switch(result) {
          case NEAT_OK:
@@ -128,7 +128,7 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
       return(-1);
    }
    else {
-      return(recvmsg(neatSocket->socket_sd, msg, flags));
+      return(recvmsg(neatSocket->ns_socket_sd, msg, flags));
    }
 }
 

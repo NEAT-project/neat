@@ -111,9 +111,9 @@ struct notification_queue_node* nq_enqueue(
       if(notificationNode) {
          /* ====== Set pending events appropriately ====================== */
          nqn_new(notificationNode);
-         notificationNode->nqn_content.nn_header.nn_type   = type;
-         notificationNode->nqn_content.nn_header.nn_flags  = 0x00;
-         notificationNode->nqn_content.nn_header.nn_length = sizeof(notificationNode->nqn_content);
+         notificationNode->nqn_content.nn_header.nnh_type   = type;
+         notificationNode->nqn_content.nn_header.nnh_flags  = 0x00;
+         notificationNode->nqn_content.nn_header.nnh_length = sizeof(notificationNode->nqn_content);
 
          /* ====== Add notification node ================================= */
          if(isPreReadNotification) {

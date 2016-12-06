@@ -187,9 +187,9 @@ struct neat_data_arrive
 
 union neat_notification {
    struct {
-      uint16_t nn_type;
-      uint16_t nn_flags;
-      uint32_t nn_length;
+      uint16_t nnh_type;
+      uint16_t nnh_flags;
+      uint32_t nnh_length;
    }                            nn_header;
 
    struct neat_assoc_change     nn_assoc_change;
@@ -234,7 +234,8 @@ int nsa_setsockopt(int sockfd, int level, int optname, const void* optval, sockl
 int nsa_opt_info(int sd, neat_assoc_t id, int opt, void* arg, socklen_t* size);
 
 ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags);
-ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags, const struct sockaddr* to, socklen_t tolen);
+ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags,
+                   const struct sockaddr* to, socklen_t tolen);
 ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags);
 ssize_t nsa_read(int fd, void* buf, size_t len);
 ssize_t nsa_write(int fd, const void* buf, size_t len);
@@ -243,14 +244,16 @@ ssize_t nsa_sendv(int sockfd, const void* buf, size_t len,
                   void *info, socklen_t infolen, unsigned int infotype,
                   int flags);
 ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags);
-ssize_t nsa_recvfrom(int sockfd, void* buf, size_t len, int flags, struct sockaddr* from, socklen_t* fromlen);
+ssize_t nsa_recvfrom(int sockfd, void* buf, size_t len, int flags,
+                     struct sockaddr* from, socklen_t* fromlen);
 ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags);
 ssize_t nsa_recvv(int sockfd, void* buf, size_t len,
                   struct sockaddr* from, socklen_t* fromlen,
                   void* info, socklen_t* infolen, unsigned int* infotype,
                   int* msg_flags);
 
-int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout);
+int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
+               struct timeval* timeout);
 int nsa_poll(struct pollfd* fdlist, long unsigned int count, int time);
 
 int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen);

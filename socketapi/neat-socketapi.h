@@ -117,7 +117,7 @@ struct neat_remote_error
    uint32_t     sre_length;
    uint16_t     sre_error;
    neat_assoc_t sre_assoc_id;
-   uint8_t      sre_data[];
+   uint8_t      sre_data[32];
 };
 
 #define NEAT_SEND_FAILED 4
@@ -129,7 +129,7 @@ struct neat_send_failed
    uint32_t               ssf_error;
    struct neat_sndrcvinfo ssf_info;
    neat_assoc_t           ssf_assoc_id;
-   uint8_t                ssf_data[];
+   uint8_t                ssf_data[32];
 };
 #define NEAT_DATA_UNSENT 41
 #define NEAT_DATA_SENT   42
@@ -187,19 +187,20 @@ struct neat_data_arrive
 
 union neat_notification {
    struct {
-      uint16_t sn_type;
-      uint16_t sn_flags;
-      uint32_t sn_length;
-   }                            sn_header;
-   struct neat_assoc_change     sn_assoc_change;
-   struct neat_paddr_change     sn_paddr_change;
-   struct neat_remote_error     sn_remote_error;
-   struct neat_send_failed      sn_send_failed;
-   struct neat_shutdown_event   sn_shutdown_event;
-   struct neat_adaptation_event sn_adaptation_event;
-   struct neat_pdapi_event      sn_pdapi_event;
+      uint16_t nn_type;
+      uint16_t nn_flags;
+      uint32_t nn_length;
+   }                            nn_header;
 
-   struct neat_data_arrive      sn_data_arrive;
+   struct neat_assoc_change     nn_assoc_change;
+   struct neat_paddr_change     nn_paddr_change;
+   struct neat_remote_error     nn_remote_error;
+   struct neat_send_failed      nn_send_failed;
+   struct neat_shutdown_event   nn_shutdown_event;
+   struct neat_adaptation_event nn_adaptation_event;
+   struct neat_pdapi_event      nn_pdapi_event;
+
+   struct neat_data_arrive      nn_data_arrive;
 };
 
 

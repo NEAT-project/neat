@@ -10,6 +10,7 @@ LIST(APPEND neat_socketapi_sources
    neat-socketapi-io.c
    neat-socketapi-poll.c
    identifierbitmap.c
+   notificationqueue.c
    redblacktree.c
 )
 

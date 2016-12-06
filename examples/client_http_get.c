@@ -29,9 +29,13 @@ static char *config_property = "{\
         {\
             \"value\": \"SCTP\",\
             \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
         }\
     ]\
-}";\
+}";
 
 static neat_error_code on_close(struct neat_flow_operations *opCB);
 

@@ -890,26 +890,35 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
         neat_log(NEAT_LOG_DEBUG, "%s - supported features", __func__);
         for (i = 0; i < n; i++) {
             switch (sac->sac_info[i]) {
+#ifdef SCTP_ASSOC_SUPPORTS_PR
                 case SCTP_ASSOC_SUPPORTS_PR:
                     neat_log(NEAT_LOG_DEBUG, "\t- PR");
                     break;
+#endif // SCTP_ASSOC_SUPPORTS_PR
 
+#ifdef SCTP_ASSOC_SUPPORTS_AUTH
                 case SCTP_ASSOC_SUPPORTS_AUTH:
                     neat_log(NEAT_LOG_DEBUG, "\t- AUTH");
                     break;
+#endif // SCTP_ASSOC_SUPPORTS_AUTH
 
+#ifdef SCTP_ASSOC_SUPPORTS_ASCONF
                 case SCTP_ASSOC_SUPPORTS_ASCONF:
                     neat_log(NEAT_LOG_DEBUG, "\t- ASCONF");
                     break;
+#endif // SCTP_ASSOC_SUPPORTS_ASCONF
 
+#ifdef SCTP_ASSOC_SUPPORTS_MULTIBUF
                 case SCTP_ASSOC_SUPPORTS_MULTIBUF:
                     neat_log(NEAT_LOG_DEBUG, "\t- MULTIBUF");
                     break;
+#endif
 
+#ifdef SCTP_ASSOC_SUPPORTS_RE_CONFIG
                 case SCTP_ASSOC_SUPPORTS_RE_CONFIG:
                     neat_log(NEAT_LOG_DEBUG, "\t- RE-CONFIG");
                     break;
-
+#endif // SCTP_ASSOC_SUPPORTS_RE_CONFIG
                 default:
                     neat_log(NEAT_LOG_DEBUG, "\t- UNKNOWN(0x%02x)", sac->sac_info[i]);
                     break;
@@ -918,6 +927,7 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
     }
 }
 
+#ifdef SCTP_RESET_STREAMS
 static void
 handle_sctp_stream_reset(neat_flow *flow, struct sctp_stream_reset_event *strrst)
 {
@@ -940,6 +950,7 @@ handle_sctp_stream_reset(neat_flow *flow, struct sctp_stream_reset_event *strrst
     }
     return;
 }
+#endif // SCTP_RESET_STREAMS
 
 // Handle SCTP send failed event
 // One is generated per failed message

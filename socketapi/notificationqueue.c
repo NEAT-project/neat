@@ -90,7 +90,7 @@ void nq_clear(struct notification_queue* nq)
 
 
 /* ###### Check, if there are notifications to read ###################### */
-bool nq_HasData(struct notification_queue* nq)
+bool nq_has_data(struct notification_queue* nq)
 {
    return((nq->nq_pre_read_queue != NULL) ||
           (nq->nq_post_read_queue != NULL));

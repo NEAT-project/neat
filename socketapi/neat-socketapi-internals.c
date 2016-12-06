@@ -446,6 +446,22 @@ struct neat_socket* nsa_get_socket_for_descriptor(int sd)
 }
 
 
+/* ###### Wait until there is something to read ########################## */
+bool nsa_wait_for_read(struct neat_socket* neatSocket,
+                       int                 timeout)
+{
+   struct pollfd ufds[1];
+   ufds[0].fd     = neatSocket->ns_descriptor;
+   ufds[0].events = POLLIN;
+   int result = nsa_poll((struct pollfd*)&ufds, 1, timeout);
+   if((result > 0) && (ufds[0].revents & POLLIN)) {
+      return(true);
+   }
+   errno = EAGAIN;
+   return(false);
+}
+
+
 /* ###### Notify main loop ############################################### */
 void nsa_notify_main_loop()
 {

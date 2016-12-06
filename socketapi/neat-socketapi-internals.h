@@ -114,7 +114,8 @@ void nsa_notify_main_loop();
 void nsa_socket_print_function(const void* node, FILE* fd);
 int nsa_socket_comparison_function(const void* node1, const void* node2);
 struct neat_socket* nsa_get_socket_for_descriptor(int sd);
-
+bool nsa_wait_for_read(struct neat_socket* neatSocket,
+                       int                 timeout);
 
 #ifdef __cplusplus
 }

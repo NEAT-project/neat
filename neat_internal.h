@@ -116,11 +116,13 @@ struct neat_buffered_message {
     TAILQ_ENTRY(neat_buffered_message) message_next;
 };
 
+#ifdef SCTP_MULTISTREAMING
 struct neat_read_queue_message {
     unsigned char *buffer;
     size_t buffer_size;
     TAILQ_ENTRY(neat_read_queue_message) message_next;
 };
+#endif
 
 typedef enum {
     NEAT_STACK_UDP = 1,
@@ -189,12 +191,15 @@ struct neat_pollable_socket
     struct sockaddr srcAddr;
     struct sockaddr dstAddr;
 
+
     uint8_t                     multistream;            // multistreaming active
+    struct neat_flow_list_head  sctp_multistream_flows; // multistream flows
+
     uint8_t                     sctp_stream_reset;      // peer supports stream reset
     uint8_t                     sctp_neat_peer;         // peer supports neat
     uint16_t                    sctp_streams_available; // available streams
     uint16_t                    sctp_streams_used;      // used streams
-    struct neat_flow_list_head  sctp_multistream_flows; // multistream flows
+
 
     struct neat_pollable_socket *listen_socket;
 
@@ -238,9 +243,11 @@ struct neat_flow
     size_t buffer_count;
     struct neat_flow_statistics flow_stats;
 
+#ifdef SCTP_MULTISTREAMING
     // The memory buffer for reading
     struct neat_read_queue_head read_queue;
     size_t read_queue_size;
+#endif
 
     size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.
@@ -276,20 +283,27 @@ struct neat_flow
     unsigned int isSCTPExplicitEOR : 1;
     unsigned int isServer : 1; // i.e. created via accept()
     //unsigned int multistream : 1;
+#ifdef SCTP_MULTISTREAMING
     unsigned int multistreamCheck : 1;
     unsigned int multistreamShutdown: 1;
+#endif
 
     unsigned int streams_requested;
 
     struct neat_he_candidates *candidate_list;
 
+#ifdef SCTP_MULTISTREAMING
     uv_timer_t *multistream_timer;
     uint16_t multistream_id;
+#endif
 
     uv_poll_cb callback_fx;
 
     LIST_ENTRY(neat_flow) next_flow;
+
+#ifdef SCTP_MULTISTREAMING
     LIST_ENTRY(neat_flow) next_multistream_flow;
+#endif
 };
 
 typedef struct neat_flow neat_flow;

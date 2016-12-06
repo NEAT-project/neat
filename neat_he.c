@@ -122,6 +122,7 @@ static void delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_
 #endif
 }
 
+#ifdef SCTP_MULTISTREAMING
 static void
 on_delayed_he_open(uv_timer_t *handle)
 {
@@ -148,6 +149,8 @@ delayed_he_open(struct neat_flow *flow, uv_poll_cb callback_fx)
     flow->multistream_timer->data = (void *) flow;
 }
 
+#endif // SCTP_MULTISTREAMING
+
 neat_error_code
 neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_list, uv_poll_cb callback_fx)
 {
@@ -157,7 +160,10 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     struct neat_he_candidate *candidate;
     struct neat_he_candidate *next_candidate;
     uint8_t multistream_probe = 0;
+
+#ifdef SCTP_MULTISTREAMING
     struct neat_flow *piggyback_flow = NULL;
+#endif
 
     i = 0;
     TAILQ_FOREACH(candidate, candidate_list, next) {
@@ -217,6 +223,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     flow->candidate_list = candidate_list;
     candidate = candidate_list->tqh_first;
 
+#ifdef SCTP_MULTISTREAMING
     // SCTP is generally allowed
     if (multistream_probe) {
         // check if there is already a piggyback assoc
@@ -264,6 +271,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             return NEAT_ERROR_OK;
         }
     }
+#endif // SCTP_MULTISTREAMING
 
     flow->hefirstConnect = 1;
     flow->heConnectAttemptCount = 0;

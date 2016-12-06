@@ -47,17 +47,17 @@
 struct neat_socketapi_internals
 {
    /* ====== NEAT Core ================================= */
-   struct neat_ctx*          neat_context;
+   struct neat_ctx*          nsi_neat_context;
 
    /* ====== Socket Storage ============================ */
-   struct identifier_bitmap* socket_identifier_bitmap;
-   struct redblacktree       socket_set;
-   pthread_mutex_t           socket_set_mutex;
+   struct identifier_bitmap* nsi_socket_identifier_bitmap;
+   struct redblacktree       nsi_socket_set;
+   pthread_mutex_t           nsi_socket_set_mutex;
 
    /* ====== Main loop ================================= */
-   pthread_t                 main_loop_thread;
-   bool                      main_loop_thread_shutdown;
-   int                       main_loop_pipe[2];
+   pthread_t                 nsi_main_loop_thread;
+   bool                      nsi_main_loop_thread_shutdown;
+   int                       nsi_main_loop_pipe[2];
 };
 
 

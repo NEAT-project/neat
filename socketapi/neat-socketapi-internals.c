@@ -114,34 +114,34 @@ struct neat_socketapi_internals* nsa_initialize()
    if(gSocketAPIInternals != NULL) {
 
       /* ====== Initialize socket storage ============================= */
-      gSocketAPIInternals->main_loop_pipe[0] = -1;
-      gSocketAPIInternals->main_loop_pipe[1] = -1;
-      init_mutex(&gSocketAPIInternals->socket_set_mutex);
-      rbt_new(&gSocketAPIInternals->socket_set,
+      gSocketAPIInternals->nsi_main_loop_pipe[0] = -1;
+      gSocketAPIInternals->nsi_main_loop_pipe[1] = -1;
+      init_mutex(&gSocketAPIInternals->nsi_socket_set_mutex);
+      rbt_new(&gSocketAPIInternals->nsi_socket_set,
               nsa_socket_print_function,
               nsa_socket_comparison_function);
 
       /* ====== Initialize identifier bitmap ============================= */
-      gSocketAPIInternals->socket_identifier_bitmap = ibm_new(FD_SETSIZE);
-      if(gSocketAPIInternals->socket_identifier_bitmap != NULL) {
+      gSocketAPIInternals->nsi_socket_identifier_bitmap = ibm_new(FD_SETSIZE);
+      if(gSocketAPIInternals->nsi_socket_identifier_bitmap != NULL) {
          /* ====== NEAT context ========================================== */
-         gSocketAPIInternals->neat_context = neat_init_ctx();
-         if(gSocketAPIInternals->neat_context != NULL) {
+         gSocketAPIInternals->nsi_neat_context = neat_init_ctx();
+         if(gSocketAPIInternals->nsi_neat_context != NULL) {
             /* ====== Map stdin, stdout, stderr file descriptors ========= */
             assert(nsa_map_socket(STDOUT_FILENO, STDOUT_FILENO) == STDOUT_FILENO);
             assert(nsa_map_socket(STDIN_FILENO,  STDIN_FILENO)  == STDIN_FILENO);
             assert(nsa_map_socket(STDERR_FILENO, STDERR_FILENO) == STDERR_FILENO);
 
             /* ====== Initialize main loop =============================== */
-            if(pipe((int*)&gSocketAPIInternals->main_loop_pipe) >= 0) {
-               set_non_blocking(gSocketAPIInternals->main_loop_pipe[0]);
-               set_non_blocking(gSocketAPIInternals->main_loop_pipe[1]);
+            if(pipe((int*)&gSocketAPIInternals->nsi_main_loop_pipe) >= 0) {
+               set_non_blocking(gSocketAPIInternals->nsi_main_loop_pipe[0]);
+               set_non_blocking(gSocketAPIInternals->nsi_main_loop_pipe[1]);
 
-               pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
-               gSocketAPIInternals->main_loop_thread_shutdown = false;
-               pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+               pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+               gSocketAPIInternals->nsi_main_loop_thread_shutdown = false;
+               pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
-               if(pthread_create(&gSocketAPIInternals->main_loop_thread, NULL, &nsa_main_loop, gSocketAPIInternals) == 0) {
+               if(pthread_create(&gSocketAPIInternals->nsi_main_loop_thread, NULL, &nsa_main_loop, gSocketAPIInternals) == 0) {
                   return(gSocketAPIInternals);
                }
             }
@@ -161,35 +161,35 @@ struct neat_socketapi_internals* nsa_initialize()
 void nsa_cleanup()
 {
    if(gSocketAPIInternals) {
-      if(gSocketAPIInternals->main_loop_thread != 0) {
-         pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
-         gSocketAPIInternals->main_loop_thread_shutdown = true;
-         pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+      if(gSocketAPIInternals->nsi_main_loop_thread != 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         gSocketAPIInternals->nsi_main_loop_thread_shutdown = true;
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
          nsa_notify_main_loop();
-         assert(pthread_join(gSocketAPIInternals->main_loop_thread, NULL) == 0);
-         gSocketAPIInternals->main_loop_thread = 0;
+         assert(pthread_join(gSocketAPIInternals->nsi_main_loop_thread, NULL) == 0);
+         gSocketAPIInternals->nsi_main_loop_thread = 0;
       }
-      if(gSocketAPIInternals->main_loop_pipe[0] >= 0) {
-         close(gSocketAPIInternals->main_loop_pipe[0]);
-         gSocketAPIInternals->main_loop_pipe[0] = -1;
+      if(gSocketAPIInternals->nsi_main_loop_pipe[0] >= 0) {
+         close(gSocketAPIInternals->nsi_main_loop_pipe[0]);
+         gSocketAPIInternals->nsi_main_loop_pipe[0] = -1;
       }
-      if(gSocketAPIInternals->main_loop_pipe[1] >= 0) {
-         close(gSocketAPIInternals->main_loop_pipe[1]);
-         gSocketAPIInternals->main_loop_pipe[1] = -1;
+      if(gSocketAPIInternals->nsi_main_loop_pipe[1] >= 0) {
+         close(gSocketAPIInternals->nsi_main_loop_pipe[1]);
+         gSocketAPIInternals->nsi_main_loop_pipe[1] = -1;
       }
       nsa_unmap_socket(STDERR_FILENO);
       nsa_unmap_socket(STDIN_FILENO);
       nsa_unmap_socket(STDOUT_FILENO);
-      if(gSocketAPIInternals->neat_context) {
-         neat_free_ctx(gSocketAPIInternals->neat_context);
-         gSocketAPIInternals->neat_context = NULL;
+      if(gSocketAPIInternals->nsi_neat_context) {
+         neat_free_ctx(gSocketAPIInternals->nsi_neat_context);
+         gSocketAPIInternals->nsi_neat_context = NULL;
       }
-      if(gSocketAPIInternals->socket_identifier_bitmap)  {
-         ibm_delete(gSocketAPIInternals->socket_identifier_bitmap);
-         gSocketAPIInternals->socket_identifier_bitmap = NULL;
+      if(gSocketAPIInternals->nsi_socket_identifier_bitmap)  {
+         ibm_delete(gSocketAPIInternals->nsi_socket_identifier_bitmap);
+         gSocketAPIInternals->nsi_socket_identifier_bitmap = NULL;
       }
-      rbt_delete(&gSocketAPIInternals->socket_set);
-      pthread_mutex_destroy(&gSocketAPIInternals->socket_set_mutex);
+      rbt_delete(&gSocketAPIInternals->nsi_socket_set);
+      pthread_mutex_destroy(&gSocketAPIInternals->nsi_socket_set_mutex);
       free(gSocketAPIInternals);
       gSocketAPIInternals = NULL;
    }
@@ -354,7 +354,7 @@ int nsa_socket_internal(int domain, int type, int protocol,
       neatSocket->flow_ops.on_send_failure           = &on_send_failure;
       neatSocket->flow_ops.on_slowdown               = &on_slowdown;
       neatSocket->flow_ops.on_rate_hint              = &on_rate_hint;
-      neat_set_operations(gSocketAPIInternals->neat_context,
+      neat_set_operations(gSocketAPIInternals->nsi_neat_context,
                           neatSocket->flow, &neatSocket->flow_ops);
    }
    else if(customFD < 0) {   /* System socket to be created */
@@ -380,18 +380,18 @@ int nsa_socket_internal(int domain, int type, int protocol,
    neatSocket->socket_protocol = protocol;
 
    /* ====== Add new socket to socket storage ============================ */
-   pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
    if(requestedSD < 0) {
-      neatSocket->descriptor = ibm_allocate_id(gSocketAPIInternals->socket_identifier_bitmap);
+      neatSocket->descriptor = ibm_allocate_id(gSocketAPIInternals->nsi_socket_identifier_bitmap);
    }
    else {
-      neatSocket->descriptor = ibm_allocate_specific_id(gSocketAPIInternals->socket_identifier_bitmap,
+      neatSocket->descriptor = ibm_allocate_specific_id(gSocketAPIInternals->nsi_socket_identifier_bitmap,
                                                         requestedSD);
    }
    if(neatSocket->descriptor >= 0) {
-      assert(rbt_insert(&gSocketAPIInternals->socket_set, &neatSocket->node) == &neatSocket->node);
+      assert(rbt_insert(&gSocketAPIInternals->nsi_socket_set, &neatSocket->node) == &neatSocket->node);
    }
-   pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
    /* ====== Has there been a problem? =================================== */
    if(neatSocket->descriptor < 0) {
@@ -438,10 +438,10 @@ struct neat_socket* nsa_get_socket_for_descriptor(int sd)
    struct neat_socket  cmpSocket;
 
    cmpSocket.descriptor = sd;
-   pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
-   neatSocket = (struct neat_socket*)rbt_find(&gSocketAPIInternals->socket_set,
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   neatSocket = (struct neat_socket*)rbt_find(&gSocketAPIInternals->nsi_socket_set,
                                               &cmpSocket.node);
-   pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
    return(neatSocket);
 }
 
@@ -449,7 +449,7 @@ struct neat_socket* nsa_get_socket_for_descriptor(int sd)
 /* ###### Notify main loop ############################################### */
 void nsa_notify_main_loop()
 {
-   const ssize_t result = write(gSocketAPIInternals->main_loop_pipe[1], "!", 1);
+   const ssize_t result = write(gSocketAPIInternals->nsi_main_loop_pipe[1], "!", 1);
    if(result <= 0) {
       perror("Writing to main loop pipe failed");
    }
@@ -462,34 +462,34 @@ static void* nsa_main_loop(void* args)
    /* Get the underlying single file descriptor from libuv. Wait on this
       descriptor to become readable to know when to ask NEAT to run another
       loop ONCE on everything that it might have to work on. */
-   const int backendFD = neat_get_backend_fd(gSocketAPIInternals->neat_context);
+   const int backendFD = neat_get_backend_fd(gSocketAPIInternals->nsi_neat_context);
 
    /* kick off the event loop first */
 // ???? Is this really necessary here? ????
-   pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
-   neat_start_event_loop(gSocketAPIInternals->neat_context, NEAT_RUN_ONCE);
-   pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   neat_start_event_loop(gSocketAPIInternals->nsi_neat_context, NEAT_RUN_ONCE);
+   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
 
    puts("MAIN LOOP START!");
 
    for(;;) {
       /* ====== Prepare parameters for poll() ============================ */
-      pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
-      const bool    isShuttingDown = gSocketAPIInternals->main_loop_thread_shutdown;
-      int           timeout        = neat_get_backend_timeout(gSocketAPIInternals->neat_context);
+      const bool    isShuttingDown = gSocketAPIInternals->nsi_main_loop_thread_shutdown;
+      int           timeout        = neat_get_backend_timeout(gSocketAPIInternals->nsi_neat_context);
 
       const int     nfds = 2;
       struct pollfd ufds[nfds];
-      ufds[0].fd      = gSocketAPIInternals->main_loop_pipe[0];   /* The wake-up pipe */
+      ufds[0].fd      = gSocketAPIInternals->nsi_main_loop_pipe[0];   /* The wake-up pipe */
       ufds[0].events  = POLLIN;
       ufds[0].revents = 0;
       ufds[1].fd      = backendFD;   /* The back-end */
       ufds[1].events  = POLLERR|POLLIN|POLLHUP;
       ufds[1].revents = 0;
 
-      pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
 
       /* ====== Call poll() ============================================== */
@@ -503,15 +503,15 @@ static void* nsa_main_loop(void* args)
       if(results > 0) {
          if(ufds[0].revents & POLLIN) {   /* The wake-up pipe */
             char      buffer[128];
-            const int r = read(gSocketAPIInternals->main_loop_pipe[0],
+            const int r = read(gSocketAPIInternals->nsi_main_loop_pipe[0],
                                (char*)&buffer, sizeof(buffer));
             printf("MAIN LOOP WAKE-UP: r=%d\n", r);
          }
       }
 
-      pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
-      neat_start_event_loop(gSocketAPIInternals->neat_context, NEAT_RUN_ONCE);
-      pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      neat_start_event_loop(gSocketAPIInternals->nsi_neat_context, NEAT_RUN_ONCE);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
    }
 
    puts("MAIN LOOP STOP!");

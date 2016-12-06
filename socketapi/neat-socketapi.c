@@ -66,10 +66,10 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
    int result = -1;
 
    if(nsa_initialize() != NULL) {
-      pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
       if(properties != NULL) {
-         struct neat_flow* flow = neat_new_flow(gSocketAPIInternals->neat_context);
+         struct neat_flow* flow = neat_new_flow(gSocketAPIInternals->nsi_neat_context);
          if(flow != NULL) {
             result = nsa_socket_internal(AF_UNSPEC, 0, 0, -1, flow, -1);
          }
@@ -81,7 +81,7 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
          result = nsa_socket_internal(domain, type, protocol, -1, NULL, -1);
       }
 
-      pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
    }
    else {
       errno = EUNATCH;
@@ -99,7 +99,7 @@ int nsa_close(int fd)
 
    /* ====== Close socket ================================================ */
    if(neatSocket->flow != NULL) {
-      neat_close(gSocketAPIInternals->neat_context, neatSocket->flow);
+      neat_close(gSocketAPIInternals->nsi_neat_context, neatSocket->flow);
       neatSocket->flow = NULL;
    }
    else if(neatSocket->socket_sd >= 0) {
@@ -110,11 +110,11 @@ int nsa_close(int fd)
    }
 
    /* ====== Remove socket ===============================================*/
-   pthread_mutex_lock(&gSocketAPIInternals->socket_set_mutex);
-   rbt_remove(&gSocketAPIInternals->socket_set, &neatSocket->node);
-   ibm_free_id(gSocketAPIInternals->socket_identifier_bitmap, neatSocket->descriptor);
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->node);
+   ibm_free_id(gSocketAPIInternals->nsi_socket_identifier_bitmap, neatSocket->descriptor);
    neatSocket->descriptor = -1;
-   pthread_mutex_unlock(&gSocketAPIInternals->socket_set_mutex);
+   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
    nq_delete(&neatSocket->notifications);
    pthread_mutex_unlock(&neatSocket->mutex);

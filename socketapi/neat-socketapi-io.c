@@ -49,7 +49,7 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
 
       pthread_mutex_lock(&neatSocket->mutex);
       const neat_error_code result =
-         neat_write(gSocketAPIInternals->neat_context, neatSocket->flow,
+         neat_write(gSocketAPIInternals->nsi_neat_context, neatSocket->flow,
                     msg->msg_iov[0].iov_base, msg->msg_iov[0].iov_len,
                     NULL, 0);
       pthread_mutex_unlock(&neatSocket->mutex);
@@ -97,7 +97,7 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
       uint32_t actual_amount = 0;
       pthread_mutex_lock(&neatSocket->mutex);
       const neat_error_code result =
-         neat_read(gSocketAPIInternals->neat_context, neatSocket->flow,
+         neat_read(gSocketAPIInternals->nsi_neat_context, neatSocket->flow,
                    msg->msg_iov[0].iov_base, msg->msg_iov[0].iov_len, &actual_amount,
                    NULL, 0);
       pthread_mutex_unlock(&neatSocket->mutex);

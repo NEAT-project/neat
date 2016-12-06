@@ -78,7 +78,7 @@ static void neat_sctp_init_events(int sock);
 #ifdef SCTP_MULTISTREAMING
 static neat_flow *neat_sctp_get_flow_by_sid(struct neat_pollable_socket *socket, uint16_t sid);
 static void neat_sctp_reset_stream(struct neat_pollable_socket *socket, uint16_t sid);
-#endif
+#endif // SCTP_MULTISTREAMING
 
 static void neat_free_flow(struct neat_flow *flow);
 
@@ -873,19 +873,25 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
 
     switch (sac->sac_state) {
         case SCTP_SHUTDOWN_COMP:
+            neat_log(NEAT_LOG_DEBUG, "%s - state : SCTP_SHUTDOWN_COMP", __func__);
             neat_notify_close(flow);
             break;
 
         case SCTP_COMM_LOST:
             // Draft specifies to return cause code, D1.2 doesn't - we
             // follow D1.2
+            neat_log(NEAT_LOG_DEBUG, "%s - state : SCTP_COMM_LOST", __func__);
             neat_notify_aborted(flow);
+            break;
 
             // Fallthrough:
         case SCTP_COMM_UP: // Fallthrough:
+            neat_log(NEAT_LOG_DEBUG, "%s - state : SCTP_COMM_UP", __func__);
             // TODO: Allocate send buffers here instead?
+            break;
 
         case SCTP_RESTART:
+            neat_log(NEAT_LOG_DEBUG, "%s - state : SCTP_RESTART", __func__);
             // TODO: might want to "translate" the state codes to a NEAT code.
             neat_notify_network_status_changed(flow, sac->sac_state);
             break;
@@ -1076,7 +1082,6 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     int stream_id = 0;
     ssize_t n;
     //Not used when notifications aren't available:
-    int flags __attribute__((unused));
 
 #ifdef SCTP_MULTISTREAMING
     unsigned char *multistream_buffer = NULL;
@@ -1267,7 +1272,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         }
 #endif // (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
 
-        flags = msghdr.msg_flags; // For notification handling
+        //flags = msghdr.msg_flags; // For notification handling
 #else // !defined(USRSCTP_SUPPORT)
         len = sizeof(struct sockaddr);
         memset((void *)&addr, 0, sizeof(struct sockaddr_in));
@@ -1279,7 +1284,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         n = usrsctp_recvv(socket->usrsctp_socket, flow->readBuffer + flow->readBufferSize,
                                flow->readBufferAllocation - flow->readBufferSize,
                                (struct sockaddr *) &addr, &len, (void *)&rn,
-                                &infolen, &infotype, &flags);
+                                &infolen, &infotype, &(msghdr.msg_flags));
         if (n < 0) {
             neat_log(NEAT_LOG_DEBUG, "usrsctp_recvv error");
 
@@ -1289,11 +1294,11 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 #endif // else !defined(USRSCTP_SUPPORT)
         // Same handling for both kernel and userspace SCTP
 #if defined(MSG_NOTIFICATION)
-        if (flags & MSG_NOTIFICATION) {
+        if (msghdr.msg_flags & MSG_NOTIFICATION) {
             // Event notification
             neat_log(NEAT_LOG_INFO, "SCTP event notification");
 
-            if (!(flags & MSG_EOR)) {
+            if (!(msghdr.msg_flags & MSG_EOR)) {
                 neat_log(NEAT_LOG_WARNING, "buffer overrun reading SCTP notification");
                 // TODO: handle this properly
                 neat_log(NEAT_LOG_DEBUG, "Exit 10");
@@ -1394,33 +1399,19 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             assert(false);
 #endif // SCTP_MULTISTREAMING
         } else {
-#if !defined(USRSCTP_SUPPORT)
 
             flow->readBufferSize += n;
+
+            neat_log(NEAT_LOG_INFO, " %zd bytes received", n);
+
             if ((msghdr.msg_flags & MSG_EOR) || (n == 0)) {
                 flow->readBufferMsgComplete = 1;
             }
+
             if (!flow->readBufferMsgComplete) {
                 neat_log(NEAT_LOG_DEBUG, "Exit 11");
                 return READ_WITH_ERROR;
             }
-#else // !defined(USRSCTP_SUPPORT)
-            neat_log(NEAT_LOG_INFO, " %zd bytes received", n);
-            flow->readBufferSize += n;
-            if ((flags & MSG_EOR) || (n == 0)) {
-                flow->readBufferMsgComplete = 1;
-            }
-            if (!flow->readBufferMsgComplete) {
-                neat_log(NEAT_LOG_DEBUG, "Message not complete, yet");
-                neat_log(NEAT_LOG_DEBUG, "Exit 12");
-                return READ_WITH_ERROR;
-            }
-            READYCALLBACKSTRUCT;
-            flow->operations->on_readable(flow->operations);
-            if (n == 0) {
-                return READ_WITH_ZERO;
-            }
-#endif // else !defined(USRSCTP_SUPPORT)
         }
     }
 
@@ -4663,7 +4654,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         if (setsockopt(fd, IPPROTO_SCTP, SCTP_INITMSG, (char*) &initmsg, sizeof(struct sctp_initmsg)) < 0) {
             neat_log(NEAT_LOG_ERROR, "Unable to set inbound/outbound stream count");
         }
-        neat_log(NEAT_LOG_DEBUG, "Offering %d SCTP streams in/out", flow->streams_requested);
+        neat_log(NEAT_LOG_DEBUG, "Offering %d SCTP streams in/out", initmsg.sinit_num_ostreams);
 #endif // defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
         flow->writeLimit = flow->writeSize / 4;
 #ifdef SCTP_NODELAY

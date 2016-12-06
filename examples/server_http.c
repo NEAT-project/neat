@@ -30,7 +30,7 @@ static char *config_property = "{\
 }";
 static uint16_t config_log_level = 1;
 static const char *response_header      = "HTTP/1.0 200 OK\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static const char *response_body_a      = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>NEAT Webserver</title></head><body><h1>Welcome to NEAT!</h1>";
+static const char *response_body_a      = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>NEAT Webserver</title><style>body {font-family: Arial, Helvetica, sans-serif;}</style></head><body><h1>Welcome to NEAT!</h1>";
 static const char *response_body_b      = "</body></html>";
 #define BUFFERSIZE 33768
 
@@ -159,7 +159,7 @@ on_writable(struct neat_flow_operations *opCB)
     opCB->on_writable = NULL;
     opCB->on_all_written = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
-    //neat_shutdown(opCB->ctx, opCB->flow);
+    neat_shutdown(opCB->ctx, opCB->flow);
 
     return NEAT_OK;
 }
@@ -268,7 +268,7 @@ main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, 80, NULL, 0)) {
+    if (neat_accept(ctx, flow, 8080, NULL, 0)) {
         fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;

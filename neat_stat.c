@@ -47,16 +47,15 @@ void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
         /* Create entries for flow#n in a separate object */
         newflow = json_object();;
 
-        json_object_set_new( newflow, "flow number", json_integer(flowcount));
-        json_object_set_new( newflow, "remote_host", json_string( flow->name ));
-        json_object_set_new( newflow, "socket type", json_integer( flow->socket->type ));
-        json_object_set_new( newflow, "sock_protocol",
-                json_integer( neat_stack_to_protocol(flow->socket->stack)));
-        json_object_set_new( newflow, "port", json_integer( flow->port ));
-        json_object_set_new( newflow, "writeSize", json_integer( flow->writeSize));
-        json_object_set_new( newflow, "readSize", json_integer( flow->readSize));
-        json_object_set_new( newflow, "bytes sent", json_integer( flow->flow_stats.bytes_sent));
-        json_object_set_new( newflow, "bytes received", json_integer( flow->flow_stats.bytes_received ));
+        json_object_set_new(newflow, "flow number",     json_integer( flowcount));
+        json_object_set_new(newflow, "remote_host",     json_string(  flow->name ));
+        json_object_set_new(newflow, "socket type",     json_integer( flow->socket->type ));
+        json_object_set_new(newflow, "sock_protocol",   json_integer( neat_stack_to_protocol(flow->socket->stack)));
+        json_object_set_new(newflow, "port",            json_integer( flow->port ));
+        json_object_set_new(newflow, "writeSize",       json_integer( flow->writeSize));
+        json_object_set_new(newflow, "readSize",        json_integer( flow->readSize));
+        json_object_set_new(newflow, "bytes sent",      json_integer( flow->flow_stats.bytes_sent));
+        json_object_set_new(newflow, "bytes received",  json_integer( flow->flow_stats.bytes_received ));
 
         snprintf(flow_name, 128, "flow-%d", flowcount);
         json_object_set_new(json_root, flow_name, newflow);

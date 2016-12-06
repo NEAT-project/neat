@@ -29,34 +29,45 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <condition.h>
+#include "eventsignal.h"
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <pthread.h>
+#include <sys/time.h>
 
 
 /* ###### Constructor #################################################### */
-void es_new(struct event_signal* es, struct event_signal* parent);
+void es_new(struct event_signal* es, struct event_signal* parent)
 {
    /* ====== Initialise mutex ============================================ */
    pthread_mutexattr_t attributes;
    pthread_mutexattr_init(&attributes);
    pthread_mutexattr_settype(&attributes, PTHREAD_MUTEX_RECURSIVE);
-   pthread_mutex_init(&es->mutex, &attributes);
+   pthread_mutex_init(&es->es_mutex, &attributes);
    pthread_mutexattr_destroy(&attributes);
 
    /* ====== Initialise condition ======================================== */
-   pthread_cond_init(&es->condition, NULL);
+   pthread_cond_init(&es->es_condition, NULL);
 
-   es->es_fired = false;
-   addParent(es, parent);
+   /* ====== Initialise attributes ======================================= */
+   es->es_has_fired = false;
+   TAILQ_INIT(&es->es_parent_list);
+   es_add_parent(es, parent);
 }
 
 
 /* ###### Destructor ##################################################### */
-void es_delete(struct event_signal* es);
+void es_delete(struct event_signal* es)
 {
+   struct event_signal_node* esn;
+   while( (esn = TAILQ_FIRST(&es->es_parent_list)) != NULL ) {
+      TAILQ_REMOVE(&es->es_parent_list, esn, esn_node);
+      free(esn);
+   }
+   pthread_cond_destroy(&es->es_condition);
+   pthread_mutex_destroy(&es->es_mutex);
 }
 
 
@@ -64,14 +75,17 @@ void es_delete(struct event_signal* es);
 void es_add_parent(struct event_signal* es, struct event_signal* parent)
 {
    if(parent) {
-      pthread_mutex_lock(&es->mutex);
+      pthread_mutex_lock(&es->es_mutex);
 
-      INSERT ...
+      struct event_signal_node* esn = (struct event_signal_node*)malloc(sizeof(struct event_signal_node));
+      assert(esn != NULL);
+      esn->esn_event_signal_ptr = parent;
+      TAILQ_INSERT_TAIL(&es->es_parent_list, esn, esn_node);
 
-      if(es->fired) {
+      if(es->es_has_fired) {
          es_broadcast(parent);
       }
-      pthread_mutex_unlock(&es->mutex);
+      pthread_mutex_unlock(&es->es_mutex);
    }
 }
 
@@ -80,129 +94,93 @@ void es_add_parent(struct event_signal* es, struct event_signal* parent)
 void es_remove_parent(struct event_signal* es, struct event_signal* parent)
 {
    if(parent) {
-      pthread_mutex_lock(&es->mutex);
-
-REMOVE ...
-
-      pthread_mutex_unlock(&es->mutex);
-   }
-}
-
-
-/* ###### Fire # ######################################################### */
-void es_signal(struct event_signal* es)
-{
- 
-}
-
-
-void es_broadcast(struct event_signal* es);
-bool es_fired(struct event_signal* es);
-bool es_peek_fired(struct event_signal* es);
-void es_wait(struct event_signal* es);
-void es_timed_wait(struct event_signal* es, int timeout);
-
-
-
-/* ###### Clean up queue ################################################# */
-void nq_clear(struct notification_queue* nq)
-{
-   struct notification_queue_node* next;
-
-   while(nq->nq_pre_read_queue) {
-      next = nq->nq_pre_read_queue->nqn_next;
-      free(nq->nq_pre_read_queue);
-      nq->nq_pre_read_queue = next;
-   }
-   nq->nq_pre_read_last = NULL;
-
-   while(nq->nq_post_read_queue) {
-      next = nq->nq_post_read_queue->nqn_next;
-      free(nq->nq_post_read_queue);
-      nq->nq_post_read_queue = next;
-   }
-   nq->nq_post_read_last = NULL;
-}
-
-
-/* ###### Check, if there are notifications to read ###################### */
-bool nq_has_data(struct notification_queue* nq)
-{
-   return((nq->nq_pre_read_queue != NULL) ||
-          (nq->nq_post_read_queue != NULL));
-}
-
-
-/* ###### Enqueue notification ########################################### */
-struct notification_queue_node* nq_enqueue(
-                                   struct notification_queue* nq,
-                                   const bool                 isPreReadNotification,
-                                   const uint16_t             type)
-{
-   struct notification_queue_node* notificationNode;
-
-   /* ====== Only enqueue requested events =============================== */
-   if((1 << type) & nq->nq_event_mask) {
-      notificationNode = (struct notification_queue_node*)malloc(sizeof(struct notification_queue_node));
-      if(notificationNode) {
-         /* ====== Set pending events appropriately ====================== */
-         nqn_new(notificationNode);
-         notificationNode->nqn_content.nn_header.nn_type   = type;
-         notificationNode->nqn_content.nn_header.nn_flags  = 0x00;
-         notificationNode->nqn_content.nn_header.nn_length = sizeof(notificationNode->nqn_content);
-
-         /* ====== Add notification node ================================= */
-         if(isPreReadNotification) {
-             if(nq->nq_pre_read_last) {
-                nq->nq_pre_read_last->nqn_next = notificationNode;
-             }
-             else {
-                nq->nq_pre_read_queue = notificationNode;
-             }
-             nq->nq_pre_read_last = notificationNode;
-         }
-         else {
-             if(nq->nq_post_read_last) {
-                nq->nq_post_read_last->nqn_next = notificationNode;
-             }
-             else {
-                nq->nq_post_read_queue = notificationNode;
-             }
-             nq->nq_post_read_last = notificationNode;
+      pthread_mutex_lock(&es->es_mutex);
+      struct event_signal_node* esn;
+      TAILQ_FOREACH(esn, &es->es_parent_list, esn_node) {
+         if(esn->esn_event_signal_ptr == parent) {
+            TAILQ_REMOVE(&es->es_parent_list, esn, esn_node);
+            free(esn);
+            break;
          }
       }
+      pthread_mutex_unlock(&es->es_mutex);
    }
-   else {
-      notificationNode = NULL;
-   }
-   return(notificationNode);
 }
 
 
-/* ###### Dequeue notification ########################################### */
-struct notification_queue_node* nq_dequeue(
-                                   struct notification_queue* nq,
-                                   const bool                 fromPreReadNotifications)
+/* ###### Fire ########################################################### */
+void es_fire(struct event_signal* es, const bool broadcast)
 {
-   struct notification_queue_node* notificationNode;
+   pthread_mutex_lock(&es->es_mutex);
 
-   if(fromPreReadNotifications) {
-      notificationNode = nq->nq_pre_read_queue;
-      if(notificationNode) {
-         nq->nq_pre_read_queue = notificationNode->nqn_next;
-      }
-      if(notificationNode == nq->nq_pre_read_last) {
-         nq->nq_pre_read_last = NULL;
-      }
+   /* ====== Fire condition ============================================== */
+   es->es_has_fired = true;
+   pthread_cond_signal(&es->es_condition);
+
+   /* ====== Recursively fire parent conditions ========================== */
+   struct event_signal_node* esn;
+   TAILQ_FOREACH(esn, &es->es_parent_list, esn_node) {
+      es_fire(esn->esn_event_signal_ptr, broadcast);
    }
-   else {
-      notificationNode = nq->nq_post_read_queue;
-      if(notificationNode) {
-         nq->nq_post_read_queue = notificationNode->nqn_next;
-      }
-      if(notificationNode == nq->nq_post_read_last) {
-         nq->nq_post_read_last = NULL;
-      }
+
+   pthread_mutex_unlock(&es->es_mutex);
+}
+
+
+/* ###### Check whether condition has fired and reset its status ######### */
+bool es_has_fired(struct event_signal* es)
+{
+   pthread_mutex_lock(&es->es_mutex);
+   const bool hasFired = es->es_has_fired;
+   es->es_has_fired = false;
+   pthread_mutex_unlock(&es->es_mutex);
+   return(hasFired);
+}
+
+
+/* ###### Check whether condition has fired ############################## */
+bool es_peek_has_fired(struct event_signal* es)
+{
+   pthread_mutex_lock(&es->es_mutex);
+   const bool hasFired = es->es_has_fired;
+   pthread_mutex_unlock(&es->es_mutex);
+   return(hasFired);
+}
+
+
+// ###### Wait for condition ############################################# */
+void es_wait(struct event_signal* es)
+{
+   pthread_mutex_lock(&es->es_mutex);
+   if(!es->es_has_fired) {
+      pthread_cond_wait(&es->es_condition, &es->es_mutex);
    }
-   return(notificationNode);
+   pthread_mutex_unlock(&es->es_mutex);
+}
+
+
+// ###### Wait for condition with timeout ################################ */
+bool es_timed_wait(struct event_signal* es, const long microseconds)
+{
+   pthread_mutex_lock(&es->es_mutex);
+   if(!es->es_has_fired) {
+      /* ====== Initialize timeout settings ============================== */
+      struct timeval  now;
+      struct timespec timeout;
+      gettimeofday(&now,NULL);
+      timeout.tv_sec  = now.tv_sec + (long)(microseconds / 1000000);
+      timeout.tv_nsec = (now.tv_usec + (long)(microseconds % 1000000)) * 1000;
+      if(timeout.tv_nsec >= 1000000000) {
+         timeout.tv_sec++;
+         timeout.tv_nsec -= 1000000000;
+      }
+
+      /* ====== Wait ===================================================== */
+      pthread_cond_timedwait(&es->es_condition, &es->es_mutex, &timeout);
+   }
+   const bool hasFired = es->es_has_fired;
+   es->es_has_fired = false;
+   pthread_mutex_unlock(&es->es_mutex);
+
+   return(hasFired);
 }

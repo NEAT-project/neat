@@ -11,6 +11,7 @@ LIST(APPEND neat_socketapi_sources
    neat-socketapi-poll.c
    identifierbitmap.c
    notificationqueue.c
+   eventsignal.c
    redblacktree.c
 )
 
@@ -18,7 +19,7 @@ LIST(APPEND neat_socketapi_sources
 # PROGRAMS LIST
 #################################################
 LIST(APPEND neat_socketapi_programs
-   t1.cc
+   t1.cc t2.cc
 )
 
 

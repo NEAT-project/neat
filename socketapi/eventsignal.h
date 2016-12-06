@@ -34,13 +34,23 @@
 
 #include <stdbool.h>
 #include <pthread.h>
+#include <sys/queue.h>
 
 
-struct event_signal
+struct event_signal;
+
+struct event_signal_node
 {
-   pthread_mutex_t es_mutex;
-   pthread_cond_t  es_condition;
-   bool            es_fired;
+   TAILQ_ENTRY(event_signal_node) esn_node;
+   struct event_signal*           esn_event_signal_ptr;
+};
+
+ struct event_signal
+{
+   pthread_mutex_t                          es_mutex;
+   pthread_cond_t                           es_condition;
+   bool                                     es_has_fired;
+   TAILQ_HEAD(slisthead, event_signal_node) es_parent_list;
 };
 
 
@@ -48,18 +58,20 @@ struct event_signal
 extern "C" {
 #endif
 
-void es_new(struct event_signal* es, truct event_signal* parent);
+void es_new(struct event_signal* es, struct event_signal* parent);
 void es_delete(struct event_signal* es);
 
 void es_add_parent(struct event_signal* es, struct event_signal* parent);
 void es_remove_parent(struct event_signal* es, struct event_signal* parent);
 
-void es_signal(struct event_signal* es);
-void es_broadcast(struct event_signal* es);
-bool es_fired(struct event_signal* es);
+void es_fire(struct event_signal* es, const bool broadcast);
+inline void es_signal(struct event_signal* es) { es_fire(es, false); }
+inline void es_broadcast(struct event_signal* es) { es_fire(es, true); }
+
+bool es_has_fired(struct event_signal* es);
 bool es_peek_fired(struct event_signal* es);
 void es_wait(struct event_signal* es);
-void es_timed_wait(struct event_signal* es, int timeout);
+bool es_timed_wait(struct event_signal* es, const long microseconds);
 
 #ifdef __cplusplus
 }

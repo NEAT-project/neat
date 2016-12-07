@@ -34,13 +34,17 @@ static uint16_t config_json_stats = 1;
 static uint16_t config_timeout = 0;
 static uint16_t config_number_of_streams = 1207;
 static char *config_primary_dest_addr = NULL;
-static char *config_property = "{\n\
-    \"transport\": [\n\
-        {\n\
-            \"value\": \"SCTP/UDP\",\n\
-            \"precedence\": 1\n\
-        }\n\
-    ]\n\
+static char *config_property = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
 }";
 
 struct std_buffer {

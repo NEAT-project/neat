@@ -78,6 +78,7 @@ static void neat_sctp_init_events(int sock);
 #ifdef SCTP_MULTISTREAMING
 static neat_flow *neat_sctp_get_flow_by_sid(struct neat_pollable_socket *socket, uint16_t sid);
 static void neat_sctp_reset_stream(struct neat_pollable_socket *socket, uint16_t sid);
+static void neat_hook_mulitstream_flows(neat_flow *flow);
 #endif // SCTP_MULTISTREAMING
 
 static void neat_free_flow(struct neat_flow *flow);
@@ -1025,11 +1026,12 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
         neat_log(NEAT_LOG_DEBUG, "Got SCTP shutdown event");
         break;
     case SCTP_ADAPTATION_INDICATION:
-        neat_log(NEAT_LOG_DEBUG, "Got SCTP adaption indication event");
-        struct sctp_adaptation_event *adaption = (struct sctp_adaptation_event *) notfn;
-        if (adaption->sai_adaptation_ind == SCTP_ADAPTATION_NEAT) {
+        neat_log(NEAT_LOG_DEBUG, "Got SCTP adaptation indication event");
+        struct sctp_adaptation_event *adaptation = (struct sctp_adaptation_event *) notfn;
+        if (adaptation->sai_adaptation_ind == SCTP_ADAPTATION_NEAT) {
             flow->socket->sctp_neat_peer = 1;
-            neat_log(NEAT_LOG_INFO, "Peer has NEAT support!");
+            neat_hook_mulitstream_flows(flow);
+            neat_log(NEAT_LOG_INFO, "Peer is NEAT enabled");
         }
         break;
     case SCTP_PARTIAL_DELIVERY_EVENT:
@@ -5390,30 +5392,37 @@ neat_find_flow(neat_ctx *ctx, struct sockaddr *src, struct sockaddr *dst)
     return NULL;
 }
 
-// Piggyback
+
+
+#ifdef SCTP_MULTISTREAMING
+
+/*
+ * Search for SCTP assoc with multistreaming support and same remote host
+ */
 neat_flow *
 neat_find_multistream_assoc(neat_ctx *ctx, neat_flow *new_flow)
 {
     neat_flow *flow;
-    neat_log(NEAT_LOG_DEBUG, "%s - ##########", __func__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     LIST_FOREACH(flow, &ctx->flows, next_flow) {
-        neat_log(NEAT_LOG_DEBUG, "%s - ########## checking: %p - %s", __func__, flow, flow->name);
+        //neat_log(NEAT_LOG_DEBUG, "%s - checking: %p - %s", __func__, flow, flow->name);
+
         // skipping self
         if (flow == new_flow) {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## SKIP SELF", __func__);
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - self...", __func__, flow);
             continue;
         }
 
         // flow should have a socket
-        if (flow->socket == NULL) {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## NO SOCKET", __func__);
+        if (flow->socket->fd < 1) {
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - no socket fd", __func__, flow);
             continue;
         }
 
         // xxx todo : check needed?
         if (flow->acceptPending == 1) {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## ACCEPT PENDING", __func__);
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - accept pending", __func__, flow);
             continue;
         }
 
@@ -5424,63 +5433,102 @@ neat_find_multistream_assoc(neat_ctx *ctx, neat_flow *new_flow)
             flow->socket->sctp_neat_peer == 1 &&
             flow->socket->sctp_streams_used < flow->socket->sctp_streams_available
         ) {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## >>>> WOHOWO!", __func__);
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : match!", __func__, flow);
             return flow;
         } else {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## DONT MATCH - us %d - av %d", __func__, flow->socket->sctp_streams_used, flow->socket->sctp_streams_available);
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : no match!", __func__, flow);
         }
     }
     return NULL;
 }
 
+/*
+ * Search and hook flows which can use the multistream association
+ */
+static void
+neat_hook_mulitstream_flows(neat_flow *flow) {
+    neat_ctx *ctx = flow->ctx;
+    neat_flow *flow_itr = NULL;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    LIST_FOREACH(flow_itr, &ctx->flows, next_flow) {
+        neat_log(NEAT_LOG_DEBUG, "%s - %p - checking", __func__, flow_itr);
+
+        // skipping self
+        if (flow_itr == flow) {
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - self...", __func__, flow);
+            continue;
+        }
+
+        if (flow_itr->everConnected) {
+            neat_log(NEAT_LOG_DEBUG, "%s - %p - already connected", __func__, flow_itr);
+        }
+
+
+    }
+
+    return;
+}
+
+
+/*
+ * Check if there is another HE in progress with the same target and return flow;
+ */
 uint8_t
-neat_wait_for_multistream_assoc(neat_ctx *ctx, neat_flow *new_flow)
+neat_wait_for_multistream_assoc(neat_ctx *ctx, neat_flow *flow)
 {
-    neat_flow *flow;
+    neat_flow *flow_itr;
     struct neat_he_candidate *candidate;
 
-    neat_log(NEAT_LOG_DEBUG, "%s - ##########", __func__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    LIST_FOREACH(flow, &ctx->flows, next_flow) {
-        neat_log(NEAT_LOG_DEBUG, "%s - ########## checking: %p - %s", __func__, flow, flow->name);
+    LIST_FOREACH(flow_itr, &ctx->flows, next_flow) {
+        //neat_log(NEAT_LOG_DEBUG, "%s - checking: %p - %s", __func__, flow_itr, flow_itr->name);
+
         // skipping self
-        if (flow == new_flow) {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## SKIP SELF", __func__);
+        if (flow_itr == new_flow) {
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - self...", __func__, flow_itr);
             continue;
         }
 
         // flow should have a socket
-        if (flow->socket == NULL) {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## NO SOCKET", __func__);
+        if (flow_itr->socket->fd < 1) {
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - no socket", __func__, flow_itr);
             continue;
         }
 
         // xxx todo : check needed?
-        if (flow->acceptPending == 1) {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## ACCEPT PENDING", __func__);
+        if (flow_itr->acceptPending == 1) {
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - accept pending", __func__, flow_itr);
             continue;
         }
 
         // DNS-name matches, flow is in connecting state and has the same group
-        if (!strcmp(flow->name, new_flow->name) && flow->hefirstConnect && flow->group == new_flow->group) {
-            TAILQ_FOREACH(candidate, flow->candidate_list, next) {
+        if (!strcmp(flow_itr->name, new_flow->name) &&
+            flow_itr->hefirstConnect &&
+            flow_itr->group == new_flow->group
+        ) {
+            TAILQ_FOREACH(candidate, flow_itr->candidate_list, next) {
                 // Flow candidates include SCTP
                 if (candidate->pollable_socket->stack == NEAT_STACK_SCTP) {
-                    neat_log(NEAT_LOG_DEBUG, "%s - ########## SCTP CANDIDATE!!!", __func__);
+                    // we have a candidate
+                    neat_log(NEAT_LOG_DEBUG, "%s - %p : candidate matches - waiting", __func__, flow_itr);
                     return 1;
                 } else {
-                    neat_log(NEAT_LOG_DEBUG, "%s - ########## STACK DOESNT MATCH", __func__);
+                    neat_log(NEAT_LOG_DEBUG, "%s - %p : no match for candidate", __func__, flow_itr);
                 }
             }
         } else {
-            neat_log(NEAT_LOG_DEBUG, "%s - ########## DONT MATCH", __func__);
+            neat_log(NEAT_LOG_DEBUG, "%s - %p - no match", __func__, flow_itr);
         }
     }
     return 0;
 }
 
-#ifdef SCTP_MULTISTREAMING
-
+/*
+ *  Find multistream flow by stream id
+ */
 static neat_flow *
 neat_sctp_get_flow_by_sid(struct neat_pollable_socket *socket, uint16_t sid)
 {
@@ -5502,6 +5550,9 @@ neat_sctp_get_flow_by_sid(struct neat_pollable_socket *socket, uint16_t sid)
     return NULL;
 }
 
+/*
+ * Initiate stream reset
+ */
 static void
 neat_sctp_reset_stream(struct neat_pollable_socket *socket, uint16_t sid)
 {

@@ -134,20 +134,6 @@ on_delayed_he_open(uv_timer_t *handle)
     neat_he_open(flow->ctx, flow, flow->candidate_list, flow->callback_fx);
 }
 
-static void
-delayed_he_open(struct neat_flow *flow, uv_poll_cb callback_fx)
-{
-    neat_log(NEAT_LOG_DEBUG, "%s - starting piggybackTimer", __func__);
-
-    flow->multistream_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
-    assert(flow->multistream_timer != NULL);
-    flow->multistreamCheck = 1;
-
-    uv_timer_init(flow->ctx->loop, flow->multistream_timer);
-    uv_timer_start(flow->multistream_timer, on_delayed_he_open, 200, 0);
-    flow->callback_fx = callback_fx;
-    flow->multistream_timer->data = (void *) flow;
-}
 
 #endif // SCTP_MULTISTREAMING
 
@@ -265,10 +251,19 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
             return NEAT_ERROR_OK;
 
-        // if there is no piggyback assoc, wait if we didnt already
-        } else if (flow->multistreamCheck == 0 && neat_wait_for_multistream_assoc(ctx, flow)){
+        // if there is no piggyback assoc, wait if we didnt already : We reschedule the *complete* he-process!
+        } else if (flow->multistreamCheck == 0 && neat_wait_for_multistream_assoc(ctx, flow)) {
             flow->multistreamCheck = 1;
-            delayed_he_open(flow, callback_fx);
+
+            flow->multistream_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
+            assert(flow->multistream_timer != NULL);
+            flow->multistreamCheck = 1;
+
+            uv_timer_init(flow->ctx->loop, flow->multistream_timer);
+            uv_timer_start(flow->multistream_timer, on_delayed_he_open, 200, 0);
+            flow->callback_fx = callback_fx;
+            flow->multistream_timer->data = (void *) flow;
+
             return NEAT_ERROR_OK;
         }
 #endif // SCTP_MULTISTREAMING

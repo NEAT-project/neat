@@ -851,6 +851,10 @@ static neat_error_code sctp_to_neat_code(uint16_t sctp_code)
     return outcode;
 }
 
+#define READ_OK 0
+#define READ_WITH_ERROR 1
+#define READ_WITH_ZERO 2
+
 #if defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
 
 // Handle SCTP association change events
@@ -906,9 +910,6 @@ static void handle_sctp_send_failed(neat_flow *flow, struct sctp_send_failed *ss
     neat_notify_send_failure(flow, sctp_to_neat_code(error), context, unsent_msg);
 }
 
-#define READ_OK 0
-#define READ_WITH_ERROR 1
-#define READ_WITH_ZERO 2
 
 // Handle notifications about SCTP events
 static int handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)

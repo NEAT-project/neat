@@ -466,8 +466,6 @@ main(int argc, char *argv[])
         neat_log_level(NEAT_LOG_DEBUG);
     }
 
-    neat_log_level(NEAT_LOG_DEBUG);
-
     if (optind + 2 != argc) {
         fprintf(stderr, "%s - error: option - argument error\n", __func__);
         print_usage();

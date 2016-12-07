@@ -183,7 +183,6 @@ printf("on_writeable\n");
     // set callbacks
     opCB->on_writable = NULL;
     opCB->on_all_written = on_all_written;
-    opCB->on_close = on_close;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     // increase stats
@@ -366,6 +365,7 @@ printf("on_close\n");
     // stop event loop if we are active part
     if (config_active) {
         fprintf(stderr, "%s - stopping event loop\n", __func__);
+        neat_close(opCB->ctx, opCB->flow);
         neat_stop_event_loop(opCB->ctx);
     }
 

@@ -103,7 +103,6 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         opCB->on_writable = NULL;
         opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_close(opCB->ctx, opCB->flow);
     }
 
     return NEAT_OK;

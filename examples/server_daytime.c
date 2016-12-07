@@ -21,7 +21,7 @@
 static char *config_property = "{\
     \"transport\": [\
         {\
-            \"value\": \"SCTP/UDP\",\
+            \"value\": \"SCTP\",\
             \"precedence\": 1\
         }\
     ]\
@@ -99,7 +99,6 @@ on_readable(struct neat_flow_operations *opCB)
         opCB->on_writable = NULL;
         opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_close(opCB->ctx, opCB->flow);
     }
     return NEAT_OK;
 }
@@ -145,6 +144,21 @@ on_writable(struct neat_flow_operations *opCB)
 }
 
 static neat_error_code
+on_close(struct neat_flow_operations *opCB)
+{
+    fprintf(stderr, "%s - flow closed OK!\n", __func__);
+
+    // cleanup
+    opCB->on_close = NULL;
+    opCB->on_readable = NULL;
+    opCB->on_writable = NULL;
+    opCB->on_error = NULL;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
+
+    return NEAT_OK;
+}
+
+static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     if (config_log_level >= 2) {
@@ -158,10 +172,13 @@ on_connected(struct neat_flow_operations *opCB)
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
     opCB->on_all_written = NULL;
+    opCB->on_close = on_close;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     return NEAT_OK;
 }
+
+
 
 int
 main(int argc, char *argv[])

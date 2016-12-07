@@ -32,7 +32,7 @@ static char *config_property = "{\
             \"precedence\": 1\
         }\
     ]\
-}";\
+}";
 static uint16_t config_log_level = 1;
 static uint16_t chargen_offset = 0;
 

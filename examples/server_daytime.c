@@ -33,7 +33,7 @@ static char *config_property = "{\
             \"precedence\": 1\
         }\
     ]\
-}";\
+}";
 static uint16_t config_log_level = 1;
 
 #define BUFFERSIZE 32
@@ -185,8 +185,6 @@ on_connected(struct neat_flow_operations *opCB)
 
     return NEAT_OK;
 }
-
-
 
 int
 main(int argc, char *argv[])

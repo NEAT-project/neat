@@ -34,7 +34,7 @@ static char *config_property = "{\
             \"precedence\": 1\
         }\
     ]\
-}";\
+}";
 
 static unsigned char *buffer = NULL;
 static uint32_t buffer_filled = 0;

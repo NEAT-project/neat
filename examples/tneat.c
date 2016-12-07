@@ -31,7 +31,7 @@ static uint32_t config_runtime_max = 0;
 static uint16_t config_active = 0;
 static uint16_t config_chargen_offset = 0;
 static uint16_t config_port = 8080;
-static uint16_t config_log_level = 2;
+static uint16_t config_log_level = 1;
 static char *config_property = "{\
     \"transport\": [\
         {\
@@ -47,7 +47,7 @@ static char *config_property = "{\
             \"precedence\": 1\
         }\
     ]\
-}";\
+}";
 static uint8_t done = 0;
 
 /*
@@ -297,7 +297,6 @@ on_readable(struct neat_flow_operations *opCB)
                 printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
             }
         }
-        printf("on_readable: call on_close\n");
         on_close(opCB);
 
         fprintf(stderr, "%s - free complete\n", __func__);
@@ -490,7 +489,7 @@ main(int argc, char *argv[])
         result = EXIT_FAILURE;
         goto cleanup;
     }
-printf("tneat: flow=%p\n", (void *)flow);
+
     // set properties
     if (neat_set_property(ctx, flow, arg_property)) {
         fprintf(stderr, "%s - neat_set_property failed\n", __func__);

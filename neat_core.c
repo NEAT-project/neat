@@ -4891,7 +4891,9 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 
     rv->socket->fd = -1;
     rv->socket->flow = rv;
+#if defined(USRSCTP_SUPPORT)
     rv->socket->usrsctp_socket = NULL;
+#endif
 
     rv->socket->handle  = (uv_poll_t *) malloc(sizeof(uv_poll_t));
     rv->socket->handle->loop = NULL;

@@ -35,11 +35,19 @@ static uint16_t config_log_level = 2;
 static char *config_property = "{\
     \"transport\": [\
         {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
             \"value\": \"SCTP/UDP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
             \"precedence\": 1\
         }\
     ]\
-}";
+}";\
 static uint8_t done = 0;
 
 /*
@@ -170,7 +178,7 @@ on_writable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
-printf("on_writeable\n");
+
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -305,7 +313,7 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = NULL;
-printf("on_connected\n");
+
     if (config_log_level >= 1) {
         fprintf(stderr, "%s() - connection established\n", __func__);
     }
@@ -347,7 +355,7 @@ static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
-printf("on_close\n");
+
     // cleanup
     opCB->on_close = NULL;
     opCB->on_readable = NULL;
@@ -443,7 +451,7 @@ main(int argc, char *argv[])
     } else {
         neat_log_level(NEAT_LOG_DEBUG);
     }
-neat_log_level(NEAT_LOG_DEBUG);
+
     if (optind == argc) {
         config_active = 0;
         if (config_log_level >= 1) {

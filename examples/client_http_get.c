@@ -24,25 +24,18 @@ static uint8_t  config_log_level = 1;
 static char request[512];
 static uint32_t flows_active = 0;
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-/*
 static char *config_property = "{\
     \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
         {\
             \"value\": \"SCTP/UDP\",\
             \"precedence\": 1\
         },\
         {\
             \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";\
-*/
-
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP/UDP\",\
             \"precedence\": 1\
         }\
     ]\
@@ -185,13 +178,13 @@ main(int argc, char *argv[])
         }
     }
 
-  /*  if (config_log_level == 0) {
+    if (config_log_level == 0) {
         neat_log_level(NEAT_LOG_ERROR);
     } else if (config_log_level == 1){
         neat_log_level(NEAT_LOG_WARNING);
     } else {
         neat_log_level(NEAT_LOG_DEBUG);
-    }*/
+    }
 
     if (optind + 1 != argc) {
         fprintf(stderr, "usage: client_http_get [OPTIONS] HOST\n");

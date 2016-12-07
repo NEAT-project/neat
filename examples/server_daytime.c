@@ -23,9 +23,17 @@ static char *config_property = "{\
         {\
             \"value\": \"SCTP\",\
             \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"SCTP/UDP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
         }\
     ]\
-}";
+}";\
 static uint16_t config_log_level = 1;
 
 #define BUFFERSIZE 32
@@ -228,7 +236,6 @@ main(int argc, char *argv[])
         neat_log_level(NEAT_LOG_DEBUG);
     }
 
-    neat_log_level(NEAT_LOG_DEBUG);
 
     if (optind != argc) {
         fprintf(stderr, "%s - argument error\n", __func__);

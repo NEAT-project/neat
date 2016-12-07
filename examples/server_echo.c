@@ -24,14 +24,22 @@ A TLS example:
 static uint32_t config_buffer_size = 512;
 static uint16_t config_log_level = 1;
 static uint16_t config_number_of_streams = 1988;
-static char *config_property = "{\n\
-    \"transport\": [\n\
-        {\n\
-            \"value\": \"SCTP\",\n\
-            \"precedence\": 1\n\
-        }\n\
-    ]\n\
-}";
+static char *config_property = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"SCTP/UDP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";\
 
 static char *pem_file = NULL;
 
@@ -273,7 +281,7 @@ main(int argc, char *argv[])
     } else {
         neat_log_level(NEAT_LOG_DEBUG);
     }
-neat_log_level(NEAT_LOG_DEBUG);
+
     if (optind != argc) {
         fprintf(stderr, "%s - argument error\n", __func__);
         print_usage();

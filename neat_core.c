@@ -1442,7 +1442,6 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     struct neat_flow *flow = candidate->pollable_socket->flow;
     struct neat_he_candidates *candidate_list = flow->candidate_list;
     struct cib_he_res *he_res = NULL;
-printf("***********he_connected_cb******\n");
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     c++;
@@ -4890,10 +4889,13 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     if (!rv->socket)
         goto error;
 
-    rv->socket->fd = -1;
     rv->socket->flow = rv;
+    rv->socket->fd = 0;
 #if defined(USRSCTP_SUPPORT)
     rv->socket->usrsctp_socket = NULL;
+    if (neat_base_stack(rv->socket->stack) == NEAT_STACK_SCTP) {
+        rv->socket->fd = -1;
+    }
 #endif
 
     rv->socket->handle  = (uv_poll_t *) malloc(sizeof(uv_poll_t));
@@ -5025,14 +5027,11 @@ void neat_notify_close(neat_flow *flow)
     neat_ctx *ctx = flow->ctx;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-printf("flow=%p\n", (void *)flow);
     if (!flow->operations || !flow->operations->on_close) {
-    printf("no on_close anymore\n");
         return;
     }
 
     READYCALLBACKSTRUCT;
-    printf("App: call on_close\n");
     flow->operations->on_close(flow->operations);
 }
 

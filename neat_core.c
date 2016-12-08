@@ -5487,7 +5487,7 @@ neat_wait_for_multistream_assoc(neat_ctx *ctx, neat_flow *flow)
         //neat_log(NEAT_LOG_DEBUG, "%s - checking: %p - %s", __func__, flow_itr, flow_itr->name);
 
         // skipping self
-        if (flow_itr == new_flow) {
+        if (flow_itr == flow) {
             neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - self...", __func__, flow_itr);
             continue;
         }
@@ -5505,9 +5505,9 @@ neat_wait_for_multistream_assoc(neat_ctx *ctx, neat_flow *flow)
         }
 
         // DNS-name matches, flow is in connecting state and has the same group
-        if (!strcmp(flow_itr->name, new_flow->name) &&
+        if (!strcmp(flow_itr->name, flow->name) &&
             flow_itr->hefirstConnect &&
-            flow_itr->group == new_flow->group
+            flow_itr->group == flow->group
         ) {
             TAILQ_FOREACH(candidate, flow_itr->candidate_list, next) {
                 // Flow candidates include SCTP

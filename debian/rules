@@ -3,7 +3,8 @@
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
-	dh $@ --buildsystem=cmake --parallel --with=sphinxdoc
+	dh $@ --buildsystem=cmake --parallel
+	# --with=sphinxdoc
 
 override_dh_auto_build:
 

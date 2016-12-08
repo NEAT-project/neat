@@ -131,7 +131,9 @@ def process_request(json_str, num_candidates=10):
         cib_candidates = []
         print('CIB lookup...')
         for ur in updated_requests:
-            cib_candidates.extend(cib.lookup(ur))
+            for c in cib.lookup(ur):
+                if c in cib_candidates: continue
+                cib_candidates.append(c)
 
         cib_candidates.sort(key=attrgetter('score'), reverse=True)
         logging.debug('CIB lookup returned %d candidates:' % len(cib_candidates))
@@ -140,10 +142,12 @@ def process_request(json_str, num_candidates=10):
 
         print('PIB lookup...')
         for j, candidate in enumerate(cib_candidates):
-            candidates.extend(pib.lookup(candidate, cand_id=i + 1))
+            for c in pib.lookup(candidate, cand_id=i + 1):
+                if c in candidates: continue
+                candidates.append(c)
 
-        for c in candidates:  # XXXX
-            print(' ~~>   ', c)
+        #for c in candidates:  # XXXX
+        #    print(' ~~>   ', c)
 
     candidates.sort(key=attrgetter('score'), reverse=True)
 
@@ -156,7 +160,7 @@ def process_request(json_str, num_candidates=10):
     logging.info("%d candidates generated in total." % (len(candidates)))
     print(policy.term_separator('Top %d' % num_candidates))
     for candidate in top_candidates:
-        print(candidate, candidate.score)
+        print(candidate, candidate.score, candidate.meta.get('cib_uids'))
     # TODO check if candidates contain the minimum src/dst/transport tuple
     print(policy.term_separator())
 

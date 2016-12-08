@@ -1,0 +1,18 @@
+{
+    "uid":"sctp",
+    "description":"prefer SCTP over other protocols",
+    "priority": 10,
+    "replace_matched": false,
+    "match":{
+        "transport": {
+            "value": "SCTP"
+        }
+    },
+    "properties":{
+        "transport": {
+            "value": "SCTP",
+            "precedence": 2,
+            "score": 2
+        }
+    }
+}

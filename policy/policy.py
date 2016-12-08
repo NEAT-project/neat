@@ -459,6 +459,9 @@ class PropertyArray(dict):
     def __init__(self, *properties):
         self.add(*properties)
 
+        # dict to store some auxiliary information
+        self.meta = dict()
+
     def add(self, *properties):
         """
         Insert a new NEATProperty object into the array. If the property key already exists update it.
@@ -497,7 +500,6 @@ class PropertyArray(dict):
             return set(self.values()) <= set(other.values())
         else:
             return set(self.values()) <= other
-
 
     def intersection(self, other):
         return self & other

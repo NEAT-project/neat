@@ -4,6 +4,7 @@ import logging
 try:
     from aiohttp import web
 except ImportError as e:
+    logging.warning("aiohttp in required to start the REST interface, but it is not installed")
     web = None
 
 LOCAL_IP = '0.0.0.0'
@@ -30,6 +31,7 @@ async def handle_pib(request):
         return web.Response(status=404, text='unknown UID')
 
     return web.Response(text=text)
+
 
 async def handle_pib_put(request):
     """

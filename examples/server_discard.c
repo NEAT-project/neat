@@ -1,8 +1,9 @@
+#include <neat.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include "../neat.h"
 #include "util.h"
 #include <errno.h>
 
@@ -22,6 +23,10 @@ static char *config_property = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"SCTP/UDP\",\
             \"precedence\": 1\
         },\
         {\
@@ -169,6 +174,14 @@ main(int argc, char *argv[])
             goto cleanup;
             break;
         }
+    }
+
+    if (config_log_level == 0) {
+        neat_log_level(NEAT_LOG_ERROR);
+    } else if (config_log_level == 1){
+        neat_log_level(NEAT_LOG_WARNING);
+    } else {
+        neat_log_level(NEAT_LOG_DEBUG);
     }
 
     if (optind != argc) {

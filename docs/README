@@ -1,0 +1,33 @@
+## Public documentation
+
+The documentation may be found on [ReadTheDocs](neat.readthedocs.io).
+
+This documentation is built automatically when the master branch is updated.
+
+## How to build documentation locally
+
+Building the documentation locally is not necessary to contribute to the
+documentation.
+
+Prerequisites:
+- Sphinx
+- Sphinx RtD theme
+
+These may be installed either through PIP or the package manager of your
+distribution.
+
+Once these have been installed, you may use the provided Makefile.
+
+To generate HTML documentation: `make html`.
+
+The makefile also contains a (non-standard) target to rebuild the documentation
+upon changes to the documentation files. For this to work, sphinx-autobuild
+must be installed. To make use of this, execute `make livehtml`. Note that this
+feature does not work when adding new files. When adding a new file, `make
+html` must be executed at least once first.
+
+## How to update the documentation
+
+To add a new page to the documentation, create a new file. The file
+`_templates/template.md` may be used as a starting point. Add a reference to
+this file in `index.rst`.

@@ -51,7 +51,7 @@ static int neat_linux_parse_nlattr(const struct nlattr *attr, void *data)
 //Function which parses the netlink message (*ADDR) we have received and extract
 //relevant information, which is parsed to OS-independent
 //neat_addr_update_src_list
-static void neat_linux_handle_addr(struct neat_ctx *nc,
+static neat_error_code neat_linux_handle_addr(struct neat_ctx *nc,
                                    struct nlmsghdr *nl_hdr)
 {
     struct ifaddrmsg *ifm = (struct ifaddrmsg*) mnl_nlmsg_get_payload(nl_hdr);
@@ -67,7 +67,7 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
     uint32_t ifa_pref = 0, ifa_valid = 0;
 
     if (ifm->ifa_scope == RT_SCOPE_LINK)
-        return;
+        return NEAT_ERROR_OK;
 
     memset(attr_table, 0, sizeof(attr_table));
     memset(&src_addr, 0, sizeof(src_addr));
@@ -76,7 +76,7 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
                 neat_linux_parse_nlattr, &tb_storage) != MNL_CB_OK) {
         neat_log(NEAT_LOG_ERROR, "Failed to parse nlattr for msg of type %d",
                 __func__, nl_hdr->nlmsg_type);
-        return;
+        return NEAT_ERROR_OK;
     }
 
     //v4 and v6 has to be handled differently, both due to address size and
@@ -97,8 +97,9 @@ static void neat_linux_handle_addr(struct neat_ctx *nc,
 
     //TODO: Should this function be a callback instead? Will we have multiple
     //addresses handlers/types of context?
-    neat_addr_update_src_list(nc, &src_addr, ifm->ifa_index,
-            nl_hdr->nlmsg_type == RTM_NEWADDR, ifm->ifa_prefixlen, ifa_pref, ifa_valid);
+    return neat_addr_update_src_list(nc, &src_addr, ifm->ifa_index,
+                                     nl_hdr->nlmsg_type == RTM_NEWADDR,
+                                     ifm->ifa_prefixlen, ifa_pref, ifa_valid);
 }
 
 //libuv datagram socket alloc function, un-interesting
@@ -125,7 +126,7 @@ static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
     while (mnl_nlmsg_ok(nl_hdr, numbytes)) {
         if (nl_hdr->nlmsg_type == RTM_NEWADDR ||
             nl_hdr->nlmsg_type == RTM_DELADDR)
-            neat_linux_handle_addr(nc, nl_hdr);
+            neat_ctx_fail_on_error(nc, neat_linux_handle_addr(nc, nl_hdr));
 
         nl_hdr = mnl_nlmsg_next(nl_hdr, &numbytes);
     }
@@ -195,29 +196,29 @@ struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *nc)
     return nc;
 }
 
-/* Get the Linux TCP_INFO and copy the relevant fields into the neat-specific 
+/* Get the Linux TCP_INFO and copy the relevant fields into the neat-specific
  * TCP_INFO struct. Return pointer to the struct with the copied data */
 void linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
 {
-    int tcp_info_length; 
+    int tcp_info_length;
     struct tcp_info tcpi;
-   
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-    
+
     tcp_info_length = sizeof(struct tcp_info);
     getsockopt(flow->socket->fd, SOL_TCP, TCP_INFO, (void *)&tcpi, (socklen_t *)&tcp_info_length );
-    
+
     /* Copy relevant fields between structs */
 
-    neat_tcp_info->retransmits = tcpi.tcpi_retransmits; 
-    neat_tcp_info->tcpi_pmtu = tcpi.tcpi_pmtu; 
+    neat_tcp_info->retransmits = tcpi.tcpi_retransmits;
+    neat_tcp_info->tcpi_pmtu = tcpi.tcpi_pmtu;
     neat_tcp_info->tcpi_rcv_ssthresh = tcpi.tcpi_rcv_ssthresh;
     neat_tcp_info->tcpi_rtt = tcpi.tcpi_rtt;
     neat_tcp_info->tcpi_rttvar = tcpi.tcpi_rttvar;
     neat_tcp_info->tcpi_snd_ssthresh = tcpi.tcpi_snd_ssthresh;
     neat_tcp_info->tcpi_snd_cwnd = tcpi.tcpi_snd_cwnd;
     neat_tcp_info->tcpi_advmss = tcpi.tcpi_advmss;
-    neat_tcp_info->tcpi_reordering = tcpi.tcpi_reordering;    
+    neat_tcp_info->tcpi_reordering = tcpi.tcpi_reordering;
     neat_tcp_info->tcpi_rcv_rtt = tcpi.tcpi_rcv_rtt;
     neat_tcp_info->tcpi_rcv_space = tcpi.tcpi_rcv_space;
     neat_tcp_info->tcpi_total_retrans = tcpi.tcpi_total_retrans;

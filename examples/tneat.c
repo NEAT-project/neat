@@ -1,9 +1,10 @@
+#include <neat.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include "../neat.h"
 
 /**********************************************************************
 
@@ -30,11 +31,15 @@ static uint32_t config_runtime_max = 0;
 static uint16_t config_active = 0;
 static uint16_t config_chargen_offset = 0;
 static uint16_t config_port = 8080;
-static uint16_t config_log_level = 2;
+static uint16_t config_log_level = 1;
 static char *config_property = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"SCTP/UDP\",\
             \"precedence\": 1\
         },\
         {\
@@ -367,6 +372,7 @@ on_close(struct neat_flow_operations *opCB)
     // stop event loop if we are active part
     if (config_active) {
         fprintf(stderr, "%s - stopping event loop\n", __func__);
+        neat_close(opCB->ctx, opCB->flow);
         neat_stop_event_loop(opCB->ctx);
     }
 
@@ -435,6 +441,14 @@ main(int argc, char *argv[])
             goto cleanup;
             break;
         }
+    }
+
+    if (config_log_level == 0) {
+        neat_log_level(NEAT_LOG_ERROR);
+    } else if (config_log_level == 1){
+        neat_log_level(NEAT_LOG_WARNING);
+    } else {
+        neat_log_level(NEAT_LOG_DEBUG);
     }
 
     if (optind == argc) {

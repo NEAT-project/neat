@@ -1,7 +1,8 @@
+#include <neat.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "../neat.h"
 
 /**********************************************************************
 
@@ -21,6 +22,10 @@ static char *config_property = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"SCTP/UDP\",\
             \"precedence\": 1\
         },\
         {\

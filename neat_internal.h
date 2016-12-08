@@ -68,11 +68,15 @@ struct neat_ctx
     // PvD
     struct neat_pvd* pvd;
 
+    neat_error_code error;
+
     // resolver
     NEAT_INTERNAL_CTX;
     NEAT_INTERNAL_OS;
     NEAT_INTERNAL_USRSCTP
 };
+
+void neat_ctx_fail_on_error(struct neat_ctx *nc, neat_error_code error);
 
 struct neat_he_candidate;
 struct neat_pollable_socket;
@@ -120,7 +124,6 @@ typedef enum {
 
 #define NEAT_STACK_MAX_NUM             5
 #define SCTP_UDP_TUNNELING_PORT        9899
-#define SCTP_REMOTE_UDP_ENCAPS_PORT    0x00000024
 
 TAILQ_HEAD(neat_message_queue_head, neat_buffered_message);
 
@@ -203,7 +206,7 @@ struct neat_flow
     float priority;
 
     const char *cc_algorithm;
-    const char *local_name; // Src address or addresses
+    const char *local_address; // Src address or addresses
 
     // TODO: Move more socket-specific values to neat_pollable_socket
 
@@ -338,6 +341,14 @@ struct neat_he_candidate {
 };
 
 TAILQ_HEAD(neat_he_candidates, neat_he_candidate);
+
+// Connection attempt result sent by HE to PM.
+struct cib_he_res {
+    char *interface;
+    char *remote_ip;
+    unsigned int remote_port;
+    int transport;
+};
 
 void neat_free_candidates(struct neat_he_candidates *candidates);
 void neat_free_candidate(struct neat_he_candidate *candidate);

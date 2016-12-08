@@ -12,7 +12,7 @@ ARG=""
 
 echo ""
 echo "########################################"
-ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he bsd10.nplab.de"
+ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he -v 2 bsd10.nplab.de"
 echo "Running: $ARG"
 $ARG
 RC=$?
@@ -27,7 +27,7 @@ fi
 
 echo ""
 echo "########################################"
-ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he 212.201.121.100"
+ARG="$PREFIX$EXAMPLES_DIR/client_http_run_once -u /cgi-bin/he bsd10.nplab.de"
 echo "Running: $ARG"
 $ARG
 RC=$?
@@ -42,7 +42,7 @@ fi
 
 echo ""
 echo "########################################"
-ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he 2a02:c6a0:4015:10::100"
+ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he -v 2 212.201.121.100"
 echo "Running: $ARG"
 $ARG
 RC=$?
@@ -57,7 +57,37 @@ fi
 
 echo ""
 echo "########################################"
-ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he not.resolvable.neat"
+ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he -v 2 2a02:c6a0:4015:10::100"
+echo "Running: $ARG"
+$ARG
+RC=$?
+if [ $RC -ne 0 ]; then
+    RC_GLOBAL=1
+    echo ">> test failed!"
+else
+    echo ">> test succeeded"
+fi
+
+##############
+
+echo ""
+echo "########################################"
+ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he -v 2 not.resolvable.neat"
+echo "Running: $ARG"
+$ARG
+RC=$?
+if [ $RC -ne 1 ]; then
+    RC_GLOBAL=1
+    echo ">> RC $RC - test failed!"
+else
+    echo ">> RC $RC - test succeeded"
+fi
+
+##############
+
+echo ""
+echo "########################################"
+ARG="$PREFIX$EXAMPLES_DIR/client_http_get -u /cgi-bin/he -v 2 buildbot.nplab.de"
 echo "Running: $ARG"
 $ARG
 RC=$?

@@ -94,8 +94,9 @@ Finally, CIB sources have the option of generating CIB files which augment exist
         "remote_port": {"value": 8080, "precedence":1},
         "local_port": {"value": 56674, "precedence":1},
         "transport": {"value": "TCP", "precedence":1},
+        "cached": {"value": true, "precedence":2, "score":5},
         "cache_ttl": {"value": 300, "precedence":1},
-        "cached_connection_status": {"value": "success", "precedence":2, "score":5}
+        "cache_status": {"value": "connection_success", "precedence":2, "description":"could be failed, NA, etc."}
     }]
 }
 

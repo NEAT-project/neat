@@ -227,7 +227,8 @@ static uint32_t neat_resolver_literal_populate_results(struct neat_resolver_requ
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     char *tmp = strdup(request->domain_name);
-    char *address_name = strtok((char *)tmp, ",");
+    char *ptr = NULL;
+    char *address_name = strtok_r((char *)tmp, ",", &ptr);
     while (address_name != NULL) {
         if (request->family == AF_INET) {
             u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
@@ -267,7 +268,7 @@ static uint32_t neat_resolver_literal_populate_results(struct neat_resolver_requ
                                                                      dst_addr);
         }
 
-        address_name = strtok(NULL, ",");
+        address_name = strtok_r(NULL, ",", &ptr);
     }
     free (tmp);
     return num_resolved_addrs;

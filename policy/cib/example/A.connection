@@ -1,6 +1,6 @@
 {
   "type": "local",
-  "id": "A",
+  "uid": "A",
   "timestamp": 1463575518,
   "properties":{
       "interface": {"value": "en0", "precedence":2},

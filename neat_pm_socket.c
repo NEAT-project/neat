@@ -63,8 +63,10 @@ on_pm_read(struct neat_ctx *ctx, struct neat_flow *flow, json_t *json, void *dat
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    pm_context->on_pm_reply(ctx, flow, json);
-
+    if (pm_context->on_pm_reply != NULL) {
+        pm_context->on_pm_reply(ctx, flow, json);    
+    }
+    
     neat_unix_json_close(pm_context->ipc_context, on_pm_close, data);
 }
 

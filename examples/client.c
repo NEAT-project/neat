@@ -1,11 +1,12 @@
+#include <neat.h>
+#include <neat_internal.h>
+#include "util.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <uv.h>
-#include "../neat.h"
-#include "../neat_internal.h"
-#include "util.h"
 
 /**********************************************************************
 
@@ -28,22 +29,26 @@
 
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
-static uint16_t config_log_level = 2;
+static uint16_t config_log_level = 1;
 static uint16_t config_json_stats = 1;
 static uint16_t config_timeout = 0;
 static uint16_t config_number_of_streams = 1207;
 static char *config_primary_dest_addr = NULL;
-static char *config_property = "{\n\
-    \"transport\": [\n\
-        {\n\
-            \"value\": \"SCTP\",\n\
-            \"precedence\": 1\n\
-        },\n\
-        {\n\
-            \"value\": \"TCP\",\n\
-            \"precedence\": 1\n\
-        }\n\
-    ]\n\
+static char *config_property = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"SCTP/UDP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
 }";
 
 struct std_buffer {
@@ -182,7 +187,7 @@ on_readable(struct neat_flow_operations *opCB)
     // all fine
     if (buffer_filled > 0) {
         if (config_log_level >= 1) {
-            fprintf(stderr, "%s - received %d bytes on stream %d of %d\n", __func__, buffer_filled, opCB->stream_id, opCB->flow->stream_count);
+            fprintf(stderr, "%s - received %d bytes on stream id %d (%d streams)\n", __func__, buffer_filled, opCB->stream_id, opCB->flow->stream_count);
         }
         fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
         fflush(stdout);
@@ -191,6 +196,7 @@ on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s - nothing more to read\n", __func__);
         ops.on_readable = NULL;
         neat_set_operations(ctx, flow, &ops);
+        neat_close(ctx, flow);
     }
 
     return NEAT_OK;
@@ -288,6 +294,9 @@ on_close(struct neat_flow_operations *opCB)
     ops.on_readable = NULL;
     ops.on_writable = NULL;
     ops.on_error = NULL;
+    if (!uv_is_closing((uv_handle_t*) &tty)) {
+    	uv_close((uv_handle_t*) &tty, NULL);
+    }
     neat_set_operations(ctx, flow, &ops);
 
     neat_stop_event_loop(opCB->ctx);
@@ -317,7 +326,9 @@ tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
         uv_read_stop(stream);
         ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
-        uv_close((uv_handle_t*) &tty, NULL);
+        if (!uv_is_closing((uv_handle_t*) &tty)) {
+    		uv_close((uv_handle_t*) &tty, NULL);
+    	}
         neat_shutdown(ctx, flow);
     } else if (strncmp(buffer->base, "close\n", buffer_filled) == 0) {
         if (config_log_level >= 1) {
@@ -326,7 +337,9 @@ tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
         uv_read_stop(stream);
         ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
-        uv_close((uv_handle_t*) &tty, NULL);
+        if (!uv_is_closing((uv_handle_t*) &tty)) {
+    		uv_close((uv_handle_t*) &tty, NULL);
+    	}
         neat_close(ctx, flow);
         buffer_filled = UV_EOF;
     } else if (strncmp(buffer->base, "abort\n", buffer_filled) == 0) {
@@ -336,7 +349,9 @@ tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
         uv_read_stop(stream);
         ops.on_writable = NULL;
         neat_set_operations(ctx, flow, &ops);
-        uv_close((uv_handle_t*) &tty, NULL);
+        if (!uv_is_closing((uv_handle_t*) &tty)) {
+    		uv_close((uv_handle_t*) &tty, NULL);
+    	}
         neat_abort(ctx, flow);
         buffer_filled = UV_EOF;
     }
@@ -445,6 +460,14 @@ main(int argc, char *argv[])
             goto cleanup;
             break;
         }
+    }
+
+    if (config_log_level == 0) {
+        neat_log_level(NEAT_LOG_ERROR);
+    } else if (config_log_level == 1){
+        neat_log_level(NEAT_LOG_WARNING);
+    } else {
+        neat_log_level(NEAT_LOG_DEBUG);
     }
 
     if (optind + 2 != argc) {

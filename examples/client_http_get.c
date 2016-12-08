@@ -1,9 +1,14 @@
+#include <neat.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+<<<<<<< HEAD
 #include <sys/time.h>
 #include "../neat.h"
+=======
+>>>>>>> upcalls
 
 #ifndef timersub
 #define timersub(tvp, uvp, vvp)                                         \
@@ -26,11 +31,13 @@
     client_http_get [OPTIONS] HOST
     -u : URI
     -n : number of requests/flows
+    -v : log level (0 .. 2)
 
 **********************************************************************/
 
 static uint32_t config_rcv_buffer_size = 6553600;
 static uint32_t config_max_flows = 50;
+static uint8_t  config_log_level = 1;
 static char request[512];
 static uint32_t flows_active = 0;
 static struct timeval start_time;
@@ -101,11 +108,15 @@ on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
         fwrite(buffer, sizeof(char), bytes_read, stdout);
     }
+<<<<<<< HEAD
     gettimeofday(&now, NULL);
 	timersub(&now, &start_time, &diff_time);
 	seconds = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 	fprintf(stdout, "transfer time: %f seconds bytes: %ul throughput: %f bit/s\n", seconds, bytes_read, (double)((bytes_read*8)/seconds));
     return 0;
+=======
+    return NEAT_OK;
+>>>>>>> upcalls
 }
 
 static neat_error_code
@@ -119,7 +130,8 @@ on_writable(struct neat_flow_operations *opCB)
     }
     opCB->on_writable = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
-    return 0;
+
+    return NEAT_OK;
 }
 
 static neat_error_code
@@ -130,8 +142,13 @@ on_connected(struct neat_flow_operations *opCB)
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
+<<<<<<< HEAD
     gettimeofday(&start_time, NULL);
     return 0;
+=======
+
+    return NEAT_OK;
+>>>>>>> upcalls
 }
 
 static neat_error_code
@@ -169,6 +186,8 @@ main(int argc, char *argv[])
     uint32_t i = 0;
     result = EXIT_SUCCESS;
 
+    neat_log_level(NEAT_LOG_DEBUG);
+
     memset(&ops, 0, sizeof(ops));
     memset(flows, 0, sizeof(flows));
 
@@ -177,23 +196,37 @@ main(int argc, char *argv[])
 
     snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
 
-    while ((arg = getopt(argc, argv, "u:n:")) != -1) {
+    while ((arg = getopt(argc, argv, "u:n:v:")) != -1) {
         switch(arg) {
         case 'u':
             snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);
             break;
         case 'n':
-            num_flows = strtoul (optarg, NULL, 0);
+            num_flows = strtoul(optarg, NULL, 0);
             if (num_flows > config_max_flows) {
                 num_flows = config_max_flows;
             }
             fprintf(stderr, "%s - option - number of flows: %d\n", __func__, num_flows);
+            break;
+        case 'v':
+            config_log_level = atoi(optarg);
+            if (config_log_level >= 1) {
+                fprintf(stderr, "%s - option - log level: %d\n", __func__, config_log_level);
+            }
             break;
         default:
             fprintf(stderr, "usage: client_http_get [OPTIONS] HOST\n");
             goto cleanup;
             break;
         }
+    }
+
+    if (config_log_level == 0) {
+        neat_log_level(NEAT_LOG_ERROR);
+    } else if (config_log_level == 1){
+        neat_log_level(NEAT_LOG_WARNING);
+    } else {
+        neat_log_level(NEAT_LOG_DEBUG);
     }
 
     if (optind + 1 != argc) {

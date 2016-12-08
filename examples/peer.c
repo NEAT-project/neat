@@ -1,3 +1,6 @@
+#include <neat.h>
+#include <neat_internal.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -6,9 +9,6 @@
 
 #include <sys/stat.h>
 #include <uv.h>
-
-#include "../neat.h"
-#include "../neat_internal.h"
 
 /**********************************************************************
 
@@ -20,7 +20,7 @@
 **********************************************************************/
 
 static uint32_t config_buffer_size_max = 1400;
-static uint16_t config_log_level = 0;
+static uint16_t config_log_level = 1;
 static char config_property[] = "NEAT_PROPERTY_UDP_REQUIRED";
 static uint32_t config_drop_randomly= 0;
 static uint32_t config_drop_rate= 80;

@@ -53,7 +53,9 @@ neat_resolver_helpers_check_for_literal(uint8_t *family,
     } else {
         // More than one destination address provided
         char *tmp = strdup(node);
-        char *address_name = strtok((char *)tmp, ",");
+        char *ptr = NULL;
+        char *address_name = strtok_r((char *)tmp, ",", &ptr);
+
         while (address_name != NULL) {
             v4_literal = inet_pton(AF_INET, address_name, &dummy_addr);
             v6_literal = inet_pton(AF_INET6, address_name, &dummy_addr);
@@ -61,7 +63,7 @@ neat_resolver_helpers_check_for_literal(uint8_t *family,
                 free (tmp);
                 return v4_literal | v6_literal;
             }
-            address_name = strtok(NULL, ",");
+            address_name = strtok_r(NULL, ",", &ptr);
         }
         free (tmp);
     }

@@ -1030,7 +1030,9 @@ static void handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
         struct sctp_adaptation_event *adaptation = (struct sctp_adaptation_event *) notfn;
         if (adaptation->sai_adaptation_ind == SCTP_ADAPTATION_NEAT) {
             flow->socket->sctp_neat_peer = 1;
+#ifdef SCTP_MULTISTREAM
             neat_hook_mulitstream_flows(flow);
+#endif // SCTP_MULTISTREAM
             neat_log(NEAT_LOG_INFO, "Peer is NEAT enabled");
         }
         break;
@@ -1083,6 +1085,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     socklen_t peerAddrLen = sizeof(struct sockaddr_storage);
     int stream_id = 0;
     ssize_t n;
+    struct msghdr msghdr;
     //Not used when notifications aren't available:
 
 #ifdef SCTP_MULTISTREAMING
@@ -1105,7 +1108,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     struct cmsghdr *cmsg;
 #endif
 
-    struct msghdr msghdr;
+
     struct iovec iov;
 
 #else // !defined(USRSCTP_SUPPORT)

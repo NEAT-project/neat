@@ -18,7 +18,7 @@ tests_usrsctp.append([0, 'client_http_get -u /cgi-bin/he -v 2 bsd10.nplab.de'])
 # Default values
 tests       = tests_general
 prefix      = ""
-workdir     = "../build/examples/"
+workdir     = "../examples/"
 timeout     = 60
 
 # First argument: chose between tests

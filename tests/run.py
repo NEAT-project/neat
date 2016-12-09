@@ -44,7 +44,7 @@ for test in tests:
     print("Runnning: " + test[1])
     try:
         test_return = subprocess.call(workdir + test[1], shell=True, timeout=40)
-        if test_return != 0:
+        if test_return != test[0]:
             print("Test failed: program returned with error")
             sys.exit(-1)
     except subprocess.TimeoutExpired:

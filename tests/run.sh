@@ -1,2 +1,2 @@
 #!/bin/sh
-python3 run.py
+python3.5 run.py

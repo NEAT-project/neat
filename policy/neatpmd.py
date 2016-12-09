@@ -3,6 +3,7 @@ import argparse
 import asyncio
 import logging
 import os
+import signal
 from copy import deepcopy
 from operator import attrgetter
 
@@ -23,13 +24,11 @@ parser.add_argument('--rest', type=bool, default=True, help='enable REST API')
 parser.add_argument('--bypass', type=bool, default=False, help='enable debugging')
 
 args = parser.parse_args()
+
 if args.sock:
     DOMAIN_SOCK = args.sock
 else:
-    DOMAIN_SOCK = os.environ['HOME'] + '/.neat/neat_pm_socket'
-
-PIB_SOCK = os.environ['HOME'] + '/.neat/neat_pib_socket'
-CIB_SOCK = os.environ['HOME'] + '/.neat/neat_cib_socket'
+    DOMAIN_SOCK = pmconst.DOMAIN_SOCK
 
 PIB_DIR = args.pib
 CIB_DIR = args.cib
@@ -37,8 +36,8 @@ CIB_DIR = args.cib
 # Make sure the socket does not already exist
 try:
     os.unlink(DOMAIN_SOCK)
-    os.unlink(PIB_SOCK)
-    os.unlink(CIB_SOCK)
+    os.unlink(pmconst.PIB_SOCK)
+    os.unlink(pmconst.CIB_SOCK)
 except OSError:
     if os.path.exists(DOMAIN_SOCK):
         raise
@@ -237,6 +236,17 @@ class PMProtocol(asyncio.Protocol):
         self.transport.close()
 
 
+def signal_handler():
+    print(policy.term_separator('ENTERING INTERACTIVE DEBUG MODE', line_char='#'))
+    print()
+    print()
+    import code
+    code.interact(local=globals(), banner='use Ctrl-D to exit debug mode')
+    print()
+    print()
+    print(policy.term_separator('EXITING INTERACTIVE DEBUG MODE', line_char='#'))
+
+
 def no_loop_test():
     """
     Dummy JSON request for testing
@@ -261,21 +271,22 @@ if __name__ == "__main__":
     profiles = PIB(PIB_DIR, file_extension='.profile')
     pib = PIB(PIB_DIR, file_extension='.policy')
 
-    # FIXME: REMOVE only for local testing
-    # no_loop_test()
-
     loop = asyncio.get_event_loop()
 
     # Each client connection creates a new protocol instance
     coro = loop.create_unix_server(PMProtocol, DOMAIN_SOCK)
     server = loop.run_until_complete(coro)
 
-    coro_pib = loop.create_unix_server(PIBProtocol, PIB_SOCK)
+    coro_pib = loop.create_unix_server(PIBProtocol, pmconst.PIB_SOCK)
     pib_server = loop.run_until_complete(coro_pib)
 
-    coro_cib = loop.create_unix_server(CIBProtocol, CIB_SOCK)
+    coro_cib = loop.create_unix_server(CIBProtocol, pmconst.CIB_SOCK)
     cib_server = loop.run_until_complete(coro_cib)
 
+    # interactive debug mode
+    loop.add_signal_handler(signal.SIGQUIT, signal_handler)
+
+    # try to start the PM REST interface
     pmrest.init_rest_server(loop, profiles, cib, pib, rest_port=pmconst.REST_PORT)
 
     print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))

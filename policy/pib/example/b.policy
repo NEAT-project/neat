@@ -1,5 +1,5 @@
 {  
-    "name":"TCP options",
+    "uid":"TCP options",
     "description":"optimize TCP stuff",
     "priority": 2,
     "match":{

@@ -6,8 +6,10 @@ import json
 import logging
 import operator
 import os
+import time
 from collections import ChainMap
 
+from pmconst import *
 from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
 from policy import dict_to_properties
 
@@ -33,6 +35,7 @@ def load_json(filename):
     return j
 
 
+# TODO rename to CIBNode?
 class CIBSource(object):
     cib = None
 
@@ -48,6 +51,7 @@ class CIBSource(object):
             # logging.warning("[%s] root: true implies link: true." % self.uid)
             self.link = True
         self.priority = source_dict.get('priority', 0)
+        self.expire = source_dict.get('expire', None)
         self.filename = source_dict.get('filename', None)
         self.description = source_dict.get('description', '')
 
@@ -69,34 +73,15 @@ class CIBSource(object):
         self.properties = []
         for p in properties:
             pa = PropertyMultiArray(*dict_to_properties(p))
-            # include UID as a NEATProperty
-            # pa.add(NEATProperty(('uid', self.uid), score=0, precedence=NEATProperty.IMMUTABLE))
             self.properties.append(pa)
-
-        # FIXME generate persistent UIDs
 
         self.uid = source_dict.get('uid')
         if self.uid is None:
-            s = self.json(indent=0)
-            self.uid = hashlib.md5(s.encode('utf-8')).hexdigest()
-
-            # for p in self.properties:
-            #     # include UID as a NEATProperty with set value
-            #     # TODO maybe we should look up UIDs explicitly
-            #     # TODO replace uids back to uid
-            #     if 'uids' in p.keys():
-            #         for i in p['uids']:
-            #             if isinstance(i.value, set):
-            #                 i.value |= {self.uid}
-            #             else:
-            #                 i.value = {i.value} | {self.uid}
-            #     else:
-            #         p.add(NEATProperty(('uids', [self.uid]), score=0, precedence=NEATProperty.IMMUTABLE))
+            self.uid = self._gen_uid()
 
     def dict(self):
         d = {}
-        for attr in ['uid', 'root', 'link', 'priority', 'filename', 'description', ]:
-
+        for attr in ['uid', 'root', 'link', 'priority', 'filename', 'description', 'expire', ]:
             try:
                 d[attr] = getattr(self, attr)
             except AttributeError:
@@ -114,6 +99,43 @@ class CIBSource(object):
                 d['properties'].append(p.dict())
 
         return d
+
+    @property
+    def expire(self):
+        return self._expire
+
+    @expire.setter
+    def expire(self, value):
+        if value is None:
+            self._expire = time.time() + CIB_DEFAULT_TIMEOUT
+            return
+
+        value = float(value)
+
+        if value == -1:
+            # does not expire
+            self._expire = value
+        elif time.time() > value:
+            raise CIBEntryError('CIB node is expired')
+        else:
+            self._expire = value
+
+    def _gen_uid(self):
+        # FIXME generate persistent UIDs
+        d = self.dict()
+        for k in ['expire', 'filename']:
+            try:
+                del d[k]
+            except KeyError:
+                pass
+
+        for k in ['cib_uids', ]:
+            try:
+                del d['properties'][k]
+            except KeyError:
+                pass
+        s = json.dumps(d, indent=0, sort_keys=True)
+        return hashlib.md5(s.encode('utf-8')).hexdigest()
 
     def json(self, indent=4):
         return json.dumps(self.dict(), indent=indent, sort_keys=True)
@@ -213,19 +235,17 @@ class CIBSource(object):
             for pas in itertools.product(*expanded_properties):
                 chain = ChainMap(*pas)
 
-                # get a list of UIDs of all CIB sources in chain and add the list in first position of the chain map
-                # TODO DELETE
-                # uid_list = [p['uids'].value for p in pas]
-                # chain.maps.insert(0, PropertyArray(NEATProperty(('uid', uid_list))))
-
                 # For debugging purposes, add the path list to the chain.
                 # Store as string to preserve path order (NEAT properties are not ordered).
                 dbg_path = '<<'.join(uid for uid in path)
+
                 # insert at position 0 to override any existing entries
-                chain.maps.insert(0, PropertyArray(NEATProperty(('cib_uids', dbg_path))))
+                # chain.maps.insert(0, PropertyArray(NEATProperty(('cib_uids', dbg_path))))
 
                 # convert back to normal PropertyArrays
-                rows.append(PropertyArray(*(p for p in chain.values())))
+                row = PropertyArray(*(p for p in chain.values()))
+                row.meta['cib_uids'] = dbg_path
+                rows.append(row)
 
         if not apply_extended:
             return rows
@@ -354,7 +374,7 @@ class CIB(object):
         try:
             cib_source = CIBSource(cs)
         except CIBEntryError as e:
-            logging.error("Unable to load CIB source %s" % filename)
+            logging.error("Unable to load CIB source %s: %s" % (filename, e))
             return
 
         cib_source.filename = filename

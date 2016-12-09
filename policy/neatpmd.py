@@ -6,6 +6,7 @@ import os
 from copy import deepcopy
 from operator import attrgetter
 
+import pmconst
 import pmrest
 import policy
 from cib import CIB
@@ -29,7 +30,6 @@ else:
 
 PIB_SOCK = os.environ['HOME'] + '/.neat/neat_pib_socket'
 CIB_SOCK = os.environ['HOME'] + '/.neat/neat_cib_socket'
-REST_PORT = 45888
 
 PIB_DIR = args.pib
 CIB_DIR = args.cib
@@ -118,35 +118,34 @@ def process_request(json_str, num_candidates=10):
 
     # main lookup sequence
     for i, request in enumerate(requests):
-        logging.info("\n")
-        logging.info(
-            policy.term_separator("processing request %d/%d" % (i + 1, len(requests)), offset=8, line_char='─'))
+        print(policy.term_separator("processing request %d/%d" % (i + 1, len(requests)), offset=0, line_char='─'))
         logging.info("    %s" % request)
 
         print('Profile lookup...')
-        updated_requests = profiles.lookup(request)
+        updated_requests = profiles.lookup(request, tag='(profile)')
         for ur in updated_requests:
             logging.debug("updated request %s" % (ur))
 
         cib_candidates = []
         print('CIB lookup...')
         for ur in updated_requests:
-            cib_candidates.extend(cib.lookup(ur))
+            for c in cib.lookup(ur):
+                if c in cib_candidates: continue
+                cib_candidates.append(c)
 
         cib_candidates.sort(key=attrgetter('score'), reverse=True)
-        logging.debug('CIB lookup returned %d candidates:' % len(cib_candidates))
+        print('    CIB lookup returned %d candidates:' % len(cib_candidates))
         for c in cib_candidates:
             logging.debug('   %s %.1f %.1f' % (c, *c.score))
 
         print('PIB lookup...')
         for j, candidate in enumerate(cib_candidates):
-            candidates.extend(pib.lookup(candidate, cand_id=i + 1))
-
-        for c in candidates:  # XXXX
-            print(' ~~>   ', c)
+            cand_id = 'CIB candidate %s' % (j + 1)
+            for c in pib.lookup(candidate, tag=cand_id):
+                if c in candidates: continue
+                candidates.append(c)
 
     candidates.sort(key=attrgetter('score'), reverse=True)
-
     top_candidates = candidates[:num_candidates]
 
     for candidate in top_candidates:
@@ -156,7 +155,7 @@ def process_request(json_str, num_candidates=10):
     logging.info("%d candidates generated in total." % (len(candidates)))
     print(policy.term_separator('Top %d' % num_candidates))
     for candidate in top_candidates:
-        print(candidate, candidate.score)
+        print(candidate, candidate.score, candidate.meta.get('cib_uids'))
     # TODO check if candidates contain the minimum src/dst/transport tuple
     print(policy.term_separator())
 
@@ -277,7 +276,7 @@ if __name__ == "__main__":
     coro_cib = loop.create_unix_server(CIBProtocol, CIB_SOCK)
     cib_server = loop.run_until_complete(coro_cib)
 
-    pmrest.init_rest_server(loop, profiles, cib, pib, rest_port=REST_PORT)
+    pmrest.init_rest_server(loop, profiles, cib, pib, rest_port=pmconst.REST_PORT)
 
     print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))
     try:

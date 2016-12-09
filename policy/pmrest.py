@@ -1,13 +1,16 @@
 import json
 import logging
 
+import pmconst
+
 try:
     from aiohttp import web
 except ImportError as e:
+    logging.warning("aiohttp in required to start the REST interface, but it is not installed")
     web = None
 
-LOCAL_IP = '0.0.0.0'
-REST_PORT = 45888
+# REST port
+port = None
 
 profiles = None
 cib = None
@@ -30,6 +33,7 @@ async def handle_pib(request):
         return web.Response(status=404, text='unknown UID')
 
     return web.Response(text=text)
+
 
 async def handle_pib_put(request):
     """
@@ -106,14 +110,14 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
         logging.info("REST server not available because the aiohttp module is not installed.")
         return
 
-    global pib, cib, REST_PORT, server
+    global pib, cib, port, server
 
     profiles = profiles_ref
     cib = cib_ref
     pib = pib_ref
 
     if rest_port:
-        REST_PORT = rest_port
+        port = rest_port
 
     app = web.Application()
     app.router.add_get('/', handle_rest)
@@ -129,8 +133,8 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
 
     handler = app.make_handler()
 
-    f = asyncio_loop.create_server(handler, LOCAL_IP, REST_PORT)
-    print("Initializing REST server on port %d" % REST_PORT)
+    f = asyncio_loop.create_server(handler, pmconst.LOCAL_IP, port)
+    print("Initializing REST server on port %d" % port)
 
     server = asyncio_loop.run_until_complete(f)
 

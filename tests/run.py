@@ -2,6 +2,11 @@
 import subprocess
 import sys
 
+# usage: python3.5 run.py [test-set] [prefix]
+
+prefix      = ""
+workdir     = "../examples/"
+timeout     = 60
 
 # Test syntax ([expected return value], [test status: 0-not executed yet / 1-passed / 2-failed])
 
@@ -16,13 +21,10 @@ tests_general.append([0, 0, 'client_http_run_once -u /cgi-bin/he bsd10.nplab.de'
 
 # USRSCTP specific tests
 tests_usrsctp = []
-tests_usrsctp.append([0, 0,'client_http_get -u /cgi-bin/he -v 2 bsd10.nplab.de'])
+tests_usrsctp.append([0, 0,'client_http_get -u /cgi-bin/he -v 2 -P ' + workdir + 'prop_sctp.json  bsd10.nplab.de'])
 
 # Default values
 tests       = tests_general
-prefix      = ""
-workdir     = "../examples/"
-timeout     = 60
 
 # First argument: chose between tests
 if len(sys.argv) > 1 :
@@ -48,7 +50,7 @@ for test in tests:
     result = 0
     print("Runnning: " + test[2])
     try:
-        result = subprocess.call(workdir + test[2], shell=True, timeout=40)
+        result = subprocess.call(prefix + " " + workdir + test[2], shell=True, timeout=40)
         if result != test[0]:
             print("Test failed: program returned with error")
             test[1] = 2

@@ -1,5 +1,12 @@
-# CIB expiration time in seconds
+import os
+
 CIB_DEFAULT_TIMEOUT = 10 * 60
+
+# CIB expiration time in seconds
+PIB_SOCK = os.environ['HOME'] + '/.neat/neat_pib_socket'
+CIB_SOCK = os.environ['HOME'] + '/.neat/neat_cib_socket'
+DOMAIN_SOCK = os.environ['HOME'] + '/.neat/neat_pm_socket'
+
 
 POLICY_DIR = "pib/examples/"
 

@@ -237,14 +237,14 @@ class PMProtocol(asyncio.Protocol):
 
 
 def signal_handler():
+    print()
     print(policy.term_separator('ENTERING INTERACTIVE DEBUG MODE', line_char='#'))
     print()
-    print()
     import code
-    code.interact(local=globals(), banner='use Ctrl-D to exit debug mode')
-    print()
+    code.interact(local=globals(), banner='use Ctrl-D to exit')
     print()
     print(policy.term_separator('EXITING INTERACTIVE DEBUG MODE', line_char='#'))
+    print()
 
 
 def no_loop_test():

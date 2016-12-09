@@ -606,6 +606,7 @@ def term_separator(text='', line_char='═', offset=0):
     if text: text = ' %s ' % text
 
     tlen = len(text)
+
     s = line_char * int((tcol - tlen) / 2) + text + line_char * int((tcol - tlen) / 2)
     # pad right
     s += max(tcol - len(s), 0) * line_char

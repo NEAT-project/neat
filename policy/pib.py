@@ -44,7 +44,7 @@ class NEATPolicy(object):
             if isinstance(v, str):
                 setattr(self, k, v)
 
-        self.priority = int(policy_dict.get('pririty', 0))
+        self.priority = int(policy_dict.get('priority', 0))
         self.replace_matched = policy_dict.get('replace_matched', False)
 
         self.filename = None
@@ -128,7 +128,7 @@ class NEATPolicy(object):
             properties.add(*p)
 
     def __str__(self):
-        return "%d POLICY %s: %s   ==>   %s" % (self.priority, self.uid, self.match, self.properties)
+        return '%3s. %-8s %s  ⟶  %s' % (self.priority, self.uid, self.match, self.properties)
 
     def __repr__(self):
         return repr({a: getattr(self, a) for a in ['uid', 'match', 'properties', 'priority']})

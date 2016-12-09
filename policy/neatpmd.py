@@ -143,6 +143,7 @@ def process_request(json_str, num_candidates=10):
             for c in pib.lookup(candidate, tag=cand_id):
                 if c in candidates: continue
                 candidates.append(c)
+                logging.debug(c)
 
     candidates.sort(key=attrgetter('score'), reverse=True)
     top_candidates = candidates[:num_candidates]

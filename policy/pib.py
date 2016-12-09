@@ -9,7 +9,6 @@ from policy import PropertyArray, PropertyMultiArray, dict_to_properties, Immuta
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
-POLICY_DIR = "pib/examples/"
 PIB_EXTENSIONS = ('.policy', '.profile', '.pib')
 
 
@@ -266,7 +265,7 @@ class PIB(list):
     def unregister(self, policy_uid):
         del self.index[policy_uid]
 
-    def lookup(self, input_properties, apply=True, cand_id=None):
+    def lookup(self, input_properties, apply=True, tag=None):
         """
         Look through all installed policies to find the ones which match the properties of the given candidate.
         If apply is True, append the matched policy properties.
@@ -275,24 +274,25 @@ class PIB(list):
         """
 
         assert isinstance(input_properties, PropertyArray)
-        if cand_id is None:
-            cand_id = ''
+        if tag is None:
+            tag = ''
 
-        logging.info("matching policies for candidate %s" % cand_id)
-
+        logging.info("matching policies %s" % tag)
         candidates = [input_properties]
 
         for p in self.policies:
             if p.match_query(input_properties):
                 tmp_candidates = []
+
                 policy_info = str(p.uid)
                 if hasattr(p, "description"):
                     policy_info += ': %s' % p.description
-                logging.info("    " + policy_info)
+                logging.info(' ' * 4 + policy_info)
+
                 if apply:
                     while candidates:
                         candidate = candidates.pop()
-                        # if replace_matched was set, remove any occurrence of match properties from the candidate
+                        # if replace_matched is true, remove all matched properties from the candidate
                         if p.replace_matched:
                             for key in p.match:
                                 del candidate[key]
@@ -323,5 +323,4 @@ if __name__ == "__main__":
     pib.dump()
 
     import code
-
     code.interact(local=locals(), banner='PIB loaded:')

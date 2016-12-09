@@ -4,17 +4,18 @@ import logging
 import numbers
 import shutil
 
+from pmconst import *
+
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
+DARK_GRAY_START = '\033[90m'
 BOLD_START = '\033[1m'
+BOLD_END = '\033[21m'
 UNDERLINE_START = '\033[4m'
+UNDERLINE_END = '\033[24m'
 STRIKETHROUGH_START = '\033[9m'
 FORMAT_END = '\033[0m'
 SUB = str.maketrans("0123456789+-", "₀₁₂₃₄₅₆₇₈₉₊₋")
-
-DEFAULT_SCORE = 0.0
-DEFAULT_PRECEDENCE = 1
-DEFAULT_EVALUATED = False
 
 
 class NEATPropertyError(Exception):
@@ -409,7 +410,8 @@ class NEATProperty(object):
         return repr(self)
 
     def __repr__(self):
-        """Pretty print NEAT properties
+        """
+        Pretty print NEAT properties
         """
         if self._value.is_range:
             # min-max range
@@ -424,7 +426,7 @@ class NEATProperty(object):
         keyval_str = '%s|%s' % (self.key, val_str)
 
         if self.banned:
-            # strikethrough banned values
+            # strike-through banned values
             banned_str = ','.join([u'\u0336'.join(i.value) + u'\u0336' for i in self.banned])
             # fix non UTF environments (TODO there should be a better way to handle this)
             if len(val_str) > 0:
@@ -438,7 +440,10 @@ class NEATProperty(object):
         else:
             score_str = ''
         # use subscript UTF8 characters
-        score_str = score_str.translate(SUB)
+        score_str = BOLD_START + score_str.translate(SUB) + BOLD_END
+
+        if self.evaluated:
+            keyval_str = UNDERLINE_START + keyval_str + UNDERLINE_END
 
         if self.precedence == NEATProperty.IMMUTABLE:
             property_str = '[%s]%s' % (keyval_str, score_str)
@@ -449,8 +454,7 @@ class NEATProperty(object):
         else:
             property_str = '?%s?%s' % (keyval_str, score_str)
 
-        if self.evaluated:
-            property_str = UNDERLINE_START + property_str + FORMAT_END
+        property_str = DARK_GRAY_START + property_str + FORMAT_END
 
         return property_str
 

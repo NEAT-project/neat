@@ -6,8 +6,10 @@ import json
 import logging
 import operator
 import os
+import time
 from collections import ChainMap
 
+from pmconst import *
 from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
 from policy import dict_to_properties
 
@@ -49,6 +51,7 @@ class CIBSource(object):
             # logging.warning("[%s] root: true implies link: true." % self.uid)
             self.link = True
         self.priority = source_dict.get('priority', 0)
+        self.expire = source_dict.get('expire', None)
         self.filename = source_dict.get('filename', None)
         self.description = source_dict.get('description', '')
 
@@ -78,7 +81,7 @@ class CIBSource(object):
 
     def dict(self):
         d = {}
-        for attr in ['uid', 'root', 'link', 'priority', 'filename', 'description', ]:
+        for attr in ['uid', 'root', 'link', 'priority', 'filename', 'description', 'expire', ]:
             try:
                 d[attr] = getattr(self, attr)
             except AttributeError:
@@ -97,15 +100,41 @@ class CIBSource(object):
 
         return d
 
+    @property
+    def expire(self):
+        return self._expire
+
+    @expire.setter
+    def expire(self, value):
+        if value is None:
+            self._expire = time.time() + CIB_DEFAULT_TIMEOUT
+            return
+
+        value = float(value)
+
+        if value == -1:
+            # does not expire
+            self._expire = value
+        elif time.time() > value:
+            raise CIBEntryError('CIB node is expired')
+        else:
+            self._expire = value
+
     def _gen_uid(self):
         # FIXME generate persistent UIDs
         d = self.dict()
-        for k in ['cib_uids']:
+        for k in ['expire', 'filename']:
+            try:
+                del d[k]
+            except KeyError:
+                pass
+
+        for k in ['cib_uids', ]:
             try:
                 del d['properties'][k]
             except KeyError:
                 pass
-        s = json.dumps(self.dict(), indent=0, sort_keys=True)
+        s = json.dumps(d, indent=0, sort_keys=True)
         return hashlib.md5(s.encode('utf-8')).hexdigest()
 
     def json(self, indent=4):
@@ -212,7 +241,6 @@ class CIBSource(object):
 
                 # insert at position 0 to override any existing entries
                 # chain.maps.insert(0, PropertyArray(NEATProperty(('cib_uids', dbg_path))))
-
 
                 # convert back to normal PropertyArrays
                 row = PropertyArray(*(p for p in chain.values()))
@@ -346,7 +374,7 @@ class CIB(object):
         try:
             cib_source = CIBSource(cs)
         except CIBEntryError as e:
-            logging.error("Unable to load CIB source %s" % filename)
+            logging.error("Unable to load CIB source %s: %s" % (filename, e))
             return
 
         cib_source.filename = filename

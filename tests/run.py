@@ -18,6 +18,7 @@ tests_general.append([0, 0, 'client_http_get -u /cgi-bin/he -v 2 2a02:c6a0:4015:
 tests_general.append([1, 0, 'client_http_get -u /cgi-bin/he -v 2 not.resolvable.neat'])
 tests_general.append([1, 0, 'client_http_get -u /cgi-bin/he -v 2 buildbot.nplab.de'])
 tests_general.append([0, 0, 'client_http_run_once -u /cgi-bin/he bsd10.nplab.de'])
+tests_general.append([0, 0, 'python3.5 ../../policy/pmtests.py'])
 
 # USRSCTP specific tests
 tests_usrsctp = []
@@ -48,6 +49,7 @@ result_global = 0
 # Iteratre through tests
 for test in tests:
     result = 0
+    print("\n\n############################### TEST")
     print("Runnning: " + test[2])
     try:
         result = subprocess.call(prefix + " " + workdir + test[2], shell=True, timeout=40)
@@ -67,14 +69,19 @@ for test in tests:
     # test succeeded
     test[1] = 1
 
-
+print("\n\n###############################")
 print("Tests finished - summary")
 for test in tests:
     if test[1] == 1:
         print("PASSED   --  " + test[2])
     elif test[1] == 2:
         print("FAILED   --  " + test[2])
+        result_global = 2
     else:
         print("SKIPPED  --  " + test[2])
+        result_global = 2
 
-sys.exit(0)
+if result_global > 0:
+    sys.exit(-1)
+else:
+    sys.exit(0)

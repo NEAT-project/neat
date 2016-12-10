@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
 import sys
+import os
 
 # usage: python3.5 run.py [test-set] [prefix]
 

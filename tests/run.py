@@ -22,10 +22,13 @@ tests_general.append([0, 0, 'python3.5 ../../policy/pmtests.py'])
 
 # USRSCTP specific tests
 tests_usrsctp = []
-tests_usrsctp.append([0, 0,'client_http_get -u /cgi-bin/he -v 2 -P ' + workdir + 'prop_sctp.json  bsd10.nplab.de'])
+tests_usrsctp.append([0, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 -P ' + workdir + 'prop_sctp.json  bsd10.nplab.de'])
 
 # Default values
 tests       = tests_general
+
+# For PM tests
+os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 # First argument: chose between tests
 if len(sys.argv) > 1 :

@@ -143,7 +143,7 @@ main(int argc, char *argv[])
     struct neat_flow_operations ops[config_max_flows];
     int result = 0;
     int arg = 0;
-    uint32_t num_flows = 2;
+    uint32_t num_flows = 1; //xxx todo : check for multiple flow
     uint32_t i = 0;
     char *arg_property = NULL;
     result = EXIT_SUCCESS;

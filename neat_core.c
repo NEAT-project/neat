@@ -138,7 +138,7 @@ neat_init_ctx()
     if (!nc) {
         return NULL;
     }
-    nc->loop = malloc(sizeof(uv_loop_t));
+    nc->loop = calloc(1, sizeof(uv_loop_t));
     nc->pvd = NULL;
 
     if (nc->loop == NULL) {
@@ -1762,7 +1762,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     neat_log(NEAT_LOG_DEBUG,
              "Connection status: %d", status);
 
-    he_res = malloc(sizeof(struct cib_he_res));
+    he_res = calloc(1, sizeof(struct cib_he_res));
     assert(he_res);
     he_res->interface = strdup(candidate->if_name);
     he_res->remote_ip = strdup(candidate->pollable_socket->dst_address);
@@ -2651,7 +2651,7 @@ neat_resolve_candidates(neat_ctx *ctx, neat_flow *flow,
             goto next_candidate;
         }
 
-        if ((resolver_data = malloc(sizeof(*resolver_data))) == NULL)
+        if ((resolver_data = calloc(1, sizeof(*resolver_data))) == NULL)
             goto error;
 
         resolver_data->port = candidate->pollable_socket->port;
@@ -3511,7 +3511,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
             if (fd == -1) {
                 continue;
             }
-            listen_socket = malloc(sizeof(*listen_socket));
+            listen_socket = calloc(1, sizeof(*listen_socket));
 
             listen_socket->flow = flow;
             listen_socket->stack = neat_base_stack(stacks[i]);
@@ -3521,7 +3521,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
             memcpy(&listen_socket->srcAddr, (struct sockaddr *) &(results->lh_first->dst_addr), sizeof(struct sockaddr));
             memset(&listen_socket->dstAddr, 0, sizeof(struct sockaddr));
         } else {
-            listen_socket = malloc(sizeof(*listen_socket));
+            listen_socket = calloc(1, sizeof(*listen_socket));
             assert(listen_socket);
 
             listen_socket->flow = flow;
@@ -3548,7 +3548,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
             continue;
         }
 
-        listen_socket = malloc(sizeof(*listen_socket));
+        listen_socket = calloc(1, sizeof(*listen_socket));
         assert(listen_socket);
 
         listen_socket->flow = flow;
@@ -3561,7 +3561,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
 #endif
         listen_socket->fd = fd;
 
-        handle = malloc(sizeof(*handle));
+        handle = calloc(1, sizeof(*handle));
         assert(handle);
         listen_socket->handle = handle;
         handle->data = listen_socket;
@@ -3812,7 +3812,7 @@ neat_write_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
     }
 
     if ((flow->socket->stack != NEAT_STACK_TCP) || TAILQ_EMPTY(&flow->bufferedMessages)) {
-        msg = malloc(sizeof(struct neat_buffered_message));
+        msg = calloc(1, sizeof(struct neat_buffered_message));
         if (msg == NULL) {
             return NEAT_ERROR_OUT_OF_MEMORY;
         }
@@ -4854,7 +4854,7 @@ neat_accept_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow, struct nea
         return NULL;
     }
 
-    pollable_socket = malloc(sizeof(*pollable_socket));
+    pollable_socket = calloc(1, sizeof(*pollable_socket));
     assert(pollable_socket);
 
     pollable_socket->fd = -1;
@@ -5020,7 +5020,7 @@ static void handle_connect(struct socket *sock, void *arg, int flags)
              candidate->pollable_socket->port,
              candidate->priority);
 
-    he_res = malloc(sizeof(struct cib_he_res));
+    he_res = calloc(1, sizeof(struct cib_he_res));
     assert(he_res);
     he_res->interface = strdup(candidate->if_name);
     he_res->remote_ip = strdup(candidate->pollable_socket->dst_address);
@@ -5318,7 +5318,7 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
     }
 #endif
 
-    rv->socket->handle  = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+    rv->socket->handle  = (uv_poll_t *) calloc(1, sizeof(uv_poll_t));
     rv->socket->handle->loop = NULL;
     rv->socket->handle->type = UV_UNKNOWN_HANDLE;
 

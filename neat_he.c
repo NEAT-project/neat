@@ -104,7 +104,7 @@ static void on_he_connect_req(uv_timer_t *handle)
 
 static void delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 {
-    candidate->prio_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
+    candidate->prio_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
     assert(candidate->prio_timer != NULL);
     uv_timer_init(candidate->pollable_socket->flow->ctx->loop, candidate->prio_timer);
     uv_timer_start(candidate->prio_timer, on_he_connect_req, HE_PRIO_DELAY * candidate->priority, 0);
@@ -253,7 +253,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
         } else if (flow->multistreamCheck == 0 && neat_wait_for_multistream_assoc(ctx, flow)) {
             flow->multistreamCheck = 1;
 
-            flow->multistream_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
+            flow->multistream_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
             assert(flow->multistream_timer != NULL);
             flow->multistreamCheck = 1;
 

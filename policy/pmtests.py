@@ -1,10 +1,10 @@
 #!/usr/bin/env python3.5
 
-import unittest
-from policy import *
-import sys
 import locale
-import codecs
+import sys
+import unittest
+
+from policy import *
 
 locale.setlocale(locale.LC_ALL, ('en', 'utf-8'))
 
@@ -98,6 +98,7 @@ class PropertyTests(unittest.TestCase):
                 pma.add(property)
             print(pma)
             pma_list.append(pma)
+
 
 if __name__ == "__main__":
     print(sys.stdout.encoding)

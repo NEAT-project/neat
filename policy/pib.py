@@ -6,10 +6,10 @@ import os
 import time
 
 from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
+from pmconst import STYLE
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
-POLICY_DIR = "pib/examples/"
 PIB_EXTENSIONS = ('.policy', '.profile', '.pib')
 
 
@@ -45,7 +45,7 @@ class NEATPolicy(object):
             if isinstance(v, str):
                 setattr(self, k, v)
 
-        self.priority = int(policy_dict.get('pririty', 0))
+        self.priority = int(policy_dict.get('priority', 0))
         self.replace_matched = policy_dict.get('replace_matched', False)
 
         self.filename = None
@@ -129,7 +129,7 @@ class NEATPolicy(object):
             properties.add(*p)
 
     def __str__(self):
-        return "%d POLICY %s: %s   ==>   %s" % (self.priority, self.uid, self.match, self.properties)
+        return '%3s. %-8s %s  ⟶  %s' % (self.priority, self.uid, self.match, self.properties)
 
     def __repr__(self):
         return repr({a: getattr(self, a) for a in ['uid', 'match', 'properties', 'priority']})
@@ -266,7 +266,7 @@ class PIB(list):
     def unregister(self, policy_uid):
         del self.index[policy_uid]
 
-    def lookup(self, input_properties, apply=True, cand_id=None):
+    def lookup(self, input_properties, apply=True, tag=None):
         """
         Look through all installed policies to find the ones which match the properties of the given candidate.
         If apply is True, append the matched policy properties.
@@ -275,24 +275,24 @@ class PIB(list):
         """
 
         assert isinstance(input_properties, PropertyArray)
-        if cand_id is None:
-            cand_id = ''
+        if tag is None:
+            tag = ''
 
-        logging.info("matching policies for candidate %s" % cand_id)
-
+        logging.info("matching policies %s" % tag)
         candidates = [input_properties]
 
         for p in self.policies:
             if p.match_query(input_properties):
                 tmp_candidates = []
+
                 policy_info = str(p.uid)
                 if hasattr(p, "description"):
-                    policy_info += ': %s' % p.description
-                logging.info("    " + policy_info)
+                    policy_info += ' (%s)' % p.description
+
                 if apply:
                     while candidates:
                         candidate = candidates.pop()
-                        # if replace_matched was set, remove any occurrence of match properties from the candidate
+                        # if replace_matched is true, remove all matched properties from the candidate
                         if p.replace_matched:
                             for key in p.match:
                                 del candidate[key]
@@ -301,7 +301,8 @@ class PIB(list):
                             try:
                                 new_candidate = candidate + policy_properties
                             except ImmutablePropertyError:
-                                continue
+                                logging.info(' ' * 4 + policy_info + STYLE.BOLD_START + ' *REJECTED*' + STYLE.FORMAT_END)
+                                return []
                             # TODO copy policies from candidate and policy_properties for debugging
                             #  if hasattr(new_candidate, 'policies'):
                             #      new_candidate.policies.append(p.uid)
@@ -309,6 +310,8 @@ class PIB(list):
                             #      new_candidate.policies = [p.uid]
                             tmp_candidates.append(new_candidate)
                 candidates.extend(tmp_candidates)
+
+                logging.info(' ' * 4 + policy_info)
         return candidates
 
     def dump(self):
@@ -323,5 +326,4 @@ if __name__ == "__main__":
     pib.dump()
 
     import code
-
     code.interact(local=locals(), banner='PIB loaded:')

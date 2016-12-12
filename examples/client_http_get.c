@@ -1,9 +1,11 @@
 #include <neat.h>
+#include "util.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 
 /**********************************************************************
 
@@ -140,6 +142,7 @@ main(int argc, char *argv[])
     int arg = 0;
     uint32_t num_flows = 1;
     uint32_t i = 0;
+    char *arg_property = NULL;
     result = EXIT_SUCCESS;
 
     neat_log_level(NEAT_LOG_DEBUG);
@@ -149,8 +152,19 @@ main(int argc, char *argv[])
 
     snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
 
-    while ((arg = getopt(argc, argv, "u:n:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:u:n:v:")) != -1) {
         switch(arg) {
+        case 'P':
+            if (read_file(optarg, &arg_property) < 0) {
+                fprintf(stderr, "Unable to read properties from %s: %s",
+                        optarg, strerror(errno));
+                result = EXIT_FAILURE;
+                goto cleanup;
+            }
+            if (config_log_level >= 1) {
+                fprintf(stderr, "%s - option - properties: %s\n", __func__, arg_property);
+            }
+            break;
         case 'u':
             snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);
             break;
@@ -202,7 +216,12 @@ main(int argc, char *argv[])
             goto cleanup;
         }
 
-        neat_set_property(ctx, flows[i], config_property);
+        // set properties
+        if (neat_set_property(ctx, flows[i], arg_property ? arg_property : config_property)) {
+            fprintf(stderr, "%s - error: neat_set_property\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
 
         ops[i].on_connected = on_connected;
         ops[i].on_error = on_error;
@@ -226,8 +245,13 @@ cleanup:
     for (i = 0; i < num_flows; i++) {
         flows[i] = NULL;
     }
+
     if (ctx != NULL) {
         neat_free_ctx(ctx);
+    }
+
+    if (arg_property) {
+        free(arg_property);
     }
     exit(result);
 }

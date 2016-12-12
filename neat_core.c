@@ -848,21 +848,21 @@ static neat_error_code sctp_to_neat_code(uint16_t sctp_code)
     case NEAT_SCTP_CAUSE_NO_USER_DATA:
     case NEAT_SCTP_CAUSE_MISSING_PARAM:
     case NEAT_SCTP_CAUSE_STALE_COOKIE:
-	outcode = NEAT_ERROR_BAD_ARGUMENT;
-	break;
+    outcode = NEAT_ERROR_BAD_ARGUMENT;
+    break;
     case NEAT_SCTP_CAUSE_OUT_OF_RESC:
-	outcode = NEAT_ERROR_IO;
-	break;
+    outcode = NEAT_ERROR_IO;
+    break;
     case NEAT_SCTP_CAUSE_COOKIE_IN_SHUTDOWN:
     case NEAT_SCTP_CAUSE_PROTOCOL_VIOLATION:
     case NEAT_SCTP_CAUSE_RESTART_W_NEWADDR:
-	outcode = NEAT_ERROR_INTERNAL;
-	break;
+    outcode = NEAT_ERROR_INTERNAL;
+    break;
     case NEAT_SCTP_CAUSE_USER_INITIATED_ABT:
-	outcode = NEAT_ERROR_REMOTE;
-	break;
+    outcode = NEAT_ERROR_REMOTE;
+    break;
     default:
-	outcode = NEAT_ERROR_INTERNAL;
+    outcode = NEAT_ERROR_INTERNAL;
     }
 
     return outcode;
@@ -1095,6 +1095,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     ssize_t n;
     struct msghdr msghdr;
     //Not used when notifications aren't available:
+    int sctp_event_ret = 0;
 
 #ifdef SCTP_MULTISTREAMING
     unsigned char *multistream_buffer = NULL;
@@ -1319,27 +1320,25 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 neat_log(NEAT_LOG_DEBUG, "Exit 10");
                 return READ_WITH_ERROR;
             }
-			
-			int ret = handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer
-                          + flow->readBufferSize));
 
-       	 	//We don't update readBufferSize, so buffer is implicitly "freed"
-        	if (ret == READ_WITH_ZERO)
-            	flow->readBufferMsgComplete = 1;
-        	
-			 return ret;
-
-            //We don't update readBufferSize, so buffer is implicitly "freed"
 #ifdef SCTP_MULTISTREAM
             if (flow->socket->multistream) {
-                handle_sctp_event(flow, (union sctp_notification*)(multistream_buffer));
+                sctp_event_ret = handle_sctp_event(flow, (union sctp_notification*)(multistream_buffer));
                 free(multistream_buffer);
-                return READ_OK;
+            } else {
+                sctp_event_ret = handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer+ flow->readBufferSize));
             }
+#else // SCTP_MULTISTREAM
+            sctp_event_ret = handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer+ flow->readBufferSize));
 #endif
-            handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer + flow->readBufferSize));
 
-            return READ_OK;
+            // We don't update readBufferSize, so buffer is implicitly "freed"
+            if (sctp_event_ret == READ_WITH_ZERO) {
+                flow->readBufferMsgComplete = 1;
+            }
+
+            return sctp_event_ret;
+
         }
 #endif //defined(MSG_NOTIFICATION)
 
@@ -5348,7 +5347,7 @@ void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations ||!flow->operations->on_slowdown) {
-	return;
+    return;
     }
 
     READYCALLBACKSTRUCT;
@@ -5367,7 +5366,7 @@ void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations || !flow->operations->on_rate_hint) {
-	return;
+    return;
     }
 
     READYCALLBACKSTRUCT;
@@ -5379,7 +5378,7 @@ void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate)
 // unsent_buffer points at the failed message. Context is optional,
 // set to -1 if not specified.
 void neat_notify_send_failure(neat_flow *flow, neat_error_code code,
-			      int context, const unsigned char *unsent_buffer)
+                  int context, const unsigned char *unsent_buffer)
 {
     const int stream_id = NEAT_INVALID_STREAM;
     //READYCALLBACKSTRUCT expects this:
@@ -5460,7 +5459,7 @@ void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!flow->operations || !flow->operations->on_network_status_changed) {
-	return;
+    return;
     }
 
     READYCALLBACKSTRUCT;

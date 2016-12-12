@@ -122,7 +122,7 @@ on_close(struct neat_flow_operations *opCB)
     opCB->on_error = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-    neat_close(opCB->ctx, opCB->flow);
+    //neat_close(opCB->ctx, opCB->flow);
 
     // stop event loop if all flows are closed
     flows_active--;

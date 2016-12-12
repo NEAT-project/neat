@@ -1297,7 +1297,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         addr.sin_len = sizeof(struct sockaddr_in);
 #endif
         addr.sin_family = AF_INET;
-
+        msghdr.msg_flags = 0;
         n = usrsctp_recvv(socket->usrsctp_socket, flow->readBuffer + flow->readBufferSize,
                                flow->readBufferAllocation - flow->readBufferSize,
                                (struct sockaddr *) &addr, &len, (void *)&rn,
@@ -1438,7 +1438,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 neat_log(NEAT_LOG_DEBUG, "Exit 11");
                 return READ_WITH_ERROR;
             }
-#if !defined(USRSCTP_SUPPORT)
+#if defined(USRSCTP_SUPPORT)
             if (n == 0) {
                 return READ_WITH_ZERO;
             }

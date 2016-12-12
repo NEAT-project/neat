@@ -1095,7 +1095,10 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
     ssize_t n;
     struct msghdr msghdr;
     //Not used when notifications aren't available:
+
+#ifdef MSG_NOTIFICATION
     int sctp_event_ret = 0;
+#endif //MSG_NOTIFICATION
 
 #ifdef SCTP_MULTISTREAMING
     unsigned char *multistream_buffer = NULL;
@@ -1330,7 +1333,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             }
 #else // SCTP_MULTISTREAM
             sctp_event_ret = handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer+ flow->readBufferSize));
-#endif
+#endif // SCTP_MULTISTREAM
 
             // We don't update readBufferSize, so buffer is implicitly "freed"
             if (sctp_event_ret == READ_WITH_ZERO) {

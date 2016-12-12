@@ -893,13 +893,13 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
             // follow D1.2
             neat_log(NEAT_LOG_DEBUG, "%s - state : SCTP_COMM_LOST", __func__);
             neat_notify_aborted(flow);
-            break;
+            //break;
 
             // Fallthrough:
         case SCTP_COMM_UP: // Fallthrough:
             neat_log(NEAT_LOG_DEBUG, "%s - state : SCTP_COMM_UP", __func__);
             // TODO: Allocate send buffers here instead?
-            break;
+            //break;
 
         case SCTP_RESTART:
             neat_log(NEAT_LOG_DEBUG, "%s - state : SCTP_RESTART", __func__);
@@ -1035,6 +1035,7 @@ static int handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
         break;
     case SCTP_SHUTDOWN_EVENT:
         neat_log(NEAT_LOG_DEBUG, "Got SCTP shutdown event");
+        return READ_WITH_ZERO;
         break;
     case SCTP_ADAPTATION_INDICATION:
         neat_log(NEAT_LOG_DEBUG, "Got SCTP adaptation indication event");

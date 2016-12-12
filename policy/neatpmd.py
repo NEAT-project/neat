@@ -3,9 +3,11 @@ import argparse
 import asyncio
 import logging
 import os
+import signal
 from copy import deepcopy
 from operator import attrgetter
 
+import pmconst
 import pmrest
 import policy
 from cib import CIB
@@ -22,14 +24,11 @@ parser.add_argument('--rest', type=bool, default=True, help='enable REST API')
 parser.add_argument('--bypass', type=bool, default=False, help='enable debugging')
 
 args = parser.parse_args()
+
 if args.sock:
     DOMAIN_SOCK = args.sock
 else:
-    DOMAIN_SOCK = os.environ['HOME'] + '/.neat/neat_pm_socket'
-
-PIB_SOCK = os.environ['HOME'] + '/.neat/neat_pib_socket'
-CIB_SOCK = os.environ['HOME'] + '/.neat/neat_cib_socket'
-REST_PORT = 45888
+    DOMAIN_SOCK = pmconst.DOMAIN_SOCK
 
 PIB_DIR = args.pib
 CIB_DIR = args.cib
@@ -37,8 +36,8 @@ CIB_DIR = args.cib
 # Make sure the socket does not already exist
 try:
     os.unlink(DOMAIN_SOCK)
-    os.unlink(PIB_SOCK)
-    os.unlink(CIB_SOCK)
+    os.unlink(pmconst.PIB_SOCK)
+    os.unlink(pmconst.CIB_SOCK)
 except OSError:
     if os.path.exists(DOMAIN_SOCK):
         raise
@@ -118,35 +117,35 @@ def process_request(json_str, num_candidates=10):
 
     # main lookup sequence
     for i, request in enumerate(requests):
-        logging.info("\n")
-        logging.info(
-            policy.term_separator("processing request %d/%d" % (i + 1, len(requests)), offset=8, line_char='─'))
+        print(policy.term_separator("processing request %d/%d" % (i + 1, len(requests)), offset=0, line_char='─'))
         logging.info("    %s" % request)
 
         print('Profile lookup...')
-        updated_requests = profiles.lookup(request)
+        updated_requests = profiles.lookup(request, tag='(profile)')
         for ur in updated_requests:
             logging.debug("updated request %s" % (ur))
 
         cib_candidates = []
         print('CIB lookup...')
         for ur in updated_requests:
-            cib_candidates.extend(cib.lookup(ur))
+            for c in cib.lookup(ur):
+                if c in cib_candidates: continue
+                cib_candidates.append(c)
 
         cib_candidates.sort(key=attrgetter('score'), reverse=True)
-        logging.debug('CIB lookup returned %d candidates:' % len(cib_candidates))
+        print('    CIB lookup returned %d candidates:' % len(cib_candidates))
         for c in cib_candidates:
             logging.debug('   %s %.1f %.1f' % (c, *c.score))
 
         print('PIB lookup...')
         for j, candidate in enumerate(cib_candidates):
-            candidates.extend(pib.lookup(candidate, cand_id=i + 1))
-
-        for c in candidates:  # XXXX
-            print(' ~~>   ', c)
+            cand_id = 'CIB candidate %s' % (j + 1)
+            for c in pib.lookup(candidate, tag=cand_id):
+                if c in candidates: continue
+                candidates.append(c)
+                logging.debug(c)
 
     candidates.sort(key=attrgetter('score'), reverse=True)
-
     top_candidates = candidates[:num_candidates]
 
     for candidate in top_candidates:
@@ -156,7 +155,7 @@ def process_request(json_str, num_candidates=10):
     logging.info("%d candidates generated in total." % (len(candidates)))
     print(policy.term_separator('Top %d' % num_candidates))
     for candidate in top_candidates:
-        print(candidate, candidate.score)
+        print(candidate, candidate.score, candidate.meta.get('cib_uids'))
     # TODO check if candidates contain the minimum src/dst/transport tuple
     print(policy.term_separator())
 
@@ -238,6 +237,17 @@ class PMProtocol(asyncio.Protocol):
         self.transport.close()
 
 
+def signal_handler():
+    print()
+    print(policy.term_separator('ENTERING INTERACTIVE DEBUG MODE', line_char='#'))
+    print()
+    import code
+    code.interact(local=globals(), banner='use Ctrl-D to exit')
+    print()
+    print(policy.term_separator('EXITING INTERACTIVE DEBUG MODE', line_char='#'))
+    print()
+
+
 def no_loop_test():
     """
     Dummy JSON request for testing
@@ -262,22 +272,23 @@ if __name__ == "__main__":
     profiles = PIB(PIB_DIR, file_extension='.profile')
     pib = PIB(PIB_DIR, file_extension='.policy')
 
-    # FIXME: REMOVE only for local testing
-    # no_loop_test()
-
     loop = asyncio.get_event_loop()
 
     # Each client connection creates a new protocol instance
     coro = loop.create_unix_server(PMProtocol, DOMAIN_SOCK)
     server = loop.run_until_complete(coro)
 
-    coro_pib = loop.create_unix_server(PIBProtocol, PIB_SOCK)
+    coro_pib = loop.create_unix_server(PIBProtocol, pmconst.PIB_SOCK)
     pib_server = loop.run_until_complete(coro_pib)
 
-    coro_cib = loop.create_unix_server(CIBProtocol, CIB_SOCK)
+    coro_cib = loop.create_unix_server(CIBProtocol, pmconst.CIB_SOCK)
     cib_server = loop.run_until_complete(coro_cib)
 
-    pmrest.init_rest_server(loop, profiles, cib, pib, rest_port=REST_PORT)
+    # interactive debug mode
+    loop.add_signal_handler(signal.SIGQUIT, signal_handler)
+
+    # try to start the PM REST interface
+    pmrest.init_rest_server(loop, profiles, cib, pib, rest_port=pmconst.REST_PORT)
 
     print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))
     try:

@@ -88,18 +88,16 @@ static void on_he_connect_req(uv_timer_t *handle)
             neat_io_error(candidate->pollable_socket->flow->ctx,
                           candidate->pollable_socket->flow,
                           NEAT_ERROR_IO);
+        } else {
+            TAILQ_REMOVE(candidate_list, candidate, next);
+            neat_free_candidate(candidate);
         }
-
-        TAILQ_REMOVE(candidate_list, candidate, next);
-        neat_free_candidate(candidate);
-
    } else {
 
        neat_log(NEAT_LOG_DEBUG,
                 "%s: Connect successful for fd %d, ret = %d",
                 __func__,
                 candidate->pollable_socket->fd, ret);
-
    }
 }
 

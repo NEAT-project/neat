@@ -39,6 +39,10 @@ static char *config_property = "{\
             \"precedence\": 1\
         },\
         {\
+            \"value\": \"SCTP/UDP\",\
+            \"precedence\": 1\
+        },\
+        {\
             \"value\": \"TCP\",\
             \"precedence\": 1\
         }\
@@ -368,6 +372,7 @@ on_close(struct neat_flow_operations *opCB)
     // stop event loop if we are active part
     if (config_active) {
         fprintf(stderr, "%s - stopping event loop\n", __func__);
+        neat_close(opCB->ctx, opCB->flow);
         neat_stop_event_loop(opCB->ctx);
     }
 

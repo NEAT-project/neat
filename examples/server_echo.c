@@ -22,18 +22,23 @@ A TLS example:
 static uint32_t config_buffer_size = 512;
 static uint16_t config_log_level = 1;
 static uint16_t config_number_of_streams = 1988;
-static char *config_property = "{\n\
-    \"transport\": [\n\
-        {\n\
-            \"value\": \"SCTP\",\n\
-            \"precedence\": 1\n\
-        },\n\
-        {\n\
-            \"value\": \"TCP\",\n\
-            \"precedence\": 1\n\
-        }\n\
-    ]\n\
-}";
+static char *config_property = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"SCTP/UDP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";\
+
 static char *pem_file = NULL;
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
@@ -131,7 +136,6 @@ on_readable(struct neat_flow_operations *opCB)
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
         free(ef->buffer);
         free(ef);
-        neat_close(opCB->ctx, opCB->flow);
     }
     return NEAT_OK;
 }

@@ -976,7 +976,7 @@ handle_sctp_stream_reset(neat_flow *flow, struct sctp_stream_reset_event *strrst
     return;
 }
 #endif // SCTP_RESET_STREAMS
-#endif // !defined(USRSCTP_SUPPORT)
+#endif // SCTP_MULTISTREAM
 
 // Handle SCTP send failed event
 // One is generated per failed message
@@ -1210,7 +1210,6 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 
     if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) && ((!flow->readBufferMsgComplete) || flow->socket->multistream)) {
 
-
         if (resize_read_buffer(flow) != READ_OK) {
             neat_log(NEAT_LOG_DEBUG, "Exit 7");
             return READ_WITH_ERROR;
@@ -1249,14 +1248,14 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 #if defined(SCTP_RCVINFO) || defined(SCTP_SNDRCV)
         msghdr.msg_control = cmsgbuf;
         msghdr.msg_controllen = sizeof(cmsgbuf);
-#else
+#else // defined(SCTP_RCVINFO) || defined(SCTP_SNDRCV)
         msghdr.msg_control = NULL;
         msghdr.msg_controllen = 0;
-#endif
+#endif // defined(SCTP_RCVINFO) || defined(SCTP_SNDRCV)
         msghdr.msg_flags = 0;
 #ifdef MSG_NOTIFICATION
         msghdr.msg_flags |= MSG_NOTIFICATION;
-#endif
+#endif // MSG_NOTIFICATION
 
         if ((n = recvmsg(flow->socket->fd, &msghdr, 0)) < 0) {
             neat_log(NEAT_LOG_DEBUG, "Exit 8");
@@ -1282,7 +1281,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                     sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
                     stream_id = sndrcvinfo->sinfo_stream;
                 }
-#endif
+#endif // defined (SCTP_SNDRCV)
                 neat_log(NEAT_LOG_DEBUG, "%s - Received %d bytes on SCTP stream %d", __func__, n, stream_id);
             }
 #endif // defined(IPPROTP_SCTP)
@@ -1434,11 +1433,15 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 flow->readBufferMsgComplete = 1;
             }
 
-
             if (!flow->readBufferMsgComplete) {
                 neat_log(NEAT_LOG_DEBUG, "Exit 11");
                 return READ_WITH_ERROR;
             }
+#if !defined(USRSCTP_SUPPORT)
+            if (n == 0) {
+                return READ_WITH_ZERO;
+            }
+#endif //!defined(USRSCTP_SUPPORT)
         }
     }
 

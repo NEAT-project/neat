@@ -206,7 +206,7 @@ struct neat_flow
     float priority;
 
     const char *cc_algorithm;
-    const char *local_name; // Src address or addresses
+    const char *local_address; // Src address or addresses
 
     // TODO: Move more socket-specific values to neat_pollable_socket
 
@@ -249,6 +249,7 @@ struct neat_flow
     unsigned int everConnected : 1;
     unsigned int isDraining;
     unsigned int isSCTPExplicitEOR : 1;
+    unsigned int isSCTPMultihoming : 1;
     unsigned int isServer : 1; // i.e. created via accept()
 
     struct neat_he_candidates *candidate_list;

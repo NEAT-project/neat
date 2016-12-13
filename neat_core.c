@@ -96,6 +96,7 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
     TAG_STRING(NEAT_TAG_PRIORITY),
     TAG_STRING(NEAT_TAG_FLOW_GROUP),
     TAG_STRING(NEAT_TAG_CC_ALGORITHM),
+    TAG_STRING(NEAT_TAG_MULTIHOMING),
 };
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -2500,59 +2501,45 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             json_incref(flow->properties);
             candidate->properties = flow->properties;
 
-#if defined(SCTP_MULTIHOMING) //&& !defined (USRSCTP_SUPPORT)
-printf("SCTP_MULTIHOMING defined\n");
-printf("src_buffer=%s dst_buffer%s\n", src_buffer, dst_buffer);
-printf("stacks[%d]=%d\n", i, stacks[i]);
-printf("flow->local_name=%s, neat_base_stack(stacks[i])=%d NEAT_STACK_SCTP=%d\n", flow->local_name, neat_base_stack(stacks[i]), NEAT_STACK_SCTP);
-            if (flow->local_name && neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) {
+            if (flow->isSCTPMultihoming && flow->local_address && neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) {
                 struct neat_he_candidate *cand;
                 char *address_name;
                 char *ptr;
                 int dstfound = false;
                 int srcfound = false;
-                char *tmp = strdup(flow->local_name);
-                printf("flow->local_name=%s\n", flow->local_name);
+                char *tmp = strdup(flow->local_address);
                 address_name = strtok_r((char *)tmp, ",", &ptr);
                 while (address_name != NULL) {
-                printf("address_name=%s\n", address_name);
                     if (!strcmp(address_name, src_buffer)) {
                        srcfound = true;
-                       printf("source found\n");
                        break;
                     }
                     address_name = strtok_r(NULL, ",", &ptr);
                 }
                 free (tmp);
                 if (!srcfound) {
-                printf("source not found. free candidate\n");
                     free (candidate);
                     continue;
                 } else {
                     struct sockaddr_storage tmpsrc;
                     candidate->pollable_socket->nr_local_addr = 0;
                     TAILQ_FOREACH(cand, candidates, next) {
-                    printf("cand->pollable_socket->stack=%d\n", cand->pollable_socket->stack);
-                        if (neat_base_stack(cand->pollable_socket->stack) == NEAT_STACK_SCTP) {
+                        if (cand->pollable_socket->stack == stacks[i]) {
                             memcpy(&tmpsrc, &result->src_addr, result->src_addr_len);
-                            printf("cand->pollable_socket->dst_address: %s, dst_buffer: %s\n", cand->pollable_socket->dst_address, dst_buffer);
                             if (!strcmp(cand->pollable_socket->dst_address, dst_buffer)) {
                                 dstfound = true;
-                                printf("dst found\n");
                                 for (uint16_t i = 0; i < cand->pollable_socket->nr_local_addr; i++) {
                                     memcpy((void *)&(candidate->pollable_socket->local_addr[i]), &(cand->pollable_socket->local_addr[i]), sizeof(cand->pollable_socket->local_addr[i]));
                                     candidate->pollable_socket->nr_local_addr++;
                                 }
                                 memcpy(&(candidate->pollable_socket->local_addr[candidate->pollable_socket->nr_local_addr]), &tmpsrc, result->src_addr_len);
                                 candidate->pollable_socket->nr_local_addr++;
-                                printf("nr_local_addr increased to %d\n", candidate->pollable_socket->nr_local_addr);
                                 candidate->pollable_socket->src_address = strdup(cand->pollable_socket->src_address);
                                 candidate->pollable_socket->src_address =
                                     realloc(candidate->pollable_socket->src_address,
                                         strlen(candidate->pollable_socket->src_address) + strlen(src_buffer) + 2 * sizeof(char));
                                 strcat(candidate->pollable_socket->src_address, ",");
                                 strcat(candidate->pollable_socket->src_address, src_buffer);
-                                printf("candidate->pollable_socket->src_address=%s\n", candidate->pollable_socket->src_address);
                                 TAILQ_REMOVE(candidates, cand, next);
                                 break;
                             }
@@ -2561,7 +2548,6 @@ printf("flow->local_name=%s, neat_base_stack(stacks[i])=%d NEAT_STACK_SCTP=%d\n"
                     if (!dstfound) {
                         memcpy(&(candidate->pollable_socket->local_addr[0]), &tmpsrc, result->src_addr_len);
                         candidate->pollable_socket->nr_local_addr++;
-                        printf("nr_local_addr now %d\n", candidate->pollable_socket->nr_local_addr);
                         candidate->pollable_socket->src_address = strdup(src_buffer);
                     }
                 }
@@ -2570,11 +2556,7 @@ printf("flow->local_name=%s, neat_base_stack(stacks[i])=%d NEAT_STACK_SCTP=%d\n"
                 candidate->pollable_socket->src_len     = result->src_addr_len;
                 memcpy(&candidate->pollable_socket->src_sockaddr, &result->src_addr, result->src_addr_len);
             }
-#else
-            candidate->pollable_socket->src_address = strdup(src_buffer);
-            candidate->pollable_socket->src_len     = result->src_addr_len;
-            memcpy(&candidate->pollable_socket->src_sockaddr, &result->src_addr, result->src_addr_len);
-#endif
+
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
             candidate->pollable_socket->dst_len     = result->dst_addr_len;
             // assert(candidate->if_name);
@@ -2589,7 +2571,6 @@ printf("flow->local_name=%s, neat_base_stack(stacks[i])=%d NEAT_STACK_SCTP=%d\n"
                 ((struct sockaddr_in*) &candidate->pollable_socket->dst_sockaddr)->sin_port =
                     htons(candidate->pollable_socket->port);
             }
-printf("insert candidate with src_address %s and dst_address %s and stack %d\n", candidate->pollable_socket->src_address, candidate->pollable_socket->dst_address,candidate->pollable_socket->stack);
             TAILQ_INSERT_TAIL(candidates, candidate, next);
         }
     }
@@ -2875,8 +2856,9 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     int stream_count = 1;
     int group = 0;
     float priority = 0.5f;
+    int sctp_multihoming;
     const char *cc_algorithm = NULL;
-    const char *local_name = NULL;
+    const char *local_address = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -2890,7 +2872,8 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
         OPTIONAL_INTEGER(NEAT_TAG_FLOW_GROUP, group)
         OPTIONAL_FLOAT(NEAT_TAG_PRIORITY, priority)
         OPTIONAL_STRING(NEAT_TAG_CC_ALGORITHM, cc_algorithm)
-        OPTIONAL_STRING(NEAT_TAG_LOCAL_NAME, local_name)
+        OPTIONAL_STRING(NEAT_TAG_LOCAL_ADDRESS, local_address)
+        OPTIONAL_INTEGER(NEAT_TAG_MULTIHOMING, sctp_multihoming)
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if (stream_count < 1) {
@@ -2914,9 +2897,10 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     flow->ctx = mgr;
     flow->group = group;
     flow->priority = priority;
+    flow->isSCTPMultihoming = (sctp_multihoming > 0? 1: 0);
 
-    if (local_name) {
-        flow->local_name = strdup(local_name);
+    if (local_address) {
+        flow->local_address = strdup(local_address);
     }
     if (!mgr->resolver)
         mgr->resolver = neat_resolver_init(mgr, "/etc/resolv.conf");
@@ -3961,8 +3945,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
 
-#if defined(SCTP_MULTIHOMING) //&& !defined(USRSCTP_SUPPORT)
-    if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
+    if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
         char *address_name, *ptr;
         char *tmp = strdup(candidate->pollable_socket->src_address);
@@ -4000,27 +3983,24 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         }
 #endif
     } else {
-#endif
-    if (candidate->pollable_socket->family == AF_INET) {
-        inet_ntop(AF_INET, &(((struct sockaddr_in *) &(candidate->pollable_socket->src_sockaddr))->sin_addr), addrsrcbuf, INET6_ADDRSTRLEN);
-    } else {
-        inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) &(candidate->pollable_socket->src_sockaddr))->sin6_addr), addrsrcbuf, INET6_ADDRSTRLEN);
-    }
-    neat_log(NEAT_LOG_INFO, "%s: Bind fd %d to %s", __func__, candidate->pollable_socket->fd, addrsrcbuf);
+        if (candidate->pollable_socket->family == AF_INET) {
+            inet_ntop(AF_INET, &(((struct sockaddr_in *) &(candidate->pollable_socket->src_sockaddr))->sin_addr), addrsrcbuf, INET6_ADDRSTRLEN);
+        } else {
+            inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) &(candidate->pollable_socket->src_sockaddr))->sin6_addr), addrsrcbuf, INET6_ADDRSTRLEN);
+        }
+        neat_log(NEAT_LOG_INFO, "%s: Bind fd %d to %s", __func__, candidate->pollable_socket->fd, addrsrcbuf);
 
-    /* Bind to address + interface (if Linux) */
-    if (bind(candidate->pollable_socket->fd,
-             (struct sockaddr*) &(candidate->pollable_socket->src_sockaddr),
-             candidate->pollable_socket->src_len)) {
-        neat_log(NEAT_LOG_ERROR,
-                 "Failed to bind fd %d socket to IP. Error: %s",
-                 candidate->pollable_socket->fd,
-                 strerror(errno));
-        return -1;
+        /* Bind to address + interface (if Linux) */
+        if (bind(candidate->pollable_socket->fd,
+                 (struct sockaddr*) &(candidate->pollable_socket->src_sockaddr),
+                 candidate->pollable_socket->src_len)) {
+            neat_log(NEAT_LOG_ERROR,
+                     "Failed to bind fd %d socket to IP. Error: %s",
+                     candidate->pollable_socket->fd,
+                     strerror(errno));
+            return -1;
+        }
     }
-#if defined(SCTP_MULTIHOMING) //&& !defined(USRSCTP_SUPPORT)
-    }
-#endif
 
 #ifdef __linux__
     if (if_indextoname(candidate->if_idx, if_name)) {
@@ -4378,28 +4358,28 @@ static void neat_sctp_init_events(int sock)
     struct sctp_event event;
     unsigned int i;
     uint16_t event_types[] = {SCTP_ASSOC_CHANGE,
-			      SCTP_PEER_ADDR_CHANGE,
-			      SCTP_REMOTE_ERROR,
-			      SCTP_SHUTDOWN_EVENT,
-			      SCTP_ADAPTATION_INDICATION,
-			      SCTP_PARTIAL_DELIVERY_EVENT,
-			      SCTP_SEND_FAILED_EVENT};
+                              SCTP_PEER_ADDR_CHANGE,
+                              SCTP_REMOTE_ERROR,
+                              SCTP_SHUTDOWN_EVENT,
+                              SCTP_ADAPTATION_INDICATION,
+                              SCTP_PARTIAL_DELIVERY_EVENT,
+                              SCTP_SEND_FAILED_EVENT};
 
     memset(&event, 0, sizeof(event));
     event.se_assoc_id = SCTP_FUTURE_ASSOC;
     event.se_on = 1;
 
     for (i = 0; i < (unsigned int)(sizeof(event_types)/sizeof(uint16_t)); i++) {
-	    event.se_type = event_types[i];
+        event.se_type = event_types[i];
 #if defined(USRSCTP_SUPPORT)
-	    if (usrsctp_setsockopt(
+        if (usrsctp_setsockopt(
 #else
-	    if (setsockopt(
+        if (setsockopt(
 #endif
-			sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(struct sctp_event)) < 0) {
-		    neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to event type %u - %s",
-			     __func__, event_types[i], strerror(errno));
-		}
+            sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(struct sctp_event)) < 0) {
+            neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to event type %u - %s",
+                 __func__, event_types[i], strerror(errno));
+        }
     }
 #else // defined(SCTP_EVENT)
 
@@ -4418,9 +4398,9 @@ static void neat_sctp_init_events(int sock)
     event.sctp_adaptation_layer_event = 1;
 
     if (setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &event,
-		   sizeof(struct sctp_event_subscribe)) < 0) {
-	neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to SCTP events - %s",
-		 __func__, strerror(errno));
+           sizeof(struct sctp_event_subscribe)) < 0) {
+        neat_log(NEAT_LOG_ERROR, "%s: failed to subscribe to SCTP events - %s",
+                __func__, strerror(errno));
     }
 #endif // else HAVE_SCTP_EVENT_SUBSCRIBE
 #endif //else defined(SCTP_EVENT)
@@ -4509,9 +4489,8 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
     if (usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
         candidate->isSCTPExplicitEOR = 1;
 #endif
-//#if 0
-#if defined(SCTP_MULTIHOMING)
-    if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP && candidate->pollable_socket->nr_local_addr > 0) {
+
+    if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP && candidate->pollable_socket->nr_local_addr > 0) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
         char *address_name, *ptr;
         char *tmp = strdup(candidate->pollable_socket->src_address);
@@ -4539,8 +4518,6 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
             address_name = strtok_r(NULL, ",", &ptr);
         }
         free (tmp);
-printf("call usrsctp_bindx \n");
-printf("nr_local_addr=%d\n", candidate->pollable_socket->nr_local_addr);
         if (usrsctp_bindx(candidate->pollable_socket->usrsctp_socket, (struct sockaddr *)candidate->pollable_socket->local_addr, candidate->pollable_socket->nr_local_addr, SCTP_BINDX_ADD_ADDR)) {
             neat_log(NEAT_LOG_ERROR,
                     "Failed to bindx socket to IP. Error: %s",
@@ -4548,29 +4525,24 @@ printf("nr_local_addr=%d\n", candidate->pollable_socket->nr_local_addr);
             return -1;
         }
     } else {
-#endif
-//#endif
-    char addrsrcbuf[slen];
-    if (candidate->pollable_socket->family == AF_INET) {
-        inet_ntop(AF_INET, &(((struct sockaddr_in *) &(candidate->pollable_socket->src_sockaddr))->sin_addr), addrsrcbuf, INET6_ADDRSTRLEN);
-    } else {
-        inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) &(candidate->pollable_socket->src_sockaddr))->sin6_addr), addrsrcbuf, INET6_ADDRSTRLEN);
-    }
-    neat_log(NEAT_LOG_INFO, "%s: Bind fd %d to %s", __func__, candidate->pollable_socket->fd, addrsrcbuf);
+        char addrsrcbuf[slen];
+        if (candidate->pollable_socket->family == AF_INET) {
+            inet_ntop(AF_INET, &(((struct sockaddr_in *) &(candidate->pollable_socket->src_sockaddr))->sin_addr), addrsrcbuf, INET6_ADDRSTRLEN);
+        } else {
+            inet_ntop(AF_INET6, &(((struct sockaddr_in6 *) &(candidate->pollable_socket->src_sockaddr))->sin6_addr), addrsrcbuf, INET6_ADDRSTRLEN);
+        }
+        neat_log(NEAT_LOG_INFO, "%s: Bind fd %d to %s", __func__, candidate->pollable_socket->fd, addrsrcbuf);
 
-    /* Bind to address + interface (if Linux) */
-    printf("call usrsctp_bind\n");
-    if (usrsctp_bind(candidate->pollable_socket->usrsctp_socket,
-             (struct sockaddr*) &(candidate->pollable_socket->src_sockaddr),
-             candidate->pollable_socket->src_len)) {
-        neat_log(NEAT_LOG_ERROR,
-                 "Failed to bind to IP. Error: %s",
-                 strerror(errno));
-        return -1;
+        /* Bind to address + interface (if Linux) */
+        if (usrsctp_bind(candidate->pollable_socket->usrsctp_socket,
+                 (struct sockaddr*) &(candidate->pollable_socket->src_sockaddr),
+                 candidate->pollable_socket->src_len)) {
+            neat_log(NEAT_LOG_ERROR,
+                     "Failed to bind to IP. Error: %s",
+                     strerror(errno));
+            return -1;
+        }
     }
-#if defined(SCTP_MULTIHOMING)
-    }
-#endif
 
     // Subscribe to SCTP events
     neat_sctp_init_events(candidate->pollable_socket->usrsctp_socket);
@@ -4762,7 +4734,7 @@ static void handle_upcall(struct socket *sock, void *arg, int flags)
             return;
         }
 
-        if (events & SCTP_EVENT_WRITE && flow->isDraining && flow->operations->on_writable) {
+        if (events & SCTP_EVENT_WRITE && flow->isDraining) {
             neat_error_code code = neat_write_flush(ctx, flow);
             if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
                 neat_io_error(ctx, flow, code);
@@ -4774,6 +4746,8 @@ static void handle_upcall(struct socket *sock, void *arg, int flags)
         }
 
         if (events & SCTP_EVENT_WRITE && flow->operations->on_writable) {
+            if (flow->firstWritePending)
+                flow->firstWritePending = 0;
             io_writable(ctx, flow, 0, NEAT_OK);
         }
 
@@ -4786,7 +4760,7 @@ static void handle_upcall(struct socket *sock, void *arg, int flags)
                 flow->operations->on_readable(flow->operations);
         }
         events = usrsctp_get_events(sock);
-        if (events & SCTP_EVENT_WRITE)
+        if (events & SCTP_EVENT_WRITE && flow->operations->on_writable)
             io_writable(ctx, flow, 0, NEAT_OK);
     }
 }
@@ -4951,7 +4925,7 @@ neat_flow *neat_new_flow(neat_ctx *mgr)
 
     rv->properties = json_object();
 
-    rv->local_name = NULL;
+    rv->local_address = NULL;
 
     rv->socket = malloc(sizeof(struct neat_pollable_socket));
     if (!rv->socket)

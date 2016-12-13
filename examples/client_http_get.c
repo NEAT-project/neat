@@ -26,7 +26,7 @@ static uint8_t  config_log_level = 1;
 static char request[512];
 static uint32_t flows_active = 0;
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static char *config_property = "{\
+/*static char *config_property = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
@@ -37,7 +37,15 @@ static char *config_property = "{\
             \"precedence\": 1\
         }\
     ]\
-}";\
+}";*/
+static char *config_property = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";
 
 static neat_error_code on_close(struct neat_flow_operations *opCB);
 

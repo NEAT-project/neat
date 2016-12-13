@@ -49,16 +49,6 @@ static char *config_property = "{\
         }\
     ]\
 }";\
-/*
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";\
-*/
 
 static neat_error_code on_close(struct neat_flow_operations *opCB);
 
@@ -94,9 +84,10 @@ on_readable(struct neat_flow_operations *opCB)
     }
 
     if (!bytes_read) { // eof
-        fprintf(stderr, "%s - neat_read() got 0 bytes - connection closed\n", __func__);
-        fflush(stdout);
-        on_close(opCB);
+        fprintf(stderr, "%s - nothing more to read\n", __func__);
+        opCB->on_readable = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
+        neat_close(opCB->ctx, opCB->flow);
 
     } else if (bytes_read > 0) {
         fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
@@ -226,6 +217,7 @@ main(int argc, char *argv[])
         neat_set_operations(ctx, flows[i], &(ops[i]));
 
         NEAT_OPTARG_STRING(NEAT_TAG_LOCAL_ADDRESS, "10.1.1.1,10.1.2.1");
+        NEAT_OPTARG_INT(NEAT_TAG_MULTIHOMING, 1);
 
         // wait for on_connected or on_error to be invoked
         if (neat_open(ctx, flows[i], argv[argc - 1], 80, NEAT_OPTARGS, NEAT_OPTARGS_COUNT) != NEAT_OK) {

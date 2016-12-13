@@ -1902,7 +1902,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
             uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
         }
     } else {
-        neat_log(NEAT_LOG_DEBUG, "NOT first connect");
+        neat_log(NEAT_LOG_DEBUG, "%s - NOT first connect", __func__);
 
         send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
 
@@ -5152,7 +5152,7 @@ static void handle_connect(struct socket *sock, void *arg, int flags)
                 io_writable(flow->ctx, flow, 0, NEAT_OK);
             }
         } else {
-            neat_log(NEAT_LOG_DEBUG, "NOT first connect");
+            neat_log(NEAT_LOG_DEBUG, "%s - NOT first connect", __func__);
 
             send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
 

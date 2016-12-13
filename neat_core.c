@@ -280,7 +280,7 @@ static void neat_core_cleanup(struct neat_ctx *nc)
 //TODO: Consider adding callback, like for resolver
 void neat_free_ctx(struct neat_ctx *nc)
 {
-    struct neat_flow *f, *prev = NULL;
+    struct neat_flow *flow, *prev_flow = NULL;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (nc->resolver) {
@@ -288,7 +288,7 @@ void neat_free_ctx(struct neat_ctx *nc)
     }
 
     while (!LIST_EMPTY(&nc->flows)) {
-        f = LIST_FIRST(&nc->flows);
+        flow = LIST_FIRST(&nc->flows);
 
         /*
          * If this assert triggers, it means that a call to neat_free_flow did
@@ -296,10 +296,10 @@ void neat_free_ctx(struct neat_ctx *nc)
          * assert is present because clang-analyzer somehow doesn't see the fact
          * that the list is changed in neat_free_flow().
          */
-        assert(f != prev);
+        assert(flow != prev_flow);
 
-        neat_free_flow(f);
-        prev = f;
+        neat_free_flow(flow);
+        prev_flow = flow;
     }
 
     neat_core_cleanup(nc);
@@ -444,8 +444,9 @@ neat_free_candidate(struct neat_he_candidate *candidate)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (candidate == NULL)
+    if (candidate == NULL) {
         return;
+    }
 
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
@@ -480,6 +481,8 @@ neat_free_candidates(struct neat_he_candidates *candidates)
 {
     struct neat_he_candidate *candidate, *tmp;
 
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
     if (candidates == NULL)
         return;
 
@@ -490,9 +493,12 @@ neat_free_candidates(struct neat_he_candidates *candidates)
     free(candidates);
 }
 
-static void synchronous_free(neat_flow *flow)
+static void
+synchronous_free(neat_flow *flow)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    assert(flow);
 
     flow->closefx(flow->ctx, flow);
     free((char *)flow->name);
@@ -514,16 +520,52 @@ static void synchronous_free(neat_flow *flow)
 
     free_iofilters(flow->iofilters);
     free(flow->readBuffer);
-    free(flow->socket->handle);
-    free(flow->socket);
+
+    if (flow->socket->multistream) {
+        flow->socket->sctp_streams_used--;
+    } else {
+        free(flow->socket->handle);
+        free(flow->socket);
+    }
+
     free(flow);
 }
 
-static void free_cb(uv_handle_t *handle)
+static void
+free_cb(uv_handle_t *handle)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     struct neat_pollable_socket *pollable_socket = handle->data;
-    synchronous_free(pollable_socket->flow);
+    struct neat_flow *flow = NULL;
+    struct neat_flow *prev_flow = NULL;
+
+    if (pollable_socket->multistream) {
+        while (!LIST_EMPTY(&pollable_socket->sctp_multistream_flows)) {
+            flow = LIST_FIRST(&pollable_socket->sctp_multistream_flows);
+            assert(flow);
+            LIST_REMOVE(flow, next_multistream_flow);
+            /*
+             * If this assert triggers, it means that a call to neat_free_flow did
+             * not remove the flow pointed to by f from the list of flows. The
+             * assert is present because clang-analyzer somehow doesn't see the fact
+             * that the list is changed in neat_free_flow().
+             */
+            assert(flow != prev_flow);
+
+            synchronous_free(flow);
+            prev_flow = flow;
+        }
+
+        if (pollable_socket->sctp_streams_used == 0) {
+            neat_log(NEAT_LOG_DEBUG, "%s - all multistreams closed - freeing socket", __func__);
+            free(pollable_socket->handle);
+            free(pollable_socket);
+        }
+
+    } else {
+        synchronous_free(pollable_socket->flow);
+    }
+
 }
 
 static int neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
@@ -560,7 +602,7 @@ void neat_free_flow(neat_flow *flow)
 #if defined(USRSCTP_SUPPORT)
     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
        synchronous_free(flow);
-        return;
+       return;
     }
 #endif
 
@@ -702,8 +744,9 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
 
     flow->operations = ops;
 
-    if (flow->socket == NULL)
+    if (flow->socket == NULL) {
         return NEAT_OK;
+    }
 
 #if defined(USRSCTP_SUPPORT)
     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
@@ -711,6 +754,7 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
         return NEAT_OK;
     }
 #endif
+
     updatePollHandle(mgr, flow, flow->socket->handle);
     return NEAT_OK;
 }
@@ -785,7 +829,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             }
 
             flow->socket->sctp_streams_used = 1;
-#ifdef SCTP_MULTISTREAM
+#ifdef SCTP_MULTISTREAMING
             flow->multistream_id = 0;
 #endif
 
@@ -951,7 +995,7 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
     }
 }
 
-#ifdef SCTP_MULTISTREAM
+#ifdef SCTP_MULTISTREAMING
 #ifdef SCTP_RESET_STREAMS
 static void
 handle_sctp_stream_reset(neat_flow *flow, struct sctp_stream_reset_event *strrst)
@@ -976,7 +1020,7 @@ handle_sctp_stream_reset(neat_flow *flow, struct sctp_stream_reset_event *strrst
     return;
 }
 #endif // SCTP_RESET_STREAMS
-#endif // SCTP_MULTISTREAM
+#endif // SCTP_MULTISTREAMING
 
 // Handle SCTP send failed event
 // One is generated per failed message
@@ -1042,9 +1086,14 @@ static int handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
         struct sctp_adaptation_event *adaptation = (struct sctp_adaptation_event *) notfn;
         if (adaptation->sai_adaptation_ind == SCTP_ADAPTATION_NEAT) {
             flow->socket->sctp_neat_peer = 1;
-#ifdef SCTP_MULTISTREAM
-            neat_hook_mulitstream_flows(flow);
-#endif // SCTP_MULTISTREAM
+#ifdef SCTP_MULTISTREAMING
+            flow->socket->multistream = 1;
+            flow->socket->flow = NULL;
+
+            assert(LIST_EMPTY(&flow->socket->sctp_multistream_flows));
+            LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, flow, next_multistream_flow);
+            //neat_hook_mulitstream_flows(flow);
+#endif // SCTP_MULTISTREAMING
             neat_log(NEAT_LOG_INFO, "Peer is NEAT enabled");
         }
         break;
@@ -1065,8 +1114,8 @@ resize_read_buffer(neat_flow *flow)
     ssize_t spaceNeeded, spaceThreshold;
 
     spaceFree = flow->readBufferAllocation - flow->readBufferSize;
-    if (flow->readSize > 0) {
-        spaceThreshold = (flow->readSize / 4 + 8191) & ~8191;
+    if (flow->socket->read_size > 0) {
+        spaceThreshold = (flow->socket->read_size / 4 + 8191) & ~8191;
     } else {
         spaceThreshold = 8192;
     }
@@ -1092,7 +1141,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 {
     struct sockaddr_storage peerAddr;
     socklen_t peerAddrLen = sizeof(struct sockaddr_storage);
-    int stream_id = 0;
+    int stream_id = -1;
     ssize_t n;
     struct msghdr msghdr;
     //Not used when notifications aren't available:
@@ -1220,13 +1269,13 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         if (flow->socket->multistream) {
 
 #ifdef SCTP_MULTISTREAMING
-            if ((multistream_buffer = malloc(flow->readSize)) == NULL) {
+            if ((multistream_buffer = malloc(flow->socket->read_size)) == NULL) {
                 neat_log(NEAT_LOG_ERROR, "%s - allocating multistream buffer faield", __func__);
                 return READ_WITH_ERROR;
             }
 
             iov.iov_base = multistream_buffer;
-            iov.iov_len = flow->readSize;
+            iov.iov_len = flow->socket->read_size;
 #else // SCTP_MULTISTREAMING
             assert(false);
 #endif // SCTP_MULTISTREAMING
@@ -1283,7 +1332,9 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                     stream_id = sndrcvinfo->sinfo_stream;
                 }
 #endif // defined (SCTP_SNDRCV)
-                neat_log(NEAT_LOG_DEBUG, "%s - Received %d bytes on SCTP stream %d", __func__, n, stream_id);
+                if (stream_id >= 0) {
+                    neat_log(NEAT_LOG_DEBUG, "%s - Received %d bytes on SCTP stream %d", __func__, n, stream_id);
+                }
             }
 #endif // defined(IPPROTP_SCTP)
         }
@@ -1298,10 +1349,15 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 #endif
         addr.sin_family = AF_INET;
         msghdr.msg_flags = 0;
-        n = usrsctp_recvv(socket->usrsctp_socket, flow->readBuffer + flow->readBufferSize,
-                               flow->readBufferAllocation - flow->readBufferSize,
-                               (struct sockaddr *) &addr, &len, (void *)&rn,
-                                &infolen, &infotype, &(msghdr.msg_flags));
+        n = usrsctp_recvv(socket->usrsctp_socket,
+                            flow->readBuffer + flow->readBufferSize,
+                            flow->readBufferAllocation - flow->readBufferSize,
+                            (struct sockaddr *) &addr,
+                            &len,
+                            (void *)&rn,
+                            &infolen,
+                            &infotype,
+                            &(msghdr.msg_flags));
         if (n < 0) {
           /*  if (errno == EAGAIN)
                 return READ_OK;*/
@@ -1324,7 +1380,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 return READ_WITH_ERROR;
             }
 
-#ifdef SCTP_MULTISTREAM
+#ifdef SCTP_MULTISTREAMING
             if (flow->socket->multistream) {
                 sctp_event_ret = handle_sctp_event(flow, (union sctp_notification*)(multistream_buffer));
                 free(multistream_buffer);
@@ -1368,13 +1424,13 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 multistream_flow->socket = flow->socket;
 
                 multistream_flow->ctx = ctx;
-                multistream_flow->writeLimit = listen_flow->writeLimit;
-                multistream_flow->writeSize = listen_flow->writeSize;
-                multistream_flow->readSize = listen_flow->readSize;
+                //multistream_flow->writeLimit = listen_flow->writeLimit;
+                //multistream_flow->writeSize = listen_flow->writeSize;
+                //multistream_flow->readSize = listen_flow->readSize;
 
                 multistream_flow->ownedByCore = 1;
                 multistream_flow->isServer = 1;
-                multistream_flow->isSCTPExplicitEOR = listen_flow->isSCTPExplicitEOR;
+                //multistream_flow->isSCTPExplicitEOR = listen_flow->isSCTPExplicitEOR;
                 multistream_flow->operations = calloc (sizeof(struct neat_flow_operations), 1);
 
                 multistream_flow->operations->on_connected = listen_flow->operations->on_connected;
@@ -1492,6 +1548,13 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+
+    if (pollable_socket != NULL && pollable_socket->multistream) {
+        flow = LIST_FIRST(&pollable_socket->sctp_multistream_flows);
+        neat_log(NEAT_LOG_DEBUG, "%s - multistreaming - taking first flow from ctx", __func__);
+        assert(flow);
+    }
+
     assert(flow);
     assert(flow->socket);
     assert(flow->socket->handle);
@@ -1500,12 +1563,6 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
         if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->socket->handle)) {
             return;
         }
-    }
-
-    if (pollable_socket->multistream) {
-        flow = LIST_FIRST(&ctx->flows);
-        neat_log(NEAT_LOG_DEBUG, "%s - multistreaming - taking first flow from ctx", __func__);
-        assert(flow);
     }
 
     do {
@@ -1555,15 +1612,16 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     // iterate through all flows
     } while (pollable_socket->multistream && flow);
 
-    flow = pollable_socket->flow;
+
+    //flow = pollable_socket->flow;
 
     if (newEvents) {
-        if (flow->socket->handle != NULL) {
+        if (pollable_socket->handle != NULL) {
             neat_log(NEAT_LOG_DEBUG, "events");
             uv_poll_start(handle, newEvents, uvpollable_cb);
         }
     } else {
-        if (flow->socket->handle != NULL) {
+        if (pollable_socket->handle != NULL) {
             neat_log(NEAT_LOG_DEBUG, "no events");
             uv_poll_stop(handle);
         }
@@ -1797,11 +1855,15 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         // TODO: Ensure initialization (when using PM)
         assert(flow->socket->handle->loop == NULL);
         free(flow->socket->handle);
-        flow->socket->handle = handle;
-        flow->socket->handle->data = flow->socket;
-        flow->socket->family = candidate->pollable_socket->family;
-        flow->socket->type = candidate->pollable_socket->type;
-        flow->socket->stack = candidate->pollable_socket->stack;
+        flow->socket->handle                = handle;
+        flow->socket->handle->data          = flow->socket;
+        flow->socket->family                = candidate->pollable_socket->family;
+        flow->socket->type                  = candidate->pollable_socket->type;
+        flow->socket->stack                 = candidate->pollable_socket->stack;
+        flow->socket->write_size            = candidate->writeSize;
+        flow->socket->write_limit           = candidate->writeLimit;
+        flow->socket->read_size             = candidate->readSize;
+        flow->socket->sctp_explicit_eor     = candidate->isSCTPExplicitEOR;
 
         if (candidate->properties != flow->properties) {
             json_incref(candidate->properties);
@@ -1817,10 +1879,10 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 #endif
         // TODO:
         // flow->ctx = he_ctx->nc;
-        flow->writeSize = candidate->writeSize;
-        flow->writeLimit = candidate->writeLimit;
-        flow->readSize = candidate->readSize;
-        flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
+
+
+
+        //flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
         flow->isPolling = 1;
 
         send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
@@ -1859,11 +1921,20 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 void uvpollable_cb(uv_poll_t *handle, int status, int events)
 {
     struct neat_pollable_socket *pollable_socket = handle->data;
-    neat_flow *flow = pollable_socket->flow;
-    neat_ctx *ctx = flow->ctx;
+    neat_flow   *flow   = NULL;
+    neat_ctx    *ctx    = NULL;
+
+    if (pollable_socket->multistream) {
+        ctx  = LIST_FIRST(&pollable_socket->sctp_multistream_flows)->ctx;
+    } else {
+        flow = pollable_socket->flow;
+        ctx  = flow->ctx;
+    }
+
+
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if ((events & UV_READABLE) && flow->acceptPending) {
+    if ((events & UV_READABLE) && flow && flow->acceptPending) {
         if(pollable_socket->stack == NEAT_STACK_UDP ||
            pollable_socket->stack == NEAT_STACK_UDPLITE) {
             neat_log(NEAT_LOG_DEBUG, "io_readable for UDP or UDPLite accept flow");
@@ -2041,21 +2112,25 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                                     "port", "value", flow->port,
                                     "interface", "value", "(unknown)");
 
-    newFlow->socket->listen_socket  = listen_socket;
-    newFlow->socket->stack          = listen_socket->stack;
-    newFlow->socket->srcAddr        = listen_socket->srcAddr;
-    newFlow->socket->dstAddr        = listen_socket->dstAddr;
-    newFlow->socket->type           = listen_socket->type;
-    newFlow->socket->family         = listen_socket->family;
+    newFlow->socket->listen_socket      = listen_socket;
+    newFlow->socket->stack              = listen_socket->stack;
+    newFlow->socket->srcAddr            = listen_socket->srcAddr;
+    newFlow->socket->dstAddr            = listen_socket->dstAddr;
+    newFlow->socket->type               = listen_socket->type;
+    newFlow->socket->family             = listen_socket->family;
+    newFlow->socket->write_limit        = listen_socket->write_limit;
+    newFlow->socket->write_size         = listen_socket->write_size;
+    newFlow->socket->read_size          = listen_socket->read_size;
+    newFlow->socket->sctp_explicit_eor  = listen_socket->sctp_explicit_eor;
 
     newFlow->ctx = ctx;
-    newFlow->writeLimit = flow->writeLimit;
-    newFlow->writeSize = flow->writeSize;
-    newFlow->readSize = flow->readSize;
+
+
+
 
     newFlow->ownedByCore = 1;
     newFlow->isServer = 1;
-    newFlow->isSCTPExplicitEOR = flow->isSCTPExplicitEOR;
+
     newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
 
     if (newFlow->operations == NULL) {
@@ -3712,10 +3787,10 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
         do {
             iov.iov_base = msg->buffered + msg->bufferedOffset;
             if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) &&
-                (flow->isSCTPExplicitEOR) &&
-                (flow->writeLimit > 0) &&
-                (msg->bufferedSize > flow->writeLimit)) {
-                len = flow->writeLimit;
+                (flow->socket->sctp_explicit_eor) &&
+                (flow->socket->write_limit > 0) &&
+                (msg->bufferedSize > flow->socket->write_limit)) {
+                len = flow->socket->write_limit;
             } else {
                 len = msg->bufferedSize;
             }
@@ -3737,7 +3812,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
                 sndinfo->snd_sid = msg->stream_id;
 #if defined(SCTP_EOR)
-                if ((flow->isSCTPExplicitEOR) && (len == msg->bufferedSize)) {
+                if ((flow->socket->sctp_explicit_eor) && (len == msg->bufferedSize)) {
                     sndinfo->snd_flags |= SCTP_EOR;
                 }
 #endif
@@ -3935,7 +4010,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         break;
     case NEAT_STACK_SCTP_UDP:
     case NEAT_STACK_SCTP:
-        if (flow->isSCTPExplicitEOR) {
+        if (flow->socket->sctp_explicit_eor) {
             atomic = 0;
         } else {
             atomic = 1;
@@ -3949,7 +4024,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         atomic = 1;
         break;
     }
-    if (atomic && flow->writeSize > 0 && amt > flow->writeSize) {
+    if (atomic && flow->socket->write_size > 0 && amt > flow->socket->write_size) {
         return NEAT_ERROR_MESSAGE_TOO_BIG;
     }
     neat_error_code code = neat_write_flush(ctx, flow);
@@ -3959,10 +4034,10 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     if (TAILQ_EMPTY(&flow->bufferedMessages) && code == NEAT_OK && amt > 0) {
         iov.iov_base = (void *)buffer;
         if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) &&
-            (flow->isSCTPExplicitEOR) &&
-            (flow->writeLimit > 0) &&
-            (amt > flow->writeLimit)) {
-            len = flow->writeLimit;
+            (flow->socket->sctp_explicit_eor) &&
+            (flow->socket->write_limit > 0) &&
+            (amt > flow->socket->write_limit)) {
+            len = flow->socket->write_limit;
         } else {
             len = amt;
         }
@@ -3988,7 +4063,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             }
 
 #if defined(SCTP_EOR)
-            if ((flow->isSCTPExplicitEOR) && (len == amt)) {
+            if ((flow->socket->sctp_explicit_eor) && (len == amt)) {
                 sndinfo->snd_flags |= SCTP_EOR;
             }
 #endif
@@ -4118,6 +4193,8 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             memcpy(buffer, multistream_message->buffer, multistream_message->buffer_size);
             *actualAmt = multistream_message->buffer_size;
             TAILQ_REMOVE(&flow->read_queue, multistream_message, message_next);
+            free(multistream_message->buffer);
+            free(multistream_message);
 #else // SCTP_MULTISTREAMING
             assert(false);
 #endif // SCTP_MULTISTREAMING
@@ -4629,18 +4706,18 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 
     len = (socklen_t)sizeof(int);
     if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
-        flow->writeSize = size;
+        flow->socket->write_size = size;
     } else {
         neat_log(NEAT_LOG_DEBUG, "Unable to get socket option SOL_SOCKET:SO_SNDBUF");
-        flow->writeSize = 0;
+        flow->socket->write_size = 0;
     }
 
     len = (socklen_t)sizeof(int);
     if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
-        flow->readSize = size;
+        flow->socket->read_size = size;
     } else {
         neat_log(NEAT_LOG_DEBUG, "Unable to get socket option SOL_SOCKET:SO_RCVBUF");
-        flow->readSize = 0;
+        flow->socket->read_size = 0;
     }
 
     switch (stack) {
@@ -4702,14 +4779,14 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         }
         neat_log(NEAT_LOG_DEBUG, "Offering %d SCTP streams in/out", initmsg.sinit_num_ostreams);
 #endif // defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
-        flow->writeLimit = flow->writeSize / 4;
+        flow->socket->write_limit = flow->socket->write_size / 4;
 #ifdef SCTP_NODELAY
         if (setsockopt(fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int)) != 0)
             neat_log(NEAT_LOG_DEBUG, "Unable to set socket option IPPROTO_SCTP:SCTP_NODELAY");
 #endif
 #ifdef SCTP_EXPLICIT_EOR
         if (setsockopt(fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
-            flow->isSCTPExplicitEOR = 1;
+            flow->socket->sctp_explicit_eor = 1;
         else
             neat_log(NEAT_LOG_DEBUG, "Unable to set socket option IPPROTO_SCTP:SCTP_EXPLICIT_EOR");
 #endif
@@ -5536,44 +5613,44 @@ neat_find_flow(neat_ctx *ctx, struct sockaddr *src, struct sockaddr *dst)
 /*
  * Search for SCTP assoc with multistreaming support and same remote host
  */
-neat_flow *
-neat_find_multistream_assoc(neat_ctx *ctx, neat_flow *new_flow)
+struct neat_pollable_socket *
+neat_find_multistream_socket(neat_ctx *ctx, neat_flow *new_flow)
 {
-    neat_flow *flow;
+    neat_flow *flow_itr;
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    LIST_FOREACH(flow, &ctx->flows, next_flow) {
+    LIST_FOREACH(flow_itr, &ctx->flows, next_flow) {
         //neat_log(NEAT_LOG_DEBUG, "%s - checking: %p - %s", __func__, flow, flow->name);
 
         // skipping self
-        if (flow == new_flow) {
-            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - self...", __func__, flow);
+        if (flow_itr == new_flow) {
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - self...", __func__, flow_itr);
             continue;
         }
 
         // flow should have a socket
-        if (flow->socket->fd < 1) {
-            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - no socket fd", __func__, flow);
+        if (flow_itr->socket->fd < 1) {
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - no socket fd", __func__, flow_itr);
             continue;
         }
 
         // xxx todo : check needed?
-        if (flow->acceptPending == 1) {
-            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - accept pending", __func__, flow);
+        if (flow_itr->acceptPending == 1) {
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - accept pending", __func__, flow_itr);
             continue;
         }
 
         // DNS-name matches, flow is in connecting state, has the same group and supports NEAT multistreaming
-        if (!strcmp(flow->name, new_flow->name) &&
-            flow->group == new_flow->group &&
-            flow->socket->stack == NEAT_STACK_SCTP &&
-            flow->socket->sctp_neat_peer == 1 &&
-            flow->socket->sctp_streams_used < flow->socket->sctp_streams_available
+        if (!strcmp(flow_itr->name, new_flow->name) &&
+            flow_itr->group == new_flow->group &&
+            flow_itr->socket->stack == NEAT_STACK_SCTP &&
+            flow_itr->socket->sctp_neat_peer == 1 &&
+            flow_itr->socket->sctp_streams_used < flow_itr->socket->sctp_streams_available
         ) {
-            neat_log(NEAT_LOG_DEBUG, "%s - %p : match!", __func__, flow);
-            return flow;
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : match!", __func__, flow_itr);
+            return flow_itr->socket;
         } else {
-            neat_log(NEAT_LOG_DEBUG, "%s - %p : no match!", __func__, flow);
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : no match!", __func__, flow_itr);
         }
     }
     return NULL;
@@ -5586,8 +5663,10 @@ static void
 neat_hook_mulitstream_flows(neat_flow *flow) {
     neat_ctx *ctx = flow->ctx;
     neat_flow *flow_itr = NULL;
+    struct neat_he_candidate *candidate;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    return;
 
     LIST_FOREACH(flow_itr, &ctx->flows, next_flow) {
         neat_log(NEAT_LOG_DEBUG, "%s - %p - checking", __func__, flow_itr);
@@ -5602,7 +5681,29 @@ neat_hook_mulitstream_flows(neat_flow *flow) {
             neat_log(NEAT_LOG_DEBUG, "%s - %p - already connected", __func__, flow_itr);
         }
 
+        // xxx todo : check needed?
+        if (flow_itr->acceptPending == 1) {
+            neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - accept pending", __func__, flow_itr);
+            continue;
+        }
 
+        // DNS-name matches, flow is in connecting state and has the same group
+        if (!strcmp(flow_itr->name, flow->name) &&
+            flow_itr->hefirstConnect &&
+            flow_itr->group == flow->group
+        ) {
+            TAILQ_FOREACH(candidate, flow_itr->candidate_list, next) {
+                // Flow candidates include SCTP
+                if (candidate->pollable_socket->stack == NEAT_STACK_SCTP) {
+                    // we have a candidate
+                    neat_log(NEAT_LOG_DEBUG, "%s - %p : candidate matches - waiting", __func__, flow_itr);
+                } else {
+                    neat_log(NEAT_LOG_DEBUG, "%s - %p : no match for candidate", __func__, flow_itr);
+                }
+            }
+        } else {
+            neat_log(NEAT_LOG_DEBUG, "%s - %p - no match", __func__, flow_itr);
+        }
     }
 
     return;
@@ -5613,7 +5714,7 @@ neat_hook_mulitstream_flows(neat_flow *flow) {
  * Check if there is another HE in progress with the same target and return flow;
  */
 uint8_t
-neat_wait_for_multistream_assoc(neat_ctx *ctx, neat_flow *flow)
+neat_wait_for_multistream_socket(neat_ctx *ctx, neat_flow *flow)
 {
     neat_flow *flow_itr;
     struct neat_he_candidate *candidate;
@@ -5630,10 +5731,12 @@ neat_wait_for_multistream_assoc(neat_ctx *ctx, neat_flow *flow)
         }
 
         // flow should have a socket
+        /*
         if (flow_itr->socket->fd < 1) {
             neat_log(NEAT_LOG_DEBUG, "%s - %p : skipping - no socket", __func__, flow_itr);
             continue;
         }
+        */
 
         // xxx todo : check needed?
         if (flow_itr->acceptPending == 1) {
@@ -5705,7 +5808,7 @@ neat_sctp_reset_stream(struct neat_pollable_socket *socket, uint16_t sid)
         neat_log(NEAT_LOG_ERROR, "%s - calloc failed", __func__);
         return;
     }
-    
+
     srs->srs_flags = SCTP_STREAM_RESET_OUTGOING;
     srs->srs_number_streams = 1;
     srs->srs_stream_list[0] = sid;

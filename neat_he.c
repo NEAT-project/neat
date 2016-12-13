@@ -146,7 +146,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     uint8_t multistream_probe = 0;
 
 #ifdef SCTP_MULTISTREAMING
-    struct neat_flow *piggyback_flow = NULL;
+    struct neat_pollable_socket *multistream_socket = NULL;
 #endif
 
     i = 0;
@@ -212,30 +212,21 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     if (multistream_probe) {
 #ifdef SCTP_MULTISTREAMING
         // check if there is already a piggyback assoc
-        if ((piggyback_flow = neat_find_multistream_assoc(ctx, flow)) != NULL) {
+        if ((multistream_socket = neat_find_multistream_socket(ctx, flow)) != NULL) {
             neat_log(NEAT_LOG_DEBUG, "%s - using piggyback assoc", __func__);
             // we have a piggyback assoc...
 
-            if (piggyback_flow->multistream_id == 0) {
-                piggyback_flow->multistream_id = 1;
-                piggyback_flow->socket->multistream = 1;
-                LIST_INSERT_HEAD(&piggyback_flow->socket->sctp_multistream_flows, piggyback_flow, next_multistream_flow);
-            }
+            LIST_INSERT_HEAD(&multistream_socket->sctp_multistream_flows, flow, next_multistream_flow);
+            multistream_socket->sctp_streams_used++;
 
-            LIST_INSERT_HEAD(&piggyback_flow->socket->sctp_multistream_flows, flow, next_multistream_flow);
-
-            flow->multistream_id = ++(flow->socket->sctp_streams_used);
+            flow->multistream_id = multistream_socket->sctp_streams_used;
             flow->everConnected = 1;
             flow->isPolling = 1;
             flow->firstWritePending = 1;
 
             json_decref(flow->properties);
 
-            flow->writeSize = piggyback_flow->writeSize;
-            flow->writeLimit = piggyback_flow->writeLimit;
-            flow->readSize = piggyback_flow->readSize;
-            flow->isSCTPExplicitEOR = piggyback_flow->isSCTPExplicitEOR;
-            flow->socket = piggyback_flow->socket;
+            flow->socket = multistream_socket;
 
             while (candidate) {
                 next_candidate = TAILQ_NEXT(candidate, next);
@@ -250,7 +241,8 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             return NEAT_ERROR_OK;
 
         // if there is no piggyback assoc, wait if we didnt already : We reschedule the *complete* he-process!
-        } else if (flow->multistreamCheck == 0 && neat_wait_for_multistream_assoc(ctx, flow)) {
+        } else if (flow->multistreamCheck == 0 && neat_wait_for_multistream_socket(ctx, flow)) {
+            neat_log(NEAT_LOG_DEBUG, "%s - waiting for another assoc", __func__);
             flow->multistreamCheck = 1;
 
             flow->multistream_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));

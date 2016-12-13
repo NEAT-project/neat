@@ -162,7 +162,7 @@ struct neat_iofilter
 
 struct neat_pollable_socket
 {
-    struct neat_flow *flow;
+    struct neat_flow    *flow;
 
 #if defined(USRSCTP_SUPPORT)
     struct socket *usrsctp_socket;
@@ -190,15 +190,18 @@ struct neat_pollable_socket
     struct sockaddr srcAddr;
     struct sockaddr dstAddr;
 
+    size_t      write_limit;        // maximum to write if the socket supports partial writes
+    size_t      write_size;         // send buffer size
+    size_t      read_size;   // receive buffer size
+
+    unsigned int sctp_explicit_eor : 1;
 
     uint8_t                     multistream;            // multistreaming active
     struct neat_flow_list_head  sctp_multistream_flows; // multistream flows
-
     uint8_t                     sctp_stream_reset;      // peer supports stream reset
     uint8_t                     sctp_neat_peer;         // peer supports neat
     uint16_t                    sctp_streams_available; // available streams
     uint16_t                    sctp_streams_used;      // used streams
-
 
     struct neat_pollable_socket *listen_socket;
 
@@ -235,8 +238,8 @@ struct neat_flow
 
     // TODO: Move more socket-specific values to neat_pollable_socket
 
-    size_t writeLimit;  // maximum to write if the socket supports partial writes
-    size_t writeSize;   // send buffer size
+    //size_t writeLimit;  // maximum to write if the socket supports partial writes
+    //size_t writeSize;   // send buffer size
     // The memory buffer for writing.
     struct neat_message_queue_head bufferedMessages;
     size_t buffer_count;
@@ -248,7 +251,7 @@ struct neat_flow
     size_t read_queue_size;
 #endif
 
-    size_t readSize;   // receive buffer size
+    //size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.
     unsigned char   *readBuffer;    // memory for read buffer
     size_t          readBufferSize;        // amount of received data
@@ -279,7 +282,7 @@ struct neat_flow
     unsigned int ownedByCore : 1;
     unsigned int everConnected : 1;
     unsigned int isDraining : 1;
-    unsigned int isSCTPExplicitEOR : 1;
+    //unsigned int isSCTPExplicitEOR : 1;
     unsigned int isServer : 1; // i.e. created via accept()
     //unsigned int multistream : 1;
 #ifdef SCTP_MULTISTREAMING
@@ -433,8 +436,8 @@ void neat_resolver_release(struct neat_resolver *resolver);
 //Free the list of results
 void neat_resolver_free_results(struct neat_resolver_results *results);
 
-neat_flow *neat_find_multistream_assoc(neat_ctx *ctx, neat_flow *new_flow);
-uint8_t neat_wait_for_multistream_assoc(neat_ctx *ctx, neat_flow *new_flow);
+struct neat_pollable_socket *neat_find_multistream_socket(neat_ctx *ctx, neat_flow *new_flow);
+uint8_t neat_wait_for_multistream_socket(neat_ctx *ctx, neat_flow *new_flow);
 
 //Start to resolve a domain name (or literal). Accepts a list of protocols, will
 //set socktype based on protocol

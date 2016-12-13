@@ -1768,6 +1768,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->ownedByCore = 1;
     newFlow->isServer = 1;
     newFlow->isSCTPExplicitEOR = flow->isSCTPExplicitEOR;
+    newFlow->isSCTPMultihoming = flow->isSCTPMultihoming;
     newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
 
     if (newFlow->operations == NULL) {
@@ -2540,9 +2541,14 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                                         strlen(candidate->pollable_socket->src_address) + strlen(src_buffer) + 2 * sizeof(char));
                                 strcat(candidate->pollable_socket->src_address, ",");
                                 strcat(candidate->pollable_socket->src_address, src_buffer);
-                                free (cand->pollable_socket->src_address);
-                                free (cand->pollable_socket->dst_address);
                                 TAILQ_REMOVE(candidates, cand, next);
+                                free(cand->pollable_socket->dst_address);
+                                free(cand->pollable_socket->src_address);
+                                free(cand->pollable_socket);
+                                free(cand->if_name);
+                                json_decref(cand->properties);
+                                free(cand);
+
                                 break;
                             }
                         }
@@ -2554,11 +2560,12 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     }
                 }
             } else {
+                free(candidate->pollable_socket->src_address);
                 candidate->pollable_socket->src_address = strdup(src_buffer);
                 candidate->pollable_socket->src_len     = result->src_addr_len;
                 memcpy(&candidate->pollable_socket->src_sockaddr, &result->src_addr, result->src_addr_len);
             }
-
+            free(candidate->pollable_socket->dst_address);
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
             candidate->pollable_socket->dst_len     = result->dst_addr_len;
             // assert(candidate->if_name);
@@ -2858,7 +2865,7 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
     int stream_count = 1;
     int group = 0;
     float priority = 0.5f;
-    int sctp_multihoming;
+    int sctp_multihoming = 0;
     const char *cc_algorithm = NULL;
     const char *local_address = NULL;
 
@@ -2903,6 +2910,8 @@ neat_open(neat_ctx *mgr, neat_flow *flow, const char *name, uint16_t port,
 
     if (local_address) {
         flow->local_address = strdup(local_address);
+    } else {
+        flow->local_address = NULL;
     }
     if (!mgr->resolver)
         mgr->resolver = neat_resolver_init(mgr, "/etc/resolv.conf");

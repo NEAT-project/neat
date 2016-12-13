@@ -6,6 +6,7 @@ import os
 import time
 
 from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
+from pmconst import STYLE
 
 logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
@@ -44,7 +45,7 @@ class NEATPolicy(object):
             if isinstance(v, str):
                 setattr(self, k, v)
 
-        self.priority = int(policy_dict.get('pririty', 0))
+        self.priority = int(policy_dict.get('priority', 0))
         self.replace_matched = policy_dict.get('replace_matched', False)
 
         self.filename = None
@@ -128,7 +129,7 @@ class NEATPolicy(object):
             properties.add(*p)
 
     def __str__(self):
-        return "%d POLICY %s: %s   ==>   %s" % (self.priority, self.uid, self.match, self.properties)
+        return '%3s. %-8s %s  ⟶  %s' % (self.priority, self.uid, self.match, self.properties)
 
     def __repr__(self):
         return repr({a: getattr(self, a) for a in ['uid', 'match', 'properties', 'priority']})
@@ -286,8 +287,7 @@ class PIB(list):
 
                 policy_info = str(p.uid)
                 if hasattr(p, "description"):
-                    policy_info += ': %s' % p.description
-                logging.info(' ' * 4 + policy_info)
+                    policy_info += ' (%s)' % p.description
 
                 if apply:
                     while candidates:
@@ -301,7 +301,8 @@ class PIB(list):
                             try:
                                 new_candidate = candidate + policy_properties
                             except ImmutablePropertyError:
-                                continue
+                                logging.info(' ' * 4 + policy_info + STYLE.BOLD_START + ' *REJECTED*' + STYLE.FORMAT_END)
+                                return []
                             # TODO copy policies from candidate and policy_properties for debugging
                             #  if hasattr(new_candidate, 'policies'):
                             #      new_candidate.policies.append(p.uid)
@@ -309,6 +310,8 @@ class PIB(list):
                             #      new_candidate.policies = [p.uid]
                             tmp_candidates.append(new_candidate)
                 candidates.extend(tmp_candidates)
+
+                logging.info(' ' * 4 + policy_info)
         return candidates
 
     def dump(self):

@@ -536,10 +536,14 @@ free_cb(uv_handle_t *handle)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     struct neat_pollable_socket *pollable_socket = handle->data;
+#ifdef SCTP_MULTISTREAMING
     struct neat_flow *flow = NULL;
     struct neat_flow *prev_flow = NULL;
+#endif
+
 
     if (pollable_socket->multistream) {
+#ifdef SCTP_MULTISTREAMING
         while (!LIST_EMPTY(&pollable_socket->sctp_multistream_flows)) {
             flow = LIST_FIRST(&pollable_socket->sctp_multistream_flows);
             assert(flow);
@@ -561,6 +565,9 @@ free_cb(uv_handle_t *handle)
             free(pollable_socket->handle);
             free(pollable_socket);
         }
+#else
+        assert(false);
+#endif
 
     } else {
         synchronous_free(pollable_socket->flow);

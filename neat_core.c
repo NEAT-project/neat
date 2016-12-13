@@ -2494,7 +2494,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             candidate->pollable_socket->src_address = strdup(src_buffer);
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
             candidate->pollable_socket->port        = flow->port;
-            candidate->pollable_socket->stack = stacks[i];
+            candidate->pollable_socket->stack       = stacks[i];
             candidate->pollable_socket->dst_len     = result->src_addr_len;
             candidate->pollable_socket->src_len     = result->dst_addr_len;
 
@@ -2524,7 +2524,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     struct sockaddr_storage tmpsrc;
                     candidate->pollable_socket->nr_local_addr = 0;
                     TAILQ_FOREACH(cand, candidates, next) {
-                        if (cand->pollable_socket->stack == stacks[i]) {
+                        if (cand->pollable_socket->stack == (int)stacks[i]) {
                             memcpy(&tmpsrc, &result->src_addr, result->src_addr_len);
                             if (!strcmp(cand->pollable_socket->dst_address, dst_buffer)) {
                                 dstfound = true;
@@ -2540,6 +2540,8 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                                         strlen(candidate->pollable_socket->src_address) + strlen(src_buffer) + 2 * sizeof(char));
                                 strcat(candidate->pollable_socket->src_address, ",");
                                 strcat(candidate->pollable_socket->src_address, src_buffer);
+                                free (cand->pollable_socket->src_address);
+                                free (cand->pollable_socket->dst_address);
                                 TAILQ_REMOVE(candidates, cand, next);
                                 break;
                             }
@@ -3973,7 +3975,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             address_name = strtok_r(NULL, ",", &ptr);
         }
         free (tmp);
-#if !defined (USRSCTP_SUPPORT)
+#if defined(IPPROTO_SCTP) && !defined (USRSCTP_SUPPORT)
         if (sctp_bindx(candidate->pollable_socket->fd, (struct sockaddr *)candidate->pollable_socket->local_addr, candidate->pollable_socket->nr_local_addr, SCTP_BINDX_ADD_ADDR)) {
             neat_log(NEAT_LOG_ERROR,
                     "Failed to bindx fd %d socket to IP. Error: %s",

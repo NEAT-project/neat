@@ -2373,7 +2373,10 @@ error:
 static void
 on_pm_reply_post_resolve(neat_ctx *ctx, neat_flow *flow, json_t *json)
 {
-    struct neat_he_candidates *candidate_list;
+    struct neat_he_candidates *candidate_list = NULL;
+    struct neat_he_candidate *candidate = NULL;
+    struct sockaddr *sa = NULL;
+    struct sockaddr *da = NULL;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -2390,11 +2393,9 @@ on_pm_reply_post_resolve(neat_ctx *ctx, neat_flow *flow, json_t *json)
     TAILQ_INIT(candidate_list);
 
     build_he_candidates(ctx, flow, json, candidate_list);
-
-    struct neat_he_candidate *candidate;
     TAILQ_FOREACH(candidate, candidate_list, next) {
-        struct sockaddr *sa = (struct sockaddr*) &candidate->pollable_socket->src_sockaddr;
-        struct sockaddr *da = (struct sockaddr*) &candidate->pollable_socket->dst_sockaddr;
+        sa = (struct sockaddr*) &candidate->pollable_socket->src_sockaddr;
+        da = (struct sockaddr*) &candidate->pollable_socket->dst_sockaddr;
 
         assert(da->sa_family == AF_INET || da->sa_family == AF_INET6);
         assert(sa->sa_family == AF_INET || sa->sa_family == AF_INET6);

@@ -1405,7 +1405,7 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
 
         if (flow->socket->multistream) {
 #ifdef SCTP_MULTISTREAMING
-            neat_log(NEAT_LOG_DEBUG, "%s - got data for multistream flow %d", __func__, multistream_flow->multistream_id);
+            neat_log(NEAT_LOG_DEBUG, "%s - got data for multistream flow %d", __func__, stream_id);
 
             multistream_flow = neat_sctp_get_flow_by_sid(socket, stream_id);
             assert(multistream_flow);
@@ -5087,6 +5087,10 @@ static void handle_connect(struct socket *sock, void *arg, int flags)
                 return;
             }
         }
+    } else {
+      free(he_res->interface);
+      free(he_res->remote_ip);
+      free(he_res);
     }
 }
 
@@ -5698,8 +5702,9 @@ neat_sctp_reset_stream(struct neat_pollable_socket *socket, uint16_t sid)
     len = sizeof(struct sctp_reset_streams) + sizeof(uint16_t);
     if ((srs = (struct sctp_reset_streams *) calloc(1, len)) == NULL) {
         neat_log(NEAT_LOG_ERROR, "%s - calloc failed", __func__);
+        return;
     }
-
+    
     srs->srs_flags = SCTP_STREAM_RESET_OUTGOING;
     srs->srs_number_streams = 1;
     srs->srs_stream_list[0] = sid;

@@ -3975,7 +3975,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             address_name = strtok_r(NULL, ",", &ptr);
         }
         free (tmp);
-#if defined(IPPROTO_SCTP) && !defined (USRSCTP_SUPPORT)
+#if defined(SCTP_BINDX_ADD_ADDR) && !defined (USRSCTP_SUPPORT)
         if (sctp_bindx(candidate->pollable_socket->fd, (struct sockaddr *)candidate->pollable_socket->local_addr, candidate->pollable_socket->nr_local_addr, SCTP_BINDX_ADD_ADDR)) {
             neat_log(NEAT_LOG_ERROR,
                     "Failed to bindx fd %d socket to IP. Error: %s",

@@ -372,6 +372,9 @@ int nsa_socket_internal(int domain, int type, int protocol,
 
    /* ====== Initialize NEAT socket ====================================== */
    rbt_node_new(&neatSocket->ns_node);
+   es_new(&neatSocket->ns_read_signal, NULL);
+   es_new(&neatSocket->ns_write_signal, NULL);
+   es_new(&neatSocket->ns_exception_signal, NULL);
    nq_new(&neatSocket->ns_notifications);
    init_mutex(&neatSocket->ns_mutex);
    neatSocket->ns_descriptor      = -1;   /* to be allocated below */

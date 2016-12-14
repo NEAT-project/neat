@@ -42,6 +42,7 @@
 #include "redblacktree.h"
 #include "identifierbitmap.h"
 #include "notificationqueue.h"
+#include "eventsignal.h"
 
 
 struct neat_socketapi_internals
@@ -83,6 +84,10 @@ struct neat_socket
    int                         ns_socket_type;
    int                         ns_socket_protocol;
    int                         ns_socket_sd;
+
+   struct event_signal         ns_read_signal;
+   struct event_signal         ns_write_signal;
+   struct event_signal         ns_exception_signal;
 
    struct notification_queue   ns_notifications;
 };

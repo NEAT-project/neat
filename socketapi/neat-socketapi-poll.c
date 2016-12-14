@@ -36,7 +36,7 @@
 #include <errno.h>
 
 
-// Internal structure for nsa_poll().
+/* Internal structure for nsa_poll() */
 struct poll_storage
 {
    struct event_signal ps_global_signal;
@@ -53,12 +53,12 @@ int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)
    int                 result;
 
    /* ====== Collect data for poll() call ================================ */
-   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-
    es_new(&pollStorage.ps_global_signal, NULL);
    es_new(&pollStorage.ps_read_signal,   &pollStorage.ps_global_signal);
    es_new(&pollStorage.ps_write_signal , &pollStorage.ps_global_signal);
    es_new(&pollStorage.ps_exception_signal, &pollStorage.ps_global_signal);
+
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
 puts("P1");
    result = 0;
@@ -108,6 +108,8 @@ puts("P5");
       struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(ufds[i].fd);
       if(neatSocket != NULL) {
          pthread_mutex_lock(&neatSocket->ns_mutex);
+
+         /* ====== Handle events ========================================= */
          if(neatSocket->ns_flow != NULL) {
              if(ufds[i].events & POLLIN) {
                 /* There is something to read (data, notification or error) */
@@ -131,6 +133,16 @@ puts("P5");
             puts("FIXME! System sockets not handled yet!");
             abort();
          }
+
+         /* ====== Clean-ups ============================================= */
+         es_remove_parent(&neatSocket->ns_exception_signal, &pollStorage.ps_exception_signal);
+         if(ufds[i].events & POLLOUT) {
+            es_remove_parent(&neatSocket->ns_write_signal, &pollStorage.ps_write_signal);
+         }
+         if(ufds[i].events & POLLIN) {
+            es_remove_parent(&neatSocket->ns_read_signal, &pollStorage.ps_read_signal);
+         }
+
          pthread_mutex_unlock(&neatSocket->ns_mutex);
       }
       else {
@@ -139,6 +151,11 @@ puts("P5");
    }
 
    pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
+   es_delete(&pollStorage.ps_read_signal);
+   es_delete(&pollStorage.ps_write_signal);
+   es_delete(&pollStorage.ps_exception_signal);
+   es_delete(&pollStorage.ps_global_signal);
 
    return(result);
 }

@@ -36,82 +36,103 @@
 #include <errno.h>
 
 
-/* ###### NEAT poll() implementation ##################################### */
-int nsa_poll(struct pollfd* fdlist, long unsigned int count, int time)
+// Internal structure for nsa_poll().
+struct poll_storage
 {
-#if 0
-   struct neat_socket* neat_socket;
-   int                    fdbackup[FD_SETSIZE];
-   int                    result;
-   unsigned int           i;
+   struct event_signal ps_global_signal;
+   struct event_signal ps_read_signal;
+   struct event_signal ps_write_signal;
+   struct event_signal ps_exception_signal;
+};
 
-   /* ====== Check for problems ========================================== */
-   if(nfds > FD_SETSIZE) {
-      errno = EINVAL;
-      return(-1);
-   }
+
+/* ###### NEAT poll() implementation ##################################### */
+int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)
+{
+   struct poll_storage pollStorage;
+   int                 result;
 
    /* ====== Collect data for poll() call ================================ */
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
+   es_new(&pollStorage.ps_global_signal, NULL);
+   es_new(&pollStorage.ps_read_signal,   &pollStorage.ps_global_signal);
+   es_new(&pollStorage.ps_write_signal , &pollStorage.ps_global_signal);
+   es_new(&pollStorage.ps_exception_signal, &pollStorage.ps_global_signal);
+
    result = 0;
-   for(i = 0;i < nfds;i++) {
-      fdbackup[i] = ufds[i].fd;
+   for(nfds_t i = 0;i < nfds;i++) {
       struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(ufds[i].fd);
       if(neatSocket != NULL) {
-         pthread_mutex_lock(&neatSocket->nsa_mutex);
-         ufds[i].fd      = neatSocket->ns_
-         ufds[i].revents = 0;
-         if((ufds[i].events & POLLIN) && (nq_has_data(&neat_socket->ns_notifications))) {
-            result++;
-            ufds[i].revents = POLLIN;
+         pthread_mutex_lock(&neatSocket->ns_mutex);
+         if(neatSocket->ns_flow != NULL) {
+            es_add_parent(&neatSocket->ns_read_signal, &pollStorage.ps_read_signal);
+            es_add_parent(&neatSocket->ns_write_signal, &pollStorage.ps_write_signal);
+            es_add_parent(&neatSocket->ns_exception_signal, &pollStorage.ps_exception_signal);
          }
-         pthread_mutex_unlock(&neatSocket->nsa_mutex);
+         else {
+            puts("FIXME! System sockets not handled yet!");
+            abort();
+         }
+         pthread_mutex_unlock(&neatSocket->ns_mutex);
       }
       else {
-         ufds[i].fd = -1;
+         result = -1;
+         errno  = EBADF;
       }
+      ufds[i].revents = 0;
    }
 
-   /* ====== Do poll() =================================================== */
+   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
+
+   /* ====== Wait for signal or timeout ================================== */
    if(result == 0) {
-      /* Only call poll() when there are no notifications */
-      result = ext_poll(ufds, nfds, timeout);
+      /* Only wait when there are no notifications */
+      es_timed_wait(&pollStorage.ps_global_signal, timeout);
    }
+
 
    /* ====== Handle results ============================================== */
-   for(i = 0;i < nfds;i++) {
-      neat_socket = getRSerPoolSocketForDescriptor(fdbackup[i]);
-      if((neat_socket != NULL) && (neat_socket->SessionAllocationBitmap != NULL)) {
-         threadSafetyLock(&neat_socket->Mutex);
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
-         /* ======= Check for control channel data ======================= */
-         if(ufds[i].revents & POLLIN) {
-            LOG_VERBOSE4
-            fprintf(stdlog, "RSerPool socket %d (socket %d) has <read> flag set -> Check, if it has to be handled by rsplib...\n",
-                     neat_socket->Descriptor, neat_socket->Socket);
-            LOG_END
-            if(handleControlChannelAndNotifications(neat_socket)) {
-               LOG_VERBOSE4
-               fprintf(stdlog, "RSerPool socket %d (socket %d) had <read> event for rsplib only. Clearing <read> flag\n",
-                        neat_socket->Descriptor, neat_socket->Socket);
-               LOG_END
-               ufds[i].revents &= ~POLLIN;
-            }
+   for(nfds_t i = 0;i < nfds;i++) {
+      struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(ufds[i].fd);
+      if(neatSocket != NULL) {
+         pthread_mutex_lock(&neatSocket->ns_mutex);
+         if(neatSocket->ns_flow != NULL) {
+             if(ufds[i].events & POLLIN) {
+                /* There is something to read (data, notification or error) */
+                if( (neatSocket->ns_flags & (NSAF_READABLE|NSAF_BAD)) ||
+                    (nq_has_data(&neatSocket->ns_notifications)) ) {
+                   ufds[i].revents |= POLLIN;
+                }
+             }
+             if(ufds[i].events & POLLOUT) {
+                /* It is possible to write data */
+                if(neatSocket->ns_flags & NSAF_WRITABLE) {
+                   ufds[i].revents |= POLLOUT;
+                }
+             }
+             if(neatSocket->ns_flags & NSAF_BAD) {
+                /* There is an error */
+                ufds[i].revents |= POLLERR;
+             }
          }
-
-         /* ====== Set <read> flag for RSerPool notifications? =========== */
-         if((ufds[i].events & POLLIN) &&
-            (notificationQueueHasData(&neat_socket->Notifications))) {
-            ufds[i].revents |= POLLIN;
+         else {
+            puts("FIXME! System sockets not handled yet!");
+            abort();
          }
-
-         threadSafetyUnlock(&neat_socket->Mutex);
+         pthread_mutex_unlock(&neatSocket->ns_mutex);
       }
-      ufds[i].fd = fdbackup[i];
+      else {
+         ufds[i].revents |= POLLNVAL;
+      }
    }
 
+   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
    return(result);
-#endif
-   return -1;
 }
 
 

@@ -254,7 +254,7 @@ ssize_t nsa_recvv(int sockfd, void* buf, size_t len,
 
 int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
                struct timeval* timeout);
-int nsa_poll(struct pollfd* fdlist, long unsigned int count, int time);
+int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout);
 
 int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen);
 int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen);

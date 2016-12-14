@@ -30,6 +30,11 @@ int main(int argc, char** argv)
       printf("nsa_socket() failed!\n");
    }
 
+   nsa_listen(sd, 10);
+
+   
+
+
    nsa_cleanup();
    return 0;
 }

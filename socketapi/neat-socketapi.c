@@ -117,6 +117,9 @@ int nsa_close(int fd)
    pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
    nq_delete(&neatSocket->ns_notifications);
+   es_delete(&neatSocket->ns_exception_signal);
+   es_delete(&neatSocket->ns_write_signal);
+   es_delete(&neatSocket->ns_read_signal);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
    pthread_mutex_destroy(&neatSocket->ns_mutex);
    free(neatSocket);

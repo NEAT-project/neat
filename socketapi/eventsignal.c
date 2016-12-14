@@ -164,23 +164,27 @@ bool es_timed_wait(struct event_signal* es, const long microseconds)
 {
    pthread_mutex_lock(&es->es_mutex);
    if(!es->es_has_fired) {
-      /* ====== Initialize timeout settings ============================== */
-      struct timeval  now;
-      struct timespec timeout;
-      gettimeofday(&now,NULL);
-      timeout.tv_sec  = now.tv_sec + (long)(microseconds / 1000000);
-      timeout.tv_nsec = (now.tv_usec + (long)(microseconds % 1000000)) * 1000;
-      if(timeout.tv_nsec >= 1000000000) {
-         timeout.tv_sec++;
-         timeout.tv_nsec -= 1000000000;
-      }
+      if(microseconds > 0) {   /* Wait with timeout */
+         /* ====== Initialize timeout settings ============================== */
+         struct timeval  now;
+         struct timespec timeout;
+         gettimeofday(&now,NULL);
+         timeout.tv_sec  = now.tv_sec + (long)(microseconds / 1000000);
+         timeout.tv_nsec = (now.tv_usec + (long)(microseconds % 1000000)) * 1000;
+         if(timeout.tv_nsec >= 1000000000) {
+            timeout.tv_sec++;
+            timeout.tv_nsec -= 1000000000;
+         }
 
-      /* ====== Wait ===================================================== */
-      pthread_cond_timedwait(&es->es_condition, &es->es_mutex, &timeout);
+         /* ====== Wait ===================================================== */
+         pthread_cond_timedwait(&es->es_condition, &es->es_mutex, &timeout);
+      }
+      else if(microseconds < 0) {   /* Wait as long as necessary */
+         pthread_cond_wait(&es->es_condition, &es->es_mutex);
+      }
    }
    const bool hasFired = es->es_has_fired;
    es->es_has_fired = false;
    pthread_mutex_unlock(&es->es_mutex);
-
    return(hasFired);
 }

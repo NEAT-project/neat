@@ -197,6 +197,7 @@ struct neat_pollable_socket
     unsigned int sctp_explicit_eor : 1;
 
     uint8_t                     multistream;            // multistreaming active
+    uint8_t                     sctp_notification_wait; // wait for all notifications
     uint8_t                     sctp_stream_reset;      // peer supports stream reset
     uint8_t                     sctp_neat_peer;         // peer supports neat
     uint16_t                    sctp_streams_available; // available streams
@@ -279,10 +280,7 @@ struct neat_flow
     unsigned int ownedByCore : 1;
     unsigned int everConnected : 1;
     unsigned int isDraining : 1;
-    //unsigned int isSCTPExplicitEOR : 1;
     unsigned int isServer : 1; // i.e. created via accept()
-    //unsigned int multistream : 1;
-
 
     unsigned int streams_requested;
 

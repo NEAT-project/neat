@@ -35,7 +35,7 @@ static uint16_t config_active               = 0;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_port                 = 8080;
 static uint16_t config_log_level            = 1;
-static uint16_t config_num_flows            = 2;
+static uint16_t config_num_flows            = 1;
 static uint16_t config_max_flows            = 100;
 static char *config_property = "\
 {\
@@ -368,9 +368,17 @@ on_close(struct neat_flow_operations *opCB)
     opCB->on_writable = NULL;
     opCB->on_error = NULL;
 
-    free(tnf->snd.buffer);
-    free(tnf->rcv.buffer);
-    free(tnf);
+    if (tnf->snd.buffer) {
+        free(tnf->snd.buffer);
+    }
+
+    if (tnf->rcv.buffer) {
+        free(tnf->rcv.buffer);
+    }
+
+    if (tnf) {
+        free(tnf);
+    }
 
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
@@ -378,9 +386,13 @@ on_close(struct neat_flow_operations *opCB)
 
     // stop event loop if we are active part
     if (config_active) {
-        fprintf(stderr, "%s - stopping event loop\n", __func__);
+        flows_active--;
         neat_close(opCB->ctx, opCB->flow);
-        neat_stop_event_loop(opCB->ctx);
+        fprintf(stderr, "%s - stopping event loop\n", __func__);
+
+        if (!flows_active) {
+            neat_stop_event_loop(opCB->ctx);
+        }
     }
 
     return NEAT_OK;

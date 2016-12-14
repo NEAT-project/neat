@@ -2006,6 +2006,14 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         neat_log(NEAT_LOG_DEBUG, "%s - iterating flows ...", __func__);
         assert(flow);
 
+#ifdef SCTP_MULTISTREAMING
+        if ((events & UV_READABLE) && flow->socket->sctp_notification_wait) {
+            neat_log(NEAT_LOG_DEBUG, "%s - awaiting notifications", __func__);
+            io_readable(ctx, flow, pollable_socket, NEAT_OK);
+            return;
+        }
+#endif
+
         if ((events & UV_WRITABLE) && flow->firstWritePending) {
             flow->firstWritePending = 0;
             io_connected(ctx, flow, NEAT_OK);
@@ -5124,10 +5132,6 @@ static void handle_connect(struct socket *sock, void *arg, int flags)
             flow->socket->family = poll_socket->family;
             flow->socket->stack = poll_socket->stack;
             flow->socket->type = poll_socket->type;
-            flow->socket->write_size = candidate->writeSize;
-            flow->socket->write_limit = candidate->writeLimit;
-            flow->socket->read_size = candidate->readSize;
-            flow->socket->sctp_explicit_eor = candidate->isSCTPExplicitEOR;
 
             if (candidate->properties != flow->properties) {
                 json_incref(candidate->properties);
@@ -5136,6 +5140,10 @@ static void handle_connect(struct socket *sock, void *arg, int flags)
             }
 
             flow->everConnected = 1;
+            flow->writeSize = candidate->writeSize;
+            flow->writeLimit = candidate->writeLimit;
+            flow->readSize = candidate->readSize;
+            flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
             flow->isPolling = 1;
 
             send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
@@ -5252,24 +5260,24 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow,
     usrsctp_set_upcall(listen_socket->usrsctp_socket, handle_upcall, (void*)listen_socket);
     len = (socklen_t)sizeof(int);
     if (usrsctp_getsockopt(listen_socket->usrsctp_socket, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
-        flow->socket->write_size = size;
+        flow->writeSize = size;
     } else {
-        flow->socket->write_size = 0;
+        flow->writeSize = 0;
     }
     len = (socklen_t)sizeof(int);
     if (usrsctp_getsockopt(listen_socket->usrsctp_socket, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
-        flow->socket->read_size = size;
+        flow->readSize = size;
     } else {
-        flow->socket->read_size = 0;
+        flow->readSize = 0;
     }
-    flow->socket->write_limit = flow->socket->write_size / 4;
+    flow->writeLimit = flow->writeSize / 4;
 
 #ifdef SCTP_NODELAY
     usrsctp_setsockopt(listen_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
 #endif
 #ifdef SCTP_EXPLICIT_EOR
         if (usrsctp_setsockopt(listen_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
-            flow->socket->sctp_explicit_eor = 1;
+            flow->isSCTPExplicitEOR = 1;
 #endif
     usrsctp_setsockopt(listen_socket->usrsctp_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     char addrbuf[slen];

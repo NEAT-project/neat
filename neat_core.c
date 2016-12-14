@@ -4558,21 +4558,21 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         }
 #endif // defined(SCTP_RECVRCVINFO)
 #if defined(SCTP_ADAPTATION_LAYER)
-        // Set adaption layer indication
-        struct sctp_setadaptation adaption;
-        memset(&adaption, 0, sizeof(adaption));
-        adaption.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
+        // Set adaptation layer indication
+        struct sctp_setadaptation adaptation;
+        memset(&adaptation, 0, sizeof(adaptation));
+        adaptation.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
         if (setsockopt(candidate->pollable_socket->fd,
                         IPPROTO_SCTP,
                         SCTP_ADAPTATION_LAYER,
-                        &adaption,
-                        sizeof(adaption)) < 0) {
+                        &adaptation,
+                        sizeof(adaptation)) < 0) {
             neat_log(NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
             return -1;
         }
 #endif // defined(SCTP_ADAPTATION_LAYER)
 #if defined(SCTP_ENABLE_STREAM_RESET)
-        // Set adaption layer indication
+        // Set adaptation layer indication
         struct sctp_assoc_value assoc_value;
         memset(&assoc_value, 0, sizeof(assoc_value));
         assoc_value.assoc_value = SCTP_ENABLE_RESET_STREAM_REQ;
@@ -4758,10 +4758,10 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         neat_sctp_init_events(fd);
 #endif
 #if defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT)
-        struct sctp_setadaptation adaption;
-        memset(&adaption, 0, sizeof(adaption));
-        adaption.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
-        if (setsockopt(fd, IPPROTO_SCTP, SCTP_ADAPTATION_LAYER, &adaption, sizeof(adaption)) < 0) {
+        struct sctp_setadaptation adaptation;
+        memset(&adaptation, 0, sizeof(adaptation));
+        adaptation.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
+        if (setsockopt(fd, IPPROTO_SCTP, SCTP_ADAPTATION_LAYER, &adaptation, sizeof(adaptation)) < 0) {
             neat_log(NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
             return -1;
         }

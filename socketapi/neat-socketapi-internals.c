@@ -161,6 +161,17 @@ struct neat_socketapi_internals* nsa_initialize()
 void nsa_cleanup()
 {
    if(gSocketAPIInternals) {
+      /*
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      struct neat_socket* neatSocket = (struct neat_socket*)rbt_get_first(&gSocketAPIInternals->nsi_socket_set);
+      while(neatSocket != NULL) {
+         printf("XXXXX sd=%d\n", neatSocket->ns_descriptor);
+         nsa_close(neatSocket->ns_descriptor);
+         neatSocket = (struct neat_socket*)rbt_get_first(&gSocketAPIInternals->nsi_socket_set);
+      }
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      */
+
       if(gSocketAPIInternals->nsi_main_loop_thread != 0) {
          pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
          gSocketAPIInternals->nsi_main_loop_thread_shutdown = true;

@@ -56,7 +56,7 @@ int main(int argc, char** argv)
       perror("nsa_accept() failed");
    }
 
-//    nsa_close(sd);
+   nsa_close(sd);
 
    nsa_cleanup();
    return 0;

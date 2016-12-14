@@ -1,12 +1,13 @@
 import bisect
 import copy
 import hashlib
-import itertools
 import json
 import logging
 import operator
-import time
 from collections import ChainMap
+
+import itertools
+import time
 
 from pmconst import *
 from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
@@ -58,9 +59,14 @@ class CIBNode(object):
         properties = node_dict.get('properties')
         if properties is None:
             raise CIBEntryError("CIB entry has no 'property' attribute")
-        if not isinstance(properties, list):
-            # properties should be in a list [NEW STYLE]: FIXME explain why
+        elif not isinstance(properties, list):
+            # properties should be in a list. The list elements are expanded when generating the CIB rows.
             properties = [properties]
+
+        self.properties = list()
+        for p in properties:
+            pa = PropertyMultiArray(*dict_to_properties(p))
+            self.properties.append(pa)
 
         self.linked = set()
         self.match = []
@@ -71,11 +77,6 @@ class CIBNode(object):
 
         if self.link and not self.match:
             logging.warning('link attribute set but no match field!')
-
-        self.properties = []
-        for p in properties:
-            pa = PropertyMultiArray(*dict_to_properties(p))
-            self.properties.append(pa)
 
         self.uid = node_dict.get('uid')
         if self.uid is None:
@@ -182,10 +183,11 @@ class CIBNode(object):
 
         for match_properties in self.match:
             for node in self.cib.nodes.values():
-                if node.uid == self.uid: continue
+                if node.uid == self.uid: continue  # ??
                 for p in node.expand():
                     # Check if the properties in the match list are a full subset of some CIB properties.
-                    if match_properties <= set(p.values()):
+                    # Also include the CIB uid as a property while matching
+                    if match_properties <= set(p.values()) | {NEATProperty(('uid', node.uid))}:
                         self.linked.add(node.uid)
 
     def resolve_graph(self, path=None):

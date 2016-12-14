@@ -45,7 +45,7 @@ struct event_signal_node
    struct event_signal*           esn_event_signal_ptr;
 };
 
- struct event_signal
+struct event_signal
 {
    pthread_mutex_t                          es_mutex;
    pthread_cond_t                           es_condition;

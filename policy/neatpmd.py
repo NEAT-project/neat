@@ -33,12 +33,20 @@ else:
 PIB_DIR = args.pib
 CIB_DIR = args.cib
 
-# Make sure the socket does not already exist
+try:
+    os.makedirs(os.path.dirname(DOMAIN_SOCK), exist_ok=True)
+    os.makedirs(os.path.dirname(pmconst.PIB_SOCK), exist_ok=True)
+    os.makedirs(os.path.dirname(pmconst.CIB_SOCK), exist_ok=True)
+except OSError as e:
+    print(e)
+    exit(0)
+
+# unlink sockets if they already exist
 try:
     os.unlink(DOMAIN_SOCK)
     os.unlink(pmconst.PIB_SOCK)
     os.unlink(pmconst.CIB_SOCK)
-except OSError:
+except OSError as e:
     if os.path.exists(DOMAIN_SOCK):
         raise
 
@@ -285,6 +293,7 @@ if __name__ == "__main__":
     cib_server = loop.run_until_complete(coro_cib)
 
     # interactive debug mode
+    logging.debug('Use Ctrl-\\ to enter interactive debug mode.')
     loop.add_signal_handler(signal.SIGQUIT, signal_handler)
 
     # try to start the PM REST interface

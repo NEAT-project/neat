@@ -216,7 +216,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             neat_log(NEAT_LOG_DEBUG, "%s - using piggyback assoc", __func__);
             // we have a piggyback assoc...
 
-            LIST_INSERT_HEAD(&multistream_socket->sctp_multistream_flows, flow, next_multistream_flow);
+            LIST_INSERT_HEAD(&multistream_socket->sctp_multistream_flows, flow, multistream_next_flow);
             multistream_socket->sctp_streams_used++;
 
             flow->multistream_id = multistream_socket->sctp_streams_used;
@@ -241,13 +241,13 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             return NEAT_ERROR_OK;
 
         // if there is no piggyback assoc, wait if we didnt already : We reschedule the *complete* he-process!
-        } else if (flow->multistreamCheck == 0 && neat_wait_for_multistream_socket(ctx, flow)) {
+        } else if (flow->multistream_check == 0 && neat_wait_for_multistream_socket(ctx, flow)) {
             neat_log(NEAT_LOG_DEBUG, "%s - waiting for another assoc", __func__);
-            flow->multistreamCheck = 1;
+            flow->multistream_check = 1;
 
             flow->multistream_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
             assert(flow->multistream_timer != NULL);
-            flow->multistreamCheck = 1;
+            flow->multistream_check = 1;
 
             uv_timer_init(flow->ctx->loop, flow->multistream_timer);
             uv_timer_start(flow->multistream_timer, on_delayed_he_open, 200, 0);

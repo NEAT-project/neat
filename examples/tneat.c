@@ -211,7 +211,7 @@ on_writable(struct neat_flow_operations *opCB)
 
     if (config_log_level >= 2) {
         printf("neat_write - # %u - %d byte\n", tnf->snd.calls, config_snd_buffer_size);
-        if (config_log_level >= 3) {
+        if (config_log_level >= 4) {
             printf("neat_write - content\n");
             fwrite(tnf->snd.buffer, sizeof(char), config_snd_buffer_size, stdout);
             printf("\n");
@@ -272,7 +272,7 @@ on_readable(struct neat_flow_operations *opCB)
 
         if (config_log_level >= 2) {
             printf("neat_read - # %u - %d byte\n", tnf->rcv.calls, buffer_filled);
-            if (config_log_level >= 3) {
+            if (config_log_level >= 4) {
                 fwrite(tnf->rcv.buffer, sizeof(char), buffer_filled, stdout);
                 printf("\n");
             }
@@ -464,7 +464,9 @@ main(int argc, char *argv[])
         neat_log_level(NEAT_LOG_ERROR);
     } else if (config_log_level == 1){
         neat_log_level(NEAT_LOG_WARNING);
-    } else {
+    } else if (config_log_level == 2){
+        neat_log_level(NEAT_LOG_INFO);
+    }else {
         neat_log_level(NEAT_LOG_DEBUG);
     }
 

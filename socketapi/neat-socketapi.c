@@ -132,8 +132,14 @@ int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
-
-      return(0);
+      if(addrcnt >= 1) {
+         neatSocket->ns_port = get_port(addrs);
+         return(0);
+      }
+      else {
+         errno = EINVAL;
+         return(-1);
+      }
    }
    else {
        if( (addrcnt == 1) && (flags == 0) ) {
@@ -186,8 +192,36 @@ int nsa_listen(int sockfd, int backlog)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      const neat_error_code result = neat_accept(gSocketAPIInternals->nsi_neat_context,
+                                                 neatSocket->ns_flow,
+                                                 neatSocket->ns_port,
+                                                 NULL, 0);
+      if(result == NEAT_OK) {
+         neatSocket->ns_flags |= NSAF_LISTENING;
+      }
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
-      return(0);
+      switch(result) {
+         case NEAT_OK:
+            return(0);
+          break;
+         case NEAT_ERROR_UNABLE:
+             errno = EOPNOTSUPP;
+             return(-1);
+          break;
+         case NEAT_ERROR_BAD_ARGUMENT:
+             errno = EINVAL;
+             return(-1);
+          break;
+         case NEAT_ERROR_OUT_OF_MEMORY:
+             errno = ENOMEM;
+             return(-1);
+          break;
+      }
+
+      errno = ENOENT;   /* Unexpected error from NEAT Core */
+      return(-1);
    }
    else {
       return(listen(neatSocket->ns_socket_sd, backlog));
@@ -200,6 +234,24 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
+       if(neatSocket->ns_flags & NSAF_LISTENING) {
+          if(!(neatSocket->ns_flags & NSAF_NONBLOCKING)) {
+printf("ACCEPT-FLOW=%p\n", (void*)neatSocket->ns_flow);
+             nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
+puts("x4");
+
+             return(-1);
+
+          }
+       }
+       else {
+          errno = EOPNOTSUPP;
+          return(-1);
+       }
+
+//       pthread_mutex_lock(&neatSocket->ns_mutex);
+//
+//       pthread_mutex_unlock(&neatSocket->ns_mutex);
 
       return(0);
    }
@@ -259,7 +311,7 @@ int nsa_fcntl(int fd, int cmd, ...)
       return(flags);
    }
    else {
-       pthread_mutex_lock(&neatSocket->ns_mutex);
+      pthread_mutex_lock(&neatSocket->ns_mutex);
       if(arg & O_NONBLOCK) {
          neatSocket->ns_flags |= NSAF_NONBLOCKING;
       }

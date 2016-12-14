@@ -203,7 +203,8 @@ static neat_error_code on_error(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
    neatSocket->ns_flags |= NSAF_BAD;
    puts("on_error");
-   return(0);
+   es_broadcast(&neatSocket->ns_read_signal);
+   return(NEAT_OK);
 }
 
 
@@ -214,7 +215,9 @@ static neat_error_code on_connected(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
    neatSocket->ns_flags |= NSAF_CONNECTED;
    puts("on_connected");
-   return(0);
+   printf("ACCEPTED-FLOW=%p\n", (void*)ops->flow);
+   es_broadcast(&neatSocket->ns_read_signal);
+   return(NEAT_OK);
 }
 
 
@@ -225,7 +228,8 @@ static neat_error_code on_readable(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
    neatSocket->ns_flags |= NSAF_READABLE;
    puts("on_readable");
-   return(0);
+   es_broadcast(&neatSocket->ns_read_signal);
+   return(NEAT_OK);
 }
 
 
@@ -236,7 +240,8 @@ static neat_error_code on_writable(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
    neatSocket->ns_flags |= NSAF_WRITABLE;
    puts("on_writable");
-   return(0);
+   es_broadcast(&neatSocket->ns_write_signal);
+   return(NEAT_OK);
 }
 
 
@@ -247,7 +252,8 @@ static neat_error_code on_all_written(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
    neatSocket->ns_flags |= NSAF_WRITABLE;
    puts("on_all_written");
-   return(0);
+   es_broadcast(&neatSocket->ns_write_signal);
+   return(NEAT_OK);
 }
 
 
@@ -257,7 +263,7 @@ static neat_error_code on_network_status_changed(struct neat_flow_operations* op
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
    puts("on_network_status_changed");
-   return(0);
+   return(NEAT_OK);
 }
 
 
@@ -268,7 +274,7 @@ static neat_error_code on_aborted(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
    neatSocket->ns_flags |= NSAF_BAD;
    puts("on_aborted");
-   return(0);
+   return(NEAT_OK);
 }
 
 
@@ -279,7 +285,7 @@ static neat_error_code on_timeout(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
    neatSocket->ns_flags |= NSAF_BAD;
    puts("on_timeout");
-   return(0);
+   return(NEAT_OK);
 }
 
 
@@ -290,7 +296,7 @@ static neat_error_code on_close(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
    neatSocket->ns_flags |= NSAF_BAD;
    puts("on_close");
-   return(0);
+   return(NEAT_OK);
 }
 
 

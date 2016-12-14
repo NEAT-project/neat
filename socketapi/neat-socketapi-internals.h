@@ -64,8 +64,9 @@ struct neat_socketapi_internals
 
 #define NSAF_READABLE         (1 << 0)
 #define NSAF_WRITABLE         (1 << 1)
-#define NSAF_CONNECTED        (1 << 2)
-#define NSAF_BAD              (1 << 3)
+#define NSAF_LISTENING        (1 << 2)
+#define NSAF_CONNECTED        (1 << 3)
+#define NSAF_BAD              (1 << 4)
 
 #define NSAF_NONBLOCKING      (1 << 6)
 #define NSAF_CLOSE_ON_REMOVAL (1 << 7)
@@ -75,7 +76,6 @@ struct neat_socket
    struct redblacktree_node    ns_node;
    pthread_mutex_t             ns_mutex;
    int                         ns_descriptor;
-
    int                         ns_flags;
 
    struct neat_flow*           ns_flow;
@@ -84,6 +84,7 @@ struct neat_socket
    int                         ns_socket_type;
    int                         ns_socket_protocol;
    int                         ns_socket_sd;
+   uint16_t                    ns_port;
 
    struct event_signal         ns_read_signal;
    struct event_signal         ns_write_signal;

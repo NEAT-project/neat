@@ -60,14 +60,19 @@ int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)
    es_new(&pollStorage.ps_write_signal , &pollStorage.ps_global_signal);
    es_new(&pollStorage.ps_exception_signal, &pollStorage.ps_global_signal);
 
+puts("P1");
    result = 0;
    for(nfds_t i = 0;i < nfds;i++) {
       struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(ufds[i].fd);
       if(neatSocket != NULL) {
          pthread_mutex_lock(&neatSocket->ns_mutex);
          if(neatSocket->ns_flow != NULL) {
-            es_add_parent(&neatSocket->ns_read_signal, &pollStorage.ps_read_signal);
-            es_add_parent(&neatSocket->ns_write_signal, &pollStorage.ps_write_signal);
+            if(ufds[i].events & POLLIN) {
+               es_add_parent(&neatSocket->ns_read_signal, &pollStorage.ps_read_signal);
+            }
+            if(ufds[i].events & POLLOUT) {
+               es_add_parent(&neatSocket->ns_write_signal, &pollStorage.ps_write_signal);
+            }
             es_add_parent(&neatSocket->ns_exception_signal, &pollStorage.ps_exception_signal);
          }
          else {
@@ -89,11 +94,14 @@ int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)
    /* ====== Wait for signal or timeout ================================== */
    if(result == 0) {
       /* Only wait when there are no notifications */
+puts("P4a");
       es_timed_wait(&pollStorage.ps_global_signal, timeout);
+puts("P4b");
    }
 
 
    /* ====== Handle results ============================================== */
+puts("P5");
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
    for(nfds_t i = 0;i < nfds;i++) {

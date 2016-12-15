@@ -4987,7 +4987,7 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
 
     // Subscribe to SCTP events
     neat_sctp_init_events(candidate->pollable_socket->usrsctp_socket);
-    pollable_socket->sctp_notification_wait = 1;
+    candidate->pollable_socket->sctp_notification_wait = 1;
 
     neat_log(NEAT_LOG_INFO, "%s: Connect from %s to %s", __func__,
        inet_ntop(AF_INET, &(((struct sockaddr_in *) &(candidate->pollable_socket->src_sockaddr))->sin_addr), addrsrcbuf, slen),
@@ -5108,6 +5108,10 @@ static void handle_connect(struct socket *sock, void *arg, int flags)
             flow->socket->family = poll_socket->family;
             flow->socket->stack = poll_socket->stack;
             flow->socket->type = poll_socket->type;
+            flow->socket->write_size = poll_socket->write_size;
+            flow->socket->write_limit = poll_socket->write_limit;
+            flow->socket->read_size = poll_socket->read_size;
+            flow->socket->sctp_explicit_eor = poll_socket->sctp_explicit_eor;
 
             if (candidate->properties != flow->properties) {
                 json_incref(candidate->properties);
@@ -5116,10 +5120,6 @@ static void handle_connect(struct socket *sock, void *arg, int flags)
             }
 
             flow->everConnected = 1;
-            flow->writeSize = candidate->writeSize;
-            flow->writeLimit = candidate->writeLimit;
-            flow->readSize = candidate->readSize;
-            flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
             flow->isPolling = 1;
 
             send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
@@ -5236,30 +5236,31 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx, struct neat_flow *flow,
     usrsctp_set_upcall(listen_socket->usrsctp_socket, handle_upcall, (void*)listen_socket);
     len = (socklen_t)sizeof(int);
     if (usrsctp_getsockopt(listen_socket->usrsctp_socket, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
-        flow->writeSize = size;
+        listen_socket->write_size = size;
     } else {
-        flow->writeSize = 0;
+        listen_socket->write_size = 0;
     }
     len = (socklen_t)sizeof(int);
     if (usrsctp_getsockopt(listen_socket->usrsctp_socket, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
-        flow->readSize = size;
+        listen_socket->read_size = size;
     } else {
-        flow->readSize = 0;
+        listen_socket->read_size = 0;
     }
-    flow->writeLimit = flow->writeSize / 4;
+    listen_socket->write_limit = listen_socket->write_size / 4;
 
 #ifdef SCTP_NODELAY
     usrsctp_setsockopt(listen_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
 #endif
 #ifdef SCTP_EXPLICIT_EOR
-        if (usrsctp_setsockopt(listen_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
-            flow->isSCTPExplicitEOR = 1;
+    if (usrsctp_setsockopt(listen_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0) {
+        listen_socket->sctp_explicit_eor = 1;
+    }
 #endif
     usrsctp_setsockopt(listen_socket->usrsctp_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     char addrbuf[slen];
     neat_log(NEAT_LOG_INFO, "%s: Bind to %s", __func__,
-        inet_ntop(AF_INET, &(((struct sockaddr_in *)(&listen_socket->srcAddr))->sin_addr), addrbuf, slen));
-    if (usrsctp_bind(listen_socket->usrsctp_socket, (struct sockaddr *)(&listen_socket->srcAddr), slen) == -1) {
+        inet_ntop(AF_INET, &(((struct sockaddr_in *)(&listen_socket->src_sockaddr))->sin_addr), addrbuf, slen));
+    if (usrsctp_bind(listen_socket->usrsctp_socket, (struct sockaddr *)(&listen_socket->src_sockaddr), slen) == -1) {
         neat_log(NEAT_LOG_ERROR, "%s: Error binding usrsctp socket - %s", __func__, strerror(errno));
         return -1;
     }

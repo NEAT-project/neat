@@ -207,7 +207,7 @@ int main(int argc, char** argv)
 
 
       // ====== Shutdown connection ==========================================
-      nsa_shutdown(newSD, 2);
+      nsa_shutdown(newSD, SHUT_RDWR);
       nsa_close(newSD);
    }
 

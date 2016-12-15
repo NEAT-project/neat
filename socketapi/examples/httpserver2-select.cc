@@ -233,7 +233,7 @@ void ClientList::handleEvent(ClientList::ClientListEntry* entry)
                handleHTTPCommand(entry->SocketDescriptor, entry->ID,
                                  entry->Command);
 
-               nsa_shutdown(entry->SocketDescriptor, 2);
+               nsa_shutdown(entry->SocketDescriptor, SHUT_RDWR);
                nsa_close(entry->SocketDescriptor);
                remove(entry->SocketDescriptor);
                break;

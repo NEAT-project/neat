@@ -159,7 +159,7 @@ void ServiceThread::run()
 
 
    // ====== Shutdown connection ==========================================
-   nsa_shutdown(SocketDesc, 2);
+   nsa_shutdown(SocketDesc, SHUT_RDWR);
    nsa_close(SocketDesc);
    SocketDesc = -1;
 }

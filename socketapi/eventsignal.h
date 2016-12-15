@@ -47,10 +47,10 @@ struct event_signal_node
 
 struct event_signal
 {
-   pthread_mutex_t                          es_mutex;
-   pthread_cond_t                           es_condition;
-   bool                                     es_has_fired;
-   TAILQ_HEAD(slisthead, event_signal_node) es_parent_list;
+   pthread_mutex_t                                         es_mutex;
+   pthread_cond_t                                          es_condition;
+   bool                                                    es_has_fired;
+   TAILQ_HEAD(event_signal_node_header, event_signal_node) es_parent_list;
 };
 
 

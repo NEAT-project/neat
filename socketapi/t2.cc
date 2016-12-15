@@ -7,11 +7,11 @@
 
 struct event_signal_node
 {
-   TAILQ_ENTRY(event_signal_node) esn_node;
    int num;
+   TAILQ_ENTRY(event_signal_node) esn_node;
 };
 
- struct event_signal
+struct event_signal
 {
    bool            es_has_fired;
    TAILQ_HEAD(slisthead, event_signal_node) es_parent_list;

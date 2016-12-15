@@ -212,9 +212,13 @@ static neat_error_code on_error(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+
+   pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_BAD;
    puts("on_error");
    es_broadcast(&neatSocket->ns_read_signal);
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+
    return(NEAT_OK);
 }
 
@@ -222,24 +226,28 @@ static neat_error_code on_error(struct neat_flow_operations* ops)
 /* ###### NEAT on_connected() callback ################################### */
 static neat_error_code on_connected(struct neat_flow_operations* ops)
 {
+   neat_error_code     result     = NEAT_OK;
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
 
+   pthread_mutex_lock(&neatSocket->ns_mutex);
+
    /* ====== Handle neat socket ===================================== */
    if(neatSocket->ns_flags & NSAF_LISTENING) {
-      puts("on_connected");
-      printf("ACCEPTED-FLOW=%p   (original=%p)\n", (void*)ops->flow, (void*)neatSocket->ns_flow);
-
       const int newSD = nsa_socket_internal(0, 0, 0, 0, ops->flow, -1);
-      printf("!!! newSD=%d\n", newSD);
       if(newSD >= 0) {
+         struct neat_socket* newSocket = nsa_get_socket_for_descriptor(newSD);
+         assert(newSocket != NULL);
+
+         TAILQ_INSERT_TAIL(&neatSocket->ns_accept_list,
+                           newSocket, ns_accept_node);
+
          es_broadcast(&neatSocket->ns_read_signal);
-         return(NEAT_OK);
       }
       else {
          perror("nsa_socket_internal() failed");
          neat_abort(gSocketAPIInternals->nsi_neat_context, ops->flow);
-         return(NEAT_ERROR_INTERNAL);
+         result = NEAT_ERROR_INTERNAL;
       }
    }
 
@@ -247,8 +255,10 @@ static neat_error_code on_connected(struct neat_flow_operations* ops)
    else {
       neatSocket->ns_flags |= NSAF_CONNECTED;
       es_broadcast(&neatSocket->ns_read_signal);
-      return(NEAT_OK);
    }
+
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+   return(result);
 }
 
 
@@ -257,9 +267,11 @@ static neat_error_code on_readable(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+   pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_READABLE;
    puts("on_readable");
    es_broadcast(&neatSocket->ns_read_signal);
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
    return(NEAT_OK);
 }
 
@@ -269,9 +281,13 @@ static neat_error_code on_writable(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+
+   pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_WRITABLE;
    puts("on_writable");
    es_broadcast(&neatSocket->ns_write_signal);
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+
    return(NEAT_OK);
 }
 
@@ -281,9 +297,13 @@ static neat_error_code on_all_written(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+
+   pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_WRITABLE;
    puts("on_all_written");
    es_broadcast(&neatSocket->ns_write_signal);
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+
    return(NEAT_OK);
 }
 
@@ -293,7 +313,11 @@ static neat_error_code on_network_status_changed(struct neat_flow_operations* op
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+
+   pthread_mutex_lock(&neatSocket->ns_mutex);
    puts("on_network_status_changed");
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+
    return(NEAT_OK);
 }
 
@@ -303,8 +327,12 @@ static neat_error_code on_aborted(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+
+   pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_BAD;
    puts("on_aborted");
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+
    return(NEAT_OK);
 }
 
@@ -314,8 +342,12 @@ static neat_error_code on_timeout(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+
+   pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_BAD;
    puts("on_timeout");
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+
    return(NEAT_OK);
 }
 
@@ -325,8 +357,12 @@ static neat_error_code on_close(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+
+   pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_BAD;
    puts("on_close");
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+
    return(NEAT_OK);
 }
 
@@ -337,8 +373,11 @@ static void on_send_failure(struct neat_flow_operations* ops,
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+
+   pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_BAD;
    puts("on_send_failure");
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
 }
 
 
@@ -347,7 +386,10 @@ static void on_slowdown(struct neat_flow_operations* ops, int ecn, uint32_t rate
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+
+   pthread_mutex_lock(&neatSocket->ns_mutex);
    puts("on_slowdown");
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
 }
 
 
@@ -356,7 +398,10 @@ static void on_rate_hint(struct neat_flow_operations* ops, uint32_t new_rate)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+
+   pthread_mutex_lock(&neatSocket->ns_mutex);
    puts("on_rate_hint");
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
 }
 
 
@@ -418,6 +463,7 @@ int nsa_socket_internal(int domain, int type, int protocol,
    neatSocket->ns_socket_domain   = domain;
    neatSocket->ns_socket_type     = type;
    neatSocket->ns_socket_protocol = protocol;
+   TAILQ_INIT(&neatSocket->ns_accept_list);
 
    /* ====== Add new socket to socket storage ============================ */
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);

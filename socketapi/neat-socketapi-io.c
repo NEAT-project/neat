@@ -59,6 +59,16 @@ NEAT_EXTERN neat_error_code neat_readv(struct neat_ctx *ctx, struct neat_flow *f
 }
 
 
+inline static ssize_t get_iov_sum(const struct iovec *iov, size_t iovlen)
+{
+   ssize_t total = 0;
+   for(size_t i = 0; i < iovlen; i++) {
+      total += iov[i].iov_len;
+   }
+   return(total);
+}
+
+
 /* ###### NEAT sendmsg() implementation ################################## */
 ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
 {
@@ -89,7 +99,7 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
       /* ====== Handle result ============================================ */
       switch(result) {
          case NEAT_OK:
-            return(0);
+            return(get_iov_sum(msg->msg_iov, msg->msg_iovlen));
           break;
          case NEAT_ERROR_WOULD_BLOCK:
              errno = EAGAIN;

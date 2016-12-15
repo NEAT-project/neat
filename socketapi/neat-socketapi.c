@@ -95,6 +95,8 @@ int nsa_close(int fd)
 {
    GET_NEAT_SOCKET(fd)
 
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
    pthread_mutex_lock(&neatSocket->ns_mutex);
 
    /* ====== Close accepted sockets first ================================ */
@@ -118,11 +120,9 @@ int nsa_close(int fd)
    }
 
    /* ====== Remove socket ===============================================*/
-   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
    rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
    ibm_free_id(gSocketAPIInternals->nsi_socket_identifier_bitmap, neatSocket->ns_descriptor);
    neatSocket->ns_descriptor = -1;
-   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
    nq_delete(&neatSocket->ns_notifications);
    es_delete(&neatSocket->ns_exception_signal);
@@ -130,7 +130,10 @@ int nsa_close(int fd)
    es_delete(&neatSocket->ns_read_signal);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
    pthread_mutex_destroy(&neatSocket->ns_mutex);
-   free(neatSocket);
+//    free(neatSocket);
+
+   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
    return(0);
 }
 

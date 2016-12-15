@@ -239,6 +239,9 @@ static neat_error_code on_connected(struct neat_flow_operations* ops)
          struct neat_socket* newSocket = nsa_get_socket_for_descriptor(newSD);
          assert(newSocket != NULL);
 
+         neat_set_operations(gSocketAPIInternals->nsi_neat_context,
+                             newSocket->ns_flow, &newSocket->ns_flow_ops);
+
          TAILQ_INSERT_TAIL(&neatSocket->ns_accept_list,
                            newSocket, ns_accept_node);
 

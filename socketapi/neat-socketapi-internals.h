@@ -73,19 +73,28 @@ struct neat_socketapi_internals
 
 struct neat_socket
 {
+   /* ====== Socket handling ============================================= */
    struct redblacktree_node    ns_node;
    pthread_mutex_t             ns_mutex;
    int                         ns_descriptor;
    int                         ns_flags;
 
+   /* ====== NEAT flow/system socket + parameters ======================== */
    struct neat_flow*           ns_flow;
    struct neat_flow_operations ns_flow_ops;
    int                         ns_socket_domain;
    int                         ns_socket_type;
    int                         ns_socket_protocol;
    int                         ns_socket_sd;
+
+   /* ====== bind() handling ============================================= */
    uint16_t                    ns_port;
 
+   /* ====== listen() handling =========================================== */
+   int                         ns_listen_backlog;
+   int*                        ns_next_accepted_socket;
+
+   /* ====== Signals and notification queue ============================== */
    struct event_signal         ns_read_signal;
    struct event_signal         ns_write_signal;
    struct event_signal         ns_exception_signal;

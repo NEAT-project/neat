@@ -192,15 +192,24 @@ int nsa_listen(int sockfd, int backlog)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
-      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-      const neat_error_code result = neat_accept(gSocketAPIInternals->nsi_neat_context,
-                                                 neatSocket->ns_flow,
-                                                 neatSocket->ns_port,
-                                                 NULL, 0);
-      if(result == NEAT_OK) {
-         neatSocket->ns_flags |= NSAF_LISTENING;
+
+      pthread_mutex_lock(&neatSocket->ns_mutex);
+      neat_error_code result = NEAT_OK;
+      if(!(neatSocket->ns_flags & NSAF_LISTENING)) {
+         result = neat_accept(gSocketAPIInternals->nsi_neat_context,
+                              neatSocket->ns_flow, neatSocket->ns_port,
+                              NULL, 0);
       }
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      if(result == NEAT_OK) {
+         neatSocket->ns_listen_backlog = backlog;
+         if(backlog > 0) {
+            neatSocket->ns_flags |= NSAF_LISTENING;
+         }
+         else {
+            neatSocket->ns_flags &= ~NSAF_LISTENING;
+         }
+      }
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
 
       switch(result) {
          case NEAT_OK:

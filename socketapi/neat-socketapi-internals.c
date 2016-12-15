@@ -224,11 +224,31 @@ static neat_error_code on_connected(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
-   neatSocket->ns_flags |= NSAF_CONNECTED;
-   puts("on_connected");
-   printf("ACCEPTED-FLOW=%p\n", (void*)ops->flow);
-   es_broadcast(&neatSocket->ns_read_signal);
-   return(NEAT_OK);
+
+   /* ====== Handle neat socket ===================================== */
+   if(neatSocket->ns_flags & NSAF_LISTENING) {
+      puts("on_connected");
+      printf("ACCEPTED-FLOW=%p   (original=%p)\n", (void*)ops->flow, (void*)neatSocket->ns_flow);
+
+      const int newSD = nsa_socket_internal(0, 0, 0, 0, ops->flow, -1);
+      printf("!!! newSD=%d\n", newSD);
+      if(newSD >= 0) {
+         es_broadcast(&neatSocket->ns_read_signal);
+         return(NEAT_OK);
+      }
+      else {
+         perror("nsa_socket_internal() failed");
+         neat_abort(gSocketAPIInternals->nsi_neat_context, ops->flow);
+         return(NEAT_ERROR_INTERNAL);
+      }
+   }
+
+   /* ====== Handle connecting socket ==================================== */
+   else {
+      neatSocket->ns_flags |= NSAF_CONNECTED;
+      es_broadcast(&neatSocket->ns_read_signal);
+      return(NEAT_OK);
+   }
 }
 
 
@@ -406,7 +426,7 @@ int nsa_socket_internal(int domain, int type, int protocol,
    }
    else {
       neatSocket->ns_descriptor = ibm_allocate_specific_id(gSocketAPIInternals->nsi_socket_identifier_bitmap,
-                                                        requestedSD);
+                                                           requestedSD);
    }
    if(neatSocket->ns_descriptor >= 0) {
       assert(rbt_insert(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node) == &neatSocket->ns_node);

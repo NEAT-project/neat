@@ -191,7 +191,6 @@ int nsa_listen(int sockfd, int backlog)
          else {
             neatSocket->ns_flags &= ~NSAF_LISTENING;
          }
-         nsa_set_socket_event_on_read(neatSocket, true);
       }
       pthread_mutex_unlock(&neatSocket->ns_mutex);
 
@@ -240,24 +239,25 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             if( (newSocket == NULL) &&
                 (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) ) {
                /* ====== Blocking mode: wait ============================= */
+               es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
                pthread_mutex_unlock(&neatSocket->ns_mutex);
                nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
                pthread_mutex_lock(&neatSocket->ns_mutex);
                newSocket = TAILQ_FIRST(&neatSocket->ns_accept_list);
             }
 
-           /* ====== Remove new socket from accept queue ================= */
-           if(newSocket) {
-              TAILQ_REMOVE(&neatSocket->ns_accept_list, newSocket, ns_accept_node);
-              result = newSocket->ns_descriptor;
-           }
+            /* ====== Remove new socket from accept queue ================= */
+            if(newSocket) {
+               TAILQ_REMOVE(&neatSocket->ns_accept_list, newSocket, ns_accept_node);
+               result = newSocket->ns_descriptor;
+            }
 
-           /* ====== Fill in peer address ================================ */
-           if(addrlen != NULL) {
-              memset(addr, 0, sizeof(struct sockaddr_in));
-              *addrlen = sizeof(struct sockaddr_in);
-              ((struct sockaddr_in*)addr)->sin_family = AF_INET;
-           }
+            /* ====== Fill in peer address ================================ */
+            if(addrlen != NULL) {
+               memset(addr, 0, sizeof(struct sockaddr_in));
+               *addrlen = sizeof(struct sockaddr_in);
+               ((struct sockaddr_in*)addr)->sin_family = AF_INET;
+            }
         }
         else {
            errno  = EOPNOTSUPP;
@@ -298,8 +298,24 @@ int nsa_shutdown(int sockfd, int how)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
+      pthread_mutex_lock(&neatSocket->ns_mutex);
+      const neat_error_code result =
+         neat_shutdown(gSocketAPIInternals->nsi_neat_context,
+                       neatSocket->ns_flow);
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
 
-      return(0);
+      switch(result) {
+         case NEAT_OK:
+            return(0);
+          break;
+         case NEAT_ERROR_IO:
+             errno = EIO;
+             return(-1);
+          break;
+      }
+
+      errno = ENOENT;   /* Unexpected error from NEAT Core */
+      return(-1);
    }
    else {
       return(shutdown(neatSocket->ns_socket_sd, how));

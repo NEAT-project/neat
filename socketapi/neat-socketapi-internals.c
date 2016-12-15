@@ -307,6 +307,7 @@ static neat_error_code on_all_written(struct neat_flow_operations* ops)
    neatSocket->ns_flags |= NSAF_WRITABLE;
    puts("on_all_written");
    es_broadcast(&neatSocket->ns_write_signal);
+   nsa_set_socket_event_on_write(neatSocket, false);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
 
    return(NEAT_OK);

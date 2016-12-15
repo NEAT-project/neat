@@ -75,6 +75,7 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
           (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
           (!(flags & MSG_DONTWAIT)) ) {
          /* ====== Blocking mode: wait and try again ===================== */
+         nsa_set_socket_event_on_read(neatSocket, true);
          pthread_mutex_unlock(&neatSocket->ns_mutex);
          nsa_wait_for_event(neatSocket, POLLOUT|POLLERR, -1);
          pthread_mutex_lock(&neatSocket->ns_mutex);

@@ -40,6 +40,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <errno.h>
 #include <assert.h>
 #include <sys/ioctl.h>
@@ -228,29 +229,46 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
    if(neatSocket->ns_flow != NULL) {
       int result = -1;
 
-      pthread_mutex_lock(&neatSocket->ns_mutex);
-      if(neatSocket->ns_flags & NSAF_LISTENING) {
-          /* ====== Accept new socket ==================================== */
-          struct neat_socket* newSocket = TAILQ_FIRST(&neatSocket->ns_accept_list);
-          if( (newSocket == NULL) &&
-              (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) ) {
-            /* ====== Blocking mode: wait ================================ */
-            pthread_mutex_unlock(&neatSocket->ns_mutex);
-            nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
-            pthread_mutex_lock(&neatSocket->ns_mutex);
-            newSocket = TAILQ_FIRST(&neatSocket->ns_accept_list);
-         }
+      if( (addrlen == NULL) ||
+          ((*addrlen == 0) || (*addrlen >= sizeof(struct sockaddr_in))) ) {
 
-         /* ====== Remove new socket from accept queue =================== */
-         if(newSocket) {
-            TAILQ_REMOVE(&neatSocket->ns_accept_list, newSocket, ns_accept_node);
-            result = newSocket->ns_descriptor;
-         }
+         pthread_mutex_lock(&neatSocket->ns_mutex);
+
+         if(neatSocket->ns_flags & NSAF_LISTENING) {
+            /* ====== Accept new socket ================================== */
+            struct neat_socket* newSocket = TAILQ_FIRST(&neatSocket->ns_accept_list);
+            if( (newSocket == NULL) &&
+                (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) ) {
+               /* ====== Blocking mode: wait ============================= */
+               pthread_mutex_unlock(&neatSocket->ns_mutex);
+               nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
+               pthread_mutex_lock(&neatSocket->ns_mutex);
+               newSocket = TAILQ_FIRST(&neatSocket->ns_accept_list);
+            }
+
+           /* ====== Remove new socket from accept queue ================= */
+           if(newSocket) {
+              TAILQ_REMOVE(&neatSocket->ns_accept_list, newSocket, ns_accept_node);
+              result = newSocket->ns_descriptor;
+           }
+
+           /* ====== Fill in peer address ================================ */
+           if(addrlen != NULL) {
+              memset(addr, 0, sizeof(struct sockaddr_in));
+              *addrlen = sizeof(struct sockaddr_in);
+              ((struct sockaddr_in*)addr)->sin_family = AF_INET;
+           }
+        }
+        else {
+           errno  = EOPNOTSUPP;
+        }
+
+        pthread_mutex_unlock(&neatSocket->ns_mutex);
+
       }
       else {
-         errno  = EOPNOTSUPP;
+         errno = EINVAL;
       }
-       pthread_mutex_unlock(&neatSocket->ns_mutex);
 
       return(result);
    }

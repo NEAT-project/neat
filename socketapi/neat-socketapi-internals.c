@@ -274,6 +274,7 @@ static neat_error_code on_readable(struct neat_flow_operations* ops)
    neatSocket->ns_flags |= NSAF_READABLE;
    puts("on_readable");
    es_broadcast(&neatSocket->ns_read_signal);
+   nsa_set_socket_event_on_read(neatSocket, false);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
    return(NEAT_OK);
 }

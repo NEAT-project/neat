@@ -2533,14 +2533,18 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                                     memcpy((void *)&(candidate->pollable_socket->local_addr[i]), &(cand->pollable_socket->local_addr[i]), sizeof(cand->pollable_socket->local_addr[i]));
                                     candidate->pollable_socket->nr_local_addr++;
                                 }
-                                memcpy(&(candidate->pollable_socket->local_addr[candidate->pollable_socket->nr_local_addr]), &tmpsrc, result->src_addr_len);
-                                candidate->pollable_socket->nr_local_addr++;
-                                candidate->pollable_socket->src_address = strdup(cand->pollable_socket->src_address);
-                                candidate->pollable_socket->src_address =
-                                    realloc(candidate->pollable_socket->src_address,
-                                        strlen(candidate->pollable_socket->src_address) + strlen(src_buffer) + 2 * sizeof(char));
-                                strcat(candidate->pollable_socket->src_address, ",");
-                                strcat(candidate->pollable_socket->src_address, src_buffer);
+                                if (candidate->pollable_socket->nr_local_addr < MAX_LOCAL_ADDR) {
+                                    memcpy(&(candidate->pollable_socket->local_addr[candidate->pollable_socket->nr_local_addr]), &tmpsrc, result->src_addr_len);
+                                    candidate->pollable_socket->nr_local_addr++;
+                                    candidate->pollable_socket->src_address = strdup(cand->pollable_socket->src_address);
+                                    candidate->pollable_socket->src_address =
+                                        realloc(candidate->pollable_socket->src_address,
+                                            strlen(candidate->pollable_socket->src_address) + strlen(src_buffer) + 2 * sizeof(char));
+                                    strcat(candidate->pollable_socket->src_address, ",");
+                                    strcat(candidate->pollable_socket->src_address, src_buffer);
+                                } else {
+                                    neat_log(NEAT_LOG_ERROR, "The maximum number of local addresses (%d) is exceeded", MAX_LOCAL_ADDR);
+                                }
                                 TAILQ_REMOVE(candidates, cand, next);
                                 free(cand->pollable_socket->dst_address);
                                 free(cand->pollable_socket->src_address);

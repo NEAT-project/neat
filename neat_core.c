@@ -693,8 +693,11 @@ neat_error_code neat_set_operations(neat_ctx *mgr, neat_flow *flow,
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    flow->operations = ops;
+    if( (flow->operations) && (flow->ownedByCore) ) {
+       free(flow->operations);
+    }
     flow->ownedByCore = 0;
+    flow->operations = ops;
 
     if (flow->socket == NULL)
         return NEAT_OK;

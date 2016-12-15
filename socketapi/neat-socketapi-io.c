@@ -59,7 +59,8 @@ NEAT_EXTERN neat_error_code neat_readv(struct neat_ctx *ctx, struct neat_flow *f
 }
 
 
-inline static ssize_t get_iov_sum(const struct iovec *iov, size_t iovlen)
+/* ###### Get total size of iov buffers ################################## */
+static ssize_t get_iov_sum(const struct iovec *iov, size_t iovlen)
 {
    ssize_t total = 0;
    for(size_t i = 0; i < iovlen; i++) {

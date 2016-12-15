@@ -134,6 +134,7 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
           (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
           (!(flags & MSG_DONTWAIT)) ) {
          /* ====== Blocking mode: wait and try again ===================== */
+         nsa_set_socket_event_on_write(neatSocket, true);
          pthread_mutex_unlock(&neatSocket->ns_mutex);
          nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
          pthread_mutex_lock(&neatSocket->ns_mutex);

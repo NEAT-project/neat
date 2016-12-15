@@ -50,6 +50,15 @@ int main(int argc, char** argv)
          perror("nsa_write() failed");
       }
 
+      char buffer[1024];
+      ssize_t r = nsa_read(newSD, (char*)&buffer, sizeof(buffer));
+      if(r > 0) {
+         printf("r=%d\n", r);
+         if(nsa_write(newSD, buffer, r) < 0) {
+            perror("nsa_write() failed");
+         }
+      }
+
       nsa_close(newSD);
    }
    else {

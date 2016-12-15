@@ -289,6 +289,7 @@ static neat_error_code on_writable(struct neat_flow_operations* ops)
    neatSocket->ns_flags |= NSAF_WRITABLE;
    puts("on_writable");
    es_broadcast(&neatSocket->ns_write_signal);
+   nsa_set_socket_event_on_write(neatSocket, false);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
 
    return(NEAT_OK);
@@ -536,6 +537,22 @@ void nsa_close_internal(struct neat_socket* neatSocket)
    pthread_mutex_unlock(&neatSocket->ns_mutex);
    pthread_mutex_destroy(&neatSocket->ns_mutex);
    free(neatSocket);
+}
+
+
+/* ###### Enable/disable socket event on read ############################ */
+void nsa_set_socket_event_on_read(struct neat_socket* neatSocket, const bool r)
+{
+   neatSocket->ns_flow_ops.on_readable = (r) ? &on_readable : NULL;
+}
+
+
+/* ###### Enable/disable socket event on write ########################### */
+void nsa_set_socket_event_on_write(struct neat_socket* neatSocket, const bool w)
+{
+   neatSocket->ns_flow_ops.on_writable = (w) ? &on_writable : NULL;
+   neat_set_operations(gSocketAPIInternals->nsi_neat_context,
+                       neatSocket->ns_flow, &neatSocket->ns_flow_ops);
 }
 
 

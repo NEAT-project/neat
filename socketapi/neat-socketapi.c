@@ -190,6 +190,7 @@ int nsa_listen(int sockfd, int backlog)
          else {
             neatSocket->ns_flags &= ~NSAF_LISTENING;
          }
+         nsa_set_socket_event_on_read(neatSocket, true);
       }
       pthread_mutex_unlock(&neatSocket->ns_mutex);
 

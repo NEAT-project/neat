@@ -94,46 +94,17 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
 int nsa_close(int fd)
 {
    GET_NEAT_SOCKET(fd)
-
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-
-   pthread_mutex_lock(&neatSocket->ns_mutex);
-
-   /* ====== Close accepted sockets first ================================ */
-   struct neat_socket* acceptedSocket;
-   while( (acceptedSocket = TAILQ_FIRST(&neatSocket->ns_accept_list)) != NULL ) {
-      printf("CLOSE_ACCEPTED: %d\n", acceptedSocket->ns_descriptor);
-      TAILQ_REMOVE(&neatSocket->ns_accept_list, acceptedSocket, ns_accept_node);
-      nsa_close(acceptedSocket->ns_descriptor);
-   }
-
-   /* ====== Close socket ================================================ */
    if(neatSocket->ns_flow != NULL) {
+      pthread_mutex_lock(&neatSocket->ns_mutex);
+      rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
       neat_close(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow);
-      neatSocket->ns_flow = NULL;
    }
-   else if(neatSocket->ns_socket_sd >= 0) {
-      if(neatSocket->ns_flags & NSAF_CLOSE_ON_REMOVAL) {
-         close(neatSocket->ns_socket_sd);
-      }
-      neatSocket->ns_socket_sd = -1;
+   else {
+      nsa_close_internal(neatSocket);
    }
-
-   /* ====== Remove socket ===============================================*/
-   rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
-   ibm_free_id(gSocketAPIInternals->nsi_socket_identifier_bitmap, neatSocket->ns_descriptor);
-   neatSocket->ns_descriptor = -1;
-
-   nq_delete(&neatSocket->ns_notifications);
-   es_delete(&neatSocket->ns_exception_signal);
-   es_delete(&neatSocket->ns_write_signal);
-   es_delete(&neatSocket->ns_read_signal);
-   pthread_mutex_unlock(&neatSocket->ns_mutex);
-   pthread_mutex_destroy(&neatSocket->ns_mutex);
-//    free(neatSocket);
-
    pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-
    return(0);
 }
 

@@ -125,6 +125,7 @@ int get_port(const struct sockaddr* address);
 struct neat_socketapi_internals* nsa_initialize();
 int nsa_socket_internal(int domain, int type, int protocol,
                         int customFD, struct neat_flow* flow, int requestedSD);
+void nsa_close_internal(struct neat_socket* neatSocket);
 void nsa_notify_main_loop();
 
 void nsa_socket_print_function(const void* node, FILE* fd);

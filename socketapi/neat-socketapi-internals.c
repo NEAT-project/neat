@@ -361,10 +361,8 @@ static neat_error_code on_close(struct neat_flow_operations* ops)
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
 
-   pthread_mutex_lock(&neatSocket->ns_mutex);
-   neatSocket->ns_flags |= NSAF_BAD;
    puts("on_close");
-   pthread_mutex_unlock(&neatSocket->ns_mutex);
+   nsa_close_internal(neatSocket);
 
    return(NEAT_OK);
 }
@@ -493,6 +491,51 @@ int nsa_socket_internal(int domain, int type, int protocol,
       return(-1);
    }
    return(neatSocket->ns_descriptor);
+}
+
+
+/* ###### NEAT close() implementation #################################### */
+void nsa_close_internal(struct neat_socket* neatSocket)
+{
+   /* NOTE: gSocketAPIInternals->nsi_socket_set_mutex must already
+    *       be obtained when calling nsa_close_internal()! */
+
+   pthread_mutex_lock(&neatSocket->ns_mutex);
+
+   /* ====== Close accepted sockets first ================================ */
+   struct neat_socket* acceptedSocket;
+   while( (acceptedSocket = TAILQ_FIRST(&neatSocket->ns_accept_list)) != NULL ) {
+      TAILQ_REMOVE(&neatSocket->ns_accept_list, acceptedSocket, ns_accept_node);
+      nsa_close(acceptedSocket->ns_descriptor);
+   }
+
+   /* ====== Close socket ================================================ */
+   if(neatSocket->ns_flow != NULL) {
+      /* neat_close() was already called. This code is supposed to be run
+       * in on_close() callback! */
+      neatSocket->ns_flow = NULL;
+   }
+   else if(neatSocket->ns_socket_sd >= 0) {
+      if(neatSocket->ns_flags & NSAF_CLOSE_ON_REMOVAL) {
+         close(neatSocket->ns_socket_sd);
+      }
+      neatSocket->ns_socket_sd = -1;
+   }
+
+   /* ====== Remove socket ===============================================*/
+   if(rbt_node_is_linked(&neatSocket->ns_node)) {
+      rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
+   }
+   ibm_free_id(gSocketAPIInternals->nsi_socket_identifier_bitmap, neatSocket->ns_descriptor);
+   neatSocket->ns_descriptor = -1;
+
+   nq_delete(&neatSocket->ns_notifications);
+   es_delete(&neatSocket->ns_exception_signal);
+   es_delete(&neatSocket->ns_write_signal);
+   es_delete(&neatSocket->ns_read_signal);
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+   pthread_mutex_destroy(&neatSocket->ns_mutex);
+   free(neatSocket);
 }
 
 

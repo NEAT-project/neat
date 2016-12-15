@@ -1020,7 +1020,7 @@ handle_sctp_stream_reset(neat_flow *flow, struct sctp_stream_reset_event *strrst
         !(strrst->strreset_flags & SCTP_STREAM_RESET_FAILED)) {
         for (i = 0; i < n; i++) {
             reset_flow = neat_sctp_get_flow_by_sid(flow->socket, strrst->strreset_stream_list[i]);
-            assert(flow);
+            assert(reset_flow);
         }
     }
     return;
@@ -3835,15 +3835,17 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
             }
             else {
 #if defined(USRSCTP_SUPPORT)
-printf("send %zd bytes on flow %p and socket %p\n", msg->bufferedSize, (void *)flow, (void *)flow->socket->usrsctp_socket);
+                printf("send %zd bytes on flow %p and socket %p\n", msg->bufferedSize, (void *)flow, (void *)flow->socket->usrsctp_socket);
                 rv = usrsctp_sendv(flow->socket->usrsctp_socket, msg->buffered + msg->bufferedOffset, msg->bufferedSize,
                                (struct sockaddr *) (flow->sockAddr), 1, (void *)sndinfo,
                                (socklen_t)sizeof(struct sctp_sndinfo), SCTP_SENDV_SNDINFO,
                                0);
+#else
+                neat_log(NEAT_LOG_ERROR, "%s - fd == -1 and not usrsctp support - fixme!", __func__);
+                assert(false);
 #endif
             }
             if (rv < 0) {
-            perror("usrsctp_sendv");
                 if (errno == EWOULDBLOCK) {
                     return NEAT_ERROR_WOULD_BLOCK;
                 } else {
@@ -5650,14 +5652,13 @@ neat_find_multistream_socket(neat_ctx *ctx, neat_flow *new_flow)
  */
 static void
 neat_hook_mulitstream_flows(neat_flow *flow) {
-    neat_ctx *ctx = flow->ctx;
     neat_flow *flow_itr = NULL;
     struct neat_he_candidate *candidate;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     return;
 
-    LIST_FOREACH(flow_itr, &ctx->flows, next_flow) {
+    LIST_FOREACH(flow_itr, &(flow->ctx->flows), next_flow) {
         neat_log(NEAT_LOG_DEBUG, "%s - %p - checking", __func__, flow_itr);
 
         // skipping self

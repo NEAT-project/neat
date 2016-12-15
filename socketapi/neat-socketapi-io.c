@@ -38,22 +38,54 @@
 #include <assert.h>
 
 
+NEAT_EXTERN neat_error_code neat_writev(struct neat_ctx *ctx, struct neat_flow *flow,
+                                        const struct iovec *iov, size_t iovlen,
+                                        struct neat_tlv optional[], unsigned int opt_count)
+{
+   // FIXME: Scatter/gather I/O not yet implemented!
+   assert(iovlen == 1);
+   return(neat_write(ctx, flow, iov[0].iov_base, iov[0].iov_len,
+                     optional, opt_count));
+}
+
+NEAT_EXTERN neat_error_code neat_readv(struct neat_ctx *ctx, struct neat_flow *flow,
+                                       struct iovec *iov, size_t iovlen, uint32_t *actualAmt,
+                                       struct neat_tlv optional[], unsigned int opt_count)
+{
+   // FIXME: Scatter/gather I/O not yet implemented!
+   assert(iovlen == 1);
+   return(neat_read(ctx, flow, iov[0].iov_base, iov[0].iov_len, actualAmt,
+                    optional, opt_count));
+}
+
+
 /* ###### NEAT sendmsg() implementation ################################## */
 ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
 
-      // FIXME: Scatter/gather I/O not yet implemented!
-      assert(msg->msg_iovlen == 1);
-
+      /* ====== Write to socket ========================================== */
       pthread_mutex_lock(&neatSocket->ns_mutex);
-      const neat_error_code result =
-         neat_write(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
-                    msg->msg_iov[0].iov_base, msg->msg_iov[0].iov_len,
-                    NULL, 0);
+      neat_error_code result =
+         neat_writev(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
+                     msg->msg_iov, msg->msg_iovlen,
+                     NULL, 0);
+      if( (result == NEAT_ERROR_WOULD_BLOCK) &&
+          (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
+          (!(flags & MSG_DONTWAIT)) ) {
+         /* ====== Blocking mode: wait and try again ===================== */
+         pthread_mutex_unlock(&neatSocket->ns_mutex);
+         nsa_wait_for_event(neatSocket, POLLOUT|POLLERR, -1);
+         pthread_mutex_lock(&neatSocket->ns_mutex);
+         result =  neat_writev(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
+                               msg->msg_iov, msg->msg_iovlen,
+                               NULL, 0);
+      }
+
       pthread_mutex_unlock(&neatSocket->ns_mutex);
 
+      /* ====== Handle result ============================================ */
       switch(result) {
          case NEAT_OK:
             return(0);
@@ -90,18 +122,29 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
-
-      // FIXME: Scatter/gather I/O not yet implemented!
-      assert(msg->msg_iovlen == 1);
-
       uint32_t actual_amount = 0;
+
+      /* ====== Read from socket ========================================= */
       pthread_mutex_lock(&neatSocket->ns_mutex);
-      const neat_error_code result =
-         neat_read(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
-                   msg->msg_iov[0].iov_base, msg->msg_iov[0].iov_len, &actual_amount,
-                   NULL, 0);
+      neat_error_code result =
+         neat_readv(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
+                    msg->msg_iov, msg->msg_iovlen, &actual_amount,
+                    NULL, 0);
+      if( (result == NEAT_ERROR_WOULD_BLOCK) &&
+          (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
+          (!(flags & MSG_DONTWAIT)) ) {
+         /* ====== Blocking mode: wait and try again ===================== */
+         pthread_mutex_unlock(&neatSocket->ns_mutex);
+         nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
+         pthread_mutex_lock(&neatSocket->ns_mutex);
+         result = neat_readv(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
+                             msg->msg_iov, msg->msg_iovlen, &actual_amount,
+                             NULL, 0);
+
+      }
       pthread_mutex_unlock(&neatSocket->ns_mutex);
 
+      /* ====== Handle result ============================================ */
       switch(result) {
          case NEAT_OK:
             return((ssize_t)actual_amount);

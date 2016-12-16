@@ -242,16 +242,10 @@ struct neat_flow
     const char *cc_algorithm;
     const char *local_address; // Src address or addresses
 
-    // TODO: Move more socket-specific values to neat_pollable_socket
-
-    //size_t writeLimit;  // maximum to write if the socket supports partial writes
-    //size_t writeSize;   // send buffer size
-    // The memory buffer for writing.
     struct neat_message_queue_head bufferedMessages;
     size_t buffer_count;
     struct neat_flow_statistics flow_stats;
 
-    //size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.
     unsigned char   *readBuffer;    // memory for read buffer
     size_t          readBufferSize;        // amount of received data
@@ -381,10 +375,6 @@ struct neat_he_candidate {
     int32_t priority;
     json_t *properties;
     struct neat_ctx *ctx;
-    size_t writeSize;
-    size_t readSize;
-    size_t writeLimit;
-    unsigned int isSCTPExplicitEOR : 1;
     TAILQ_ENTRY(neat_he_candidate) next;
     TAILQ_ENTRY(neat_he_candidate) resolution_list;
 };
@@ -412,10 +402,6 @@ struct he_cb_ctx {
     struct socket *sock;
 #endif
     int fd;
-    size_t writeSize;
-    size_t readSize;
-    size_t writeLimit;
-    unsigned int isSCTPExplicitEOR : 1;
     int32_t ai_socktype;
     int32_t ai_stack;
 

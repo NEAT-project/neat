@@ -1434,17 +1434,10 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 multistream_flow->propertyUsed = listen_flow->propertyUsed;
                 multistream_flow->everConnected = 1;
                 multistream_flow->socket = socket;
-
                 multistream_flow->ctx = ctx;
-                //multistream_flow->writeLimit = listen_flow->writeLimit;
-                //multistream_flow->writeSize = listen_flow->writeSize;
-                //multistream_flow->readSize = listen_flow->readSize;
-
                 multistream_flow->ownedByCore = 1;
                 multistream_flow->isServer = 1;
-                //multistream_flow->isSCTPExplicitEOR = listen_flow->isSCTPExplicitEOR;
                 multistream_flow->operations = calloc (sizeof(struct neat_flow_operations), 1);
-
                 multistream_flow->operations->on_connected = listen_flow->operations->on_connected;
                 multistream_flow->operations->on_readable = listen_flow->operations->on_readable;
                 multistream_flow->operations->on_writable = listen_flow->operations->on_writable;
@@ -1452,7 +1445,6 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
                 multistream_flow->operations->ctx = ctx;
                 multistream_flow->operations->flow = multistream_flow;
                 multistream_flow->operations->userData = listen_flow->operations->userData;
-
                 multistream_flow->multistream_id = stream_id;
 
                 LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, multistream_flow, multistream_next_flow);
@@ -1865,10 +1857,10 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->socket->family                = candidate->pollable_socket->family;
         flow->socket->type                  = candidate->pollable_socket->type;
         flow->socket->stack                 = candidate->pollable_socket->stack;
-        flow->socket->write_size            = candidate->writeSize;
-        flow->socket->write_limit           = candidate->writeLimit;
-        flow->socket->read_size             = candidate->readSize;
-        flow->socket->sctp_explicit_eor     = candidate->isSCTPExplicitEOR;
+        flow->socket->write_size            = candidate->pollable_socket->write_size;
+        flow->socket->write_limit           = candidate->pollable_socket->write_limit;
+        flow->socket->read_size             = candidate->pollable_socket->read_size;
+        flow->socket->sctp_explicit_eor     = candidate->pollable_socket->sctp_explicit_eor;
 
         flow->socket->sctp_notification_wait= 1;
 
@@ -4054,7 +4046,9 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             }
 
 #if defined(SCTP_EOR)
+            printf("HASJKDFJSKDLJFLSKDJF %zu - %u\n", len, amt);
             if ((flow->socket->sctp_explicit_eor) && (len == amt)) {
+                printf("HASJKDFJSKDLJFLSKDJF-lsdflksdj\n");
                 sndinfo->snd_flags |= SCTP_EOR;
             }
 #endif
@@ -4435,16 +4429,16 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                    SO_SNDBUF,
                    &size,
                    &len) == 0) {
-        candidate->writeSize = size;
+        candidate->pollable_socket->write_size = size;
     } else {
-        candidate->writeSize = 0;
+        candidate->pollable_socket->write_size = 0;
     }
     len = (socklen_t)sizeof(int);
     if (getsockopt(candidate->pollable_socket->fd,
                    SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
-        candidate->readSize = size;
+        candidate->pollable_socket->read_size = size;
     } else {
-        candidate->readSize = 0;
+        candidate->pollable_socket->read_size = 0;
     }
 
     switch (candidate->pollable_socket->stack) {
@@ -4491,7 +4485,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         return -1; // Unavailable on other platforms
 #endif
     case NEAT_STACK_SCTP:
-        candidate->writeLimit =  candidate->writeSize / 4;
+        candidate->pollable_socket->write_limit =  candidate->pollable_socket->write_size / 4;
 #ifdef SCTP_NODELAY
         setsockopt(candidate->pollable_socket->fd,
                    IPPROTO_SCTP,
@@ -4505,7 +4499,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                        SCTP_EXPLICIT_EOR,
                        &enable,
                        sizeof(int)) == 0)
-            candidate->isSCTPExplicitEOR = 1;
+            candidate->pollable_socket->sctp_explicit_eor = 1;
 #endif
 #ifndef USRSCTP_SUPPORT
         // Subscribe to events needed for callbacks
@@ -4960,17 +4954,17 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
     usrsctp_set_non_blocking(candidate->pollable_socket->usrsctp_socket, 1);
     len = (socklen_t)sizeof(int);
     if (usrsctp_getsockopt(candidate->pollable_socket->usrsctp_socket, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
-        candidate->writeSize = size;
+        candidate->pollable_socket->write_size = size;
     } else {
-        candidate->writeSize = 0;
+        candidate->pollable_socket->write_size = 0;
     }
     len = (socklen_t)sizeof(int);
     if (usrsctp_getsockopt(candidate->pollable_socket->usrsctp_socket, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
-        candidate->readSize = size;
+        candidate->pollable_socket->read_size = size;
     } else {
-        candidate->readSize = 0;
+        candidate->pollable_socket->read_size = 0;
     }
-    // he_ctx->writeLimit =  he_ctx->writeSize / 4;
+
     if (candidate->pollable_socket->stack == NEAT_STACK_SCTP_UDP) {
         struct sctp_udpencaps encaps;
         memset(&encaps, 0, sizeof(struct sctp_udpencaps));
@@ -4984,7 +4978,7 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
 #endif
 #ifdef SCTP_EXPLICIT_EOR
     if (usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
-        candidate->isSCTPExplicitEOR = 1;
+        candidate->pollable_socket->sctp_explicit_eor = 1;
 #endif
 
     // Subscribe to SCTP events

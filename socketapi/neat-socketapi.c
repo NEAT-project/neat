@@ -239,7 +239,6 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             if( (newSocket == NULL) &&
                 (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) ) {
                /* ====== Blocking mode: wait ============================= */
-               es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
                pthread_mutex_unlock(&neatSocket->ns_mutex);
                nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
                pthread_mutex_lock(&neatSocket->ns_mutex);
@@ -250,6 +249,10 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             if(newSocket) {
                TAILQ_REMOVE(&neatSocket->ns_accept_list, newSocket, ns_accept_node);
                result = newSocket->ns_descriptor;
+            }
+
+            if(TAILQ_FIRST(&neatSocket->ns_accept_list) == NULL) {
+               es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
             }
 
             /* ====== Fill in peer address ================================ */

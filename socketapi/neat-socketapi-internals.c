@@ -643,7 +643,6 @@ static void* nsa_main_loop(void* args)
    const int backendFD = neat_get_backend_fd(gSocketAPIInternals->nsi_neat_context);
 
    /* kick off the event loop first */
-// ???? Is this really necessary here? ????
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
    neat_start_event_loop(gSocketAPIInternals->nsi_neat_context, NEAT_RUN_ONCE);
    pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);

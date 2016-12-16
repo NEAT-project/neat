@@ -215,6 +215,7 @@ int main(int argc, char** argv)
    // ====== Clean up ========================================================
    freeaddrinfo(ainfo);
    nsa_close(sd);
+   nsa_cleanup();
 
    cout << endl << "Terminated!" << endl;
    return(0);

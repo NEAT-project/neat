@@ -385,7 +385,8 @@ int main(int argc, char** argv)
    if(sd >= 0) {
       nsa_close(sd);
    }
+   nsa_cleanup();
 
    cout << endl << "Terminated!" << endl;
-   return(0);
+   return 0;
 }

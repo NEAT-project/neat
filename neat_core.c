@@ -3827,7 +3827,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
             }
             else {
 #if defined(USRSCTP_SUPPORT)
-                printf("send %zd bytes on flow %p and socket %p\n", msg->bufferedSize, (void *)flow, (void *)flow->socket->usrsctp_socket);
+                neat_log(NEAT_LOG_INFO, "%s - send %zd bytes on flow %p and socket %p", __func__, msg->bufferedSize, (void *)flow, (void *)flow->socket->usrsctp_socket);
                 rv = usrsctp_sendv(flow->socket->usrsctp_socket, msg->buffered + msg->bufferedOffset, msg->bufferedSize,
                                (struct sockaddr *) (flow->sockAddr), 1, (void *)sndinfo,
                                (socklen_t)sizeof(struct sctp_sndinfo), SCTP_SENDV_SNDINFO,
@@ -4046,9 +4046,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             }
 
 #if defined(SCTP_EOR)
-            printf("HASJKDFJSKDLJFLSKDJF %zu - %u\n", len, amt);
             if ((flow->socket->sctp_explicit_eor) && (len == amt)) {
-                printf("HASJKDFJSKDLJFLSKDJF-lsdflksdj\n");
                 sndinfo->snd_flags |= SCTP_EOR;
             }
 #endif
@@ -4084,7 +4082,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
         } else {
 #if defined(USRSCTP_SUPPORT)
-printf("send %zd bytes on flow %p and socket %p\n", len, (void *)flow, (void *)flow->socket->usrsctp_socket);
+            neat_log(NEAT_LOG_INFO, "%s - send %zd bytes on flow %p and socket %p", __func__, len, (void *)flow, (void *)flow->socket->usrsctp_socket);
             rv = usrsctp_sendv(flow->socket->usrsctp_socket, buffer, len, NULL, 0,
                   (void *)sndinfo, (socklen_t)sizeof(struct sctp_sndinfo), SCTP_SENDV_SNDINFO,
                   0);

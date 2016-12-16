@@ -294,9 +294,16 @@ int main(int argc, char** argv)
 
    // ====== Bind to local port ==============================================
    if(nsa_bind(sd, ainfo->ai_addr, ainfo->ai_addrlen) < 0) {
-      perror("bind() call failed");
+      perror("nsa_bind() call failed");
       exit(1);
    }
+
+#if 0
+   if(nsa_fcntl(sd, F_SETFL, O_NONBLOCK) != 0) {
+      perror("nsa_fcntl() call failed");
+      exit(1);
+   }
+#endif
 
 
    // ====== Turn socket into "listen" mode ==================================
@@ -338,7 +345,7 @@ int main(int argc, char** argv)
       timeout.tv_sec  = 1;
       timeout.tv_usec = 0;
 
-      int result = select(n + 1, &readSet, NULL, NULL, &timeout);
+      int result = nsa_select(n + 1, &readSet, NULL, NULL, &timeout);
       if(result > 0) {
          clientList.handleEvents(&readSet);
          if(FD_ISSET(sd, &readSet)) {

@@ -365,6 +365,15 @@ static neat_error_code on_close(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
 
    puts("on_close");
+
+   /* If there are any threads waiting for this socket, notify them
+    * to let them finish waiting. */
+   pthread_mutex_lock(&neatSocket->ns_mutex);
+   es_broadcast(&neatSocket->ns_read_signal);
+   es_broadcast(&neatSocket->ns_write_signal);
+   es_broadcast(&neatSocket->ns_exception_signal);
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+
    nsa_close_internal(neatSocket);
 
    return(NEAT_OK);

@@ -1,0 +1,45 @@
+#!/bin/bash -e
+
+# URL="https://www.nntb.no/Artwork/Sites/Small"
+URL="https://www.nntb.no/Artwork/Sites/Small"
+
+fetch ()
+{
+   local inputImage="$1"
+   local outputImage=`echo "$inputImage" | sed -e "s/ /_/g" -e "s/ä/ae/g" -e "s/Ä/AE/g" -e "s/ö/oe/g" -e "s/Ö/OE/g" -e "s/ü/ue/g" -e "s/Ü/UE/g" -e "s/æ/ae/g" -e "s/Æ/AE/g" -e "s/ø/oe/g" -e "s/Ø/OE/g" -e "s/å/aa/g" -e "s/Å/AA/g" -e "s/ß/ss/g"`
+
+   echo "Getting $URL/$inputImage -> $outputImage ..."
+
+   rm -f "$inputImage" "$outputImage"
+   wget -q "$URL/$inputImage"
+   if [ "$inputImage" != "$outputImage" ] ; then
+      mv "$inputImage" "$outputImage"
+   fi
+}
+
+fetch "Alpha Site.jpeg"
+fetch "Beta Site.jpeg"
+fetch "Delta Site.jpeg"
+fetch "Epsilon Site.jpeg"
+fetch "Gamma Site.jpeg"
+
+fetch "Haikou College of Economics.jpeg"
+fetch "Hainan University.jpeg"
+fetch "Hochschule Hamburg.jpeg"
+fetch "Høgskolen i Gjøvik.jpeg"
+fetch "Høgskolen i Narvik.jpeg"
+fetch "Høgskolen i Oslo og Akershus.jpeg"
+fetch "Karlstads Universitet.jpeg"
+fetch "Korea University.jpeg"
+fetch "National ICT Australia.jpeg"
+fetch "New York University.jpeg"
+fetch "Simula Research Laboratory.jpeg"
+fetch "Universitetet i Agder.jpeg"
+fetch "Universitetet i Bergen.jpeg"
+fetch "Universitetet i Oslo.jpeg"
+fetch "Universitetet i Stavanger.jpeg"
+fetch "Universitetet i Tromsø.jpeg"
+fetch "Universitetet i Trondheim.jpeg"
+fetch "Universitetet på Svalbard.jpeg"
+fetch "Universität Darmstadt.jpeg"
+fetch "Universität Duisburg-Essen.jpeg"

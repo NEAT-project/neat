@@ -71,6 +71,7 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
 
       if(properties != NULL) {
          struct neat_flow* flow = neat_new_flow(gSocketAPIInternals->nsi_neat_context);
+	 neat_set_property(gSocketAPIInternals->nsi_neat_context, flow, properties);
          if(flow != NULL) {
             result = nsa_socket_internal(AF_UNSPEC, 0, 0, -1, flow, -1);
          }

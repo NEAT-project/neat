@@ -150,7 +150,43 @@ int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_ass
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
 
-      return(0);
+      const char* remoteName = "127.0.0.1";  // FIXME!
+      uint16_t    remotePort = 8888;
+      puts("FIXME! IMPLEMENT addrs ...");
+
+      pthread_mutex_lock(&neatSocket->ns_mutex);
+      neat_error_code result = neat_open(gSocketAPIInternals->nsi_neat_context,
+                                         neatSocket->ns_flow,
+                                         remoteName, remotePort,
+                                         NULL, 0);
+      if( (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
+          (result == NEAT_OK) ) {
+         /* ====== Blocking mode: wait ============================= */
+         pthread_mutex_unlock(&neatSocket->ns_mutex);
+         nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
+         pthread_mutex_lock(&neatSocket->ns_mutex);
+
+         /* ====== Check result ==================================== */
+         puts("FIXME!");
+      }
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
+
+      switch(result) {
+         case NEAT_OK:
+            if(neatSocket->ns_flags & NSAF_NONBLOCKING) {
+               errno = EINPROGRESS;
+               return(-1);
+            }
+            return(0);
+          break;
+         case NEAT_ERROR_OUT_OF_MEMORY:
+             errno = ENOMEM;
+             return(-1);
+          break;
+      }
+
+      errno = ENOENT;   /* Unexpected error from NEAT Core */
+      return(-1);
    }
    else {
        if( (addrcnt == 1) && (id == NULL) ) {
@@ -240,7 +276,6 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             if( (newSocket == NULL) &&
                 (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) ) {
                /* ====== Blocking mode: wait ============================= */
-               es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
                pthread_mutex_unlock(&neatSocket->ns_mutex);
                nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
                pthread_mutex_lock(&neatSocket->ns_mutex);
@@ -251,6 +286,10 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             if(newSocket) {
                TAILQ_REMOVE(&neatSocket->ns_accept_list, newSocket, ns_accept_node);
                result = newSocket->ns_descriptor;
+            }
+
+            if(TAILQ_FIRST(&neatSocket->ns_accept_list) == NULL) {
+               es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
             }
 
             /* ====== Fill in peer address ================================ */

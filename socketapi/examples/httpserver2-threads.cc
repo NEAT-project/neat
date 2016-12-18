@@ -365,6 +365,7 @@ int main(int argc, char** argv)
    if(ServerSocket >= 0) {
       nsa_close(ServerSocket);
    }
+   nsa_cleanup();
 
    cout << endl << "Terminated!" << endl;
    return(0);

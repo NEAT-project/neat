@@ -60,7 +60,6 @@ int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)
 
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
-puts("P1");
    result = 0;
    for(nfds_t i = 0;i < nfds;i++) {
       struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(ufds[i].fd);
@@ -94,16 +93,14 @@ puts("P1");
    /* ====== Wait for signal or timeout ================================== */
    if(result == 0) {
       /* Only wait when there are no notifications */
-puts("P4a");
-      es_timed_wait(&pollStorage.ps_global_signal, timeout);
-puts("P4b");
+      es_timed_wait(&pollStorage.ps_global_signal, 1000L * (long)timeout);
    }
 
 
    /* ====== Handle results ============================================== */
-puts("P5");
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
+   result = 0;
    for(nfds_t i = 0;i < nfds;i++) {
       struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(ufds[i].fd);
       if(neatSocket != NULL) {
@@ -114,7 +111,8 @@ puts("P5");
              if(ufds[i].events & POLLIN) {
                 /* There is something to read (data, notification or error) */
                 if( (neatSocket->ns_flags & (NSAF_READABLE|NSAF_BAD)) ||
-                    (nq_has_data(&neatSocket->ns_notifications)) ) {
+                    (nq_has_data(&neatSocket->ns_notifications)) ||
+                    (TAILQ_FIRST(&neatSocket->ns_accept_list)) ) {
                    ufds[i].revents |= POLLIN;
                 }
              }
@@ -148,6 +146,10 @@ puts("P5");
       else {
          ufds[i].revents |= POLLNVAL;
       }
+
+      if(ufds[i].revents) {
+         result++;
+      }
    }
 
    pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
@@ -170,8 +172,6 @@ int nsa_select(int             n,
 {
    struct pollfd ufds[FD_SETSIZE];
    int           nfds;
-   int           waitingTime;
-   int           result;
    int           i;
 
    /* ====== Check for problems ========================================== */
@@ -182,7 +182,7 @@ int nsa_select(int             n,
 
    /* ====== Prepare pollfd array ======================================== */
    nfds = 0;
-   for(i = 0;i < n;i++) {
+   for(i = 0; i < n; i++) {
       ufds[nfds].events = 0;
       if((readfds) && (FD_ISSET(i, readfds))) {
          ufds[nfds].fd = i;
@@ -201,18 +201,20 @@ int nsa_select(int             n,
       }
    }
 
-   /* ====== Call poll() and propagate results to fdsets ================= */
-   waitingTime = (1000 * timeout->tv_sec) + (int)((timeout->tv_usec + 999) / 1000);
-   result = nsa_poll((struct pollfd*)&ufds, nfds, waitingTime);
+   /* ====== Call nsa_poll() ============================================= */
+   const int waitingTime = (1000 * timeout->tv_sec) + (int)((timeout->tv_usec + 999) / 1000);
+   const int result      = nsa_poll((struct pollfd*)&ufds, nfds, waitingTime);
+
+   /* ====== Propagate results into fdsets =============================== */
    if(result > 0) {
-      for(i = 0;i < nfds;i++) {
-         if( (!(ufds[i].events & POLLIN)) && (readfds) ) {
+      for(i = 0; i < nfds; i++) {
+         if( (!(ufds[i].revents & POLLIN)) && (readfds) ) {
             FD_CLR(ufds[i].fd, readfds);
          }
-         if( (!(ufds[i].events & POLLOUT)) && (writefds) ) {
+         if( (!(ufds[i].revents & POLLOUT)) && (writefds) ) {
             FD_CLR(ufds[i].fd, writefds);
          }
-         if( (!(ufds[i].events & (POLLIN|POLLHUP|POLLNVAL))) && (exceptfds) ) {
+         if( (!(ufds[i].revents & (POLLIN|POLLHUP|POLLNVAL))) && (exceptfds) ) {
             FD_CLR(ufds[i].fd, exceptfds);
          }
       }

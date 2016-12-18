@@ -215,7 +215,7 @@ static neat_error_code on_error(struct neat_flow_operations* ops)
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_BAD;
-   puts("on_error");
+   printf("on_error sd=%d\n", neatSocket->ns_descriptor);
    es_broadcast(&neatSocket->ns_read_signal);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
 
@@ -231,6 +231,8 @@ static neat_error_code on_connected(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
+
+   printf("on_connected sd=%d\n", neatSocket->ns_descriptor);
 
    /* ====== Handle neat socket ===================================== */
    if(neatSocket->ns_flags & NSAF_LISTENING) {
@@ -272,7 +274,7 @@ static neat_error_code on_readable(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
    pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_READABLE;
-   puts("on_readable");
+   printf("on_readable sd=%d\n", neatSocket->ns_descriptor);
    es_broadcast(&neatSocket->ns_read_signal);
    nsa_set_socket_event_on_read(neatSocket, false);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
@@ -288,7 +290,7 @@ static neat_error_code on_writable(struct neat_flow_operations* ops)
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_WRITABLE;
-   puts("on_writable");
+   printf("on_writable sd=%d\n", neatSocket->ns_descriptor);
    es_broadcast(&neatSocket->ns_write_signal);
    nsa_set_socket_event_on_write(neatSocket, false);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
@@ -305,7 +307,6 @@ static neat_error_code on_all_written(struct neat_flow_operations* ops)
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_WRITABLE;
-   puts("on_all_written");
    es_broadcast(&neatSocket->ns_write_signal);
    nsa_set_socket_event_on_write(neatSocket, false);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
@@ -321,7 +322,7 @@ static neat_error_code on_network_status_changed(struct neat_flow_operations* op
    assert(neatSocket != NULL);
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
-   puts("on_network_status_changed");
+   printf("on_network_status_changed sd=%d\n", neatSocket->ns_descriptor);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
 
    return(NEAT_OK);
@@ -336,7 +337,7 @@ static neat_error_code on_aborted(struct neat_flow_operations* ops)
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_BAD;
-   puts("on_aborted");
+   printf("on_aborted sd=%d\n", neatSocket->ns_descriptor);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
 
    return(NEAT_OK);
@@ -351,7 +352,7 @@ static neat_error_code on_timeout(struct neat_flow_operations* ops)
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_BAD;
-   puts("on_timeout");
+   printf("on_timeout sd=%d\n", neatSocket->ns_descriptor);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
 
    return(NEAT_OK);
@@ -364,7 +365,16 @@ static neat_error_code on_close(struct neat_flow_operations* ops)
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
 
-   puts("on_close");
+   printf("on_close sd=%d\n", neatSocket->ns_descriptor);
+
+   /* If there are any threads waiting for this socket, notify them
+    * to let them finish waiting. */
+   pthread_mutex_lock(&neatSocket->ns_mutex);
+   es_broadcast(&neatSocket->ns_read_signal);
+   es_broadcast(&neatSocket->ns_write_signal);
+   es_broadcast(&neatSocket->ns_exception_signal);
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+
    nsa_close_internal(neatSocket);
 
    return(NEAT_OK);
@@ -380,7 +390,7 @@ static void on_send_failure(struct neat_flow_operations* ops,
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_BAD;
-   puts("on_send_failure");
+   printf("on_send_failure sd=%d\n", neatSocket->ns_descriptor);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
 }
 
@@ -392,7 +402,7 @@ static void on_slowdown(struct neat_flow_operations* ops, int ecn, uint32_t rate
    assert(neatSocket != NULL);
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
-   puts("on_slowdown");
+   printf("on_slowdown sd=%d\n", neatSocket->ns_descriptor);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
 }
 
@@ -404,7 +414,7 @@ static void on_rate_hint(struct neat_flow_operations* ops, uint32_t new_rate)
    assert(neatSocket != NULL);
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
-   puts("on_rate_hint");
+   printf("on_rate_hint sd=%d\n", neatSocket->ns_descriptor);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
 }
 
@@ -605,6 +615,7 @@ int nsa_wait_for_event(struct neat_socket* neatSocket,
    struct pollfd ufds[1];
    ufds[0].fd     = neatSocket->ns_descriptor;
    ufds[0].events = POLLIN;
+   printf("## wait-for-event sd=%d\n", neatSocket->ns_descriptor);
    int result = nsa_poll((struct pollfd*)&ufds, 1, timeout);
    if((result > 0) && (ufds[0].revents & eventMask)) {
       return(ufds[0].revents);
@@ -632,13 +643,9 @@ static void* nsa_main_loop(void* args)
    const int backendFD = neat_get_backend_fd(gSocketAPIInternals->nsi_neat_context);
 
    /* kick off the event loop first */
-// ???? Is this really necessary here? ????
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
    neat_start_event_loop(gSocketAPIInternals->nsi_neat_context, NEAT_RUN_ONCE);
    pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-
-
-   puts("MAIN LOOP START!");
 
    for(;;) {
       /* ====== Prepare parameters for poll() ============================ */
@@ -672,7 +679,9 @@ static void* nsa_main_loop(void* args)
             char      buffer[128];
             const int r = read(gSocketAPIInternals->nsi_main_loop_pipe[0],
                                (char*)&buffer, sizeof(buffer));
-            printf("MAIN LOOP WAKE-UP: r=%d\n", r);
+            if(r < 0) {
+               /* This should not happen ... */
+            }
          }
       }
 
@@ -680,8 +689,6 @@ static void* nsa_main_loop(void* args)
       neat_start_event_loop(gSocketAPIInternals->nsi_neat_context, NEAT_RUN_ONCE);
       pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
    }
-
-   puts("MAIN LOOP STOP!");
 
    return(NULL);
 }

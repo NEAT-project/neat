@@ -104,7 +104,7 @@ static void on_he_connect_req(uv_timer_t *handle)
 
 static void delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 {
-    candidate->prio_timer = (uv_timer_t *) malloc(sizeof(uv_timer_t));
+    candidate->prio_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
     assert(candidate->prio_timer != NULL);
     uv_timer_init(candidate->pollable_socket->flow->ctx->loop, candidate->prio_timer);
     uv_timer_start(candidate->prio_timer, on_he_connect_req, HE_PRIO_DELAY * candidate->priority, 0);
@@ -120,6 +120,21 @@ static void delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_
 #endif
 }
 
+#ifdef SCTP_MULTISTREAMING
+static void
+on_delayed_he_open(uv_timer_t *handle)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s - sctp multistream HE timer fired", __func__);
+    struct neat_flow *flow       = (struct neat_flow *) (handle->data);
+    uv_timer_stop(flow->multistream_timer);
+    uv_close((uv_handle_t *) flow->multistream_timer, free_handle_cb);
+
+    neat_he_open(flow->ctx, flow, flow->candidate_list, flow->callback_fx);
+}
+
+
+#endif // SCTP_MULTISTREAMING
+
 neat_error_code
 neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_list, uv_poll_cb callback_fx)
 {
@@ -128,6 +143,11 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     const char *family;
     struct neat_he_candidate *candidate;
     struct neat_he_candidate *next_candidate;
+    uint8_t multistream_probe = 0;
+
+#ifdef SCTP_MULTISTREAMING
+    struct neat_pollable_socket *multistream_socket = NULL;
+#endif
 
     i = 0;
     TAILQ_FOREACH(candidate, candidate_list, next) {
@@ -139,6 +159,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             proto = "TCP";
             break;
         case NEAT_STACK_SCTP:
+            multistream_probe = 1;
             proto = "SCTP";
             break;
         case NEAT_STACK_SCTP_UDP:
@@ -183,12 +204,66 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
 #endif
     }
 
-    neat_log(NEAT_LOG_DEBUG, "HE will now commence");
+    flow->candidate_list = candidate_list;
+    candidate = candidate_list->tqh_first;
+
+
+    // SCTP is generally allowed
+    if (multistream_probe) {
+#ifdef SCTP_MULTISTREAMING
+        // check if there is already a piggyback assoc
+        if ((multistream_socket = neat_find_multistream_socket(ctx, flow)) != NULL) {
+            neat_log(NEAT_LOG_DEBUG, "%s - using piggyback assoc", __func__);
+            // we have a piggyback assoc...
+
+            LIST_INSERT_HEAD(&multistream_socket->sctp_multistream_flows, flow, multistream_next_flow);
+            multistream_socket->sctp_streams_used++;
+
+            flow->multistream_id = multistream_socket->sctp_streams_used;
+            flow->everConnected = 1;
+            flow->isPolling = 1;
+            flow->firstWritePending = 1;
+
+            json_decref(flow->properties);
+
+            flow->socket = multistream_socket;
+
+            while (candidate) {
+                next_candidate = TAILQ_NEXT(candidate, next);
+                TAILQ_REMOVE(candidate_list, candidate, next);
+                neat_free_candidate(candidate);
+                candidate = next_candidate;
+            }
+
+            neat_sctp_open_stream(flow->socket, flow->multistream_id);
+
+            uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
+            return NEAT_ERROR_OK;
+
+        // if there is no piggyback assoc, wait if we didnt already : We reschedule the *complete* he-process!
+        } else if (flow->multistream_check == 0 && neat_wait_for_multistream_socket(ctx, flow)) {
+            neat_log(NEAT_LOG_DEBUG, "%s - waiting for another assoc", __func__);
+            flow->multistream_check = 1;
+
+            flow->multistream_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
+            assert(flow->multistream_timer != NULL);
+            flow->multistream_check = 1;
+
+            uv_timer_init(flow->ctx->loop, flow->multistream_timer);
+            uv_timer_start(flow->multistream_timer, on_delayed_he_open, 200, 0);
+            flow->callback_fx = callback_fx;
+            flow->multistream_timer->data = (void *) flow;
+
+            return NEAT_ERROR_OK;
+        }
+#endif // SCTP_MULTISTREAMING
+    }
+
 
     flow->hefirstConnect = 1;
     flow->heConnectAttemptCount = 0;
-    flow->candidate_list = candidate_list;
-    candidate = candidate_list->tqh_first;
+
+    neat_log(NEAT_LOG_DEBUG, "HE will now commence");
     while (candidate) {
 
 #if 0
@@ -201,7 +276,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
                  candidate->priority);
 #endif
 
-        candidate->pollable_socket->handle = (uv_poll_t *) malloc(sizeof(uv_poll_t));
+        candidate->pollable_socket->handle = (uv_poll_t *) calloc(1, sizeof(uv_poll_t));
         assert(candidate->pollable_socket->handle != NULL);
         candidate->ctx = ctx;
         candidate->pollable_socket->flow = flow;

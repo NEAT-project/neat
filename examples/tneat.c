@@ -1,3 +1,5 @@
+#include "util.h"
+
 #include <neat.h>
 
 #include <stdlib.h>
@@ -5,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <errno.h>
 
 /**********************************************************************
 
@@ -24,15 +27,18 @@
 /*
     default values
 */
-static uint32_t config_rcv_buffer_size = 1024;
-static uint32_t config_snd_buffer_size = 1024;
-static uint32_t config_message_count = 32;
-static uint32_t config_runtime_max = 0;
-static uint16_t config_active = 0;
-static uint16_t config_chargen_offset = 0;
-static uint16_t config_port = 8080;
-static uint16_t config_log_level = 1;
-static char *config_property = "{\
+static uint32_t config_rcv_buffer_size      = 1024;
+static uint32_t config_snd_buffer_size      = 1024;
+static uint32_t config_message_count        = 1;
+static uint32_t config_runtime_max          = 0;
+static uint16_t config_active               = 0;
+static uint16_t config_chargen_offset       = 0;
+static uint16_t config_port                 = 8080;
+static uint16_t config_log_level            = 1;
+static uint16_t config_num_flows            = 1;
+static uint16_t config_max_flows            = 100;
+static char *config_property = "\
+{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
@@ -49,6 +55,7 @@ static char *config_property = "{\
     ]\
 }";
 static uint8_t done = 0;
+static uint32_t flows_active = 0;
 
 /*
     macro - tvp-uvp=vvp
@@ -131,7 +138,7 @@ on_error(struct neat_flow_operations *opCB)
 {
 
     fprintf(stderr, "%s()\n", __func__);
-    exit(EXIT_FAILURE);
+    return NEAT_OK;
 }
 
 static neat_error_code
@@ -204,7 +211,7 @@ on_writable(struct neat_flow_operations *opCB)
 
     if (config_log_level >= 2) {
         printf("neat_write - # %u - %d byte\n", tnf->snd.calls, config_snd_buffer_size);
-        if (config_log_level >= 3) {
+        if (config_log_level >= 4) {
             printf("neat_write - content\n");
             fwrite(tnf->snd.buffer, sizeof(char), config_snd_buffer_size, stdout);
             printf("\n");
@@ -265,7 +272,7 @@ on_readable(struct neat_flow_operations *opCB)
 
         if (config_log_level >= 2) {
             printf("neat_read - # %u - %d byte\n", tnf->rcv.calls, buffer_filled);
-            if (config_log_level >= 3) {
+            if (config_log_level >= 4) {
                 fwrite(tnf->rcv.buffer, sizeof(char), buffer_filled, stdout);
                 printf("\n");
             }
@@ -361,9 +368,17 @@ on_close(struct neat_flow_operations *opCB)
     opCB->on_writable = NULL;
     opCB->on_error = NULL;
 
-    free(tnf->snd.buffer);
-    free(tnf->rcv.buffer);
-    free(tnf);
+    if (tnf->snd.buffer) {
+        free(tnf->snd.buffer);
+    }
+
+    if (tnf->rcv.buffer) {
+        free(tnf->rcv.buffer);
+    }
+
+    if (tnf) {
+        free(tnf);
+    }
 
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
@@ -371,9 +386,13 @@ on_close(struct neat_flow_operations *opCB)
 
     // stop event loop if we are active part
     if (config_active) {
-        fprintf(stderr, "%s - stopping event loop\n", __func__);
+        flows_active--;
         neat_close(opCB->ctx, opCB->flow);
-        neat_stop_event_loop(opCB->ctx);
+        fprintf(stderr, "%s - stopping event loop\n", __func__);
+
+        if (!flows_active) {
+            neat_stop_event_loop(opCB->ctx);
+        }
     }
 
     return NEAT_OK;
@@ -383,8 +402,13 @@ int
 main(int argc, char *argv[])
 {
     struct neat_ctx *ctx = NULL;
-    struct neat_flow *flow = NULL;
-    struct neat_flow_operations ops;
+    //struct neat_flow *flow = NULL;
+    //struct neat_flow_operations ops;
+    int i = 0;
+
+    struct neat_flow *flows[config_max_flows];
+    struct neat_flow_operations ops[config_max_flows];
+
     int arg, result;
     char *arg_property = config_property;
 
@@ -413,7 +437,12 @@ main(int argc, char *argv[])
             }
             break;
         case 'P':
-            arg_property = optarg;
+            if (read_file(optarg, &arg_property) < 0) {
+                fprintf(stderr, "Unable to read properties from %s: %s",
+                        optarg, strerror(errno));
+                result = EXIT_FAILURE;
+                goto cleanup;
+            }
             if (config_log_level >= 1) {
                 printf("option - properties: %s\n", arg_property);
             }
@@ -447,7 +476,9 @@ main(int argc, char *argv[])
         neat_log_level(NEAT_LOG_ERROR);
     } else if (config_log_level == 1){
         neat_log_level(NEAT_LOG_WARNING);
-    } else {
+    } else if (config_log_level == 2){
+        neat_log_level(NEAT_LOG_INFO);
+    }else {
         neat_log_level(NEAT_LOG_DEBUG);
     }
 
@@ -473,52 +504,72 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-    // new neat flow
-    if ((flow = neat_new_flow(ctx)) == NULL) {
-        fprintf(stderr, "%s - neat_new_flow failed\n", __func__);
-        result = EXIT_FAILURE;
-        goto cleanup;
-    }
-
-    ops.on_connected = on_connected;
-    ops.on_error = on_error;
-
-    //ops.on_all_written = on_all_written;
-    if (neat_set_operations(ctx, flow, &ops)) {
-        fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
-        result = EXIT_FAILURE;
-        goto cleanup;
-    }
-
-    // set properties
-    if (neat_set_property(ctx, flow, arg_property)) {
-        fprintf(stderr, "%s - neat_set_property failed\n", __func__);
-        result = EXIT_FAILURE;
-        goto cleanup;
-    }
-
     if (config_active) {
-        // connect to peer
-        if (neat_open(ctx, flow, argv[optind], config_port, NULL, 0) == NEAT_OK) {
-            if (config_log_level >= 1) {
-                printf("neat_open - connecting to %s:%d\n", argv[optind], config_port);
+        for (i = 0; i < config_num_flows; i++) {
+            if ((flows[i] = neat_new_flow(ctx)) == NULL) {
+                fprintf(stderr, "could not initialize context\n");
+                result = EXIT_FAILURE;
+                goto cleanup;
             }
-            neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
-        } else {
-            fprintf(stderr, "%s - neat_open failed\n", __func__);
+
+            // set properties
+            if (neat_set_property(ctx, flows[i], arg_property)) {
+                fprintf(stderr, "%s - error: neat_set_property\n", __func__);
+                result = EXIT_FAILURE;
+                goto cleanup;
+            }
+
+            ops[i].on_connected = on_connected;
+            ops[i].on_error = on_error;
+            ops[i].on_close = on_close;
+            ops[i].userData = &result; // allow on_error to modify the result variable
+            neat_set_operations(ctx, flows[i], &(ops[i]));
+
+            // wait for on_connected or on_error to be invoked
+            if (neat_open(ctx, flows[i], argv[optind], config_port, NULL, 0) != NEAT_OK) {
+                fprintf(stderr, "Could not open flow\n");
+                exit(EXIT_FAILURE);
+            } else {
+                fprintf(stderr, "Opened flow %d\n", i);
+                flows_active++;
+            }
+        }
+
+    } else {
+
+        // new neat flow
+        if ((flows[0] = neat_new_flow(ctx)) == NULL) {
+            fprintf(stderr, "%s - neat_new_flow failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
         }
-    } else {
+
+        ops[0].on_connected = on_connected;
+        ops[0].on_error = on_error;
+
+        if (neat_set_operations(ctx, flows[0], &(ops[0]))) {
+            fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
+
+        // set properties
+        if (neat_set_property(ctx, flows[0], arg_property)) {
+            fprintf(stderr, "%s - neat_set_property failed\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
+
+
         // wait for on_connected or on_error to be invoked
-        if (neat_accept(ctx, flow, config_port, NULL, 0)) {
+        if (neat_accept(ctx, flows[0], config_port, NULL, 0)) {
             fprintf(stderr, "%s - neat_accept failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
         }
-
-        neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     }
+
+    neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
     if (config_log_level >= 1) {
         printf("freeing ctx bye bye!\n");

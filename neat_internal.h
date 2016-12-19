@@ -9,19 +9,21 @@
 #include "neat_queue.h"
 #include "neat_security.h"
 #include "neat_pm_socket.h"
+
 #ifdef __linux__
-    #include "neat_linux.h"
-#endif
+#include "neat_linux.h"
+#endif //  __linux__
+
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-    #include "neat_bsd.h"
-#endif
+#include "neat_bsd.h"
+#endif // defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 
 #ifdef USRSCTP_SUPPORT
-    #include "neat_usrsctp.h"
-    #include <usrsctp.h>
-#else
-    #define NEAT_INTERNAL_USRSCTP
-#endif
+#include "neat_usrsctp.h"
+#include <usrsctp.h>
+#else // USRSCTP_SUPPORT
+#define NEAT_INTERNAL_USRSCTP
+#endif // USRSCTP_SUPPORT
 
 #include "neat_log.h"
 #include "neat_stat.h"
@@ -114,6 +116,14 @@ struct neat_buffered_message {
     TAILQ_ENTRY(neat_buffered_message) message_next;
 };
 
+#ifdef SCTP_MULTISTREAMING
+struct neat_read_queue_message {
+    unsigned char *buffer;
+    size_t buffer_size;
+    TAILQ_ENTRY(neat_read_queue_message) message_next;
+};
+#endif
+
 typedef enum {
     NEAT_STACK_UDP = 1,
     NEAT_STACK_UDPLITE,
@@ -122,10 +132,13 @@ typedef enum {
     NEAT_STACK_SCTP_UDP
 } neat_protocol_stack_type;
 
-#define NEAT_STACK_MAX_NUM             5
-#define SCTP_UDP_TUNNELING_PORT        9899
+#define NEAT_STACK_MAX_NUM              5
+#define SCTP_UDP_TUNNELING_PORT         9899
+#define SCTP_ADAPTATION_NEAT            1207
+#define SCTP_STREAMCOUNT                123
 
 TAILQ_HEAD(neat_message_queue_head, neat_buffered_message);
+TAILQ_HEAD(neat_read_queue_head, neat_read_queue_message);
 
 struct neat_iofilter;
 typedef neat_error_code (*neat_filter_write_impl)(struct neat_ctx *ctx, struct neat_flow *flow,
@@ -149,7 +162,7 @@ struct neat_iofilter
 
 struct neat_pollable_socket
 {
-    struct neat_flow *flow;
+    struct neat_flow    *flow;
 
 #if defined(USRSCTP_SUPPORT)
     struct socket *usrsctp_socket;
@@ -166,16 +179,37 @@ struct neat_pollable_socket
     socklen_t               dst_len;
 
     char                    *src_address;
+    struct sockaddr_storage src_sockaddr;
+    socklen_t               src_len;
+
 #ifdef SCTP_MULTIHOMING
    #define MAX_LOCAL_ADDR             10
    struct sockaddr_storage local_addr[MAX_LOCAL_ADDR];
    unsigned int nr_local_addr;
 #endif
-    struct sockaddr_storage src_sockaddr;
-    socklen_t               src_len;
 
-    struct sockaddr srcAddr;
-    struct sockaddr dstAddr;
+
+    //struct sockaddr srcAddr;
+    //struct sockaddr dstAddr;
+
+    size_t      write_limit;        // maximum to write if the socket supports partial writes
+    size_t      write_size;         // send buffer size
+    size_t      read_size;   // receive buffer size
+
+    unsigned int sctp_explicit_eor : 1;
+
+    uint8_t                     multistream;            // multistreaming active
+    uint8_t                     sctp_notification_wait; // wait for all notifications
+    uint8_t                     sctp_stream_reset;      // peer supports stream reset
+    uint8_t                     sctp_neat_peer;         // peer supports neat
+    uint16_t                    sctp_streams_available; // available streams
+    uint16_t                    sctp_streams_used;      // used streams
+
+#ifdef SCTP_MULTISTREAMING
+    struct neat_flow_list_head  sctp_multistream_flows; // multistream flows
+#endif
+
+    struct neat_pollable_socket *listen_socket;
 
     uv_poll_t *handle;
 
@@ -196,7 +230,7 @@ struct neat_flow
     uint64_t propertyMask;
     uint64_t propertyAttempt;
     uint64_t propertyUsed;
-    uint16_t stream_count;
+    //uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
@@ -208,21 +242,15 @@ struct neat_flow
     const char *cc_algorithm;
     const char *local_address; // Src address or addresses
 
-    // TODO: Move more socket-specific values to neat_pollable_socket
-
-    size_t writeLimit;  // maximum to write if the socket supports partial writes
-    size_t writeSize;   // send buffer size
-    // The memory buffer for writing.
     struct neat_message_queue_head bufferedMessages;
     size_t buffer_count;
     struct neat_flow_statistics flow_stats;
 
-    size_t readSize;   // receive buffer size
     // The memory buffer for reading. Used of SCTP reassembly.
-    unsigned char *readBuffer;    // memory for read buffer
-    size_t readBufferSize;        // amount of received data
-    size_t readBufferAllocation;  // size of buffered allocation
-    int readBufferMsgComplete;    // it contains a complete user message
+    unsigned char   *readBuffer;    // memory for read buffer
+    size_t          readBufferSize;        // amount of received data
+    size_t          readBufferAllocation;  // size of buffered allocation
+    int             readBufferMsgComplete;    // it contains a complete user message
 
     json_t *properties;
 
@@ -235,7 +263,7 @@ struct neat_flow
     neat_listen_impl listenfx;
     neat_shutdown_impl shutdownfx;
 
-	uint8_t heConnectAttemptCount;
+    uint8_t heConnectAttemptCount;
 
 #if defined(USRSCTP_SUPPORT)
     neat_accept_usrsctp_impl acceptusrsctpfx;
@@ -247,13 +275,28 @@ struct neat_flow
     unsigned int isPolling : 1;
     unsigned int ownedByCore : 1;
     unsigned int everConnected : 1;
-    unsigned int isDraining;
-    unsigned int isSCTPExplicitEOR : 1;
+    unsigned int isDraining : 1;
     unsigned int isServer : 1; // i.e. created via accept()
+
+    unsigned int streams_requested;
 
     struct neat_he_candidates *candidate_list;
 
+    uv_poll_cb callback_fx;
+
     LIST_ENTRY(neat_flow) next_flow;
+
+#ifdef SCTP_MULTISTREAMING
+    unsigned int                    multistream_check : 1;
+    unsigned int                    multistream_shutdown: 1;
+
+    uv_timer_t                      *multistream_timer;
+    uint16_t                        multistream_id;
+    LIST_ENTRY(neat_flow)           multistream_next_flow;
+    // The memory buffer for reading
+    struct neat_read_queue_head     multistream_read_queue;
+    size_t                          multistream_read_queue_size;
+#endif
 };
 
 typedef struct neat_flow neat_flow;
@@ -332,10 +375,6 @@ struct neat_he_candidate {
     int32_t priority;
     json_t *properties;
     struct neat_ctx *ctx;
-    size_t writeSize;
-    size_t readSize;
-    size_t writeLimit;
-    unsigned int isSCTPExplicitEOR : 1;
     TAILQ_ENTRY(neat_he_candidate) next;
     TAILQ_ENTRY(neat_he_candidate) resolution_list;
 };
@@ -363,10 +402,6 @@ struct he_cb_ctx {
     struct socket *sock;
 #endif
     int fd;
-    size_t writeSize;
-    size_t readSize;
-    size_t writeLimit;
-    unsigned int isSCTPExplicitEOR : 1;
     int32_t ai_socktype;
     int32_t ai_stack;
 
@@ -383,6 +418,9 @@ void neat_resolver_release(struct neat_resolver *resolver);
 
 //Free the list of results
 void neat_resolver_free_results(struct neat_resolver_results *results);
+
+struct neat_pollable_socket *neat_find_multistream_socket(neat_ctx *ctx, neat_flow *new_flow);
+uint8_t neat_wait_for_multistream_socket(neat_ctx *ctx, neat_flow *new_flow);
 
 //Start to resolve a domain name (or literal). Accepts a list of protocols, will
 //set socktype based on protocol
@@ -450,8 +488,7 @@ neat_error_code neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_cand
 // API callbacks:
 void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate);
 void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate);
-void neat_notify_send_failure(neat_flow *flow, neat_error_code code,
-			      int context, const unsigned char *unsent_buffer);
+void neat_notify_send_failure(neat_flow *flow, neat_error_code code, int context, const unsigned char *unsent_buffer);
 void neat_notify_timeout(neat_flow *flow);
 void neat_notify_aborted(neat_flow *flow);
 void neat_notify_close(neat_flow *flow);
@@ -532,5 +569,7 @@ neat_error_code neat_security_install(neat_ctx *ctx, neat_flow *flow);
 void            neat_security_init(neat_ctx *ctx);
 void            neat_security_close(neat_ctx *ctx);
 void uvpollable_cb(uv_poll_t *handle, int status, int events);
+
+neat_error_code neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
 
 #endif

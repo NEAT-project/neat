@@ -42,6 +42,10 @@ using namespace std;
 static const char* properties = "{\
     \"transport\": [\
         {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
             \"value\": \"TCP\",\
             \"precedence\": 1\
         }\

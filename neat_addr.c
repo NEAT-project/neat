@@ -206,7 +206,7 @@ void neat_addr_free_src_list(struct neat_ctx *nc)
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -215,24 +215,35 @@ void neat_addr_free_src_list(struct neat_ctx *nc)
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-uint8_t sockaddr_cmp(struct sockaddr *x, struct sockaddr *y)
+
+
+
+uint8_t
+sockaddr_storage_cmp(struct sockaddr_storage *a, struct sockaddr_storage *b)
 {
-#define CMP(a, b) if (a != b) return a < b ? -1 : 1
+    struct sockaddr_in  *a_in   = (struct sockaddr_in *)    a;
+    struct sockaddr_in  *b_in   = (struct sockaddr_in *)    b;
+    struct sockaddr_in6 *a_in6  = (struct sockaddr_in6 *)   a;
+    struct sockaddr_in6 *b_in6  = (struct sockaddr_in6 *)   b;
 
-    CMP(x->sa_family, y->sa_family);
+    #define CMP(a, b) if (a != b) return a < b ? -1 : 1
 
-    if (x->sa_family == AF_INET) {
-        struct sockaddr_in *xin = (void*)x, *yin = (void*)y;
-        CMP(ntohs(xin->sin_port), ntohs(yin->sin_port));
-        CMP(ntohl(xin->sin_addr.s_addr), ntohl(yin->sin_addr.s_addr));
-    } else if (x->sa_family == AF_INET6) {
-        struct sockaddr_in6 *xin6 = (void*)x, *yin6 = (void*)y;
-        CMP(ntohs(xin6->sin6_port), ntohs(yin6->sin6_port));
-        CMP(xin6->sin6_flowinfo, yin6->sin6_flowinfo);
-        CMP(xin6->sin6_scope_id, yin6->sin6_scope_id);
-        return memcmp(xin6->sin6_addr.s6_addr, yin6->sin6_addr.s6_addr, sizeof(xin6->sin6_addr.s6_addr));
+    CMP(a->ss_family, b->ss_family);
+
+    if (a->ss_family == AF_INET) {
+        CMP(ntohs(a_in->sin_port), ntohs(b_in->sin_port));
+        CMP(ntohl(a_in->sin_addr.s_addr), ntohl(b_in->sin_addr.s_addr));
+    } else if (a->ss_family == AF_INET6) {
+        CMP(ntohs(a_in6->sin6_port), ntohs(a_in6->sin6_port));
+        CMP(a_in6->sin6_flowinfo, b_in6->sin6_flowinfo);
+        CMP(a_in6->sin6_scope_id, b_in6->sin6_scope_id);
+        return memcmp(a_in6->sin6_addr.s6_addr, b_in6->sin6_addr.s6_addr, sizeof(b_in6->sin6_addr.s6_addr));
+    } else {
+        assert(false);
     }
 
-#undef CMP
     return 0;
+
+    #undef CMP
+
 }

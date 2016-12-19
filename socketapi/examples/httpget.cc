@@ -126,7 +126,7 @@ int main(int argc, char** argv)
    // ====== Receive reply ===================================================
    cout << "Request sent. Waiting for answer..." << endl;
    for(;;) {
-      char str[128];
+      char str[65536];
 
       ssize_t received = nsa_read(sd, (char*)&str, sizeof(str));
       if(received < 0) {

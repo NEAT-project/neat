@@ -43,6 +43,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <netdb.h>
 #include <sys/ioctl.h>
 #include <netinet/sctp.h>
 
@@ -73,7 +74,13 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
          struct neat_flow* flow = neat_new_flow(gSocketAPIInternals->nsi_neat_context);
 	 neat_set_property(gSocketAPIInternals->nsi_neat_context, flow, properties);
          if(flow != NULL) {
-            result = nsa_socket_internal(AF_UNSPEC, 0, 0, -1, flow, -1);
+            if(neat_set_property(gSocketAPIInternals->nsi_neat_context, flow, properties) == 0) {
+               result = nsa_socket_internal(AF_UNSPEC, 0, 0, -1, flow, -1);
+            }
+            else {
+               neat_close(gSocketAPIInternals->nsi_neat_context, flow);
+               errno = EINVAL;
+            }
          }
          else {
             errno = EINVAL;
@@ -149,43 +156,25 @@ int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_ass
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
+      if(addrcnt >= 1) {
+         /* ====== Obtain address and port =============================== */
+         char remoteHost[512];
+         char remoteService[128];
+         const int error = getnameinfo(&addrs[0], get_socklen(&addrs[0]),
+                                       (char*)&remoteHost, sizeof(remoteHost),
+                                       (char*)&remoteService, sizeof(remoteService),
+                                       NI_NUMERICHOST);
+         if(error != 0) {
+            errno = EINVAL;
+            return(-1);
+         }
 
-      const char* remoteName = "127.0.0.1";  // FIXME!
-      uint16_t    remotePort = 8888;
-      puts("FIXME! IMPLEMENT addrs ...");
-
-      pthread_mutex_lock(&neatSocket->ns_mutex);
-      neat_error_code result = neat_open(gSocketAPIInternals->nsi_neat_context,
-                                         neatSocket->ns_flow,
-                                         remoteName, remotePort,
-                                         NULL, 0);
-      if( (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
-          (result == NEAT_OK) ) {
-         /* ====== Blocking mode: wait ============================= */
-         pthread_mutex_unlock(&neatSocket->ns_mutex);
-         nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
-         pthread_mutex_lock(&neatSocket->ns_mutex);
-
-         /* ====== Check result ==================================== */
-         puts("FIXME!");
+         /* ====== Connect =============================================== */
+         return(nsa_connectx_internal(neatSocket, remoteHost, atoi(remoteService), id));
       }
-      pthread_mutex_unlock(&neatSocket->ns_mutex);
-
-      switch(result) {
-         case NEAT_OK:
-            if(neatSocket->ns_flags & NSAF_NONBLOCKING) {
-               errno = EINPROGRESS;
-               return(-1);
-            }
-            return(0);
-          break;
-         case NEAT_ERROR_OUT_OF_MEMORY:
-             errno = ENOMEM;
-             return(-1);
-          break;
+      else {
+         errno = EINVAL;
       }
-
-      errno = ENOENT;   /* Unexpected error from NEAT Core */
       return(-1);
    }
    else {

@@ -507,7 +507,56 @@ int nsa_socket_internal(int domain, int type, int protocol,
 }
 
 
-/* ###### NEAT close() implementation #################################### */
+/* ###### NEAT connectx() implementation internals ####################### */
+int nsa_connectx_internal(struct neat_socket* neatSocket,
+                          const char*         name,
+                          const uint16_t      port,
+                          neat_assoc_t*       id)
+{
+   /* ====== Connect ===================================================== */
+   pthread_mutex_lock(&neatSocket->ns_mutex);
+   neat_error_code result = neat_open(gSocketAPIInternals->nsi_neat_context,
+                                      neatSocket->ns_flow, name, port,
+                                      NULL, 0);
+   if( (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
+       (result == NEAT_OK) ) {
+      /* ====== Blocking mode: wait ====================================== */
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
+      nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
+      pthread_mutex_lock(&neatSocket->ns_mutex);
+
+      /* ====== Check result ============================================= */
+      puts("FIXME!");
+   }
+   es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
+   pthread_mutex_unlock(&neatSocket->ns_mutex);
+
+   /* ====== Handle result =============================================== */
+   switch(result) {
+      case NEAT_OK:
+         if(neatSocket->ns_flags & NSAF_NONBLOCKING) {
+            errno = EINPROGRESS;
+            return(-1);
+         }
+         else {
+            if(id) {
+               *id = 0;   // FIXME! Not implemented yet!
+            }
+         }
+         return(0);
+       break;
+      case NEAT_ERROR_OUT_OF_MEMORY:
+          errno = ENOMEM;
+          return(-1);
+       break;
+   }
+
+   errno = ENOENT;   /* Unexpected error from NEAT Core */
+   return(-1);
+}
+
+
+/* ###### NEAT close() implementation internals ########################## */
 void nsa_close_internal(struct neat_socket* neatSocket)
 {
    /* NOTE: gSocketAPIInternals->nsi_socket_set_mutex must already

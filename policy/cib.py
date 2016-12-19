@@ -377,8 +377,7 @@ class CIB(object):
         for cs in self.nodes.values():
             cs.update_links_from_match()
 
-        self.gen_graph()
-        # self.dump()  # xxx
+        self.update_graph()
 
     def load_cib_file(self, filename):
         cs = load_json(filename)
@@ -394,7 +393,7 @@ class CIB(object):
         cib_node.filename = filename
         self.register(cib_node)
 
-    def gen_graph(self):
+    def update_graph(self):
         for i in self.nodes.values():
             if not i.link:
                 continue
@@ -480,8 +479,8 @@ class CIB(object):
     def dump(self, show_all=False):
         print(term_separator("CIB START"))
         # ============================================================================
-        for e in self.rows:
-            print(str(e) + '\n')
+        for i, e in enumerate(self.rows):
+            print("%3i. %s" % (i, str(e)))
         # ============================================================================
         print(term_separator("CIB END"))
 

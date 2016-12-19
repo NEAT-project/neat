@@ -4083,7 +4083,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
         msghdr.msg_flags = 0;
         if (flow->socket->fd != -1) {
-            rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+            rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, MSG_NOSIGNAL);
         } else {
 #if defined(USRSCTP_SUPPORT)
             neat_log(NEAT_LOG_INFO, "%s - send %zd bytes on flow %p and socket %p", __func__, len, (void *)flow, (void *)flow->socket->usrsctp_socket);

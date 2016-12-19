@@ -86,6 +86,7 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
           (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
           (!(flags & MSG_DONTWAIT)) ) {
          /* ====== Blocking mode: wait and try again ===================== */
+         es_has_fired(&neatSocket->ns_write_signal);   /* Clear read signal */
          nsa_set_socket_event_on_read(neatSocket, true);
          pthread_mutex_unlock(&neatSocket->ns_mutex);
          nsa_wait_for_event(neatSocket, POLLOUT|POLLERR, -1);
@@ -146,14 +147,14 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
           (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
           (!(flags & MSG_DONTWAIT)) ) {
          /* ====== Blocking mode: wait and try again ===================== */
-         nsa_set_socket_event_on_write(neatSocket, true);
+         es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
+         nsa_set_socket_event_on_read(neatSocket, true);
          pthread_mutex_unlock(&neatSocket->ns_mutex);
          nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
          pthread_mutex_lock(&neatSocket->ns_mutex);
          result = neat_readv(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
                              msg->msg_iov, msg->msg_iovlen, &actual_amount,
                              NULL, 0);
-
       }
       pthread_mutex_unlock(&neatSocket->ns_mutex);
 

@@ -528,6 +528,7 @@ int nsa_connectx_internal(struct neat_socket* neatSocket,
       /* ====== Check result ============================================= */
       puts("FIXME!");
    }
+   es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
    pthread_mutex_unlock(&neatSocket->ns_mutex);
 
    /* ====== Handle result =============================================== */

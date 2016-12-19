@@ -24,6 +24,10 @@ static char *config_property = "{\
             \"precedence\": 1\
         },\
         {\
+            \"value\": \"SCTP/UDP\",\
+            \"precedence\": 1\
+        },\
+        {\
             \"value\": \"TCP\",\
             \"precedence\": 1\
         }\
@@ -103,7 +107,6 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         opCB->on_writable = NULL;
         opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_close(opCB->ctx, opCB->flow);
     }
 
     return NEAT_OK;

@@ -29,6 +29,10 @@ static char *config_property = "{\
             \"precedence\": 1\
         },\
         {\
+            \"value\": \"SCTP/UDP\",\
+            \"precedence\": 1\
+        },\
+        {\
             \"value\": \"TCP\",\
             \"precedence\": 1\
         }\

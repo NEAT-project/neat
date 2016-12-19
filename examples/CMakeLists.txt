@@ -15,10 +15,11 @@ LIST(APPEND neat_programs
 )
 
 LIST(APPEND neat_property_examples
-    all.json
-    datagrams.json
-    default.json
-    tcp.json
+    prop_all.json
+    prop_datagram.json
+    prop_default.json
+    prop_sctp.json
+    prop_tcp.json
 )
 
 # BUILD EACH PROGRAM

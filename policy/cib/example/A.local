@@ -2,7 +2,6 @@
     "uid": "A",
     "timestamp": 1463575512,
     "root": true,
-    "link": true,
     "priority": 4,
     "properties":{
         "interface": {"value": "en0", "precedence":2},

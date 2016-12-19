@@ -8,6 +8,7 @@ LIST(APPEND neat_test_programs
 
 LIST(APPEND neat_test_scripts
     run.sh
+    run.py
     test_echo.sh
 )
 

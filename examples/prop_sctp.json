@@ -3,6 +3,10 @@
         {
             "value": "SCTP",
             "precedence": 1
+        },
+        {
+            "value": "SCTP/UDP",
+            "precedence": 1
         }
     ]
 }

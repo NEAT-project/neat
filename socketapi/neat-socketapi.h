@@ -241,7 +241,7 @@ ssize_t nsa_read(int fd, void* buf, size_t len);
 ssize_t nsa_write(int fd, const void* buf, size_t len);
 ssize_t nsa_sendv(int sockfd, const void* buf, size_t len,
                   struct sockaddr* to, int addrcnt,
-                  void *info, socklen_t infolen, unsigned int infotype,
+                  void* info, socklen_t infolen, unsigned int infotype,
                   int flags);
 ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags);
 ssize_t nsa_recvfrom(int sockfd, void* buf, size_t len, int flags,

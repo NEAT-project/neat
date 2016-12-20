@@ -77,6 +77,7 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
    if(neatSocket->ns_flow != NULL) {
 
       /* ====== Write to socket ========================================== */
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
       pthread_mutex_lock(&neatSocket->ns_mutex);
       neat_error_code result =
          neat_writev(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
@@ -89,7 +90,9 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
          es_has_fired(&neatSocket->ns_write_signal);   /* Clear write signal */
          nsa_set_socket_event_on_read(neatSocket, true);
          pthread_mutex_unlock(&neatSocket->ns_mutex);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
          nsa_wait_for_event(neatSocket, POLLOUT|POLLERR, -1);
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
          pthread_mutex_lock(&neatSocket->ns_mutex);
          result =  neat_writev(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
                                msg->msg_iov, msg->msg_iovlen,
@@ -97,6 +100,7 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
       }
 
       pthread_mutex_unlock(&neatSocket->ns_mutex);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
       /* ====== Handle result ============================================ */
       switch(result) {
@@ -138,6 +142,7 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
       uint32_t actual_amount = 0;
 
       /* ====== Read from socket ========================================= */
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
       pthread_mutex_lock(&neatSocket->ns_mutex);
       neat_error_code result =
          neat_readv(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
@@ -150,13 +155,16 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
          es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
          nsa_set_socket_event_on_read(neatSocket, true);
          pthread_mutex_unlock(&neatSocket->ns_mutex);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
          nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
          pthread_mutex_lock(&neatSocket->ns_mutex);
          result = neat_readv(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
                              msg->msg_iov, msg->msg_iovlen, &actual_amount,
                              NULL, 0);
       }
       pthread_mutex_unlock(&neatSocket->ns_mutex);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
       /* ====== Handle result ============================================ */
       switch(result) {
@@ -237,7 +245,7 @@ ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags,
 /* ###### NEAT sendv() implementation #################################### */
 ssize_t nsa_sendv(int sockfd, const void* buf, size_t len,
                   struct sockaddr* to, int addrcnt,
-                  void *info, socklen_t infolen, unsigned int infotype,
+                  void* info, socklen_t infolen, unsigned int infotype,
                   int flags)
 {
    abort();   // FIXME!

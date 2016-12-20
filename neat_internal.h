@@ -132,6 +132,13 @@ typedef enum {
     NEAT_STACK_SCTP_UDP
 } neat_protocol_stack_type;
 
+typedef enum {
+    NEAT_FLOW_CLOSED = 1,
+    NEAT_FLOW_CONNECTING,
+    NEAT_FLOW_OPEN,
+    NEAT_FLOW_CLOSING
+} neat_flow_states;
+
 #define NEAT_STACK_MAX_NUM              5
 #define SCTP_UDP_TUNNELING_PORT         9899
 #define SCTP_ADAPTATION_NEAT            1207
@@ -197,16 +204,15 @@ struct neat_pollable_socket
     size_t      read_size;   // receive buffer size
 
     unsigned int sctp_explicit_eor : 1;
+    uint16_t                    sctp_streams_available; // available streams
 
     uint8_t                     multistream;            // multistreaming active
+#ifdef SCTP_MULTISTREAMING
     uint8_t                     sctp_notification_wait; // wait for all notifications
-    uint8_t                     sctp_notification_recvd;
+    uint8_t                     sctp_notification_recvd;// we have received a notification
     uint8_t                     sctp_stream_reset;      // peer supports stream reset
     uint8_t                     sctp_neat_peer;         // peer supports neat
-    uint16_t                    sctp_streams_available; // available streams
     uint16_t                    sctp_streams_used;      // used streams
-
-#ifdef SCTP_MULTISTREAMING
     struct neat_flow_list_head  sctp_multistream_flows; // multistream flows
 #endif
 

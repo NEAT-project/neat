@@ -63,7 +63,7 @@ async def handle_cib_rows(request):
 async def handle_cib(request):
     uid = request.match_info.get('uid')
     if uid is None:
-        text = json.dumps(list(cib.uid.keys()))
+        text = json.dumps(list(cib.keys()))
         return web.Response(text=text)
 
     logging.info("CIB request for uid %s" % (uid))
@@ -78,7 +78,7 @@ async def handle_cib(request):
 async def handle_cib_put(request):
     uid = request.match_info.get('uid')
     if uid is None:
-        text = json.dumps(list(cib.uid.keys()))
+        text = json.dumps(list(cib.keys()))
         return web.Response(text=text)
 
     assert request.content_type == 'application/json'

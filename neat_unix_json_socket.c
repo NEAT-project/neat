@@ -153,7 +153,7 @@ neat_unix_json_shutdown(struct neat_ipc_context *context)
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-    if ((shutdown = malloc(sizeof(*shutdown))) == NULL)
+    if ((shutdown = calloc(1, sizeof(*shutdown))) == NULL)
         return NEAT_ERROR_OUT_OF_MEMORY;
 
     if ((rc = uv_shutdown(shutdown, context->stream, on_shutdown)) != 0) {
@@ -270,10 +270,10 @@ neat_unix_json_socket_open(struct neat_ctx *ctx, struct neat_flow *flow,
         return NEAT_ERROR_BAD_ARGUMENT;
     }
 
-    if ((connect = malloc(sizeof(uv_connect_t))) == NULL)
+    if ((connect = calloc(1, sizeof(uv_connect_t))) == NULL)
         return NEAT_ERROR_OUT_OF_MEMORY;
 
-    if ((pipe = malloc(sizeof(uv_pipe_t))) == NULL) {
+    if ((pipe = calloc(1, sizeof(uv_pipe_t))) == NULL) {
         free(connect);
         return NEAT_ERROR_OUT_OF_MEMORY;
     }

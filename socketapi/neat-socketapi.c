@@ -108,6 +108,10 @@ int nsa_close(int fd)
       rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
       pthread_mutex_unlock(&neatSocket->ns_mutex);
       neat_close(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow);
+
+      /* Finally, finish the main loop's waiting, in order to let it
+       * progess the closing request. */
+      nsa_notify_main_loop();
    }
    else {
       nsa_close_internal(neatSocket);

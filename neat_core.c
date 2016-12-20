@@ -3854,19 +3854,23 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
             msghdr.msg_flags = 0;
             if (flow->socket->fd != -1) {
                 rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
-            }
-            else {
+            } else {
 #if defined(USRSCTP_SUPPORT)
-                neat_log(NEAT_LOG_INFO, "%s - send %zd bytes on flow %p and socket %p", __func__, msg->bufferedSize, (void *)flow, (void *)flow->socket->usrsctp_socket);
-                rv = usrsctp_sendv(flow->socket->usrsctp_socket, msg->buffered + msg->bufferedOffset, msg->bufferedSize,
-                               (struct sockaddr *) (flow->sockAddr), 1, (void *)sndinfo,
-                               (socklen_t)sizeof(struct sctp_sndinfo), SCTP_SENDV_SNDINFO,
-                               0);
+                if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+                    neat_log(NEAT_LOG_INFO, "%s - send %zd bytes on flow %p and socket %p", __func__, msg->bufferedSize, (void *)flow, (void *)flow->socket->usrsctp_socket);
+                    rv = usrsctp_sendv(flow->socket->usrsctp_socket, msg->buffered + msg->bufferedOffset, msg->bufferedSize,
+                                       (struct sockaddr *) (flow->sockAddr), 1, (void *)sndinfo,
+                                       (socklen_t)sizeof(struct sctp_sndinfo), SCTP_SENDV_SNDINFO,
+                                       0);
+                } else {
+                    neat_log(NEAT_LOG_ERROR, "%s - fd == -1 and no SCTP used ... error!", __func__);
+                }
 #else
                 neat_log(NEAT_LOG_ERROR, "%s - fd == -1 and not usrsctp support - fixme!", __func__);
                 assert(false);
 #endif
             }
+            
             if (rv < 0) {
                 if (errno == EWOULDBLOCK) {
                     return NEAT_ERROR_WOULD_BLOCK;
@@ -5031,7 +5035,9 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
 
     // Subscribe to SCTP events
     neat_sctp_init_events(candidate->pollable_socket->usrsctp_socket);
+#ifdef SCTP_MULTISTREAMING
     candidate->pollable_socket->sctp_notification_wait = 1;
+#endif
 
     neat_log(NEAT_LOG_INFO, "%s: Connect from %s to %s", __func__,
        inet_ntop(AF_INET, &(((struct sockaddr_in *) &(candidate->pollable_socket->src_sockaddr))->sin_addr), addrsrcbuf, slen),

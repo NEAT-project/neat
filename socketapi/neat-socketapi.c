@@ -162,7 +162,7 @@ int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_ass
          const int error = getnameinfo(&addrs[0], get_socklen(&addrs[0]),
                                        (char*)&remoteHost, sizeof(remoteHost),
                                        (char*)&remoteService, sizeof(remoteService),
-                                       NI_NUMERICHOST);
+                                       NI_NUMERICHOST|NI_NUMERICSERV);
          if(error != 0) {
             errno = EINVAL;
             return(-1);

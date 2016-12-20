@@ -97,9 +97,9 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
 
          /* ====== Check whether the socket has been closed ============== */
          if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
-            /* The socket has been closed -> return with EIO. */
+            /* The socket has been closed -> return with EBADF. */
             pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-            errno = EIO;
+            errno = EBADF;
             return(-1);
          }
 
@@ -173,9 +173,9 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
 
          /* ====== Check whether the socket has been closed ============== */
          if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
-            /* The socket has been closed -> return with EIO. */
+            /* The socket has been closed -> return with EBADF. */
             pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-            errno = EIO;
+            errno = EBADF;
             return(-1);
          }
 

@@ -110,7 +110,7 @@ int nsa_close(int fd)
       neat_close(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow);
 
       /* Finally, finish the main loop's waiting, in order to let it
-       * progess the closing request. */
+       * process the closing request. */
       nsa_notify_main_loop();
    }
    else {
@@ -276,9 +276,9 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 
                /* ====== Check whether the socket has been closed ======== */
                if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
-                  /* The socket has been closed -> return with EIO. */
+                  /* The socket has been closed -> return with EBADF. */
                   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-                  errno = EIO;
+                  errno = EBADF;
                   return(-1);
                }
 

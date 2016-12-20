@@ -104,6 +104,7 @@ int main(int argc, char** argv)
       perror("nsa_connect() call failed");
       exit(1);
    }
+   freeaddrinfo(ainfo);
 
 
    // ====== Request webpage =================================================
@@ -146,8 +147,8 @@ int main(int argc, char** argv)
 
 
    // ====== Clean up ========================================================
-   freeaddrinfo(ainfo);
    nsa_close(sd);
+   nsa_cleanup();
 
    cout << endl << "Terminated!" << endl;
    return(0);

@@ -271,7 +271,7 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
                /* ====== Blocking mode: wait ============================= */
                pthread_mutex_unlock(&neatSocket->ns_mutex);
                pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-               nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
+               nsa_wait_for_event(neatSocket, POLLIN, -1);
                pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
                /* ====== Check whether the socket has been closed ======== */

@@ -531,7 +531,7 @@ int nsa_connectx_internal(struct neat_socket* neatSocket,
       const int sockfd = neatSocket->ns_descriptor;
       pthread_mutex_unlock(&neatSocket->ns_mutex);
       pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-      nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
+      nsa_wait_for_event(neatSocket, POLLIN, -1);
       pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
       /* ====== Check whether the socket has been closed ================= */
@@ -728,7 +728,7 @@ static void* nsa_main_loop(void* args)
       ufds[0].events  = POLLIN;
       ufds[0].revents = 0;
       ufds[1].fd      = backendFD;   /* The back-end */
-      ufds[1].events  = POLLERR|POLLIN|POLLHUP;
+      ufds[1].events  = POLLIN;
       ufds[1].revents = 0;
 
       pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);

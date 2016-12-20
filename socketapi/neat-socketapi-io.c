@@ -92,7 +92,7 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
 
          pthread_mutex_unlock(&neatSocket->ns_mutex);
          pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-         nsa_wait_for_event(neatSocket, POLLOUT|POLLERR, -1);
+         nsa_wait_for_event(neatSocket, POLLOUT, -1);
          pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
          /* ====== Check whether the socket has been closed ============== */
@@ -168,7 +168,7 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
 
          pthread_mutex_unlock(&neatSocket->ns_mutex);
          pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-         nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
+         nsa_wait_for_event(neatSocket, POLLIN, -1);
          pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
          /* ====== Check whether the socket has been closed ============== */

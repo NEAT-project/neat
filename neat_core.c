@@ -1082,11 +1082,13 @@ static int handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
         case SCTP_PARTIAL_DELIVERY_EVENT:
             neat_log(NEAT_LOG_DEBUG, "Got SCTP partial delivery event");
             break;
+#ifdef SCTP_RESET_STREAMS
         case SCTP_STREAM_RESET_EVENT:
             neat_log(NEAT_LOG_DEBUG, "Got SCTP Stream Reset");
 #ifdef SCTP_MULTISTREAMING
             neat_sctp_handle_reset_stream(flow->socket, (struct sctp_stream_reset_event *) notfn);
-#endif
+#endif // SCTP_MULTISTREAMING
+#endif // SCTP_RESET_STREAMS
             break;
         default:
             neat_log(NEAT_LOG_WARNING, "Got unhandled SCTP event type %d", notfn->sn_header.sn_type);

@@ -577,6 +577,7 @@ free_cb(uv_handle_t *handle)
 static int neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     struct neat_pollable_socket *s;
+    struct neat_pollable_socket *stemp;
 #if defined(USRSCTP_SUPPORT)
     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
         neat_close_via_usrsctp(flow->ctx, flow);
@@ -584,8 +585,9 @@ static int neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
     }
 #endif
 
-    TAILQ_FOREACH(s, &(flow->listen_sockets), next) {
+    TAILQ_FOREACH_SAFE(s, &(flow->listen_sockets), next, stemp) {
         neat_close_via_kernel_2(s->fd);
+        free(s);
     }
 
     neat_close_via_kernel(flow->ctx, flow);

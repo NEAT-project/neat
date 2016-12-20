@@ -55,6 +55,7 @@ neat_resolver_helpers_check_for_literal(uint8_t *family,
         char *tmp = strdup(node);
         char *ptr = NULL;
         char *address_name = strtok_r((char *)tmp, ",", &ptr);
+
         while (address_name != NULL) {
             v4_literal = inet_pton(AF_INET, address_name, &dummy_addr);
             v6_literal = inet_pton(AF_INET6, address_name, &dummy_addr);

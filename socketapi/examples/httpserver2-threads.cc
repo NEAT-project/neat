@@ -101,6 +101,8 @@ void ServiceThread::run()
       const ssize_t r = nsa_read(SocketDesc, &command[cmdpos], 1);
       printf("r(%d)=%d\n", SocketDesc, (int)r);
       if(r <= 0) {
+         nsa_close(SocketDesc);
+         SocketDesc = -1;
          return;
       }
       if(command[cmdpos] == '\r') {

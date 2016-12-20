@@ -344,11 +344,13 @@ int nsa_shutdown(int sockfd, int how)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
       pthread_mutex_lock(&neatSocket->ns_mutex);
       const neat_error_code result =
          neat_shutdown(gSocketAPIInternals->nsi_neat_context,
                        neatSocket->ns_flow);
       pthread_mutex_unlock(&neatSocket->ns_mutex);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
       switch(result) {
          case NEAT_OK:

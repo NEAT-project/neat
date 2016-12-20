@@ -78,7 +78,9 @@ static void neat_sctp_init_events(int sock);
 static neat_flow *neat_sctp_get_flow_by_sid(struct neat_pollable_socket *socket, uint16_t sid);
 static void neat_sctp_reset_stream(struct neat_pollable_socket *socket, uint16_t sid);
 static void neat_hook_mulitstream_flows(neat_flow *flow);
+#ifdef SCTP_RESET_STREAMS
 static void neat_sctp_handle_reset_stream(struct neat_pollable_socket *socket, struct sctp_stream_reset_event *notfn);
+#endif // SCTP_RESET_STREAMS
 #endif // SCTP_MULTISTREAMING
 
 static void neat_free_flow(struct neat_flow *flow);
@@ -5871,10 +5873,11 @@ neat_sctp_reset_stream(struct neat_pollable_socket *socket, uint16_t sid)
 /*
  * Handle stream reset event
  */
+
+#ifdef SCTP_RESET_STREAMS
 static void
 neat_sctp_handle_reset_stream(struct neat_pollable_socket *socket, struct sctp_stream_reset_event *notfn)
 {
-#ifdef SCTP_RESET_STREAMS
     uint16_t list_length = 0;
     int itr = 0;
     struct neat_flow *flow = NULL;
@@ -5934,10 +5937,10 @@ neat_sctp_handle_reset_stream(struct neat_pollable_socket *socket, struct sctp_s
             }
         }
     }
-#endif // SCTP_RESET_STREAMS
     return;
 }
 
+#endif // SCTP_RESET_STREAMS
 
 neat_error_code
 neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid)

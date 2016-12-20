@@ -29,13 +29,13 @@
 */
 static uint32_t config_rcv_buffer_size      = 1024;
 static uint32_t config_snd_buffer_size      = 1024;
-static uint32_t config_message_count        = 1;
+static uint32_t config_message_count        = 10;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_active               = 0;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_port                 = 8080;
 static uint16_t config_log_level            = 1;
-static uint16_t config_num_flows            = 1;
+static uint16_t config_num_flows            = 2;
 static uint16_t config_max_flows            = 100;
 static char *config_property = "\
 {\
@@ -304,9 +304,8 @@ on_readable(struct neat_flow_operations *opCB)
                 printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
             }
         }
-        on_close(opCB);
 
-        fprintf(stderr, "%s - free complete\n", __func__);
+        neat_shutdown(opCB->ctx, opCB->flow);
     }
 
     return NEAT_OK;
@@ -402,8 +401,6 @@ int
 main(int argc, char *argv[])
 {
     struct neat_ctx *ctx = NULL;
-    //struct neat_flow *flow = NULL;
-    //struct neat_flow_operations ops;
     int i = 0;
 
     struct neat_flow *flows[config_max_flows];
@@ -545,7 +542,7 @@ main(int argc, char *argv[])
         }
 
         ops[0].on_connected = on_connected;
-        ops[0].on_error = on_error;
+        ops[0].on_error     = on_error;
 
         if (neat_set_operations(ctx, flows[0], &(ops[0]))) {
             fprintf(stderr, "%s - neat_set_operations failed\n", __func__);

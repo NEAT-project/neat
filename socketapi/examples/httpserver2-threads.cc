@@ -140,19 +140,19 @@ void ServiceThread::run()
             }
          }
          else {
-            cout << "Thread " << ID << "File <" << fileName << "> not found!" << endl;
+            cout << "Thread " << ID << ": File <" << fileName << "> not found!" << endl;
             const char* status = "HTTP/1.0 404 Not Found\r\n\r\n404 Not Found\r\n";
             result = nsa_write(SocketDesc, status, strlen(status));
          }
       }
       else {
-         cout << "Thread " << ID << "Request for . or .. not acceptable!" << endl;
+         cout << "Thread " << ID << ": Request for . or .. not acceptable!" << endl;
          const char* status = "HTTP/1.0 406 Not Acceptable\r\n\r\n406 Not Acceptable\r\n";
          result = nsa_write(SocketDesc, status, strlen(status));
       }
    }
    else {
-      cout << "Thread " << ID << "Bad request!" << endl;
+      cout << "Thread " << ID << ": Bad request!" << endl;
       const char* status = "HTTP/1.0 400 Bad Request\r\n\r\n400 Bad Request\r\n";
       result = nsa_write(SocketDesc, status, strlen(status));
    }
@@ -331,7 +331,7 @@ int main(int argc, char** argv)
       // ====== Accept connection ============================================
       sockaddr_storage remoteAddress;
       socklen_t        remoteAddressLength = sizeof(remoteAddress);
-      int newSD = nsa_accept(ServerSocket, (sockaddr*)&remoteAddress, &remoteAddressLength);
+      const int        newSD = nsa_accept(ServerSocket, (sockaddr*)&remoteAddress, &remoteAddressLength);
       if(newSD < 0) {
          break;
       }

@@ -45,16 +45,11 @@ static char *config_property = "\
             \"precedence\": 1\
         },\
         {\
-            \"value\": \"SCTP/UDP\",\
-            \"precedence\": 1\
-        },\
-        {\
             \"value\": \"TCP\",\
             \"precedence\": 1\
         }\
     ]\
 }";
-static uint8_t done = 0;
 static uint32_t flows_active = 0;
 
 /*
@@ -168,7 +163,11 @@ on_all_written(struct neat_flow_operations *opCB)
         printf("\tduration\t: %.2fs\n", time_elapsed);
         printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
 
-        done = 1;
+        opCB->on_writable = NULL;
+        opCB->on_all_written = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
+        neat_shutdown(opCB->ctx, opCB->flow);
+        return NEAT_OK;
     }
 
     opCB->on_writable = on_writable;
@@ -219,14 +218,6 @@ on_writable(struct neat_flow_operations *opCB)
     }
 
     code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size, NULL, 0);
-
-    if (done) {
-        opCB->on_writable = NULL;
-        opCB->on_all_written = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_shutdown(opCB->ctx, opCB->flow);
-        return NEAT_OK;
-    }
 
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: code %d\n", __func__, (int)code);

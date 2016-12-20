@@ -256,6 +256,7 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
       if( (addrlen == NULL) ||
           ((*addrlen == 0) || (*addrlen >= sizeof(struct sockaddr_in))) ) {
 
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
          pthread_mutex_lock(&neatSocket->ns_mutex);
 
          if(neatSocket->ns_flags & NSAF_LISTENING) {
@@ -265,12 +266,24 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
                 (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) ) {
                /* ====== Blocking mode: wait ============================= */
                pthread_mutex_unlock(&neatSocket->ns_mutex);
+               pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
                nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
+               pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
+               /* ====== Check whether the socket has been closed ======== */
+               if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
+                  /* The socket has been closed -> return with EIO. */
+                  pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+                  errno = EIO;
+                  return(-1);
+               }
+
+               /* ====== Try again ======================================= */
                pthread_mutex_lock(&neatSocket->ns_mutex);
                newSocket = TAILQ_FIRST(&neatSocket->ns_accept_list);
             }
 
-            /* ====== Remove new socket from accept queue ================= */
+            /* ====== Remove new socket from accept queue ================ */
             if(newSocket) {
                TAILQ_REMOVE(&neatSocket->ns_accept_list, newSocket, ns_accept_node);
                result = newSocket->ns_descriptor;
@@ -280,7 +293,7 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
                es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
             }
 
-            /* ====== Fill in peer address ================================ */
+            /* ====== Fill in peer address =============================== */
             if(addrlen != NULL) {
                memset(addr, 0, sizeof(struct sockaddr_in));
                *addrlen = sizeof(struct sockaddr_in);
@@ -292,6 +305,7 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
         }
 
         pthread_mutex_unlock(&neatSocket->ns_mutex);
+        pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
       }
       else {

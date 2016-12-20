@@ -8,10 +8,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "neat_log.h"
 
+#define KNRM  "\x1B[0m"
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define YEL   "\x1B[33m"
+#define BLU   "\x1B[34m"
+#define MAG   "\x1B[35m"
+#define CYN   "\x1B[36m"
+#define WHT   "\x1B[37m"
+
 uint8_t log_level = NEAT_LOG_DEBUG;
+uint8_t color_supported = 0;
 struct timeval tv_init;
 FILE *neat_log_fd = NULL;
 
@@ -113,6 +124,23 @@ neat_log(uint8_t level, const char* format, ...)
         tv_diff.tv_usec = 1000000 + tv_now.tv_usec - tv_init.tv_usec;
     }
 
+    if (isatty(fileno(neat_log_fd))) {
+        switch (level) {
+            case NEAT_LOG_ERROR:
+                fprintf(neat_log_fd, RED);
+                break;
+            case NEAT_LOG_WARNING:
+                fprintf(neat_log_fd, YEL);
+                break;
+            case NEAT_LOG_INFO:
+                fprintf(neat_log_fd, GRN);
+                break;
+            case NEAT_LOG_DEBUG:
+                //fprintf(neat_log_fd, WHT);
+                break;
+        }
+    }
+
     fprintf(neat_log_fd, "[%4ld.%06ld]", (long)tv_diff.tv_sec, (long)tv_diff.tv_usec);
 
     switch (level) {
@@ -136,6 +164,10 @@ neat_log(uint8_t level, const char* format, ...)
     va_end(argptr);
 
     fprintf(neat_log_fd, "\n"); // xxx:ugly solution...
+
+    if (isatty(fileno(neat_log_fd))) {
+        fprintf(neat_log_fd, KNRM);
+    }
 }
 
 /*

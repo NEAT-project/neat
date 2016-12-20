@@ -273,7 +273,7 @@ struct neat_ctx *neat_bsd_init_ctx(struct neat_ctx *ctx)
                 "%s: can't open UDP/IPv6 socket (%s)", __func__,
                 strerror(errno));
     }
-    if ((ctx->route_buf = malloc(NEAT_ROUTE_BUFFER_SIZE)) == NULL) {
+    if ((ctx->route_buf = calloc(1, NEAT_ROUTE_BUFFER_SIZE)) == NULL) {
         neat_log(NEAT_LOG_ERROR,
                 "%s: can't allocate buffer");
         neat_bsd_cleanup(ctx);

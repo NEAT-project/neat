@@ -65,6 +65,7 @@ on_readable(struct neat_flow_operations *opCB)
     fprintf(stderr, "%s - reading from flow\n", __func__);
     code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read, NULL, 0);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
+        fprintf(stderr, "%s - would block\n", __func__);
         return 0;
     } else if (code != NEAT_OK) {
         return on_error(opCB);
@@ -121,6 +122,8 @@ on_close(struct neat_flow_operations *opCB)
     opCB->on_error = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
+    //neat_close(opCB->ctx, opCB->flow);
+
     // stop event loop if all flows are closed
     flows_active--;
     fprintf(stderr, "%s - active flows left : %d\n", __func__, flows_active);
@@ -140,7 +143,7 @@ main(int argc, char *argv[])
     struct neat_flow_operations ops[config_max_flows];
     int result = 0;
     int arg = 0;
-    uint32_t num_flows = 1;
+    uint32_t num_flows = 1; //xxx todo : check for multiple flow
     uint32_t i = 0;
     char *arg_property = NULL;
     result = EXIT_SUCCESS;

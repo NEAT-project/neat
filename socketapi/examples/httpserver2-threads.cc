@@ -98,7 +98,9 @@ void ServiceThread::run()
    char   command[1024];
    size_t cmdpos = 0;
    while(cmdpos < sizeof(command) - 1) {
-      if(nsa_read(SocketDesc, &command[cmdpos], 1) < 0) {
+      const ssize_t r = nsa_read(SocketDesc, &command[cmdpos], 1);
+      printf("r(%d)=%d\n", SocketDesc, (int)r);
+      if(r <= 0) {
          return;
       }
       if(command[cmdpos] == '\r') {

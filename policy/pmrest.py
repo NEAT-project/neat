@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 
-import pmconst
+import pmconst as PM
 
 try:
     import aiohttp
@@ -45,7 +45,7 @@ async def controller_announce(loop):
 
     """
     async with aiohttp.ClientSession(loop=loop) as client:
-        html = await hello(client, pmconst.CONTROLLER_REST)
+        html = await hello(client, PM.CONTROLLER_REST)
         if html:
             logging.debug(html)
 
@@ -164,7 +164,7 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
 
     handler = pmrest.make_handler()
 
-    f = asyncio_loop.create_server(handler, pmconst.LOCAL_IP, port)
+    f = asyncio_loop.create_server(handler, PM.LOCAL_IP, port)
     print("Initializing REST server on port %d" % port)
 
     server = asyncio_loop.run_until_complete(controller_announce(asyncio_loop))

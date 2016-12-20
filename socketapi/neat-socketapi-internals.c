@@ -125,6 +125,8 @@ struct neat_socketapi_internals* nsa_initialize()
       gSocketAPIInternals->nsi_socket_identifier_bitmap = ibm_new(FD_SETSIZE);
       if(gSocketAPIInternals->nsi_socket_identifier_bitmap != NULL) {
          /* ====== NEAT context ========================================== */
+         neat_log_level(NEAT_LOG_ERROR);   /* This may be improved ... */
+
          gSocketAPIInternals->nsi_neat_context = neat_init_ctx();
          if(gSocketAPIInternals->nsi_neat_context != NULL) {
             /* ====== Map stdin, stdout, stderr file descriptors ========= */

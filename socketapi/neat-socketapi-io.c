@@ -86,13 +86,24 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
       if( (result == NEAT_ERROR_WOULD_BLOCK) &&
           (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
           (!(flags & MSG_DONTWAIT)) ) {
-         /* ====== Blocking mode: wait and try again ===================== */
-         es_has_fired(&neatSocket->ns_write_signal);   /* Clear write signal */
+         /* ====== Blocking mode: wait =================================== */
+         es_has_fired(&neatSocket->ns_write_signal); /* Clear write signal */
          nsa_set_socket_event_on_read(neatSocket, true);
+
          pthread_mutex_unlock(&neatSocket->ns_mutex);
          pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
          nsa_wait_for_event(neatSocket, POLLOUT|POLLERR, -1);
          pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
+         /* ====== Check whether the socket has been closed ============== */
+         if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
+            /* The socket has been closed -> return with EIO. */
+            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+            errno = EIO;
+            return(-1);
+         }
+
+         /* ====== Try again ============================================= */
          pthread_mutex_lock(&neatSocket->ns_mutex);
          result =  neat_writev(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
                                msg->msg_iov, msg->msg_iovlen,
@@ -151,13 +162,24 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
       if( (result == NEAT_ERROR_WOULD_BLOCK) &&
           (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
           (!(flags & MSG_DONTWAIT)) ) {
-         /* ====== Blocking mode: wait and try again ===================== */
+         /* ====== Blocking mode: wait =================================== */
          es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
          nsa_set_socket_event_on_read(neatSocket, true);
+
          pthread_mutex_unlock(&neatSocket->ns_mutex);
          pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
          nsa_wait_for_event(neatSocket, POLLIN|POLLERR, -1);
          pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
+         /* ====== Check whether the socket has been closed ============== */
+         if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
+            /* The socket has been closed -> return with EIO. */
+            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+            errno = EIO;
+            return(-1);
+         }
+
+         /* ====== Try again ============================================= */
          pthread_mutex_lock(&neatSocket->ns_mutex);
          result = neat_readv(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow,
                              msg->msg_iov, msg->msg_iovlen, &actual_amount,

@@ -269,6 +269,9 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             if( (newSocket == NULL) &&
                 (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) ) {
                /* ====== Blocking mode: wait ============================= */
+               es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
+               nsa_set_socket_event_on_read(neatSocket, true);
+
                pthread_mutex_unlock(&neatSocket->ns_mutex);
                pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
                nsa_wait_for_event(neatSocket, POLLIN, -1);

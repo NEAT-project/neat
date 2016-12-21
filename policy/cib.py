@@ -7,7 +7,7 @@ import operator
 import time
 from collections import ChainMap
 
-from pmconst import *
+from pmdefaults import *
 from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
 from policy import dict_to_properties
 

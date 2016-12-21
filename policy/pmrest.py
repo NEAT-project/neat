@@ -4,7 +4,7 @@ import uuid
 
 import asyncio
 
-import pmconst as PM
+import pmdefaults as PM
 
 try:
     import aiohttp

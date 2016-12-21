@@ -3,7 +3,7 @@ import json
 import numbers
 import shutil
 
-from pmconst import *
+from pmdefaults import *
 
 DARK_GRAY_START = '\033[90m'
 BOLD_START = '\033[1m'

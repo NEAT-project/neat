@@ -7,7 +7,7 @@ import signal
 from copy import deepcopy
 from operator import attrgetter
 
-import pmconst as PM
+import pmdefaults as PM
 import pmrest
 import policy
 from cib import CIB
@@ -15,17 +15,29 @@ from pib import PIB
 from policy import PropertyMultiArray
 
 parser = argparse.ArgumentParser(description='NEAT Policy Manager')
-parser.add_argument('--cib', type=str, default=PM.CIB_DIR, help='specify directory in which to look for CIB files')
-parser.add_argument('--pib', type=str, default=PM.PIB_DIR, help='specify directory in which to look for PIB files')
-parser.add_argument('--sock', type=str, default=PM.DOMAIN_SOCK, help='set Unix domain socket')
-parser.add_argument('--controller', type=str, default=PM.CONTROLLER_REST, help='set controller REST API')
-parser.add_argument('--debug', type=bool, default=PM.DEBUG, help='enable debugging')
-
-parser.add_argument('--rest', type=bool, default=True, help='enable REST API')
-
+parser.add_argument('--cib', type=str, default=None, help='specify directory in which to look for CIB files')
+parser.add_argument('--pib', type=str, default=None, help='specify directory in which to look for PIB files')
+parser.add_argument('--sock', type=str, default=None, help='set Unix domain socket')
+parser.add_argument('--controller', type=str, default=None, help='set controller REST API')
+parser.add_argument('--debug', type=bool, default=None, help='enable debugging')
+parser.add_argument('--rest', type=bool, default=None, help='enable REST API')
 parser.add_argument('--bypass', type=bool, default=False, help='enable debugging')
-
 args = parser.parse_args()
+
+if args.cib:
+    PM.CIB_DIR = args.cib
+if args.pib:
+    PM.PIB_DIR = args.pib
+if args.sock:
+    PM.DOMAIN_SOCK = args.sock
+if args.controller:
+    PM.CONTROLLER_REST = args.controller
+if args.debug:
+    PM.DEBUG = args.debug
+if args.rest:
+    PM.REST_ENABLE = args.rest
+
+
 
 try:
     os.makedirs(os.path.dirname(PM.DOMAIN_SOCK), exist_ok=True)

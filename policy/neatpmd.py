@@ -37,8 +37,6 @@ if args.debug:
 if args.rest:
     PM.REST_ENABLE = args.rest
 
-
-
 try:
     os.makedirs(os.path.dirname(PM.DOMAIN_SOCK), exist_ok=True)
     os.makedirs(os.path.dirname(PM.PIB_SOCK), exist_ok=True)
@@ -310,15 +308,24 @@ if __name__ == "__main__":
         loop.run_forever()
     except KeyboardInterrupt:
         print("\nQuitting policy manager.")
+
+    try:
+        # Close the servers
+        pmrest.close()
+
+        server.close()
+        loop.run_until_complete(server.wait_closed())
+
+        pib_server.close()
+        loop.run_until_complete(pib_server.wait_closed())
+        cib_server.close()
+        loop.run_until_complete(cib_server.wait_closed())
+    except AttributeError as e:
         pass
-    # TODO implement http://aiohttp.readthedocs.io/en/stable/web.html#graceful-shutdown
+    except Exception as e:
+        import code
+        code.interact(local=locals(), banner='here')
 
-    # Close the server
-    server.close()
-    pib_server.close()
-    cib_server.close()
-    pmrest.close()
-
-    loop.run_until_complete(server.wait_closed())
     loop.close()
+
     raise SystemExit(0)

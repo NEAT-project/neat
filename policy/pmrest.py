@@ -20,6 +20,10 @@ cib = None
 pib = None
 
 server = None
+announcer = None
+
+app = None
+loop = None
 
 
 async def send_hello(client, controller):
@@ -141,13 +145,15 @@ async def handle_rest(request):
 def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=None):
     """ Register REST server
 
-    curl  -H 'Content-Type: application/json' -X PUT -d'["adfd",123]'ocalhost:45888/cib/23423
+    curl  -H 'Content-Type: application/json' -X PUT -d'["abc",123]' localhost:45888/c3b/23423
     """
     if web is None:
         logging.info("REST server not available because the aiohttp module is not installed.")
         return
 
-    global pib, cib, port, server
+    global pib, cib, port, server, announcer, loop, app
+
+    loop = asyncio_loop
 
     profiles = profiles_ref
     cib = cib_ref
@@ -157,6 +163,8 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
         port = rest_port
 
     pmrest = web.Application()
+    app = pmrest
+
     pmrest.router.add_get('/', handle_rest)
     pmrest.router.add_get('/pib', handle_pib)
     pmrest.router.add_get('/pib/{uid}', handle_pib)
@@ -172,11 +180,18 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
 
     f = asyncio_loop.create_server(handler, PM.LOCAL_IP, port)
     print("Initializing REST server on port %d" % port)
-
-    server = asyncio_loop.run_until_complete(controller_announce(asyncio_loop))
-
     server = asyncio_loop.run_until_complete(f)
+
+    announcer = asyncio_loop.run_until_complete(controller_announce(asyncio_loop))
 
 
 def close():
+    # TODO implement http://aiohttp.readthedocs.io/en/stable/web.html#graceful-shutdown
     server.close()
+    loop.run_until_complete(server.wait_closed())
+
+    announcer.close()
+    loop.run_until_complete(announcer.wait_closed())
+
+    loop.run_until_complete(app.shutdown())
+    loop.run_until_complete(app.cleanup())

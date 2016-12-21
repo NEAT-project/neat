@@ -99,7 +99,6 @@ void ServiceThread::run()
    size_t cmdpos = 0;
    while(cmdpos < sizeof(command) - 1) {
       const ssize_t r = nsa_read(SocketDesc, &command[cmdpos], 1);
-      printf("r(%d)=%d\n", SocketDesc, (int)r);
       if(r <= 0) {
          nsa_close(SocketDesc);
          SocketDesc = -1;
@@ -136,7 +135,7 @@ void ServiceThread::run()
             const char* status = "HTTP/1.0 200 OK\r\n\r\n";
             result = nsa_write(SocketDesc, status, strlen(status));
 
-            char str[256];
+            char str[8192];
             streamsize s = is.rdbuf()->sgetn(str, sizeof(str));
             while((s > 0) && (result > 0)) {
                result = nsa_write(SocketDesc, str, s);

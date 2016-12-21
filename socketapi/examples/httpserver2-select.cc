@@ -77,7 +77,7 @@ void handleHTTPCommand(int sd, const unsigned int id, char* command)
             const char* status = "HTTP/1.0 200 OK\r\n\r\n";
             result = nsa_write(sd, status, strlen(status));
 
-            char str[256];
+            char str[8192];
             streamsize s = is.rdbuf()->sgetn(str, sizeof(str));
             while((s > 0) && (result > 0)) {
                result = nsa_write(sd, str, s);

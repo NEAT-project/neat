@@ -53,7 +53,7 @@ int main(int argc, char** argv)
       char buffer[1024];
       ssize_t r = nsa_read(newSD, (char*)&buffer, sizeof(buffer));
       if(r > 0) {
-         printf("r=%d\n", r);
+         printf("r=%d\n", (int)r);
          if(nsa_write(newSD, buffer, r) < 0) {
             perror("nsa_write() failed");
          }

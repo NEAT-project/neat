@@ -530,6 +530,9 @@ int nsa_connectx_internal(struct neat_socket* neatSocket,
          nsa_notify_main_loop();
 
          /* ====== Blocking mode: wait ====================================== */
+         es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
+         nsa_set_socket_event_on_read(neatSocket, true);
+
          const int sockfd = neatSocket->ns_descriptor;
          pthread_mutex_unlock(&neatSocket->ns_mutex);
          pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
@@ -538,15 +541,14 @@ int nsa_connectx_internal(struct neat_socket* neatSocket,
 
          /* ====== Check whether the socket has been closed ================= */
          if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
-            /* The socket has been closed -> return with EIO. */
+            /* The socket has been closed -> return with EBADF. */
             pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
             errno = EBADF;
             return(-1);
          }
 
-         pthread_mutex_lock(&neatSocket->ns_mutex);
-
          /* ====== Check result ============================================= */
+         pthread_mutex_lock(&neatSocket->ns_mutex);
          if(neatSocket->ns_flags & NSAF_BAD) {
             // FIXME! Is it possible to get more specific errors from NEAT?
             result = NEAT_ERROR_IO;

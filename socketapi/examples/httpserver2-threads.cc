@@ -95,20 +95,27 @@ ServiceThread::~ServiceThread()
 void ServiceThread::run()
 {
    // ====== Get command ==================================================
-   char   command[1024];
-   size_t cmdpos = 0;
-   while(cmdpos < sizeof(command) - 1) {
-      const ssize_t r = nsa_read(SocketDesc, &command[cmdpos], 1);
+   char   command[8192];
+   size_t cmdpos   = 0;
+   bool   finished = false;
+   while( (cmdpos < sizeof(command) - 1) && (!finished) ) {
+      const ssize_t r = nsa_read(SocketDesc, &command[cmdpos], sizeof(command) - cmdpos);
       if(r <= 0) {
+         if(r < 0) {
+            cout << "Thread " << ID << ": Connection aborted - " << strerror(errno) << endl;
+         }
          nsa_close(SocketDesc);
          SocketDesc = -1;
          return;
       }
-      if(command[cmdpos] == '\r') {
-         command[cmdpos] = 0x00;
-         break;
+      for(size_t i = 0; i < (size_t)r; i++) {
+         if(command[cmdpos] == '\r') {
+            command[cmdpos] = 0x00;
+            finished = true;
+            break;
+         }
+         cmdpos++;
       }
-      cmdpos++;
    }
 
    cout << "Command: ";

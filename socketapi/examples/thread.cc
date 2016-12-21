@@ -67,6 +67,7 @@ void Thread::waitForFinish()
 {
    if(MyThread != 0) {
       pthread_join(MyThread, NULL);
+      MyThread = 0;
    }
 }
 

@@ -1554,13 +1554,13 @@ io_timeout(neat_ctx *ctx, neat_flow *flow)
 static neat_error_code
 neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
-static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
+static void
+updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
     struct neat_pollable_socket *pollable_socket = handle->data;
     int newEvents = 0;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-    assert(pollable_socket);
 
 #ifdef SCTP_MULTISTREAMING
     if (pollable_socket != NULL && pollable_socket->multistream) {
@@ -1637,7 +1637,7 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 #endif
 
     // iterate through all flows
-    } while (pollable_socket->multistream && flow);
+    } while (pollable_socket != NULL && pollable_socket->multistream == 1 && flow != NULL);
 
     if (newEvents) {
         if (pollable_socket->handle != NULL) {
@@ -1652,7 +1652,8 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     }
 }
 
-static void free_he_handle_cb(uv_handle_t *handle)
+static void
+free_he_handle_cb(uv_handle_t *handle)
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     free(handle);

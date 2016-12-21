@@ -274,12 +274,14 @@ static neat_error_code on_readable(struct neat_flow_operations* ops)
 {
    struct neat_socket* neatSocket = (struct neat_socket*)ops->userData;
    assert(neatSocket != NULL);
+
    pthread_mutex_lock(&neatSocket->ns_mutex);
    neatSocket->ns_flags |= NSAF_READABLE;
    printf("on_readable sd=%d\n", neatSocket->ns_descriptor);
    es_broadcast(&neatSocket->ns_read_signal);
    nsa_set_socket_event_on_read(neatSocket, false);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
+
    return(NEAT_OK);
 }
 
@@ -625,6 +627,9 @@ void nsa_close_internal(struct neat_socket* neatSocket)
 void nsa_set_socket_event_on_read(struct neat_socket* neatSocket, const bool r)
 {
    neatSocket->ns_flow_ops.on_readable = (r) ? &on_readable : NULL;
+   neat_set_operations(gSocketAPIInternals->nsi_neat_context,
+                       neatSocket->ns_flow, &neatSocket->ns_flow_ops);
+   nsa_notify_main_loop();
 }
 
 
@@ -634,6 +639,7 @@ void nsa_set_socket_event_on_write(struct neat_socket* neatSocket, const bool w)
    neatSocket->ns_flow_ops.on_writable = (w) ? &on_writable : NULL;
    neat_set_operations(gSocketAPIInternals->nsi_neat_context,
                        neatSocket->ns_flow, &neatSocket->ns_flow_ops);
+   nsa_notify_main_loop();
 }
 
 

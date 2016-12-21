@@ -2,6 +2,8 @@ import json
 import logging
 import uuid
 
+import asyncio
+
 import pmconst as PM
 
 try:
@@ -21,9 +23,7 @@ pib = None
 server = None
 
 
-async def hello(client, controller):
-    if not controller:
-        return
+async def send_hello(client, controller):
 
     host_uid = str(uuid.uuid3(uuid.NAMESPACE_OID, str(uuid.getnode())))
     host_info = {'client-uid': host_uid,
@@ -44,10 +44,16 @@ async def controller_announce(loop):
     Register NEAT client with a remote controller
 
     """
-    async with aiohttp.ClientSession(loop=loop) as client:
-        html = await hello(client, PM.CONTROLLER_REST)
-        if html:
-            logging.debug(html)
+    if not PM.CONTROLLER_REST:
+        return
+
+    # send hello message every PM.CONTROLLER_ANNOUNCE seconds
+    # TODO randomize
+    while True:
+        print("Notifying controller at %s" % PM.CONTROLLER_REST)
+        async with aiohttp.ClientSession(loop=loop) as client:
+            html = await send_hello(client, PM.CONTROLLER_REST)
+        await asyncio.sleep(PM.CONTROLLER_ANNOUNCE)
 
 
 async def handle_pib(request):

@@ -24,7 +24,9 @@ DEFAULT_EVALUATED = False
 LOCAL_IP = '0.0.0.0'
 REST_PORT = 45888
 
+# SDN controller northbound API address
 CONTROLLER_REST = 'http://httpbin.org/post'
+CONTROLLER_ANNOUNCE = 3 * 60
 
 
 class STYLE(object):

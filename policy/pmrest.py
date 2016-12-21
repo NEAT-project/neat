@@ -1,8 +1,7 @@
+import asyncio
 import json
 import logging
 import uuid
-
-import asyncio
 
 import pmdefaults as PM
 
@@ -24,9 +23,9 @@ server = None
 
 
 async def send_hello(client, controller):
-
     host_uid = str(uuid.uuid3(uuid.NAMESPACE_OID, str(uuid.getnode())))
     host_info = {'client-uid': host_uid,
+                 'client-rest-port': PM.REST_PORT,
                  'client-type': 'neat',
                  'manager-address': controller}
     hello_msg = json.dumps({"input": host_info})
@@ -53,6 +52,7 @@ async def controller_announce(loop):
         print("Notifying controller at %s" % PM.CONTROLLER_REST)
         async with aiohttp.ClientSession(loop=loop) as client:
             html = await send_hello(client, PM.CONTROLLER_REST)
+
         await asyncio.sleep(PM.CONTROLLER_ANNOUNCE)
 
 

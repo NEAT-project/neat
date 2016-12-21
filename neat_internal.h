@@ -195,18 +195,14 @@ struct neat_pollable_socket
    unsigned int nr_local_addr;
 #endif
 
-
-    //struct sockaddr srcAddr;
-    //struct sockaddr dstAddr;
-
     size_t      write_limit;        // maximum to write if the socket supports partial writes
     size_t      write_size;         // send buffer size
-    size_t      read_size;   // receive buffer size
-
-    unsigned int sctp_explicit_eor : 1;
-    uint16_t                    sctp_streams_available; // available streams
+    size_t      read_size;          // receive buffer size
 
     uint8_t                     multistream;            // multistreaming active
+
+    unsigned int                sctp_explicit_eor : 1;
+    uint16_t                    sctp_streams_available; // available streams
 #ifdef SCTP_MULTISTREAMING
     uint8_t                     sctp_notification_wait; // wait for all notifications
     uint8_t                     sctp_notification_recvd;// we have received a notification
@@ -302,9 +298,11 @@ struct neat_flow
     uv_timer_t                      *multistream_timer;
     uint16_t                        multistream_id;
     LIST_ENTRY(neat_flow)           multistream_next_flow;
-    // The memory buffer for reading
+
     struct neat_read_queue_head     multistream_read_queue;
     size_t                          multistream_read_queue_size;
+
+    neat_flow_states                multistream_state;
 #endif
 };
 

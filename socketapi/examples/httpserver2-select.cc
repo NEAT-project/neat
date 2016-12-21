@@ -58,7 +58,7 @@ void handleHTTPCommand(int sd, const unsigned int id, char* command)
 {
    ssize_t result = -1;
 
-   // ====== Execute HTTP GET command =====================================
+   // ====== Execute HTTP GET command =======================================
    if(strncasecmp(command, "GET ", 4) == 0) {
       std::string fileName = std::string((const char*)&command[4]);
       fileName = fileName.substr(0, fileName.find(' '));   // Remove <space>HTTP/1.x
@@ -268,7 +268,7 @@ int main(int argc, char** argv)
    }
 
 
-   // ====== Get remote address (resolve hostname and service if necessary) ==
+   // ====== Get remote address (resolve hostname and service if necessary) =
    struct addrinfo* ainfo = NULL;
    struct addrinfo  ainfohint;
    memset((char*)&ainfohint, 0, sizeof(ainfohint));
@@ -284,7 +284,7 @@ int main(int argc, char** argv)
    }
 
 
-   // ====== Create socket of appropriate type ===============================
+   // ====== Create socket of appropriate type ==============================
    int sd = nsa_socket(ainfo->ai_family, ainfo->ai_socktype, ainfo->ai_protocol, properties);
    if(sd <= 0) {
       perror("nsa_socket() call failed");
@@ -292,7 +292,7 @@ int main(int argc, char** argv)
    }
 
 
-   // ====== Bind to local port ==============================================
+   // ====== Bind to local port =============================================
    if(nsa_bind(sd, ainfo->ai_addr, ainfo->ai_addrlen) < 0) {
       perror("nsa_bind() call failed");
       exit(1);
@@ -306,17 +306,17 @@ int main(int argc, char** argv)
 #endif
 
 
-   // ====== Turn socket into "listen" mode ==================================
+   // ====== Turn socket into "listen" mode =================================
    if(nsa_listen(sd, 10) < 0) {
       perror("listen() call failed");
    }
 
 
-   // ====== Install SIGINT handler ==========================================
+   // ====== Install SIGINT handler =========================================
    signal(SIGINT, &intHandler);
 
 
-   // ====== Print information ===============================================
+   // ====== Print information ==============================================
    char localHost[512];
    char localService[128];
    error = getnameinfo(ainfo->ai_addr, ainfo->ai_addrlen,
@@ -331,7 +331,7 @@ int main(int argc, char** argv)
         << localHost << ", service " << localService << "..." << endl;
 
 
-   // ====== Handle requests =================================================
+   // ====== Handle requests ================================================
    ClientList clientList;
    while(!breakDetected) {
       fd_set readSet;
@@ -349,7 +349,7 @@ int main(int argc, char** argv)
       if(result > 0) {
          clientList.handleEvents(&readSet);
          if(FD_ISSET(sd, &readSet)) {
-            // ====== Accept connection ============================================
+            // ====== Accept connection =====================================
             sockaddr_storage remoteAddress;
             socklen_t        remoteAddressLength = sizeof(remoteAddress);
             int newSD = nsa_accept(sd, (sockaddr*)&remoteAddress, &remoteAddressLength);
@@ -357,7 +357,7 @@ int main(int argc, char** argv)
                break;
             }
 
-            // ====== Print information ============================================
+            // ====== Print information =====================================
             char remoteHost[512];
             char remoteService[128];
             error = getnameinfo((sockaddr*)&remoteAddress, remoteAddressLength,
@@ -372,14 +372,14 @@ int main(int argc, char** argv)
                  << remoteHost << ", service " << remoteService << ":" << endl;
 
 
-            // ====== Start new service thread =====================================
+            // ====== Start new service thread ==============================
             clientList.add(newSD);
          }
       }
    }
 
 
-   // ====== Clean up ========================================================
+   // ====== Clean up =======================================================
    clientList.removeAll();
    freeaddrinfo(ainfo);
    if(sd >= 0) {

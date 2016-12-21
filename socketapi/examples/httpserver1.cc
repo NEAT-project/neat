@@ -61,7 +61,7 @@ int main(int argc, char** argv)
    }
 
 
-   // ====== Get remote address (resolve hostname and service if necessary) ==
+   // ====== Get remote address (resolve hostname and service if necessary) =
    struct addrinfo* ainfo = NULL;
    struct addrinfo  ainfohint;
    memset((char*)&ainfohint, 0, sizeof(ainfohint));
@@ -77,7 +77,7 @@ int main(int argc, char** argv)
    }
 
 
-   // ====== Create socket of appropriate type ===============================
+   // ====== Create socket of appropriate type ==============================
    int sd = nsa_socket(ainfo->ai_family, ainfo->ai_socktype, ainfo->ai_protocol, properties);
    if(sd <= 0) {
       perror("nsa_socket() call failed");
@@ -85,20 +85,20 @@ int main(int argc, char** argv)
    }
 
 
-   // ====== Bind to local port ==============================================
+   // ====== Bind to local port =============================================
    if(nsa_bind(sd, ainfo->ai_addr, ainfo->ai_addrlen) < 0) {
       perror("nsa_bind() call failed");
       exit(1);
    }
 
 
-   // ====== Turn socket into "listen" mode ==================================
+   // ====== Turn socket into "listen" mode =================================
    if(nsa_listen(sd, 10) < 0) {
       perror("nsa_listen() call failed");
    }
 
 
-   // ====== Print information ===============================================
+   // ====== Print information ==============================================
    char localHost[512];
    char localService[128];
    error = getnameinfo(ainfo->ai_addr, ainfo->ai_addrlen,
@@ -113,9 +113,9 @@ int main(int argc, char** argv)
         << localHost << ", service " << localService << "..." << endl;
 
 
-   // ====== Handle requests =================================================
+   // ====== Handle requests ================================================
    for(;;) {
-      // ====== Accept connection ============================================
+      // ====== Accept connection ===========================================
       sockaddr_storage remoteAddress;
       socklen_t        remoteAddressLength = sizeof(remoteAddress);
       int newSD = nsa_accept(sd, (sockaddr*)&remoteAddress, &remoteAddressLength);
@@ -125,7 +125,7 @@ int main(int argc, char** argv)
       }
 
 
-      // ====== Print information ============================================
+      // ====== Print information ===========================================
       char remoteHost[512];
       char remoteService[128];
       error = getnameinfo((sockaddr*)&remoteAddress, remoteAddressLength,
@@ -140,19 +140,27 @@ int main(int argc, char** argv)
            << remoteHost << ", service " << remoteService << ":" << endl;
 
 
-      // ====== Get command ==================================================
-      char   command[1024];
-      size_t cmdpos = 0;
-      while(cmdpos < sizeof(command) - 1) {
-         if(nsa_read(newSD, &command[cmdpos], 1) < 0) {
-            perror("read() call failed");
+      // ====== Get command =================================================
+      char   command[8192];
+      size_t cmdpos   = 0;
+      bool   finished = false;
+      while( (cmdpos < sizeof(command) - 1) && (!finished) ) {
+         const ssize_t r = nsa_read(newSD, &command[cmdpos], sizeof(command) - cmdpos);
+         if(r <= 0) {
+            if(r < 0) {
+               perror("nsa_read() call failed");
+               exit(1);
+            }
             exit(1);
          }
-         if(command[cmdpos] == '\r') {
-            command[cmdpos] = 0x00;
-            break;
+         for(size_t i = 0; i < (size_t)r; i++) {
+            if(command[cmdpos] == '\r') {
+               command[cmdpos] = 0x00;
+               finished = true;
+               break;
+            }
+            cmdpos++;
          }
-         cmdpos++;
       }
 
       cout << "Command: ";
@@ -160,7 +168,7 @@ int main(int argc, char** argv)
       cout << endl;
 
 
-      // ====== Execute HTTP GET command =====================================
+      // ====== Execute HTTP GET command ====================================
       ssize_t result = -1;
       if(strncasecmp(command, "GET ", 4) == 0) {
          std::string fileName = std::string((const char*)&command[4]);
@@ -206,13 +214,13 @@ int main(int argc, char** argv)
       cout << "Command completed." << endl;
 
 
-      // ====== Shutdown connection ==========================================
+      // ====== Shutdown connection =========================================
       nsa_shutdown(newSD, SHUT_RDWR);
       nsa_close(newSD);
    }
 
 
-   // ====== Clean up ========================================================
+   // ====== Clean up =======================================================
    freeaddrinfo(ainfo);
    nsa_close(sd);
    nsa_cleanup();

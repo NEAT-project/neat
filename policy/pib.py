@@ -6,7 +6,7 @@ import os
 import time
 
 from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
-from pmconst import STYLE
+from pmdefaults import STYLE
 
 
 PIB_EXTENSIONS = ('.policy', '.profile', '.pib')

@@ -1560,6 +1560,7 @@ static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     int newEvents = 0;
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    assert(pollable_socket);
 
 #ifdef SCTP_MULTISTREAMING
     if (pollable_socket != NULL && pollable_socket->multistream) {
@@ -3893,7 +3894,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 assert(false);
 #endif
             }
-            
+
             if (rv < 0) {
                 if (errno == EWOULDBLOCK) {
                     return NEAT_ERROR_WOULD_BLOCK;

@@ -17,6 +17,7 @@ DEFAULT_EVALUATED = False
 LOCAL_IP = '0.0.0.0'
 REST_PORT = 45888
 
+CONTROLLER_REST = 'http://httpbin.org/post'
 
 class STYLE(object):
     DARK_GRAY_START = '\033[90m'

@@ -355,7 +355,7 @@ static neat_error_code on_timeout(struct neat_flow_operations* ops)
    assert(neatSocket != NULL);
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
-   neatSocket->ns_flags |= NSAF_BAD;
+   neatSocket->ns_flags |= NSAF_TIMEOUT;
    printf("on_timeout sd=%d\n", neatSocket->ns_descriptor);
    pthread_mutex_unlock(&neatSocket->ns_mutex);
 

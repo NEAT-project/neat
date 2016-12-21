@@ -1573,8 +1573,8 @@ updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     assert(flow->socket);
     assert(flow->socket->handle);
 
-    if (flow->socket->handle != NULL) {
-        if (handle->loop == NULL || uv_is_closing((uv_handle_t *)flow->socket->handle)) {
+    if (handle != NULL) {
+        if (handle->loop == NULL || uv_is_closing((uv_handle_t *)handle)) {
             return;
         }
     }
@@ -1640,15 +1640,11 @@ updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     } while (pollable_socket != NULL && pollable_socket->multistream == 1 && flow != NULL);
 
     if (newEvents) {
-        if (pollable_socket->handle != NULL) {
-            neat_log(NEAT_LOG_DEBUG, "%s - events - readable : %d - writable : %d", __func__, (newEvents & UV_READABLE), (newEvents & UV_WRITABLE));
-            uv_poll_start(handle, newEvents, uvpollable_cb);
-        }
+        neat_log(NEAT_LOG_DEBUG, "%s - events - starting poll - readable : %d - writable : %d", __func__, (newEvents & UV_READABLE), (newEvents & UV_WRITABLE));
+        uv_poll_start(handle, newEvents, uvpollable_cb);
     } else {
-        if (pollable_socket->handle != NULL) {
-            neat_log(NEAT_LOG_DEBUG, "no events");
-            uv_poll_stop(handle);
-        }
+        neat_log(NEAT_LOG_DEBUG, "%s - no events - stopping poll", __func__);
+        uv_poll_stop(handle);
     }
 }
 

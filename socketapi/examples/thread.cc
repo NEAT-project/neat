@@ -47,7 +47,6 @@ void* Thread::startRoutine(void* object)
 {
    Thread* thread = (Thread*)object;
    thread->run();
-   thread->MyThread = 0;
    return(NULL);
 }
 

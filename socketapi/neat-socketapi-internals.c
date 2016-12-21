@@ -629,7 +629,6 @@ void nsa_set_socket_event_on_read(struct neat_socket* neatSocket, const bool r)
    neatSocket->ns_flow_ops.on_readable = (r) ? &on_readable : NULL;
    neat_set_operations(gSocketAPIInternals->nsi_neat_context,
                        neatSocket->ns_flow, &neatSocket->ns_flow_ops);
-   nsa_notify_main_loop();
 }
 
 
@@ -639,7 +638,6 @@ void nsa_set_socket_event_on_write(struct neat_socket* neatSocket, const bool w)
    neatSocket->ns_flow_ops.on_writable = (w) ? &on_writable : NULL;
    neat_set_operations(gSocketAPIInternals->nsi_neat_context,
                        neatSocket->ns_flow, &neatSocket->ns_flow_ops);
-   nsa_notify_main_loop();
 }
 
 
@@ -744,13 +742,12 @@ static void* nsa_main_loop(void* args)
       if(isShuttingDown) {
          break;
       }
-      int results = poll((struct pollfd*)&ufds, nfds, timeout);
-
+      const int results = poll((struct pollfd*)&ufds, nfds, timeout);
 
       /* ====== Handle poll() results ==================================== */
       if(results > 0) {
          if(ufds[0].revents & POLLIN) {   /* The wake-up pipe */
-            char      buffer[128];
+            char      buffer[512];
             const int r = read(gSocketAPIInternals->nsi_main_loop_pipe[0],
                                (char*)&buffer, sizeof(buffer));
             if(r < 0) {

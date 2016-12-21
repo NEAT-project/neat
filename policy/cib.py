@@ -1,19 +1,15 @@
 import bisect
 import copy
 import hashlib
-import json
-import logging
-import operator
-from collections import ChainMap
-
 import itertools
+import json
+import operator
 import time
+from collections import ChainMap
 
 from pmconst import *
 from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
 from policy import dict_to_properties
-
-logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
 
 class CIBEntryError(Exception):

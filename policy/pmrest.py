@@ -2,7 +2,9 @@ import json
 import logging
 import uuid
 
-import pmconst
+import asyncio
+
+import pmconst as PM
 
 try:
     import aiohttp
@@ -21,9 +23,7 @@ pib = None
 server = None
 
 
-async def hello(client, controller):
-    if not controller:
-        return
+async def send_hello(client, controller):
 
     host_uid = str(uuid.uuid3(uuid.NAMESPACE_OID, str(uuid.getnode())))
     host_info = {'client-uid': host_uid,
@@ -44,10 +44,16 @@ async def controller_announce(loop):
     Register NEAT client with a remote controller
 
     """
-    async with aiohttp.ClientSession(loop=loop) as client:
-        html = await hello(client, pmconst.CONTROLLER_REST)
-        if html:
-            logging.debug(html)
+    if not PM.CONTROLLER_REST:
+        return
+
+    # send hello message every PM.CONTROLLER_ANNOUNCE seconds
+    # TODO randomize
+    while True:
+        print("Notifying controller at %s" % PM.CONTROLLER_REST)
+        async with aiohttp.ClientSession(loop=loop) as client:
+            html = await send_hello(client, PM.CONTROLLER_REST)
+        await asyncio.sleep(PM.CONTROLLER_ANNOUNCE)
 
 
 async def handle_pib(request):
@@ -164,7 +170,7 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
 
     handler = pmrest.make_handler()
 
-    f = asyncio_loop.create_server(handler, pmconst.LOCAL_IP, port)
+    f = asyncio_loop.create_server(handler, PM.LOCAL_IP, port)
     print("Initializing REST server on port %d" % port)
 
     server = asyncio_loop.run_until_complete(controller_announce(asyncio_loop))

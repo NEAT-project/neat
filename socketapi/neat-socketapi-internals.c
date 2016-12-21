@@ -523,31 +523,38 @@ int nsa_connectx_internal(struct neat_socket* neatSocket,
    neat_error_code result = neat_open(gSocketAPIInternals->nsi_neat_context,
                                       neatSocket->ns_flow, name, port,
                                       NULL, 0);
-   if( (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) &&
-       (result == NEAT_OK) ) {
-      /* Finish the main loop's waiting, in order to let it process
-       * the connect request. */
-      nsa_notify_main_loop();
+   if(result == NEAT_OK) {
+      if(!(neatSocket->ns_flags & NSAF_NONBLOCKING)) {
+         /* Finish the main loop's waiting, in order to let it process
+          * the connect request. */
+         nsa_notify_main_loop();
 
-      /* ====== Blocking mode: wait ====================================== */
-      const int sockfd = neatSocket->ns_descriptor;
-      pthread_mutex_unlock(&neatSocket->ns_mutex);
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-      nsa_wait_for_event(neatSocket, POLLIN, -1);
-      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-
-      /* ====== Check whether the socket has been closed ================= */
-      if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
-         /* The socket has been closed -> return with EIO. */
+         /* ====== Blocking mode: wait ====================================== */
+         const int sockfd = neatSocket->ns_descriptor;
+         pthread_mutex_unlock(&neatSocket->ns_mutex);
          pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-         errno = EBADF;
-         return(-1);
+         nsa_wait_for_event(neatSocket, POLLIN, -1);
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
+         /* ====== Check whether the socket has been closed ================= */
+         if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
+            /* The socket has been closed -> return with EIO. */
+            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+            errno = EBADF;
+            return(-1);
+         }
+
+         pthread_mutex_lock(&neatSocket->ns_mutex);
+
+         /* ====== Check result ============================================= */
+         if(neatSocket->ns_flags & NSAF_BAD) {
+            // FIXME! Is it possible to get more specific errors from NEAT?
+            result = NEAT_ERROR_IO;
+         }
       }
-
-      pthread_mutex_lock(&neatSocket->ns_mutex);
-
-      /* ====== Check result ============================================= */
-      puts("FIXME!");
+      else {
+         result = NEAT_ERROR_WOULD_BLOCK;
+      }
    }
    es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
    pthread_mutex_unlock(&neatSocket->ns_mutex);
@@ -556,16 +563,18 @@ int nsa_connectx_internal(struct neat_socket* neatSocket,
    /* ====== Handle result =============================================== */
    switch(result) {
       case NEAT_OK:
-         if(neatSocket->ns_flags & NSAF_NONBLOCKING) {
-            errno = EINPROGRESS;
-            return(-1);
-         }
-         else {
-            if(id) {
-               *id = 0;   // FIXME! Not implemented yet!
-            }
+         if(id) {
+            *id = 0;   // FIXME! Not implemented yet!
          }
          return(0);
+       break;
+      case NEAT_ERROR_WOULD_BLOCK:
+         errno = EINPROGRESS;
+         return(-1);
+       break;
+      case NEAT_ERROR_IO:
+          errno = EIO;
+          return(-1);
        break;
       case NEAT_ERROR_OUT_OF_MEMORY:
           errno = ENOMEM;

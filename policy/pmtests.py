@@ -8,8 +8,6 @@ from policy import *
 
 locale.setlocale(locale.LC_ALL, ('en', 'utf-8'))
 
-logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
-
 
 class PropertyTests(unittest.TestCase):
     # TODO extend tests

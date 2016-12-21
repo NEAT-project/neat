@@ -1,21 +1,30 @@
+import logging
 import os
 
-CIB_DEFAULT_TIMEOUT = 10 * 60
+DEBUG = True
+
+logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
 # CIB expiration time in seconds
+CIB_DEFAULT_TIMEOUT = 10 * 60
+
 PIB_SOCK = os.environ['HOME'] + '/.neat/neat_pib_socket'
 CIB_SOCK = os.environ['HOME'] + '/.neat/neat_cib_socket'
 DOMAIN_SOCK = os.environ['HOME'] + '/.neat/neat_pm_socket'
 
-POLICY_DIR = "pib/examples/"
+PIB_DIR = 'pib/example/'
+CIB_DIR = 'cib/example/'
 
 # default policy property attributes
 DEFAULT_SCORE = 0.0
 DEFAULT_PRECEDENCE = 1
 DEFAULT_EVALUATED = False
 
+# Policy Manager REST API
 LOCAL_IP = '0.0.0.0'
 REST_PORT = 45888
+
+CONTROLLER_REST = 'http://httpbin.org/post'
 
 
 class STYLE(object):

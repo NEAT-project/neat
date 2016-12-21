@@ -1,12 +1,9 @@
 import copy
 import json
-import logging
 import numbers
 import shutil
 
 from pmconst import *
-
-logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
 
 DARK_GRAY_START = '\033[90m'
 BOLD_START = '\033[1m'

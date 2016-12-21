@@ -37,10 +37,14 @@ except OSError as e:
 
 # unlink sockets if they already exist
 try:
-    os.unlink(PM.DOMAIN_SOCK)
-    os.unlink(PM.PIB_SOCK)
-    os.unlink(PM.CIB_SOCK)
+    if os.path.exists(PM.DOMAIN_SOCK):
+        os.unlink(PM.DOMAIN_SOCK)
+    if os.path.exists(PM.PIB_SOCK):
+        os.unlink(PM.PIB_SOCK)
+    if os.path.exists(PM.CIB_SOCK):
+        os.unlink(PM.CIB_SOCK)
 except OSError as e:
+    print("here")
     print(e)
     raise SystemExit()
 

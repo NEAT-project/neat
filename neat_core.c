@@ -1895,7 +1895,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->socket->sctp_explicit_eor     = candidate->pollable_socket->sctp_explicit_eor;
 
 #ifdef SCTP_MULTISTREAMING
-        flow->socket->sctp_notification_wait= 1;
+        flow->socket->sctp_notification_wait= candidate->pollable_socket->sctp_notification_wait;
 #endif
 
         if (candidate->properties != flow->properties) {

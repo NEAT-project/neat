@@ -3,7 +3,7 @@ import json
 import numbers
 import shutil
 
-from pmconst import *
+from pmdefaults import *
 
 DARK_GRAY_START = '\033[90m'
 BOLD_START = '\033[1m'
@@ -183,6 +183,7 @@ class PropertyValue(object):
         if self.is_range and other.is_set:
             new_set = [i for i in other.value if self.value[0] <= i <= self.value[1]]
             return PropertyValue(new_set)
+        # FIXME check for TypeError? https://github.com/NEAT-project/neat/issues/245
 
         if self.is_set or other.is_set:
             return self._overlapping_set(other)

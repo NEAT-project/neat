@@ -1938,7 +1938,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if ((events & UV_READABLE) && flow && flow->acceptPending) {
-        if(pollable_socket->stack == NEAT_STACK_UDP ||
+        if (pollable_socket->stack == NEAT_STACK_UDP ||
            pollable_socket->stack == NEAT_STACK_UDPLITE) {
             neat_log(NEAT_LOG_DEBUG, "%s - UDP or UDPLite accept flow", __func__);
             io_readable(ctx, flow, pollable_socket, NEAT_OK);
@@ -2055,20 +2055,18 @@ int neat_getlpaddrs(struct neat_ctx*  ctx,
                     struct sockaddr** addrs,
                     const int         local)
 {
-    if( (flow->socket->stack == NEAT_STACK_SCTP) ||
+    if ( (flow->socket->stack == NEAT_STACK_SCTP) ||
         (flow->socket->stack == NEAT_STACK_SCTP_UDP) ) {
 #if defined(USRSCTP_SUPPORT)
-        if(local) {
+        if (local) {
             return(usrsctp_getladdrs(flow->socket->usrsctp_socket, 0, addrs));
-        }
-        else {
+        } else {
             return(usrsctp_getpaddrs(flow->socket->usrsctp_socket, 0, addrs));
         }
 #else
-        if(local) {
+        if (local) {
             return(sctp_getladdrs(flow->socket->fd, 0, addrs));
-        }
-        else {
+        } else {
             return(sctp_getpaddrs(flow->socket->fd, 0, addrs));
         }
 #endif
@@ -2078,9 +2076,9 @@ int neat_getlpaddrs(struct neat_ctx*  ctx,
         socklen_t               namelen = sizeof(name);
         const int result = (local) ? getsockname(flow->socket->fd, (struct sockaddr*)&name, &namelen) :
                                      getpeername(flow->socket->fd, (struct sockaddr*)&name, &namelen);
-        if(result == 0) {
+        if (result == 0) {
            *addrs = (struct sockaddr*)malloc(namelen);
-           if(*addrs) {
+           if (*addrs) {
               memcpy(*addrs, &name, namelen);
            }
            return(1);

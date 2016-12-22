@@ -25,7 +25,8 @@ On success, neat_getlpaddrs() returns the number of addresses (local or remote).
 ### Examples
 
 struct struct sockaddr* addrs;
-if(neat_getlpaddrs(ctx, flow, &addrs, 1) > 0) {
+int n;
+if((n = neat_getlpaddrs(ctx, flow, &addrs, 1)) > 0) {
    /* Do something with the addresses */
    free(addrs);
 }

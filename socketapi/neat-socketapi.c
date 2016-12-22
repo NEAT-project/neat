@@ -45,6 +45,7 @@
 #include <assert.h>
 #include <netdb.h>
 #include <sys/ioctl.h>
+#include <sys/param.h>
 #include <netinet/sctp.h>
 
 
@@ -416,8 +417,8 @@ int nsa_ioctl(int fd, int request, const void* argp)
 {
    GET_NEAT_SOCKET(fd)
    if(neatSocket->ns_flow != NULL) {
-      errno = ENOTSUP;
-      return(0);
+      errno = EOPNOTSUPP;
+      return(-1);
    }
    else {
       return(ioctl(neatSocket->ns_socket_sd, fd, request, argp));
@@ -479,31 +480,46 @@ int nsa_pipe(int fds[2])
 }
 
 
-/* ###### NEAT nsa_getsockname() implementation ########################## */
-int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen)
+/* ###### NEAT nsa_getladdrs()/nsa_getpaddrs() implementation ############ */
+static int nsa_getlpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs, const bool local)
 {
-   return(0);
+   GET_NEAT_SOCKET(sockfd)
+   if(neatSocket->ns_flow != NULL) {
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      pthread_mutex_lock(&neatSocket->ns_mutex);
+
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+//       return((local) ? sctp_getladdrs(sockfd, id, addrs) :
+//                        sctp_getpaddrs(sockfd, id, addrs));
+      return(-1);
+   }
 }
 
 
-/* ###### NEAT nsa_getpeername() implementation ########################## */
-int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
+/* ###### NEAT nsa_getladdrs() implementation ############################ */
+int nsa_getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs)
 {
-   if(*namelen >= sizeof(struct sockaddr_in)) {
-      memset(name, 0, sizeof(struct sockaddr_in));
-      *namelen = sizeof(struct sockaddr_in);
-      ((struct sockaddr_in*)name)->sin_family = AF_INET;
-      return(sizeof(struct sockaddr_in));
-   }
-   errno = EINVAL;
-   return(-1);
+   return(nsa_getlpaddrs(sockfd, id, addrs, 1));
+}
+
+
+/* ###### NEAT nsa_freeladdrs() implementation ########################### */
+void nsa_freeladdrs(struct sockaddr* addrs)
+{
+   free(addrs);
 }
 
 
 /* ###### NEAT nsa_getpaddrs() implementation ############################ */
 int nsa_getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs)
 {
-   return(-1);
+   return(nsa_getlpaddrs(sockfd, id, addrs, 0));
 }
 
 
@@ -514,15 +530,37 @@ void nsa_freepaddrs(struct sockaddr* addrs)
 }
 
 
-/* ###### NEAT nsa_getladdrs() implementation ############################ */
-int nsa_getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs)
+/* ###### NEAT nsa_getsockname()/nsa_getpeername() implementation ######## */
+static int nsa_getlpname(int sockfd, struct sockaddr* name, socklen_t* namelen, const bool local)
 {
+   if(*namelen >= sizeof(struct sockaddr_in)) {
+      struct sockaddr* addrs = NULL;
+      if(nsa_getlpaddrs(sockfd, 0, &addrs, local) > 0) {
+         *namelen = MIN(*namelen, get_socklen(addrs));
+         memcpy(name, addrs, *namelen);
+         free(addrs);
+         return(0);
+      }
+      else {
+         errno = EBADF;
+      }
+   }
+   else {
+      errno = EINVAL;
+   }
    return(-1);
 }
 
 
-/* ###### NEAT nsa_freeladdrs() implementation ########################### */
-void nsa_freeladdrs(struct sockaddr* addrs)
+/* ###### NEAT nsa_getsockname() implementation ########################## */
+int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen)
 {
-   free(addrs);
+   return(nsa_getlpname(sockfd, name, namelen, 1));
+}
+
+
+/* ###### NEAT nsa_getpeername() implementation ########################## */
+int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
+{
+   return(nsa_getlpname(sockfd, name, namelen, 0));
 }

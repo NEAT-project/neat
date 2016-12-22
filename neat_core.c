@@ -2,7 +2,7 @@
 #include <netinet/in.h>
 #if defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
 #ifdef __linux__
-#include <linux/sctp.h>
+#include <netinet/sctp.h>
 #else // __linux__
 #include <netinet/sctp.h>
 #include <netinet/udplite.h>
@@ -2055,6 +2055,47 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     flow = pollable_socket->flow;
     updatePollHandle(ctx, flow, handle);
 
+}
+
+int neat_getlpaddrs(struct neat_ctx*  ctx,
+                    struct neat_flow* flow,
+                    struct sockaddr** addrs,
+                    const int         local)
+{
+    if( (flow->socket->stack == NEAT_STACK_SCTP) ||
+        (flow->socket->stack == NEAT_STACK_SCTP_UDP) ) {
+#if defined(USRSCTP_SUPPORT)
+        if(local) {
+            return(usrsctp_getladdrs(flow->socket->usrsctp_socket, 0, addrs));
+        }
+        else {
+            return(usrsctp_getpaddrs(flow->socket->usrsctp_socket, 0, addrs));
+        }
+#else
+        if(local) {
+            return(sctp_getladdrs(flow->socket->fd, 0, addrs));
+        }
+        else {
+            return(sctp_getpaddrs(flow->socket->fd, 0, addrs));
+        }
+#endif
+    }
+    else {
+        struct sockaddr_storage name;
+        socklen_t               namelen = sizeof(name);
+        const int result = (local) ? getsockname(flow->socket->fd, (struct sockaddr*)&name, &namelen) :
+                                     getpeername(flow->socket->fd, (struct sockaddr*)&name, &namelen);
+        if(result == 0) {
+           *addrs = (struct sockaddr*)malloc(namelen);
+           if(*addrs) {
+              memcpy(*addrs, &name, namelen);
+           }
+           return(1);
+        }
+    }
+
+    *addrs = NULL;
+    return(-1);
 }
 
 static neat_flow *

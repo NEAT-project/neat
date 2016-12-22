@@ -2089,30 +2089,31 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
 
 }
 
-int neat_getlpaddrs(struct neat_ctx*  ctx,
+int
+neat_getlpaddrs(struct neat_ctx*  ctx,
                     struct neat_flow* flow,
                     struct sockaddr** addrs,
                     const int         local)
 {
-    if ( (flow->socket->stack == NEAT_STACK_SCTP) ||
-        (flow->socket->stack == NEAT_STACK_SCTP_UDP) ) {
+    struct sockaddr_storage name;
+    socklen_t namelen = sizeof(name);
+
+    if ((flow->socket->stack == NEAT_STACK_SCTP) ||
+        (flow->socket->stack == NEAT_STACK_SCTP_UDP)) {
 #if defined(USRSCTP_SUPPORT)
         if (local) {
             return usrsctp_getladdrs(flow->socket->usrsctp_socket, 0, addrs);
         } else {
             return usrsctp_getpaddrs(flow->socket->usrsctp_socket, 0, addrs);
         }
-#else
+#elif defined(HAVE_NETINET_SCTP_H)
         if (local) {
             return sctp_getladdrs(flow->socket->fd, 0, addrs);
         } else {
             return sctp_getpaddrs(flow->socket->fd, 0, addrs);
         }
 #endif
-    }
-    else {
-        struct sockaddr_storage name;
-        socklen_t               namelen = sizeof(name);
+    } else {
         const int result = (local) ? getsockname(flow->socket->fd, (struct sockaddr*)&name, &namelen) :
                                      getpeername(flow->socket->fd, (struct sockaddr*)&name, &namelen);
         if (result == 0) {

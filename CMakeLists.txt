@@ -42,7 +42,7 @@ set(CPACK_SOURCE_GENERATOR "TGZ")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME
    "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
 set(CPACK_SOURCE_IGNORE_FILES
-   "/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;/${CMAKE_PROJECT_NAME}-*;/${CMAKE_PROJECT_NAME}_*;.cmake$;.tar.gz$;/Makefile$;~$;/build-deb;/clean-deb;/filter-empty-entries;/make-symbols;/make-ppa;/make-deb;/debian.conf;${CPACK_SOURCE_IGNORE_FILES}")
+   "${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}-*;${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}_*;/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;.cmake$;.tar.gz$;/_CPack_Packages;/Makefile$;~$;/build-deb;/clean-deb;/filter-empty-entries;/make-symbols;/make-ppa;/make-deb;/debian.conf;/make-rpm;/rpm.conf;${CPACK_SOURCE_IGNORE_FILES}")
 include(CPack)
 
 add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
@@ -149,6 +149,8 @@ ENDIF()
 IF (NOT CMAKE_BUILD_TYPE)
     message(STATUS "No build type selected, using DEBUG")
     set(CMAKE_BUILD_TYPE "DEBUG")
+    # _FORTIFY_SOURCE requires compiling with optimization
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
 endif()
 
 OPTION(USRSCTP_SUPPORT "Include usrsctp support" 0)
@@ -237,6 +239,7 @@ CHECK_INCLUDE_FILE(netinet/sctp.h HAVE_NETINET_SCTP_H)
 IF (HAVE_NETINET_SCTP_H)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
     SET(SCTP_INCLUDE "netinet/sctp.h")
+    FIND_LIBRARY(SCTP_LIB sctp)
 ENDIF()
 
 IF (USRSCTP_SUPPORT)
@@ -299,7 +302,7 @@ set_target_properties(neat PROPERTIES
 
 ADD_LIBRARY(neat-static STATIC ${neat_sources})
 
-TARGET_LINK_LIBRARIES (neat ${neat_libs})
+TARGET_LINK_LIBRARIES (neat ${neat_libs} ${SCTP_LIB})
 
 # INSTALL
 #################################################

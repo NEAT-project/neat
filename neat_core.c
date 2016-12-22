@@ -5373,6 +5373,7 @@ neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
 {
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
+    *actualAmt = 0;
     neat_error_code rv = flow->readfx(ctx, flow, buffer, amt, actualAmt, optional, opt_count);
     if (rv != NEAT_OK) {
         return rv;

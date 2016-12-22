@@ -2059,15 +2059,15 @@ int neat_getlpaddrs(struct neat_ctx*  ctx,
         (flow->socket->stack == NEAT_STACK_SCTP_UDP) ) {
 #if defined(USRSCTP_SUPPORT)
         if (local) {
-            return(usrsctp_getladdrs(flow->socket->usrsctp_socket, 0, addrs));
+            return usrsctp_getladdrs(flow->socket->usrsctp_socket, 0, addrs);
         } else {
-            return(usrsctp_getpaddrs(flow->socket->usrsctp_socket, 0, addrs));
+            return usrsctp_getpaddrs(flow->socket->usrsctp_socket, 0, addrs);
         }
 #else
         if (local) {
-            return(sctp_getladdrs(flow->socket->fd, 0, addrs));
+            return sctp_getladdrs(flow->socket->fd, 0, addrs);
         } else {
-            return(sctp_getpaddrs(flow->socket->fd, 0, addrs));
+            return sctp_getpaddrs(flow->socket->fd, 0, addrs);
         }
 #endif
     }
@@ -2081,12 +2081,12 @@ int neat_getlpaddrs(struct neat_ctx*  ctx,
            if (*addrs) {
               memcpy(*addrs, &name, namelen);
            }
-           return(1);
+           return 1;
         }
     }
 
     *addrs = NULL;
-    return(-1);
+    return -1;
 }
 
 static neat_flow *

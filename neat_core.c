@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include <uv.h>
 #include <errno.h>
 #include <ifaddrs.h>

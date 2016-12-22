@@ -234,6 +234,7 @@ CHECK_INCLUDE_FILE(netinet/sctp.h HAVE_NETINET_SCTP_H)
 IF (HAVE_NETINET_SCTP_H)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
     SET(SCTP_INCLUDE "netinet/sctp.h")
+    FIND_LIBRARY(SCTP_LIB sctp)
 ENDIF()
 
 IF (USRSCTP_SUPPORT)
@@ -298,7 +299,7 @@ set_target_properties(neat PROPERTIES
 
 ADD_LIBRARY(neat-static STATIC ${neat_sources})
 
-TARGET_LINK_LIBRARIES (neat ${neat_libs})
+TARGET_LINK_LIBRARIES (neat ${neat_libs} ${SCTP_LIB})
 
 # INSTALL
 #################################################

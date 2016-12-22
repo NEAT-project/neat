@@ -141,8 +141,7 @@ int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags)
           return(bind(neatSocket->ns_socket_sd, addrs, get_socklen(addrs)));
        }
        else {
-          abort();   // FIXME!
-//           return(sctp_bindx(neatSocket->ns_socket_sd, (struct sockaddr*)addrs, addrcnt, flags));
+          return(sctp_bindx(neatSocket->ns_socket_sd, (struct sockaddr*)addrs, addrcnt, flags));
        }
    }
 }
@@ -186,8 +185,7 @@ int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_ass
           return(connect(neatSocket->ns_socket_sd, addrs, get_socklen(addrs)));
        }
        else {
-          abort();   // FIXME!
-//           return(sctp_connectx(neatSocket->ns_socket_sd, addrs, addrcnt, id));
+          return(sctp_connectx(neatSocket->ns_socket_sd, (struct sockaddr*)addrs, addrcnt, (sctp_assoc_t*)id));
        }
    }
 }
@@ -337,8 +335,7 @@ int nsa_peeloff(int sockfd, neat_assoc_t id)
       return(0);
    }
    else {
-      abort();   // FIXME!
-//      return(sctp_peeloff(neatSocket->ns_socket_sd, id));
+      return(sctp_peeloff(neatSocket->ns_socket_sd, id));
    }
 }
 
@@ -495,9 +492,8 @@ static int nsa_getlpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs, 
       return(result);
    }
    else {
-//       return((local) ? sctp_getladdrs(sockfd, id, addrs) :
-//                        sctp_getpaddrs(sockfd, id, addrs));
-      return(-1);
+      return((local) ? sctp_getladdrs(sockfd, id, addrs) :
+                       sctp_getpaddrs(sockfd, id, addrs));
    }
 }
 

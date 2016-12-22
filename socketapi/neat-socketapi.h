@@ -45,8 +45,8 @@
 #include <netinet/in.h>
 
 
-typedef unsigned int   neat_assoc_t;
-typedef unsigned short neat_stream_t;
+typedef uint32_t neat_assoc_t;
+typedef uint16_t neat_stream_t;
 
 
 #define NEAT_UNDEFINED 0

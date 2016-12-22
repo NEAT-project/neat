@@ -302,9 +302,9 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 
             /* ====== Fill in peer address =============================== */
             if(addrlen != NULL) {
-               memset(addr, 0, sizeof(struct sockaddr_in));
-               *addrlen = sizeof(struct sockaddr_in);
-               ((struct sockaddr_in*)addr)->sin_family = AF_INET;
+               if(nsa_getpeername(sockfd, addr, addrlen) < 0) {
+                  *addrlen = 0;
+               }
             }
         }
         else {
@@ -476,4 +476,53 @@ int nsa_pipe(int fds[2])
       close(sysFDs[1]);
    }
    return(-1);
+}
+
+
+/* ###### NEAT nsa_getsockname() implementation ########################## */
+int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen)
+{
+   return(0);
+}
+
+
+/* ###### NEAT nsa_getpeername() implementation ########################## */
+int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
+{
+   if(*namelen >= sizeof(struct sockaddr_in)) {
+      memset(name, 0, sizeof(struct sockaddr_in));
+      *namelen = sizeof(struct sockaddr_in);
+      ((struct sockaddr_in*)name)->sin_family = AF_INET;
+      return(sizeof(struct sockaddr_in));
+   }
+   errno = EINVAL;
+   return(-1);
+}
+
+
+/* ###### NEAT nsa_getpaddrs() implementation ############################ */
+int nsa_getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs)
+{
+   return(-1);
+}
+
+
+/* ###### NEAT nsa_freepaddrs() implementation ########################### */
+void nsa_freepaddrs(struct sockaddr* addrs)
+{
+   free(addrs);
+}
+
+
+/* ###### NEAT nsa_getladdrs() implementation ############################ */
+int nsa_getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs)
+{
+   return(-1);
+}
+
+
+/* ###### NEAT nsa_freeladdrs() implementation ########################### */
+void nsa_freeladdrs(struct sockaddr* addrs)
+{
+   free(addrs);
 }

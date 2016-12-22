@@ -20,13 +20,29 @@ int neat_getlpaddrs(struct neat_ctx*  ctx,
 
 ### Return values
 
-On success, neat_getlpaddrs() returns the number of addresses (local or remote). In case of having more than 1 address, a pointer to a newly allocated memory area with the addresses will be stored into addrs. This memory area needs to be freed after usage.
+On success, neat_getlpaddrs() returns the number of addresses (local or remote). In case of having obtained at least one address, a pointer to a newly allocated memory area with the addresses will be stored into addrs. This memory area needs to be freed after usage.
 
 ### Examples
 
+```c
 struct struct sockaddr* addrs;
-int n;
-if((n = neat_getlpaddrs(ctx, flow, &addrs, 1)) > 0) {
-   /* Do something with the addresses */
+int n = neat_getlpaddrs(ctx, flow, &addrs, 1);
+if(n > 0) {
+   struct sockaddr* a = addrs;
+   for(int i = 0; i < n; i++) {
+      switch(a->sa_family) {
+         case AF_INET:
+            printf("Address %d/%d: IPv4\n", i, n);
+            a = (struct sockaddr*)((long)a + (long)sizeof(sockaddr_in));
+          break;
+         case AF_INET6:
+            printf("Address %d/%d: IPv6\n", i, n);
+            a = (struct sockaddr*)((long)a + (long)sizeof(sockaddr_in6));
+         default:
+            assert(false);
+          break;
+      }
+   }
    free(addrs);
 }
+```

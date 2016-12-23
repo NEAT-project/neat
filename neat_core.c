@@ -4414,6 +4414,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #endif
                 local_addr_ptr += sizeof(struct sockaddr_in6);
             } else {
+                s4->sin_addr.s_addr = 0;
                 if (inet_pton(AF_INET, address_name, &s4->sin_addr)) {
                     s4->sin_family = AF_INET;
 #ifdef HAVE_SIN_LEN

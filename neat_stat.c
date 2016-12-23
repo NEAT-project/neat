@@ -30,16 +30,16 @@ void neat_get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
    then format the stats as a json string to return */
 void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
 {
-	json_t *json_root, *protostat, *newflow;
+    json_t *json_root, *protostat, *newflow;
     struct neat_flow *flow;
     struct neat_tcp_info *neat_tcpi;
     uint flowcount;
     char flow_name[128];
 
-	neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     flowcount = 0;
-	json_root = json_object();
+    json_root = json_object();
 
     LIST_FOREACH(flow, &mgr->flows, next_flow) {
         flowcount++;
@@ -97,10 +97,10 @@ void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
     }
     json_object_set_new( json_root, "Number of flows", json_integer( flowcount ));
 
-	/* Callers must remember to free the output */
-	*json_stats = json_dumps(json_root, JSON_INDENT(4));
+    /* Callers must remember to free the output */
+    *json_stats = json_dumps(json_root, JSON_INDENT(4));
 
-	json_decref(json_root);
+    json_decref(json_root);
 
-	return;
+    return;
 }

@@ -132,6 +132,13 @@ typedef enum {
     NEAT_STACK_SCTP_UDP
 } neat_protocol_stack_type;
 
+typedef enum {
+    NEAT_FLOW_CLOSED = 1,
+    NEAT_FLOW_CONNECTING,
+    NEAT_FLOW_OPEN,
+    NEAT_FLOW_CLOSING
+} neat_flow_states;
+
 #define NEAT_STACK_MAX_NUM              5
 #define SCTP_UDP_TUNNELING_PORT         9899
 #define SCTP_ADAPTATION_NEAT            1207
@@ -186,24 +193,20 @@ struct neat_pollable_socket
    struct sockaddr_storage local_addr[MAX_LOCAL_ADDR];
    unsigned int nr_local_addr;
 
-
-    //struct sockaddr srcAddr;
-    //struct sockaddr dstAddr;
-
     size_t      write_limit;        // maximum to write if the socket supports partial writes
     size_t      write_size;         // send buffer size
-    size_t      read_size;   // receive buffer size
-
-    unsigned int sctp_explicit_eor : 1;
+    size_t      read_size;          // receive buffer size
 
     uint8_t                     multistream;            // multistreaming active
+
+    unsigned int                sctp_explicit_eor : 1;
+    uint16_t                    sctp_streams_available; // available streams
+#ifdef SCTP_MULTISTREAMING
     uint8_t                     sctp_notification_wait; // wait for all notifications
+    uint8_t                     sctp_notification_recvd;// we have received a notification
     uint8_t                     sctp_stream_reset;      // peer supports stream reset
     uint8_t                     sctp_neat_peer;         // peer supports neat
-    uint16_t                    sctp_streams_available; // available streams
     uint16_t                    sctp_streams_used;      // used streams
-
-#ifdef SCTP_MULTISTREAMING
     struct neat_flow_list_head  sctp_multistream_flows; // multistream flows
 #endif
 
@@ -252,14 +255,14 @@ struct neat_flow
 
     json_t *properties;
 
-    neat_read_impl readfx;
-    neat_write_impl writefx;
-    neat_accept_impl acceptfx;
-    neat_connect_impl connectfx;
-    neat_close_impl closefx;
-    neat_close2_impl close2fx;
-    neat_listen_impl listenfx;
-    neat_shutdown_impl shutdownfx;
+    neat_read_impl      readfx;
+    neat_write_impl     writefx;
+    neat_accept_impl    acceptfx;
+    neat_connect_impl   connectfx;
+    neat_close_impl     closefx;
+    neat_close2_impl    close2fx;
+    neat_listen_impl    listenfx;
+    neat_shutdown_impl  shutdownfx;
 
     uint8_t heConnectAttemptCount;
 
@@ -267,15 +270,15 @@ struct neat_flow
     neat_accept_usrsctp_impl acceptusrsctpfx;
 #endif
 
-    unsigned int hefirstConnect : 1;
-    unsigned int firstWritePending : 1;
-    unsigned int acceptPending : 1;
-    unsigned int isPolling : 1;
-    unsigned int ownedByCore : 1;
-    unsigned int everConnected : 1;
-    unsigned int isDraining;
-    unsigned int isSCTPMultihoming : 1;
-    unsigned int isServer : 1; // i.e. created via accept()
+    unsigned int hefirstConnect         : 1;
+    unsigned int firstWritePending      : 1;
+    unsigned int acceptPending          : 1;
+    unsigned int isPolling              : 1;
+    unsigned int ownedByCore            : 1;
+    unsigned int everConnected          : 1;
+    unsigned int isDraining             : 1;
+    unsigned int isServer               : 1; // i.e. created via accept()
+    unsigned int isSCTPMultihoming      : 1;
 
     unsigned int streams_requested;
 
@@ -286,15 +289,19 @@ struct neat_flow
     LIST_ENTRY(neat_flow) next_flow;
 
 #ifdef SCTP_MULTISTREAMING
-    unsigned int                    multistream_check : 1;
-    unsigned int                    multistream_shutdown: 1;
+    unsigned int                    multistream_check       : 1;
+    unsigned int                    multistream_shutdown    : 1;
+    unsigned int                    multistream_reset_in    : 1;
+    unsigned int                    multistream_reset_out   : 1;
 
     uv_timer_t                      *multistream_timer;
     uint16_t                        multistream_id;
     LIST_ENTRY(neat_flow)           multistream_next_flow;
-    // The memory buffer for reading
+
     struct neat_read_queue_head     multistream_read_queue;
     size_t                          multistream_read_queue_size;
+
+    neat_flow_states                multistream_state;
 #endif
 };
 

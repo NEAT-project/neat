@@ -42,23 +42,9 @@ static char *config_property = "{\
         {\
             \"value\": \"SCTP\",\
             \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
         }\
     ]\
 }";\
-/*
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";\
-*/
 
 static neat_error_code on_close(struct neat_flow_operations *opCB);
 
@@ -94,18 +80,19 @@ on_readable(struct neat_flow_operations *opCB)
     }
 
     if (!bytes_read) { // eof
-        fprintf(stderr, "%s - neat_read() got 0 bytes - connection closed\n", __func__);
-        fflush(stdout);
-        on_close(opCB);
+        fprintf(stderr, "%s - nothing more to read\n", __func__);
+        opCB->on_readable = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
+        neat_close(opCB->ctx, opCB->flow);
 
     } else if (bytes_read > 0) {
         fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
         fwrite(buffer, sizeof(char), bytes_read, stdout);
     }
     gettimeofday(&now, NULL);
-	timersub(&now, &start_time, &diff_time);
-	seconds = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
-	fprintf(stdout, "transfer time: %f seconds bytes: %ul throughput: %f bit/s\n", seconds, bytes_read, (double)((bytes_read*8)/seconds));
+    timersub(&now, &start_time, &diff_time);
+    seconds = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+    fprintf(stdout, "transfer time: %f seconds bytes: %ul throughput: %f bit/s\n", seconds, bytes_read, (double)((bytes_read*8)/seconds));
     return 0;
 }
 
@@ -225,10 +212,12 @@ main(int argc, char *argv[])
         ops[i].userData = &result; // allow on_error to modify the result variable
         neat_set_operations(ctx, flows[i], &(ops[i]));
 
-        NEAT_OPTARG_STRING(NEAT_TAG_LOCAL_ADDRESS, "10.1.1.1,10.1.2.1");
+        NEAT_OPTARG_STRING(NEAT_TAG_LOCAL_ADDRESS, "212.201.121.91,10.1.1.1,10.1.2.1");
+        NEAT_OPTARG_INT(NEAT_TAG_MULTIHOMING, 1);
 
         // wait for on_connected or on_error to be invoked
-        if (neat_open(ctx, flows[i], argv[argc - 1], 80, NEAT_OPTARGS, NEAT_OPTARGS_COUNT) != NEAT_OK) {
+       // if (neat_open(ctx, flows[i], argv[argc - 1], 80, NEAT_OPTARGS, NEAT_OPTARGS_COUNT) != NEAT_OK) {
+       if (neat_open(ctx, flows[i], "212.201.121.92,10.1.1.2,10.1.2.2", 80, NEAT_OPTARGS, NEAT_OPTARGS_COUNT) != NEAT_OK) {
             fprintf(stderr, "Could not open flow\n");
             result = EXIT_FAILURE;
         } else {

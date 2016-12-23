@@ -1,13 +1,16 @@
+import asyncio
 import json
 import logging
+import uuid
 
-import pmconst
+import pmdefaults as PM
 
 try:
+    import aiohttp
     from aiohttp import web
 except ImportError as e:
-    logging.warning("aiohttp in required to start the REST interface, but it is not installed")
     web = None
+    logging.warning("aiohttp in required to start the REST interface, but it is not installed")
 
 # REST port
 port = None
@@ -17,6 +20,40 @@ cib = None
 pib = None
 
 server = None
+
+
+async def send_hello(client, controller):
+    host_uid = str(uuid.uuid3(uuid.NAMESPACE_OID, str(uuid.getnode())))
+    host_info = {'client-uid': host_uid,
+                 'client-rest-port': PM.REST_PORT,
+                 'client-type': 'neat',
+                 'manager-address': controller}
+    hello_msg = json.dumps({"input": host_info})
+
+    try:
+        async with client.post(controller, data=hello_msg) as resp:
+            assert resp.status == 200
+            return await resp.text()
+    except (ValueError, aiohttp.errors.ClientOSError) as e:
+        print(e)
+
+
+async def controller_announce(loop):
+    """
+    Register NEAT client with a remote controller
+
+    """
+    if not PM.CONTROLLER_REST:
+        return
+
+    # send hello message every PM.CONTROLLER_ANNOUNCE seconds
+    # TODO randomize
+    while True:
+        print("Notifying controller at %s" % PM.CONTROLLER_REST)
+        async with aiohttp.ClientSession(loop=loop) as client:
+            html = await send_hello(client, PM.CONTROLLER_REST)
+
+        await asyncio.sleep(PM.CONTROLLER_ANNOUNCE)
 
 
 async def handle_pib(request):
@@ -119,22 +156,24 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
     if rest_port:
         port = rest_port
 
-    app = web.Application()
-    app.router.add_get('/', handle_rest)
-    app.router.add_get('/pib', handle_pib)
-    app.router.add_get('/pib/{uid}', handle_pib)
+    pmrest = web.Application()
+    pmrest.router.add_get('/', handle_rest)
+    pmrest.router.add_get('/pib', handle_pib)
+    pmrest.router.add_get('/pib/{uid}', handle_pib)
 
-    app.router.add_get('/cib', handle_cib)
-    app.router.add_get('/cib/rows', handle_cib_rows)
-    app.router.add_get('/cib/{uid}', handle_cib)
+    pmrest.router.add_get('/cib', handle_cib)
+    pmrest.router.add_get('/cib/rows', handle_cib_rows)
+    pmrest.router.add_get('/cib/{uid}', handle_cib)
 
-    app.router.add_put('/cib/{uid}', handle_cib_put)
-    app.router.add_put('/pib/{uid}', handle_pib_put)
+    pmrest.router.add_put('/cib/{uid}', handle_cib_put)
+    pmrest.router.add_put('/pib/{uid}', handle_pib_put)
 
-    handler = app.make_handler()
+    handler = pmrest.make_handler()
 
-    f = asyncio_loop.create_server(handler, pmconst.LOCAL_IP, port)
+    f = asyncio_loop.create_server(handler, PM.LOCAL_IP, port)
     print("Initializing REST server on port %d" % port)
+
+    server = asyncio_loop.run_until_complete(controller_announce(asyncio_loop))
 
     server = asyncio_loop.run_until_complete(f)
 

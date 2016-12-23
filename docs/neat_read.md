@@ -45,6 +45,8 @@ This function should only be called from within the `on_readable` callback
 specified with `neat_set_operations`, as this is the only way to guarantee
 that the call will not block. NEAT does not permit a blocking read operation.
 
+The **actual_amount** value is set to 0 when this function returns error.
+
 ### Examples
 
 None.

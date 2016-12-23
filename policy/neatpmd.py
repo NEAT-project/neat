@@ -7,7 +7,7 @@ import signal
 from copy import deepcopy
 from operator import attrgetter
 
-import pmconst
+import pmdefaults as PM
 import pmrest
 import policy
 from cib import CIB
@@ -15,40 +15,50 @@ from pib import PIB
 from policy import PropertyMultiArray
 
 parser = argparse.ArgumentParser(description='NEAT Policy Manager')
-parser.add_argument('--cib', type=str, default='cib/example/', help='specify directory in which to look for CIB files')
-parser.add_argument('--pib', type=str, default='pib/example/', help='specify directory in which to look for PIB files')
+parser.add_argument('--cib', type=str, default=None, help='specify directory in which to look for CIB files')
+parser.add_argument('--pib', type=str, default=None, help='specify directory in which to look for PIB files')
 parser.add_argument('--sock', type=str, default=None, help='set Unix domain socket')
-parser.add_argument('--debug', type=bool, default=True, help='enable debugging')
-parser.add_argument('--rest', type=bool, default=True, help='enable REST API')
-
+parser.add_argument('--controller', type=str, default=None, help='set controller REST API')
+parser.add_argument('--debug', type=bool, default=None, help='enable debugging')
+parser.add_argument('--rest', type=bool, default=None, help='enable REST API')
 parser.add_argument('--bypass', type=bool, default=False, help='enable debugging')
-
 args = parser.parse_args()
 
+if args.cib:
+    PM.CIB_DIR = args.cib
+if args.pib:
+    PM.PIB_DIR = args.pib
 if args.sock:
-    DOMAIN_SOCK = args.sock
-else:
-    DOMAIN_SOCK = pmconst.DOMAIN_SOCK
+    PM.DOMAIN_SOCK = args.sock
+if args.controller:
+    PM.CONTROLLER_REST = args.controller
+if args.debug:
+    PM.DEBUG = args.debug
+if args.rest:
+    PM.REST_ENABLE = args.rest
 
-PIB_DIR = args.pib
-CIB_DIR = args.cib
+
 
 try:
-    os.makedirs(os.path.dirname(DOMAIN_SOCK), exist_ok=True)
-    os.makedirs(os.path.dirname(pmconst.PIB_SOCK), exist_ok=True)
-    os.makedirs(os.path.dirname(pmconst.CIB_SOCK), exist_ok=True)
+    os.makedirs(os.path.dirname(PM.DOMAIN_SOCK), exist_ok=True)
+    os.makedirs(os.path.dirname(PM.PIB_SOCK), exist_ok=True)
+    os.makedirs(os.path.dirname(PM.CIB_SOCK), exist_ok=True)
 except OSError as e:
     print(e)
-    exit(0)
+    raise SystemExit()
 
 # unlink sockets if they already exist
 try:
-    os.unlink(DOMAIN_SOCK)
-    os.unlink(pmconst.PIB_SOCK)
-    os.unlink(pmconst.CIB_SOCK)
+    if os.path.exists(PM.DOMAIN_SOCK):
+        os.unlink(PM.DOMAIN_SOCK)
+    if os.path.exists(PM.PIB_SOCK):
+        os.unlink(PM.PIB_SOCK)
+    if os.path.exists(PM.CIB_SOCK):
+        os.unlink(PM.CIB_SOCK)
 except OSError as e:
-    if os.path.exists(DOMAIN_SOCK):
-        raise
+    print("here")
+    print(e)
+    raise SystemExit()
 
 
 def process_special_properties(r):
@@ -273,23 +283,23 @@ def no_loop_test():
 
 
 if __name__ == "__main__":
-    logging.debug("PIB directory is %s" % PIB_DIR)
-    logging.debug("CIB directory is %s" % CIB_DIR)
+    logging.debug("PIB directory is %s" % PM.PIB_DIR)
+    logging.debug("CIB directory is %s" % PM.CIB_DIR)
 
-    cib = CIB(CIB_DIR)
-    profiles = PIB(PIB_DIR, file_extension='.profile')
-    pib = PIB(PIB_DIR, file_extension='.policy')
+    cib = CIB(PM.CIB_DIR)
+    profiles = PIB(PM.PIB_DIR, file_extension='.profile')
+    pib = PIB(PM.PIB_DIR, file_extension='.policy')
 
     loop = asyncio.get_event_loop()
 
     # Each client connection creates a new protocol instance
-    coro = loop.create_unix_server(PMProtocol, DOMAIN_SOCK)
+    coro = loop.create_unix_server(PMProtocol, PM.DOMAIN_SOCK)
     server = loop.run_until_complete(coro)
 
-    coro_pib = loop.create_unix_server(PIBProtocol, pmconst.PIB_SOCK)
+    coro_pib = loop.create_unix_server(PIBProtocol, PM.PIB_SOCK)
     pib_server = loop.run_until_complete(coro_pib)
 
-    coro_cib = loop.create_unix_server(CIBProtocol, pmconst.CIB_SOCK)
+    coro_cib = loop.create_unix_server(CIBProtocol, PM.CIB_SOCK)
     cib_server = loop.run_until_complete(coro_cib)
 
     # interactive debug mode
@@ -297,13 +307,13 @@ if __name__ == "__main__":
     loop.add_signal_handler(signal.SIGQUIT, signal_handler)
 
     # try to start the PM REST interface
-    pmrest.init_rest_server(loop, profiles, cib, pib, rest_port=pmconst.REST_PORT)
+    pmrest.init_rest_server(loop, profiles, cib, pib, rest_port=PM.REST_PORT)
 
     print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))
     try:
         loop.run_forever()
     except KeyboardInterrupt:
-        print("Quitting policy manager.")
+        print("\nQuitting policy manager.")
         pass
     # TODO implement http://aiohttp.readthedocs.io/en/stable/web.html#graceful-shutdown
 
@@ -315,4 +325,4 @@ if __name__ == "__main__":
 
     loop.run_until_complete(server.wait_closed())
     loop.close()
-    exit(0)
+    raise SystemExit(0)

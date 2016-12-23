@@ -151,6 +151,8 @@ ENDIF()
 IF (NOT CMAKE_BUILD_TYPE)
     message(STATUS "No build type selected, using DEBUG")
     set(CMAKE_BUILD_TYPE "DEBUG")
+    # _FORTIFY_SOURCE requires compiling with optimization
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
 endif()
 
 OPTION(USRSCTP_SUPPORT "Include usrsctp support" 0)
@@ -175,11 +177,6 @@ ENDIF()
 OPTION(FLOW_GROUPS "Include support for flow grouping" 0)
 IF (FLOW_GROUPS)
     ADD_DEFINITIONS(-DFLOW_GROUPS)
-ENDIF()
-
-OPTION(SCTP_MULTIHOMING "Include support for SCTP multihoming" 0)
-IF (SCTP_MULTIHOMING)
-    ADD_DEFINITIONS(-DSCTP_MULTIHOMING)
 ENDIF()
 
 OPTION(SCTP_MULTISTREAMING "Include support for SCTP multistreaming" 0)
@@ -226,6 +223,7 @@ IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     IF(NOT HAVE_SYS_LIBMNL_H OR NOT MNL_LIB)
         MESSAGE(FATAL_ERROR "libmnl/libmnl.h not found - libmnl installed?")
     ENDIF()
+    FIND_LIBRARY(SCTP_LIB sctp)
 ENDIF()
 
 CHECK_INCLUDE_FILE(jansson.h HAVE_JANSSON_H)
@@ -291,6 +289,7 @@ LIST(APPEND neat_libs
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     LIST(APPEND neat_libs ${MNL_LIB})
+    LIST(APPEND neat_libs ${SCTP_LIB})
 ENDIF()
 
 ADD_LIBRARY(neat SHARED ${neat_sources})

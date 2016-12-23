@@ -4,10 +4,15 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <assert.h>
 
 
 static const char* properties = "{\
     \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
         {\
             \"value\": \"TCP\",\
             \"precedence\": 1\
@@ -48,6 +53,27 @@ int main(int argc, char** argv)
 
       if(nsa_write(newSD, "TEST\n", 5) < 0) {
          perror("nsa_write() failed");
+      }
+
+      struct sockaddr* addrs = NULL;
+      const int n = nsa_getpaddrs(newSD, 0, &addrs);
+      if(n > 0) {
+         struct sockaddr* a = addrs;
+         for(int i = 0; i < n; i++) {
+            switch(a->sa_family) {
+               case AF_INET:
+                  printf("Address %d/%d: IPv4\n", i, n);
+                  a = (struct sockaddr*)((long)a + (long)sizeof(sockaddr_in));
+                break;
+               case AF_INET6:
+                  printf("Address %d/%d: IPv6\n", i, n);
+                  a = (struct sockaddr*)((long)a + (long)sizeof(sockaddr_in6));
+               default:
+                  assert(false);
+                break;
+            }
+         }
+         free(addrs);
       }
 
       char buffer[1024];

@@ -594,14 +594,10 @@ free_cb(uv_handle_t *handle)
 static int neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     struct neat_pollable_socket *s;
-<<<<<<< HEAD
     struct neat_pollable_socket *stemp;
-=======
 
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
-
->>>>>>> origin/master
 #if defined(USRSCTP_SUPPORT)
     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
         neat_close_via_usrsctp(flow->ctx, flow);

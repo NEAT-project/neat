@@ -6,10 +6,10 @@
 
 #define BANNED_ENABLED 0
 
-#define NEAT_TRANSPORT_PROPERTY(name, propname, protonum)		\
-{									\
-    #name,								\
-    protonum							\
+#define NEAT_TRANSPORT_PROPERTY(name, propname, protonum)        \
+{                                    \
+    #name,                                \
+    protonum                            \
 }
 
 #define NEAT_TRANSPORT(name) \
@@ -47,7 +47,7 @@ string_to_stack(const char *str)
     return 0;
 }
 
-const char* 
+const char*
 stack_to_string(neat_protocol_stack_type stack)
 {
     for (size_t i = 0; i < sizeof(neat_transports) / sizeof(*neat_transports); ++i) {

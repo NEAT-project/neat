@@ -21,6 +21,7 @@ Welcome to the NEAT documentation!
     Error codes <errors>
 
     neat_init_ctx <neat_init_ctx>
+    neat_free_ctx <neat_free_ctx>
     neat_new_flow <neat_new_flow>
     neat_set_property <neat_set_property>
     neat_get_property <neat_get_property>

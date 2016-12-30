@@ -90,9 +90,9 @@ on_readable(struct neat_flow_operations *opCB)
         fwrite(buffer, sizeof(char), bytes_read, stdout);
     }
     gettimeofday(&now, NULL);
-	timersub(&now, &start_time, &diff_time);
-	seconds = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
-	fprintf(stdout, "transfer time: %f seconds bytes: %ul throughput: %f bit/s\n", seconds, bytes_read, (double)((bytes_read*8)/seconds));
+    timersub(&now, &start_time, &diff_time);
+    seconds = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+    fprintf(stdout, "transfer time: %f seconds bytes: %ul throughput: %f bit/s\n", seconds, bytes_read, (double)((bytes_read*8)/seconds));
     return 0;
 }
 

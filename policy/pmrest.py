@@ -1,7 +1,8 @@
 import asyncio
 import json
 import logging
-import uuid
+import random
+from contextlib import suppress
 
 import pmdefaults as PM
 
@@ -20,44 +21,44 @@ cib = None
 pib = None
 
 server = None
-announcer = None
 
 app = None
 loop = None
 
 
-async def send_hello(client, controller):
-    host_uid = str(uuid.uuid3(uuid.NAMESPACE_OID, str(uuid.getnode())))
-    host_info = {'client-uid': host_uid,
+def gen_hello_msg():
+    host_info = {'client-uid': PM.CLIENT_UID,
                  'client-rest-port': PM.REST_PORT,
-                 'client-type': 'neat',
-                 'manager-address': controller}
-    hello_msg = json.dumps({"input": host_info})
-
-    try:
-        async with client.post(controller, data=hello_msg) as resp:
-            assert resp.status == 200
-            return await resp.text()
-    except (ValueError, aiohttp.errors.ClientOSError) as e:
-        print(e)
+                 'client-type': 'neat'}
+    x = json.dumps({"input": host_info})
+    return x
 
 
-async def controller_announce(loop):
+async def controller_announce():
     """
     Register NEAT client with a remote controller
+    and send hello message every PM.CONTROLLER_ANNOUNCE seconds
 
     """
     if not PM.CONTROLLER_REST:
         return
 
-    # send hello message every PM.CONTROLLER_ANNOUNCE seconds
-    # TODO randomize
     while True:
-        print("Notifying controller at %s" % PM.CONTROLLER_REST)
-        async with aiohttp.ClientSession(loop=loop) as client:
-            html = await send_hello(client, PM.CONTROLLER_REST)
+        sleep_time = min(random.expovariate(1 / PM.CONTROLLER_ANNOUNCE), PM.CONTROLLER_ANNOUNCE * 3)
 
-        await asyncio.sleep(PM.CONTROLLER_ANNOUNCE)
+        print("Notifying controller at %s (repeat in %1.2f s)" % (PM.CONTROLLER_REST, sleep_time))
+        conn = aiohttp.TCPConnector()
+
+        async with aiohttp.ClientSession(connector=conn) as client:
+            try:
+                async with client.post(PM.CONTROLLER_REST, data=gen_hello_msg()) as resp:
+                    # resp.connection._protocol.transport.get_extra_info('sockname')
+                    assert resp.status == 200
+                    html = await resp.text()
+            except (ValueError, aiohttp.errors.ClientOSError) as e:
+                print(e)
+
+        await asyncio.sleep(sleep_time)
 
 
 async def handle_pib(request):
@@ -143,7 +144,7 @@ async def handle_rest(request):
 
 
 def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=None):
-    """ Register REST server
+    """ Initialize and register REST server
 
     curl  -H 'Content-Type: application/json' -X PUT -d'["abc",123]' localhost:45888/c3b/23423
     """
@@ -151,7 +152,7 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
         logging.info("REST server not available because the aiohttp module is not installed.")
         return
 
-    global pib, cib, port, server, announcer, loop, app
+    global pib, cib, port, server, loop, app
 
     loop = asyncio_loop
 
@@ -182,16 +183,22 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
     print("Initializing REST server on port %d" % port)
     server = asyncio_loop.run_until_complete(f)
 
-    announcer = asyncio_loop.run_until_complete(controller_announce(asyncio_loop))
+    asyncio.ensure_future(controller_announce())
 
 
 def close():
+    # cancel all running tasks:
+    pending = asyncio.Task.all_tasks()
+    for task in pending:
+        task.cancel()
+        # Now we should await task to execute it's cancellation.
+        # Cancelled task raises asyncio.CancelledError that we can suppress:
+        with suppress(asyncio.CancelledError):
+            loop.run_until_complete(task)
+
     # TODO implement http://aiohttp.readthedocs.io/en/stable/web.html#graceful-shutdown
     server.close()
     loop.run_until_complete(server.wait_closed())
-
-    announcer.close()
-    loop.run_until_complete(announcer.wait_closed())
 
     loop.run_until_complete(app.shutdown())
     loop.run_until_complete(app.cleanup())

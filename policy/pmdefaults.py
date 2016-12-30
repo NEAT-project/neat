@@ -1,9 +1,17 @@
 import logging
 import os
+import uuid
 
-DEBUG = True
+DEBUG = False
 
-logging.basicConfig(format='[%(levelname)s]: %(message)s', level=logging.DEBUG)
+if DEBUG:
+    log_level = logging.DEBUG
+else:
+    log_level = logging.INFO
+
+logging.basicConfig(format='[%(levelname)s]: %(message)s', level=log_level)
+
+CLIENT_UID = str(uuid.uuid3(uuid.NAMESPACE_OID, str(uuid.getnode())))
 
 # CIB expiration time in seconds
 CIB_DEFAULT_TIMEOUT = 10 * 60

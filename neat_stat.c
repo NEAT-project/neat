@@ -87,6 +87,9 @@ void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
                     json_object_set_new(newflow, "tcpstats", protostat);
                     break;
                 }
+            case NEAT_STACK_MPTCP:
+                /* PH [TODO]: add flow info for MPTCP, maybe start with above...*/
+                break;
             case NEAT_STACK_SCTP:
                 break;
             case NEAT_STACK_UDPLITE:

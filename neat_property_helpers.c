@@ -1,6 +1,7 @@
 #include "neat_property_helpers.h"
 #include "neat.h"
 
+/* PH [TODO]: add support for MPTCP below */
 uint8_t neat_property_translate_protocols(uint64_t propertyMask,
         neat_protocol_stack_type stacks[])
 {

@@ -173,6 +173,7 @@ NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
 // do we also need a set property with a void * or an int (e.g. timeouts) or should
 // we create higher level named functions for such things?
 
+// PH [TODO]: support for MPTCP needed
 // for property mask
 #define NEAT_PROPERTY_OPTIONAL_SECURITY                 (1 << 0)
 #define NEAT_PROPERTY_REQUIRED_SECURITY                 (1 << 1)

@@ -847,6 +847,9 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
         case NEAT_STACK_TCP:
             snprintf(proto, 16, "TCP");
             break;
+        case NEAT_STACK_MPTCP:
+            snprintf(proto, 16, "MPTCP");
+            break;
         case NEAT_STACK_SCTP:
             snprintf(proto, 16, "SCTP");
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
@@ -2180,6 +2183,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             break;
         case NEAT_STACK_TCP:
             proto = "TCP";
+            break;
+        case NEAT_STACK_MPTCP:
+            proto = "MPTCP";
             break;
         case NEAT_STACK_SCTP:
             proto = "SCTP";
@@ -3641,7 +3647,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
         stacks[nr_of_stacks++] = NEAT_STACK_UDP;
         stacks[nr_of_stacks++] = NEAT_STACK_UDPLITE;
         stacks[nr_of_stacks++] = NEAT_STACK_TCP;
-        /* PH [TODO]: we need to consider MPTCP here */
+        stacks[nr_of_stacks++] = NEAT_STACK_MPTCP;
         stacks[nr_of_stacks++] = NEAT_STACK_SCTP;
         stacks[nr_of_stacks++] = NEAT_STACK_SCTP_UDP;
     } else {
@@ -3733,8 +3739,8 @@ accept_resolve_cb(struct neat_resolver_results *results,
             if ((neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_UDP) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_UDPLITE) ||
-                (neat_base_stack(stacks[i]) == NEAT_STACK_TCP)) {
-                /* PH [TODO]: MPTCP support needed */
+                (neat_base_stack(stacks[i]) == NEAT_STACK_TCP) ||
+                (neat_base_stack(stacks[i]) == NEAT_STACK_MPTCP)) {
                 uv_poll_start(handle, UV_READABLE, uvpollable_cb);
             } else {
                 // do normal i/o events without accept() for non connected protocols
@@ -4094,6 +4100,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
     switch (flow->socket->stack) {
     case NEAT_STACK_TCP:
+    case NEAT_STACK_MPTCP:
         atomic = 0;
         break;
     case NEAT_STACK_SCTP_UDP:

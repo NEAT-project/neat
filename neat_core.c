@@ -1799,6 +1799,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     case NEAT_STACK_TCP:
         proto = "TCP";
         break;
+    case NEAT_STACK_MPTCP:
+        proto = "MPTCP";
+        break;
     case NEAT_STACK_SCTP:
         proto = "SCTP";
         break;
@@ -3638,6 +3641,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
         stacks[nr_of_stacks++] = NEAT_STACK_UDP;
         stacks[nr_of_stacks++] = NEAT_STACK_UDPLITE;
         stacks[nr_of_stacks++] = NEAT_STACK_TCP;
+        /* PH [TODO]: we need to consider MPTCP here */
         stacks[nr_of_stacks++] = NEAT_STACK_SCTP;
         stacks[nr_of_stacks++] = NEAT_STACK_SCTP_UDP;
     } else {
@@ -3683,6 +3687,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
         assert(listen_socket);
 
         listen_socket->flow     = flow;
+        /* PH [TODO]: check whether MPTCP needs special treatment */
         listen_socket->stack    = neat_base_stack(stacks[i]);
         listen_socket->family   = results->lh_first->ai_family;
         listen_socket->type     = socket_type;
@@ -3729,6 +3734,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
                 (neat_base_stack(stacks[i]) == NEAT_STACK_UDP) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_UDPLITE) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_TCP)) {
+                /* PH [TODO]: MPTCP support needed */
                 uv_poll_start(handle, UV_READABLE, uvpollable_cb);
             } else {
                 // do normal i/o events without accept() for non connected protocols
@@ -4374,6 +4380,10 @@ int neat_stack_to_protocol(neat_protocol_stack_type stack)
         case NEAT_STACK_UDPLITE:
             return IPPROTO_UDPLITE;
 #endif
+        case NEAT_STACK_MPTCP:
+#if !defined(MPTCP_SUPPORT)
+            return 0;
+#endif
         case NEAT_STACK_TCP:
             return IPPROTO_TCP;
 #ifdef IPPROTO_SCTP
@@ -4393,6 +4403,7 @@ neat_base_stack(neat_protocol_stack_type stack)
         case NEAT_STACK_UDP:
         case NEAT_STACK_UDPLITE:
         case NEAT_STACK_TCP:
+        case NEAT_STACK_MPTCP:
         case NEAT_STACK_SCTP:
             return stack;
         case NEAT_STACK_SCTP_UDP:
@@ -4411,6 +4422,9 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #endif
 #ifdef TCP_CONGESTION
     const char *algo;
+#endif
+#if defined(MPTCP_SUPPORT) && !defined(MPTCP_ENABLED)
+#define MPTCP_ENABLED 42
 #endif
     int enable = 1, retval;
     socklen_t len = 0;
@@ -4445,6 +4459,16 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     }
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+
+#if defined(MPTCP_SUPPORT)
+    if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_MPTCP) {
+        ret = setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &enable, sizeof(int));
+        /* PH [TODO]: maybe check if set, to do an early exit if possible */
+    } else if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_TCP) {
+        int mptcp_disable = 0;
+        ret = setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_disable, sizeof(int));
+    }
+#endif
 
     if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
@@ -4721,6 +4745,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
         return -2;
     }
+    /* PH [TODO]: here we need to check if MPTCP was requested and not acquired */
 
     assert(candidate->pollable_socket->handle->data == candidate);
     uv_poll_start(candidate->pollable_socket->handle, UV_WRITABLE, callback_fx);
@@ -4763,6 +4788,7 @@ neat_close_via_kernel_2(int fd)
     return 0;
 }
 
+/* PH [TODO]: Needs to be adapted to MPTCP? */
 static int
 neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                         struct neat_pollable_socket *listen_socket)

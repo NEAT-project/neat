@@ -158,6 +158,9 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
         case NEAT_STACK_TCP:
             proto = "TCP";
             break;
+        case NEAT_STACK_MPTCP:
+            proto = "MPTCP";
+            break;
         case NEAT_STACK_SCTP:
             multistream_probe = 1;
             proto = "SCTP";

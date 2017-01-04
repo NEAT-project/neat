@@ -54,7 +54,6 @@ try:
     if os.path.exists(PM.CIB_SOCK):
         os.unlink(PM.CIB_SOCK)
 except OSError as e:
-    print("here")
     print(e)
     raise SystemExit()
 
@@ -328,7 +327,7 @@ if __name__ == "__main__":
         pass
     except Exception as e:
         import code
-        code.interact(local=locals(), banner='here')
+        code.interact(local=locals(), banner='except debug')
 
     loop.close()
 

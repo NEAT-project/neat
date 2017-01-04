@@ -13,9 +13,6 @@ except ImportError as e:
     web = None
     logging.warning("aiohttp in required to start the REST interface, but it is not installed")
 
-# REST port
-port = None
-
 profiles = None
 cib = None
 pib = None
@@ -27,8 +24,9 @@ loop = None
 
 
 def gen_hello_msg():
-    host_info = {'client-uid': PM.CLIENT_UID,
-                 'client-rest-port': PM.REST_PORT,
+    host_info = {'host-uid': PM.CLIENT_UID,
+                 'management-address': PM.REST_IP,
+                 'rest-port': PM.REST_PORT,
                  'client-type': 'neat'}
     x = json.dumps({"input": host_info})
     return x
@@ -46,15 +44,21 @@ async def controller_announce():
     while True:
         sleep_time = min(random.expovariate(1 / PM.CONTROLLER_ANNOUNCE), PM.CONTROLLER_ANNOUNCE * 3)
 
-        print("Notifying controller at %s (repeat in %1.2f s)" % (PM.CONTROLLER_REST, sleep_time))
-        conn = aiohttp.TCPConnector()
+        print("Notifying controller at %s (repeat in %1.0fs)" % (PM.CONTROLLER_REST, sleep_time))
 
-        async with aiohttp.ClientSession(connector=conn) as client:
+        conn = aiohttp.TCPConnector(local_addr=(PM.REST_IP, 0))
+        auth = aiohttp.BasicAuth(PM.CONTROLLER_USER, PM.CONTROLLER_PASS)
+
+        async with aiohttp.ClientSession(connector=conn, auth=auth) as session:
             try:
-                async with client.post(PM.CONTROLLER_REST, data=gen_hello_msg()) as resp:
-                    # resp.connection._protocol.transport.get_extra_info('sockname')
+                async with session.post(PM.CONTROLLER_REST, data=gen_hello_msg(),
+                                        headers={'content-type': 'application/json'}) as resp:
+                    logging.debug(
+                        'announce addr: %s:%s' % resp.connection._protocol.transport.get_extra_info('sockname'))
                     assert resp.status == 200
                     html = await resp.text()
+                    logging.debug(html)
+
             except (ValueError, aiohttp.errors.ClientOSError) as e:
                 print(e)
 
@@ -161,7 +165,7 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
     pib = pib_ref
 
     if rest_port:
-        port = rest_port
+        PM.REST_PORT = rest_port
 
     pmrest = web.Application()
     app = pmrest
@@ -179,9 +183,13 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
 
     handler = pmrest.make_handler()
 
-    f = asyncio_loop.create_server(handler, PM.LOCAL_IP, port)
-    print("Initializing REST server on port %d" % port)
-    server = asyncio_loop.run_until_complete(f)
+    f = asyncio_loop.create_server(handler, PM.REST_IP, PM.REST_PORT)
+    print("Initializing REST server on %s:%d" % (PM.REST_IP, PM.REST_PORT))
+    try:
+        server = asyncio_loop.run_until_complete(f)
+    except OSError as e:
+        print(e)
+        return
 
     asyncio.ensure_future(controller_announce())
 

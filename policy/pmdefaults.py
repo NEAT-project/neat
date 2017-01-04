@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 
-DEBUG = False
+DEBUG = True
 
 if DEBUG:
     log_level = logging.DEBUG
@@ -30,11 +30,13 @@ DEFAULT_EVALUATED = False
 
 # Policy Manager REST API
 REST_ENABLE = True
-LOCAL_IP = '0.0.0.0'
+REST_IP = '10.73.64.75'
 REST_PORT = 45888
 
 # SDN controller northbound API address
 CONTROLLER_REST = 'http://httpbin.org/post'
+CONTROLLER_USER = 'admin'
+CONTROLLER_PASS = 'admin'
 CONTROLLER_ANNOUNCE = 3 * 60
 
 

@@ -4469,11 +4469,15 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
 #if defined(MPTCP_SUPPORT)
     if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_MPTCP) {
-        ret = setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &enable, sizeof(int));
-        /* PH [TODO]: maybe check if set, to do an early exit if possible */
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &enable, sizeof(int)) < 0) {
+            neat_log(NEAT_LOG_WARNING,
+                     "Could not use MPTCP over for socket %d",
+                     candidate->pollable_socket->fd);
+            return -2;
+        }
     } else if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_TCP) {
         int mptcp_disable = 0;
-        ret = setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_disable, sizeof(int));
+        setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_disable, sizeof(int));
     }
 #endif
 
@@ -4752,7 +4756,26 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
         return -2;
     }
-    /* PH [TODO]: here we need to check if MPTCP was requested and not acquired */
+#if defined(MPTCP_SUPPORT)
+    if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_MPTCP) {
+        int mptcp_enabled = 0;
+        unsigned int len = sizeof(mptcp_enabled);
+
+        getsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_enabled, &len);
+
+        if (!mptcp_enabled) {
+            close(candidate->pollable_socket->fd);
+            neat_log(NEAT_LOG_WARNING,
+                     "Remote peer does not support MPTCP, socket %d",
+                     candidate->pollable_socket->fd);
+            return -2;
+        } else {
+            neat_log(NEAT_LOG_WARNING,
+                     "Possibly connected with MPTCP, socket %d",
+                     candidate->pollable_socket->fd);
+        }
+    }
+#endif
 
     assert(candidate->pollable_socket->handle->data == candidate);
     uv_poll_start(candidate->pollable_socket->handle, UV_WRITABLE, callback_fx);

@@ -17,8 +17,9 @@ from policy import PropertyMultiArray
 parser = argparse.ArgumentParser(description='NEAT Policy Manager')
 parser.add_argument('--cib', type=str, default=None, help='specify directory in which to look for CIB files')
 parser.add_argument('--pib', type=str, default=None, help='specify directory in which to look for PIB files')
-parser.add_argument('--sock', type=str, default=None, help='set Unix domain socket')
-parser.add_argument('--controller', type=str, default=None, help='set controller REST API')
+parser.add_argument('--sock', type=str, default=None, help='set Unix domain socket path')
+parser.add_argument('--controller', type=str, default=None, help='set URL of controller REST API')
+parser.add_argument('--rest-ip', type=str, default=None, help='set local management IP:PORT for external REST calls')
 parser.add_argument('--debug', type=bool, default=None, help='enable debugging')
 parser.add_argument('--rest', type=bool, default=None, help='enable REST API')
 parser.add_argument('--bypass', type=bool, default=False, help='enable debugging')
@@ -32,6 +33,11 @@ if args.sock:
     PM.DOMAIN_SOCK = args.sock
 if args.controller:
     PM.CONTROLLER_REST = args.controller
+if args.rest_ip:
+    ip_port = args.rest_ip.split(':')
+    PM.REST_IP = ip_port[0]
+    if len(ip_port) > 1:
+        PM.REST_PORT = int(ip_port[1])
 if args.debug:
     PM.DEBUG = args.debug
 if args.rest:
@@ -323,11 +329,11 @@ if __name__ == "__main__":
         loop.run_until_complete(pib_server.wait_closed())
         cib_server.close()
         loop.run_until_complete(cib_server.wait_closed())
-    except AttributeError as e:
+    except (AttributeError, OSError) as e:
         pass
     except Exception as e:
         import code
-        code.interact(local=locals(), banner='except debug')
+        code.interact(local=locals(), banner='unhandled exception debug')
 
     loop.close()
 

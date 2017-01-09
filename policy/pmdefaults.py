@@ -30,7 +30,7 @@ DEFAULT_EVALUATED = False
 
 # Policy Manager REST API
 REST_ENABLE = True
-REST_IP = '10.73.64.75'
+REST_IP = '0.0.0.0'
 REST_PORT = 45888
 
 # SDN controller northbound API address

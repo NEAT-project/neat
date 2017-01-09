@@ -1,9 +1,9 @@
-[{"MTU": {"value": [1500, "inf"]}, 
+[{"MTU": {"value": {"start":1500, "end":9000}}, 
  "low_latency": {"precedence": 2, "value": true}, 
  "remote_ip": {"precedence": 2, "value": "10:54:1.23"}, 
  "transport": {"value": "TCP"}
 }, 
-{"MTU": {"value": [600, "inf"]}, 
+{"MTU": {"value": {"start":300, "end":1500}}, 
  "low_latency": {"precedence": 2, "value": true}, 
  "remote_ip": {"precedence": 2, "value": "10:54:2.2"}, 
  "transport": {"value": "UDP"}

@@ -1,5 +1,6 @@
 import copy
 import json
+import math
 import numbers
 import shutil
 
@@ -89,6 +90,14 @@ def properties_to_json(property_array, indent=None):
     return json.dumps(property_dict, sort_keys=True, indent=indent)
 
 
+def to_inf(inf_str):
+    # TODO
+    if isinstance(inf_str, str) and inf_str.lower() == 'inf':
+        return math.inf
+    else:
+        return inf_str
+
+
 class PropertyValue(object):
     """
     Property values can be
@@ -123,7 +132,7 @@ class PropertyValue(object):
             self._value = value
             self.is_single = True
             self.is_numeric = True if isinstance(value, numbers.Number) else False
-        # new style min-max numeric range
+        # min-max numeric range
         elif isinstance(value, (dict,)):
             try:
                 self._value = (value['start'], value['end'])
@@ -131,7 +140,8 @@ class PropertyValue(object):
                 print(e)
                 raise IndexError("Invalid property range definition")
             self.is_range = True
-        # numeric ranges stored as tuples
+        # old-style numeric ranges stored as tuples
+        # deprecated
         elif isinstance(value, (tuple,)) and len(value) == 2:
             self._value = value
             self.is_range = True

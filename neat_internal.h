@@ -241,7 +241,6 @@ struct neat_flow
     float priority;
 
     const char *cc_algorithm;
-    const char *local_address; // Src address or addresses
 
     struct neat_message_queue_head bufferedMessages;
     size_t buffer_count;
@@ -254,6 +253,7 @@ struct neat_flow
     int             readBufferMsgComplete;    // it contains a complete user message
 
     json_t *properties;
+    json_t *user_ips;
 
     neat_read_impl      readfx;
     neat_write_impl     writefx;

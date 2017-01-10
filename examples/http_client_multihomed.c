@@ -4,19 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/time.h>
-
-#ifndef timersub
-#define timersub(tvp, uvp, vvp)                                         \
-        do {                                                            \
-                (vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec;          \
-                (vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec;       \
-                if ((vvp)->tv_usec < 0) {                               \
-                        (vvp)->tv_sec--;                                \
-                        (vvp)->tv_usec += 1000000;                      \
-                }                                                       \
-        } while (0)
-#endif
 
 /**********************************************************************
 
@@ -34,14 +21,27 @@ static uint32_t config_rcv_buffer_size = 6553600;
 static uint32_t config_max_flows = 50;
 static char request[512];
 static uint32_t flows_active = 0;
-static struct timeval start_time;
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 
 static char *config_property = "{\
     \"transport\": [\
         {\
-            \"value\": \"SCTP\",\
+            \"value\": \"SCTP/UDP\",\
             \"precedence\": 1\
+        }\
+    ],\
+    \"multihoming\": {\
+        \"value\": true,\
+        \"precedence\": 2\
+    },\
+    \"local_ips\": [\
+        {\
+            \"value\": \"212.201.121.91\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"10.1.1.1\",\
+            \"precedence\": 2\
         }\
     ]\
 }";\
@@ -68,8 +68,6 @@ on_readable(struct neat_flow_operations *opCB)
     unsigned char buffer[config_rcv_buffer_size];
     uint32_t bytes_read = 0;
     neat_error_code code;
-    struct timeval now, diff_time;
-    double seconds;
 
     fprintf(stderr, "%s - reading from flow\n", __func__);
     code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read, NULL, 0);
@@ -89,10 +87,6 @@ on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
         fwrite(buffer, sizeof(char), bytes_read, stdout);
     }
-    gettimeofday(&now, NULL);
-    timersub(&now, &start_time, &diff_time);
-    seconds = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
-    fprintf(stdout, "transfer time: %f seconds bytes: %ul throughput: %f bit/s\n", seconds, bytes_read, (double)((bytes_read*8)/seconds));
     return 0;
 }
 
@@ -118,7 +112,6 @@ on_connected(struct neat_flow_operations *opCB)
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
-    gettimeofday(&start_time, NULL);
     return 0;
 }
 
@@ -160,9 +153,6 @@ main(int argc, char *argv[])
     memset(&ops, 0, sizeof(ops));
     memset(flows, 0, sizeof(flows));
 
-    NEAT_OPTARGS_DECLARE(NEAT_OPTARGS_MAX);
-    NEAT_OPTARGS_INIT();
-
     snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
 
     while ((arg = getopt(argc, argv, "u:n:")) != -1) {
@@ -196,6 +186,7 @@ main(int argc, char *argv[])
         result = EXIT_FAILURE;
         goto cleanup;
     }
+    neat_log_level(NEAT_LOG_DEBUG);
 
     for (i = 0; i < num_flows; i++) {
         if ((flows[i] = neat_new_flow(ctx)) == NULL) {
@@ -212,12 +203,8 @@ main(int argc, char *argv[])
         ops[i].userData = &result; // allow on_error to modify the result variable
         neat_set_operations(ctx, flows[i], &(ops[i]));
 
-        NEAT_OPTARG_STRING(NEAT_TAG_LOCAL_ADDRESS, "212.201.121.91,10.1.1.1,10.1.2.1");
-        NEAT_OPTARG_INT(NEAT_TAG_MULTIHOMING, 1);
-
         // wait for on_connected or on_error to be invoked
-       // if (neat_open(ctx, flows[i], argv[argc - 1], 80, NEAT_OPTARGS, NEAT_OPTARGS_COUNT) != NEAT_OK) {
-       if (neat_open(ctx, flows[i], "212.201.121.92,10.1.1.2,10.1.2.2", 80, NEAT_OPTARGS, NEAT_OPTARGS_COUNT) != NEAT_OK) {
+        if (neat_open(ctx, flows[i], argv[argc - 1], 80, NULL, 0) != NEAT_OK) {
             fprintf(stderr, "Could not open flow\n");
             result = EXIT_FAILURE;
         } else {

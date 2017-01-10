@@ -97,7 +97,6 @@ enum neat_tlv_tag {
     NEAT_TAG_PRIORITY,
     NEAT_TAG_FLOW_GROUP,
     NEAT_TAG_CC_ALGORITHM,
-    NEAT_TAG_MULTIHOMING,
 
     NEAT_TAG_LAST
 };

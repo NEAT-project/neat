@@ -64,6 +64,8 @@ static void on_he_connect_req(uv_timer_t *handle)
    struct neat_he_candidates *candidate_list = candidate->pollable_socket->flow->candidate_list;
    uint8_t *heConnectAttemptCount            = &(candidate->pollable_socket->flow->heConnectAttemptCount);
 
+   neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
    uv_timer_stop(candidate->prio_timer);
    uv_close((uv_handle_t *) candidate->prio_timer, free_handle_cb);
 
@@ -144,6 +146,8 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     struct neat_he_candidate *candidate;
     struct neat_he_candidate *next_candidate;
     uint8_t multistream_probe = 0;
+
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
 #ifdef SCTP_MULTISTREAMING
     struct neat_pollable_socket *multistream_socket = NULL;

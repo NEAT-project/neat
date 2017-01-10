@@ -4,6 +4,10 @@ import math
 import numbers
 import shutil
 
+
+## NOT WORKING ## -*- coding: utf-8 -*-
+import sys
+
 from pmdefaults import *
 
 DARK_GRAY_START = '\033[90m'
@@ -607,6 +611,7 @@ def term_separator(text='', line_char='═', offset=0):
     Get a separator line with the width of the terminal with a centered text
     """
 
+    #TODO line_char.encode(sys.stdout.encoding, 'replace')
     # Get the width of the terminal
     ts = shutil.get_terminal_size()
     tcol = ts.columns - offset

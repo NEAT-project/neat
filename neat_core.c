@@ -3357,7 +3357,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
 
     char *tmp = strdup(flow->name);
     char *ptr = NULL;
-    printf("flow->name=%s\n", flow->name);
+
     if ((domains = json_array()) == NULL)
         goto end;
     char *address_name = strtok_r((char *)tmp, ",", &ptr);
@@ -3369,7 +3369,6 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
         json_decref(address);
     } else {
         while (address_name != NULL) {
-        printf("address_name=%s\n", address_name);
             address = json_pack("{sssi}", "value", address_name, "precedence", 2);
             if (address == NULL)
                 goto end;

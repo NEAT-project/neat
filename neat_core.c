@@ -3355,11 +3355,12 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
     json_object_set(properties, "port", port);
     json_decref(port);
 
+    if ((domains = json_array()) == NULL)
+        goto end;
+
     char *tmp = strdup(flow->name);
     char *ptr = NULL;
 
-    if ((domains = json_array()) == NULL)
-        goto end;
     char *address_name = strtok_r((char *)tmp, ",", &ptr);
     if (address_name == NULL) {
         address = json_pack("{sssi}", "value", flow->name, "precedence", 2);

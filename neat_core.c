@@ -3363,15 +3363,19 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
     char *address_name = strtok_r((char *)tmp, ",", &ptr);
     if (address_name == NULL) {
         address = json_pack("{sssi}", "value", flow->name, "precedence", 2);
-        if (address == NULL)
+        if (address == NULL) {
+            free (tmp);
             goto end;
+        }
         json_object_set(properties, "domain_name", address);
         json_decref(address);
     } else {
         while (address_name != NULL) {
             address = json_pack("{sssi}", "value", address_name, "precedence", 2);
-            if (address == NULL)
+            if (address == NULL) {
+                free (tmp);
                 goto end;
+            }
 
             json_array_append(domains, address);
 

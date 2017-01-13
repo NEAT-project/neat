@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import argparse
 import asyncio
+import io
 import logging
 import os
 import signal
+import sys
 from copy import deepcopy
 from operator import attrgetter
 
@@ -13,6 +15,12 @@ import policy
 from cib import CIB
 from pib import PIB
 from policy import PropertyMultiArray
+
+
+# make sure output works on terminals without UTF support
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=sys.stdout.encoding,
+                              errors='replace',
+                              line_buffering=sys.stdout.line_buffering)
 
 parser = argparse.ArgumentParser(description='NEAT Policy Manager')
 parser.add_argument('--cib', type=str, default=None, help='specify directory in which to look for CIB files')
@@ -42,6 +50,9 @@ if args.debug:
     PM.DEBUG = args.debug
 if args.rest:
     PM.REST_ENABLE = args.rest
+
+if PM.DEBUG:
+    print(sys.stdout.encoding)
 
 try:
     os.makedirs(os.path.dirname(PM.DOMAIN_SOCK), exist_ok=True)
@@ -333,6 +344,7 @@ if __name__ == "__main__":
         pass
     except Exception as e:
         import code
+
         code.interact(local=locals(), banner='unhandled exception debug')
 
     loop.close()

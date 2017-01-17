@@ -1274,7 +1274,6 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
         if (socket->multistream) {
 
 #ifdef SCTP_MULTISTREAMING
-
             neat_log(NEAT_LOG_INFO, "%s - allocating %d bytes", __func__, socket->read_size);
             if ((multistream_buffer = malloc(socket->read_size)) == NULL) {
                 neat_log(NEAT_LOG_ERROR, "%s - allocating multistream buffer failed", __func__);
@@ -1489,7 +1488,14 @@ static int io_readable(neat_ctx *ctx, neat_flow *flow,
             multistream_message->buffer = realloc(multistream_buffer, n);
             multistream_message->buffer_size = n;
 
-            TAILQ_INSERT_TAIL(&flow->multistream_read_queue, multistream_message, message_next);
+            TAILQ_INSERT_TAIL(&multistream_flow->multistream_read_queue, multistream_message, message_next);
+
+            if (multistream_flow->operations->on_readable) {
+                READYCALLBACKSTRUCT;
+                multistream_flow->operations->on_readable(multistream_flow->operations);
+            }
+            return READ_OK;
+
 #else // SCTP_MULTISTREAMING
             neat_log(NEAT_LOG_ERROR, "%s - multistream set but not supported", __func__);
             assert(false);
@@ -2049,10 +2055,13 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         }
 #endif
 
+        // newly created flow, trigger "on_connected" callback
         if ((events & UV_WRITABLE) && flow->firstWritePending) {
             flow->firstWritePending = 0;
             io_connected(ctx, flow, NEAT_OK);
         }
+
+        // socket is writable and flow has outstanding data so send, drain buffer before calling "on_writable"
         if ((events & UV_WRITABLE) && flow->isDraining) {
             neat_error_code code = neat_write_flush(ctx, flow);
             if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
@@ -2063,9 +2072,13 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
                 io_all_written(ctx, flow, 0);
             }
         }
+
+        // socket is writable, trigger "on_writable"
         if (events & UV_WRITABLE) {
             io_writable(ctx, flow, 0, NEAT_OK); // TODO: Remove stream param
         }
+
+        // socket is readable, trigger "on_readable"
         if (events & UV_READABLE) {
             io_readable(ctx, flow, pollable_socket, NEAT_OK);
         }
@@ -4256,14 +4269,12 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         if (flow->socket->multistream) {
 #ifdef SCTP_MULTISTREAMING
             if (TAILQ_EMPTY(&flow->multistream_read_queue)) {
-
-
                 if (flow->multistream_reset_in) {
                     neat_log(NEAT_LOG_DEBUG, "%s - read queue empty, got incoming stream reset, returning 0", __func__);
                     *actualAmt = 0;
                     goto end;
                 } else {
-                    neat_log(NEAT_LOG_WARNING, "%s - read queue empty - would block", __func__);
+                    neat_log(NEAT_LOG_WARNING, "%s - stream %d - read queue empty - would block", __func__, flow->multistream_id);
                     return NEAT_ERROR_WOULD_BLOCK;
                 }
             }
@@ -4276,6 +4287,8 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             }
 
             neat_log(NEAT_LOG_DEBUG, "%s - reading from multistream flow - stream_id %d", __func__, flow->multistream_id);
+
+            stream_id = flow->multistream_id;
 
             memcpy(buffer, multistream_message->buffer, multistream_message->buffer_size);
             *actualAmt = multistream_message->buffer_size;

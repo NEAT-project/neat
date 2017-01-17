@@ -244,7 +244,6 @@ struct neat_flow
     const char *local_address; // Src address or addresses
 
     struct neat_message_queue_head bufferedMessages;
-    size_t buffer_count;
     struct neat_flow_statistics flow_stats;
 
     // The memory buffer for reading. Used of SCTP reassembly.

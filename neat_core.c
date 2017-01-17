@@ -5541,7 +5541,6 @@ neat_flow
     rv->close2fx            = neat_close_socket_2;
     rv->listenfx            = NULL; // TODO: Consider reimplementing
     rv->shutdownfx          = neat_shutdown_via_kernel;
-    rv->buffer_count        = 0;
 #if defined(USRSCTP_SUPPORT)
     rv->acceptusrsctpfx     = neat_accept_via_usrsctp;
 #endif

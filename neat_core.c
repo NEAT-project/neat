@@ -452,6 +452,11 @@ neat_free_candidate(struct neat_he_candidate *candidate)
         return;
     }
 
+    if (candidate->prio_timer != NULL) {
+        uv_timer_stop(candidate->prio_timer);
+        uv_close((uv_handle_t *) candidate->prio_timer, on_handle_closed);  
+    }
+
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
 

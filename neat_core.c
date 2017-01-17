@@ -4647,7 +4647,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             return -1;
         }
 #endif // defined(SCTP_RECVRCVINFO)
-#if defined(SCTP_ADAPTATION_LAYER)
+#if defined(SCTP_ADAPTATION_LAYER) && defined(SCTP_MULTISTREAMING)
         // Set adaptation layer indication
         struct sctp_setadaptation adaptation;
         memset(&adaptation, 0, sizeof(adaptation));
@@ -4849,7 +4849,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         // Subscribe to events needed for callbacks
         neat_sctp_init_events(fd);
 #endif
-#if defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT)
+#if defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT) && defined(SCTP_MULTISTREAMING)
         struct sctp_setadaptation adaptation;
         memset(&adaptation, 0, sizeof(adaptation));
         adaptation.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
@@ -4857,7 +4857,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
             neat_log(NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
             return -1;
         }
-#endif // defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT)
+#endif // defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT) && defined(SCTP_MULTISTREAMING)
 #if defined(SCTP_ENABLE_STREAM_RESET) && !defined(USRSCTP_SUPPORT)
         struct sctp_assoc_value assoc_value;
         memset(&assoc_value, 0, sizeof(assoc_value));

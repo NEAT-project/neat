@@ -17,7 +17,7 @@
 static uint32_t config_rcv_buffer_size      = 10000;
 static uint32_t config_snd_buffer_size      = 100;
 static uint32_t config_message_count        = 0;
-static uint32_t config_runtime_max          = 5;
+static uint32_t config_runtime_max          = 30;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_active               = 0;
 static uint16_t config_port                 = 8080;
@@ -259,7 +259,7 @@ on_readable(struct neat_flow_operations *opCB)
         }
     }
 
-    fprintf(stderr, "%s - %d bytes - stream %d\n", __func__, buffer_filled, options[0].value.integer);
+    //fprintf(stderr, "%s - %d bytes - stream %d\n", __func__, buffer_filled, options[0].value.integer);
 
     if (buffer_filled > 0) {
         // we got data!
@@ -357,7 +357,7 @@ on_connected(struct neat_flow_operations *opCB)
     // set callbacks
     opCB->on_readable = on_readable;
     if (config_active) {
-        tnf->send_interval = 10;
+        tnf->send_interval = 100;
 
         if (tnf->send_interval) {
             uv_timer_init(opCB->ctx->loop, &(tnf->send_timer));

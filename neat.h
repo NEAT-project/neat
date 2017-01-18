@@ -65,6 +65,7 @@ struct neat_flow_operations
   neat_flow_operations_fx on_network_status_changed;
   neat_flow_operations_fx on_aborted;
   neat_flow_operations_fx on_timeout;
+  neat_flow_operations_fx on_feedback_query;
   neat_flow_operations_fx on_close;
   neat_cb_send_failure_t on_send_failure;
   neat_cb_flow_slowdown_t on_slowdown;

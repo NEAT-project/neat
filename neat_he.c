@@ -58,18 +58,30 @@ static void free_handle_cb(uv_handle_t *handle)
 }
 
 
+static void free_prio_timer_handle_cb(uv_handle_t *handle)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    struct neat_he_candidate *candidate  = (struct neat_he_candidate *) (handle->data);
+    free(handle);
+    candidate->prio_timer = NULL;
+}
+
+
 static void on_he_connect_req(uv_timer_t *handle)
 {
-   struct neat_he_candidate *candidate       = (struct neat_he_candidate *) (handle->data);
-   struct neat_he_candidates *candidate_list = candidate->pollable_socket->flow->candidate_list;
-   uint8_t *heConnectAttemptCount            = &(candidate->pollable_socket->flow->heConnectAttemptCount);
+    struct neat_he_candidate *candidate       = (struct neat_he_candidate *) (handle->data);
+    struct neat_he_candidates *candidate_list = candidate->pollable_socket->flow->candidate_list;
+    uint8_t *heConnectAttemptCount            = &(candidate->pollable_socket->flow->heConnectAttemptCount);
 
-   uv_timer_stop(candidate->prio_timer);
-   uv_close((uv_handle_t *) candidate->prio_timer, free_handle_cb);
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    uv_timer_stop(candidate->prio_timer);
+    candidate->prio_timer->data = candidate;
+    uv_close((uv_handle_t *) candidate->prio_timer, free_prio_timer_handle_cb);
+    uv_run(candidate->ctx->loop, UV_RUN_ONCE);
 
-   int ret = candidate->pollable_socket->flow->connectfx(candidate,
+    int ret = candidate->pollable_socket->flow->connectfx(candidate,
                    candidate->callback_fx);
-   if ((ret == -1) || (ret == -2)) {
+    if ((ret == -1) || (ret == -2)) {
 
         neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
         if (ret == -2) {
@@ -92,13 +104,13 @@ static void on_he_connect_req(uv_timer_t *handle)
             TAILQ_REMOVE(candidate_list, candidate, next);
             neat_free_candidate(candidate);
         }
-   } else {
+    } else {
 
-       neat_log(NEAT_LOG_DEBUG,
-                "%s: Connect successful for fd %d, ret = %d",
-                __func__,
-                candidate->pollable_socket->fd, ret);
-   }
+        neat_log(NEAT_LOG_DEBUG,
+            "%s: Connect successful for fd %d, ret = %d",
+            __func__,
+            candidate->pollable_socket->fd, ret);
+    }
 }
 
 

@@ -452,6 +452,11 @@ neat_free_candidate(struct neat_he_candidate *candidate)
         return;
     }
 
+    if (candidate->prio_timer != NULL) {
+        uv_timer_stop(candidate->prio_timer);
+        uv_close((uv_handle_t *) candidate->prio_timer, on_handle_closed);  
+    }
+
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
 
@@ -5536,7 +5541,6 @@ neat_flow
     rv->close2fx            = neat_close_socket_2;
     rv->listenfx            = NULL; // TODO: Consider reimplementing
     rv->shutdownfx          = neat_shutdown_via_kernel;
-    rv->buffer_count        = 0;
 #if defined(USRSCTP_SUPPORT)
     rv->acceptusrsctpfx     = neat_accept_via_usrsctp;
 #endif

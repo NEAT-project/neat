@@ -51,26 +51,28 @@ typedef void (*neat_cb_flow_rate_hint_t)(struct neat_flow_operations *, uint32_t
 typedef void (*neat_cb_send_failure_t)(struct neat_flow_operations *, int, const unsigned char *);
 
 
-struct neat_flow_operations {
-    void *userData;
+struct neat_flow_operations
+{
+  void *userData;
 
-    neat_error_code status;
-    int stream_id;
-    neat_flow_operations_fx on_connected;
-    neat_flow_operations_fx on_error;
-    neat_flow_operations_fx on_readable;
-    neat_flow_operations_fx on_writable;
-    neat_flow_operations_fx on_all_written;
-    neat_flow_operations_fx on_network_status_changed;
-    neat_flow_operations_fx on_aborted;
-    neat_flow_operations_fx on_timeout;
-    neat_flow_operations_fx on_close;
-    neat_cb_send_failure_t on_send_failure;
-    neat_cb_flow_slowdown_t on_slowdown;
-    neat_cb_flow_rate_hint_t on_rate_hint;
+  neat_error_code status;
+  int stream_id;
+  neat_flow_operations_fx on_connected;
+  neat_flow_operations_fx on_error;
+  neat_flow_operations_fx on_readable;
+  neat_flow_operations_fx on_writable;
+  neat_flow_operations_fx on_all_written;
+  neat_flow_operations_fx on_network_status_changed;
+  neat_flow_operations_fx on_aborted;
+  neat_flow_operations_fx on_timeout;
+  neat_flow_operations_fx on_feedback_query;
+  neat_flow_operations_fx on_close;
+  neat_cb_send_failure_t on_send_failure;
+  neat_cb_flow_slowdown_t on_slowdown;
+  neat_cb_flow_rate_hint_t on_rate_hint;
 
-    struct neat_ctx *ctx;
-    struct neat_flow *flow;
+  struct neat_ctx *ctx;
+  struct neat_flow *flow;
 };
 
 enum neat_tlv_type {

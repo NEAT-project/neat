@@ -237,6 +237,8 @@ struct neat_flow
     struct neat_ctx *ctx; // raw convenience pointer
     struct neat_iofilter *iofilters;
 
+	uv_timer_t *feedback_timer;
+
     uint32_t group;
     float priority;
 

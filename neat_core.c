@@ -534,7 +534,10 @@ synchronous_free(neat_flow *flow)
 
     json_decref(flow->properties);
 
+	uv_timer_stop(flow->feedback_timer);
+
     free_iofilters(flow->iofilters);
+    free(flow->feedback_timer);
     free(flow->readBuffer);
 
     if (!flow->socket->multistream
@@ -831,6 +834,52 @@ neat_io_error(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
     }
     READYCALLBACKSTRUCT;
     flow->operations->on_error(flow->operations);
+}
+
+void
+io_feedback_query(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
+{
+    const int stream_id = NEAT_INVALID_STREAM;
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+	neat_error_code status = NEAT_OK;
+
+    if (!flow->operations || !flow->operations->on_feedback_query) {
+		fprintf(stderr, "%s:%d no callbacks set\n", __func__, __LINE__);
+        return;
+    }
+    READYCALLBACKSTRUCT;
+    status = flow->operations->on_feedback_query(flow->operations);
+
+
+	//if property NEAT_QOS_FALLBACK
+	// could be something like NEAT_BW_FALLBACK
+	// or NEAT_LATENCY_FALLBACK
+	//
+	if (status == NEAT_OK) {
+		// tell the pm that this flow is grrrrrrreat!
+		fprintf(stderr, "%s:%d flow is happy\n", __func__, __LINE__);
+		return;
+	} else {
+		// Always try to fallback to DSCP 0
+		//if (flow->qos != NEAT_QOS_BE) {
+		fprintf(stderr, "%s:%d flow is happy\n", __func__, __LINE__);
+		if (flow->qos != 0x0) {
+			//on_timeout or something equally crashy
+			return;
+		} else {
+			//neat_set_qos(ctx, flow, NEAT_QOS_BE);
+			neat_set_qos(ctx, flow, 0x0);
+			return;
+		}
+	}
+}
+
+static void neat_feedback_timer_cb(uv_timer_t *handle)
+{
+    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+	neat_flow *flow = handle->data;
+
+	io_feedback_query(flow->ctx, flow, NEAT_OK);
 }
 
 static void io_connected(neat_ctx *ctx, neat_flow *flow,
@@ -5579,6 +5628,16 @@ neat_flow
     /* Initialise flow statistics */
     rv->flow_stats.bytes_sent       = 0;
     rv->flow_stats.bytes_received   = 0;
+
+	rv->feedback_timer = calloc (1, sizeof (uv_timer_t));
+    if (!rv->feedback_timer)
+        goto error;
+	rv->feedback_timer->data = rv;
+
+	uv_timer_init(mgr->loop, rv->feedback_timer);
+	#define ONE_SECOND 1000
+	uv_timer_start(rv->feedback_timer, neat_feedback_timer_cb, 1*ONE_SECOND, 1*ONE_SECOND);
+	#undef ONE_SECOND
 
     LIST_INSERT_HEAD(&mgr->flows, rv, next_flow);
 

@@ -844,32 +844,54 @@ io_feedback_query(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 	neat_error_code status = NEAT_OK;
 
     if (!flow->operations || !flow->operations->on_feedback_query) {
-		fprintf(stderr, "%s:%d no callbacks set\n", __func__, __LINE__);
         return;
     }
     READYCALLBACKSTRUCT;
     status = flow->operations->on_feedback_query(flow->operations);
 
-
-	//if property NEAT_QOS_FALLBACK
-	// could be something like NEAT_BW_FALLBACK
-	// or NEAT_LATENCY_FALLBACK
-	//
 	if (status == NEAT_OK) {
-		// tell the pm that this flow is grrrrrrreat!
-		fprintf(stderr, "%s:%d flow is happy\n", __func__, __LINE__);
+		// TODO tell the pm that this flow is grrrrrrreat!
 		return;
 	} else {
-		// Always try to fallback to DSCP 0
-		//if (flow->qos != NEAT_QOS_BE) {
-		fprintf(stderr, "%s:%d flow is happy\n", __func__, __LINE__);
-		if (flow->qos != 0x0) {
-			//on_timeout or something equally crashy
-			return;
-		} else {
-			//neat_set_qos(ctx, flow, NEAT_QOS_BE);
-			neat_set_qos(ctx, flow, 0x0);
-			return;
+		neat_log(NEAT_LOG_DEBUG, "%s attempting static qos fallback", __func__);
+		// TODO only do this in the pm is dead
+		// TODO this is horrible get teh labels from somewhere
+		uint8_t newqos = 0x00;
+
+		switch(flow->qos) {
+		case 0x08:
+			newqos = 0x00;
+			break;
+		case 0x2e:	//ef
+			newqos = 0x22;
+			break;
+		case 0x22:	//AF41
+		case 0x24:	//AF42
+		case 0x26:	//AF43
+			newqos = 0x1a;
+			break;
+		case 0x1a:	//AF31
+		case 0x1c:	//AF32
+		case 0x1e:	//AF33
+			newqos = 0x12;
+			break;
+		case 0x12:	//AF21
+		case 0x14:	//AF22
+		case 0x16:	//AF23
+			newqos = 0x0a;
+			break;
+		case 0x0a:	//AF11
+		case 0x0c:	//AF12
+		case 0x0e:	//AF13
+			newqos = 0x00;
+			break;
+		case 0x00:
+		default:
+			newqos = 0x00;
+		}
+
+		if(neat_set_qos(ctx, flow, newqos) != NEAT_OK) {
+			fprintf(stderr, "%s:%d unable to set qos\n", __func__, __LINE__);
 		}
 	}
 }

@@ -4,10 +4,6 @@ import math
 import numbers
 import shutil
 
-
-## NOT WORKING ## -*- coding: utf-8 -*-
-import sys
-
 from pmdefaults import *
 
 DARK_GRAY_START = '\033[90m'
@@ -605,13 +601,12 @@ class PropertyMultiArray(dict):
         return '╠═' + '══'.join(slist) + '═╣'  # UTF8
 
 
-# TODO move to pm_util
+# TODO move to pm_util ############
 def term_separator(text='', line_char='═', offset=0):
     """
     Get a separator line with the width of the terminal with a centered text
     """
 
-    #TODO line_char.encode(sys.stdout.encoding, 'replace')
     # Get the width of the terminal
     ts = shutil.get_terminal_size()
     tcol = ts.columns - offset
@@ -627,8 +622,5 @@ def term_separator(text='', line_char='═', offset=0):
 
 
 if __name__ == "__main__":
-    pma = PropertyMultiArray()
-
     import code
-
     code.interact(local=locals(), banner='policy')

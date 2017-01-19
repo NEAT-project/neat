@@ -57,7 +57,7 @@ async def controller_announce():
                         'announce addr: %s:%s' % resp.connection._protocol.transport.get_extra_info('sockname'))
                     assert resp.status == 200
                     html = await resp.text()
-                    logging.debug(html)
+                    #logging.debug(html)
 
             except (ValueError, aiohttp.errors.ClientOSError) as e:
                 print(e)

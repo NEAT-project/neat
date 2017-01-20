@@ -2434,6 +2434,9 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
         char dummy[sizeof(struct sockaddr_storage)];
         struct neat_he_candidate *candidate;
 
+        const char *so_key=NULL, *so_prefix = "SO/";
+        json_t *so_value;
+        
         neat_log(NEAT_LOG_DEBUG, "Now processing PM candidate %zu", i);
 
         interface = json_string_value(get_property(value, "interface", JSON_STRING));
@@ -2453,6 +2456,14 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
         if ((stack = string_to_stack(transport)) == 0) {
             neat_log(NEAT_LOG_DEBUG, "Unkown transport stack %s", transport);
             continue;
+        }
+
+        // get socket options properties
+        json_object_foreach(value, so_key, so_value) {
+          if (strncmp(so_prefix, so_key, strlen(so_prefix))==0) {
+            neat_log(NEAT_LOG_DEBUG, "Got socket option \"%s\"", so_key);
+            /* set socket options here */
+          }
         }
 
         if ((candidate = calloc(1, sizeof(*candidate))) == NULL)

@@ -10,12 +10,12 @@ from copy import deepcopy
 from operator import attrgetter
 
 import pmdefaults as PM
+import pmhelper
 import pmrest
 import policy
 from cib import CIB
 from pib import PIB
 from policy import PropertyMultiArray
-
 
 # make sure output works on terminals without UTF support
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=sys.stdout.encoding,
@@ -106,6 +106,23 @@ def cleanup_special_properties(r):
         del r['default_profile']
     if 'uid' in r:
         del r['uid']
+
+    old_properties = []
+    new_properties = policy.PropertyArray()
+    # convert socket options
+    for key, prop in r.items():
+        so_key = pmhelper.sock_prop(prop.key)
+        if so_key:
+            prop.key = so_key
+            new_properties.add(prop)
+            old_properties.append(key)
+
+    for k in old_properties:
+        del r[k]
+
+    for p in new_properties.values():
+        r.add(p)
+
 
 
 def process_request(json_str, num_candidates=10):

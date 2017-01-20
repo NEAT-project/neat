@@ -8,6 +8,10 @@
 #include <jansson.h>
 #include <assert.h>
 
+// Disable logging in this source file. They require a context as first
+// argument and there are no such ones here.
+#define neat_log(x, ...)
+
 // TODO: Store a list of buffers and read JSON from them instead, if possible
 
 static void

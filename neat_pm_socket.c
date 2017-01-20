@@ -12,12 +12,12 @@ on_pm_written(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_ipc_cont
 {
     struct neat_pm_context *pm_context = context->data;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (neat_unix_json_start_read(context) ||
         neat_unix_json_shutdown(context)) {
 
-        neat_log(NEAT_LOG_DEBUG, "Failed to initiate read/shutdown for PM socket");
+        neat_log(ctx, NEAT_LOG_DEBUG, "Failed to initiate read/shutdown for PM socket");
 
         pm_context->on_pm_error(ctx, flow, PM_ERROR_SOCKET);
     }
@@ -34,7 +34,7 @@ on_pm_close(void* data)
 {
     struct neat_pm_context *pm_context = data;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     free(pm_context->output_buffer);
     free(pm_context->ipc_context);
@@ -49,7 +49,7 @@ on_pm_timeout(uv_timer_t* timer)
 {
     struct neat_pm_context *pm_context = timer->data;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     pm_context->on_pm_error(pm_context->ipc_context->ctx, pm_context->ipc_context->flow, PM_ERROR_SOCKET);
 
@@ -61,7 +61,7 @@ on_pm_read(struct neat_ctx *ctx, struct neat_flow *flow, json_t *json, void *dat
 {
     struct neat_pm_context *pm_context = data;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (pm_context->on_pm_reply != NULL) {
         pm_context->on_pm_reply(ctx, flow, json);
@@ -75,7 +75,7 @@ on_pm_error(struct neat_ctx *ctx, struct neat_flow *flow, int error, void *data)
 {
     struct neat_pm_context *pm_context = data;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     pm_context->on_pm_error(ctx, flow, error);
 
@@ -98,7 +98,7 @@ neat_json_send_once(struct neat_ctx *ctx, struct neat_flow *flow, const char *pa
     struct neat_ipc_context *context;
     struct neat_pm_context *pm_context;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if ((context = calloc(1, sizeof(*context))) == NULL)
         return NEAT_ERROR_OUT_OF_MEMORY;
@@ -121,13 +121,13 @@ neat_json_send_once(struct neat_ctx *ctx, struct neat_flow *flow, const char *pa
     }
 
     if ((rc = uv_timer_init(ctx->loop, pm_context->timer))) {
-        neat_log(NEAT_LOG_DEBUG, "uv_timer_init error: %s", uv_strerror(rc));
+        neat_log(ctx, NEAT_LOG_DEBUG, "uv_timer_init error: %s", uv_strerror(rc));
         rc = NEAT_ERROR_INTERNAL;
         goto error;
     }
 
     if ((rc = uv_timer_start(pm_context->timer, on_pm_timeout, 3000, 0))) {
-        neat_log(NEAT_LOG_DEBUG, "uv_timer_start error: %s", uv_strerror(rc));
+        neat_log(ctx, NEAT_LOG_DEBUG, "uv_timer_start error: %s", uv_strerror(rc));
         rc = NEAT_ERROR_INTERNAL;
         goto error;
     }

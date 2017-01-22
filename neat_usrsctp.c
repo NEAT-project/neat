@@ -92,6 +92,7 @@ struct neat_ctx *neat_usrsctp_init_ctx(struct neat_ctx *ctx)
     ctx->usrsctp_timer_handle.data = ctx;
     uv_timer_start(&(ctx->usrsctp_timer_handle), neat_handle_usrsctp_timeout, 10, 10);
 
+    /* TODO: fix this call to neat_log_usrsctp */
     usrsctp_init(SCTP_UDP_TUNNELING_PORT, NULL, neat_log_usrsctp);
 
     ctx->sctp4_fd = usrsctp_open_sctp4_socket();

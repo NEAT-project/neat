@@ -1008,7 +1008,7 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
 
 #ifdef SCTP_ASSOC_SUPPORTS_RE_CONFIG
                 case SCTP_ASSOC_SUPPORTS_RE_CONFIG:
-                    neat_log(ctx, ctx, NEAT_LOG_DEBUG, "\t- RE-CONFIG");
+                    neat_log(ctx, NEAT_LOG_DEBUG, "\t- RE-CONFIG");
                     break;
 #endif // SCTP_ASSOC_SUPPORTS_RE_CONFIG
                 default:

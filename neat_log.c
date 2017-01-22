@@ -231,7 +231,7 @@ neat_log(struct neat_ctx *ctx, uint8_t level, const char* format, ...)
 }
 
 void
-neat_log_usrsctp(struct neat_ctx *ctx, const char* format, ...)
+neat_log_usrsctp(const char* format, ...)
 {
     return;
 }

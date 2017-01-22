@@ -209,35 +209,35 @@ neat_log_close(struct neat_ctx *ctx)
 
 #else // NEAT_LOG
 uint8_t
-neat_log_init() {
+neat_log_init(struct neat_ctx *ctx) {
     return RETVAL_SUCCESS;
 }
 
 void
-neat_log_level(uint8_t level) {
+neat_log_level(struct neat_ctx *ctx, uint8_t level) {
     return;
 }
 
 uint8_t
-neat_log_file(const char* file_name)
+neat_log_file(struct neat_ctx *ctx, const char* file_name)
 {
     return RETVAL_SUCCESS;
 }
 
 void
-neat_log(uint8_t level, const char* format, ...)
+neat_log(struct neat_ctx *ctx, uint8_t level, const char* format, ...)
 {
     return;
 }
 
 void
-neat_log_usrsctp(const char* format, ...)
+neat_log_usrsctp(struct neat_ctx *ctx, const char* format, ...)
 {
     return;
 }
 
 uint8_t
-neat_log_close()
+neat_log_close(struct neat_ctx *ctx)
 {
     return RETVAL_SUCCESS;
 }

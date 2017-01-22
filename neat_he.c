@@ -245,7 +245,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             while (candidate) {
                 next_candidate = TAILQ_NEXT(candidate, next);
                 TAILQ_REMOVE(candidate_list, candidate, next);
-                neat_free_candidate(candidate);
+                neat_free_candidate(ctx, candidate);
                 candidate = next_candidate;
             }
 

@@ -5346,7 +5346,7 @@ handle_upcall(struct socket *sock, void *arg, int flags)
 
     if (flow) {
         neat_ctx *ctx = flow->ctx;
-        neat_log(flow->socket, NEAT_LOG_DEBUG, "%s", __func__);
+        neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
         int events = usrsctp_get_events(sock);
 

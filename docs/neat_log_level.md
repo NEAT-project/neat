@@ -3,10 +3,13 @@ Set the log-level of the NEAT library.
 
 ### Syntax
 ```c
-void neat_log_level(uint8_t level)
+void neat_log_level(struct neat_ctx *ctx,
+                    uint8_t level)
 ```
 
 ### Parameters
+
+- **ctx**: Pointer to a NEAT context.
 - **level**: Log level of the log entry
     - NEAT_LOG_OFF
     - NEAT_LOG_ERROR
@@ -19,7 +22,7 @@ None.
 
 ### Examples
 ```
-neat_log_level(NEAT_LOG_ERROR);
+neat_log_level(ctx, NEAT_LOG_ERROR);
 ```
 
 ### See also

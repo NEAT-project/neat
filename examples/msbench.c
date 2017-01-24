@@ -495,16 +495,6 @@ main(int argc, char *argv[])
         }
     }
 
-    if (config_log_level == 0) {
-        neat_log_level(ctx, NEAT_LOG_ERROR);
-    } else if (config_log_level == 1){
-        neat_log_level(ctx, NEAT_LOG_WARNING);
-    } else if (config_log_level == 2){
-        neat_log_level(ctx, NEAT_LOG_INFO);
-    }else {
-        neat_log_level(ctx, NEAT_LOG_DEBUG);
-    }
-
     if (optind == argc) {
         config_active = 0;
         if (config_log_level >= 1) {
@@ -525,6 +515,16 @@ main(int argc, char *argv[])
         fprintf(stderr, "%s - neat_init_ctx failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
+    }
+
+    if (config_log_level == 0) {
+        neat_log_level(ctx, NEAT_LOG_ERROR);
+    } else if (config_log_level == 1){
+        neat_log_level(ctx, NEAT_LOG_WARNING);
+    } else if (config_log_level == 2){
+        neat_log_level(ctx, NEAT_LOG_INFO);
+    }else {
+        neat_log_level(ctx, NEAT_LOG_DEBUG);
     }
 
     if (config_active) {

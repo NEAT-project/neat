@@ -77,7 +77,7 @@ static void neat_resolver_handle_deladdr(struct neat_ctx *nic,
         inet_ntop(AF_INET6, &(src_addr6->sin6_addr), addr_str, INET6_ADDRSTRLEN);
     }
 
-    neat_log(NEAT_LOG_INFO, "%s: Deleted %s", __func__, addr_str);
+    neat_log(nic, NEAT_LOG_INFO, "%s: Deleted %s", __func__, addr_str);
 
     request_itr = resolver->request_queue.tqh_first;
 
@@ -224,7 +224,7 @@ static uint32_t neat_resolver_literal_populate_results(struct neat_resolver_requ
         struct sockaddr_in6 *dst_addr6;
     } u;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     char *tmp = strdup(request->domain_name);
     char *ptr = NULL;
@@ -571,7 +571,7 @@ static uint8_t neat_resolver_send_query(struct neat_resolver_src_dst_addr *pair,
     //Create a DNS query for aUrl
     if (ldns_pkt_query_new_frm_str(&pkt, request->domain_name, rr_type,
                 LDNS_RR_CLASS_IN, 0) != LDNS_STATUS_OK) {
-        neat_log(NEAT_LOG_ERROR, "%s - Could not create DNS packet", __func__);
+        // neat_log(NEAT_LOG_ERROR, "%s - Could not create DNS packet", __func__);
         return RETVAL_FAILURE;
     }
 
@@ -585,7 +585,7 @@ static uint8_t neat_resolver_send_query(struct neat_resolver_src_dst_addr *pair,
     //Convert internal LDNS structure to query buffer
     pair->dns_snd_buf = ldns_buffer_new(LDNS_MIN_BUFLEN);
     if (ldns_pkt2buffer_wire(pair->dns_snd_buf, pkt) != LDNS_STATUS_OK) {
-        neat_log(NEAT_LOG_ERROR, "%s - Could not convert pkt to buf", __func__);
+        //neat_log(NEAT_LOG_ERROR, "%s - Could not convert pkt to buf", __func__);
         ldns_pkt_free(pkt);
         return RETVAL_FAILURE;
     }
@@ -599,18 +599,18 @@ static uint8_t neat_resolver_send_query(struct neat_resolver_src_dst_addr *pair,
             &(pair->dns_uv_snd_buf), 1,
             (const struct sockaddr*) &(pair->dst_addr.u.generic.addr),
             neat_resolver_dns_sent_cb)) {
-        neat_log(NEAT_LOG_ERROR, "%s - Failed to start DNS send", __func__);
+        //neat_log(NEAT_LOG_ERROR, "%s - Failed to start DNS send", __func__);
         return RETVAL_FAILURE;
     }
 
-    neat_log(NEAT_LOG_DEBUG, "%s - Request for %s sent", __func__,
-             request->domain_name);
+    //neat_log(NEAT_LOG_DEBUG, "%s - Request for %s sent", __func__,
+    //         request->domain_name);
 
     return RETVAL_SUCCESS;
 }
 
 //Create one SRC/DST DNS resolver pair. Pair has already been allocated
-static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
+static uint8_t neat_resolver_create_pair(struct neat_ctx *ctx,
         struct neat_resolver_src_dst_addr *pair,
         const struct sockaddr_storage *server_addr)
 {
@@ -643,11 +643,11 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
     }
 
     //Configure uv_udp_handle
-    if (uv_udp_init(nc->loop, &(pair->resolve_handle))) {
+    if (uv_udp_init(ctx->loop, &(pair->resolve_handle))) {
         //Closed is normally set in close_cb, but since we will never get that
         //far, set it here instead
         //pair->closed = 1;
-        neat_log(NEAT_LOG_ERROR, "%s - Failure to initialize UDP handle", __func__);
+        neat_log(ctx, NEAT_LOG_ERROR, "%s - Failure to initialize UDP handle", __func__);
         return RETVAL_FAILURE;
     }
 
@@ -656,13 +656,13 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
     if (uv_udp_bind(&(pair->resolve_handle),
                 (struct sockaddr*) &(pair->src_addr->u.generic.addr),
                 0)) {
-        neat_log(NEAT_LOG_ERROR, "%s - Failed to bind UDP socket", __func__);
+        neat_log(ctx, NEAT_LOG_ERROR, "%s - Failed to bind UDP socket", __func__);
         return RETVAL_FAILURE;
     }
 
     if (uv_udp_recv_start(&(pair->resolve_handle), neat_resolver_dns_alloc_cb,
                 neat_resolver_dns_recv_cb)) {
-        neat_log(NEAT_LOG_ERROR, "%s - Failed to start receiving UDP", __func__);
+        neat_log(ctx, NEAT_LOG_ERROR, "%s - Failed to start receiving UDP", __func__);
         return RETVAL_FAILURE;
     }
 
@@ -672,14 +672,14 @@ static uint8_t neat_resolver_create_pair(struct neat_ctx *nc,
     uv_fileno((uv_handle_t*) &(pair->resolve_handle), &socket_fd);
 
     if (!if_indextoname(pair->src_addr->if_idx, if_name)) {
-        /*neat_log(NEAT_LOG_ERROR, "%s - Could not get interface name for index %u",
+        /*neat_log(ctx, NEAT_LOG_ERROR, "%s - Could not get interface name for index %u",
                 __func__, pair->src_addr->if_idx);*/
         return RETVAL_IGNORE;
     }
 
     if (setsockopt(socket_fd, SOL_SOCKET, SO_BINDTODEVICE, if_name,
                 strlen(if_name)) < 0) {
-        /*neat_log(NEAT_LOG_ERROR, "%s - Could not bind socket to interface %s\n",
+        /*neat_log(ctx, NEAT_LOG_ERROR, "%s - Could not bind socket to interface %s\n",
         __func__, if_name); */
         return RETVAL_IGNORE;
     }
@@ -710,7 +710,7 @@ static uint8_t neat_resolver_create_pairs(struct neat_addr *src_addr,
             calloc(sizeof(struct neat_resolver_src_dst_addr), 1);
 
         if (!resolver_pair) {
-            neat_log(NEAT_LOG_ERROR, "%s - Failed to allocate memory for resolver pair", __func__);
+            //neat_log(NEAT_LOG_ERROR, "%s - Failed to allocate memory for resolver pair", __func__);
             continue;
         }
 
@@ -719,13 +719,13 @@ static uint8_t neat_resolver_create_pairs(struct neat_addr *src_addr,
 
         if (neat_resolver_create_pair(request->resolver->nc, resolver_pair,
                     &(server_itr->server_addr)) == RETVAL_FAILURE) {
-            neat_log(NEAT_LOG_ERROR, "%s - Failed to create resolver pair", __func__);
+            //neat_log(NEAT_LOG_ERROR, "%s - Failed to create resolver pair", __func__);
             neat_resolver_mark_pair_del(request->resolver, resolver_pair);
             continue;
         }
 
         if (neat_resolver_send_query(resolver_pair, request)) {
-            neat_log(NEAT_LOG_ERROR, "%s - Failed to start lookup", __func__);
+            //neat_log(NEAT_LOG_ERROR, "%s - Failed to start lookup", __func__);
             neat_resolver_mark_pair_del(request->resolver, resolver_pair);
         } else {
             //printf("Will lookup %s\n", resolver->domain_name);
@@ -799,7 +799,7 @@ static void neat_start_request(struct neat_resolver *resolver,
 
     //No point starting to query if we don't have any source addresses
     if (!resolver->nc->src_addr_cnt) {
-        neat_log(NEAT_LOG_ERROR, "%s - No available src addresses", __func__);
+        //neat_log(NEAT_LOG_ERROR, "%s - No available src addresses", __func__);
         return;
     }
 
@@ -834,17 +834,17 @@ uint8_t neat_resolve(struct neat_resolver *resolver,
     neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (port == 0) {
-        neat_log(NEAT_LOG_ERROR, "%s - Invalid port specified", __func__);
+        //neat_log(NEAT_LOG_ERROR, "%s - Invalid port specified", __func__);
         return RETVAL_FAILURE;
     }
 
     if (family && family != AF_INET && family != AF_INET6 && family != AF_UNSPEC) {
-        neat_log(NEAT_LOG_ERROR, "%s - Invalid family specified", __func__);
+        //neat_log(NEAT_LOG_ERROR, "%s - Invalid family specified", __func__);
         return RETVAL_FAILURE;
     }
 
     if ((strlen(node) + 1) > MAX_DOMAIN_LENGTH) {
-        neat_log(NEAT_LOG_ERROR, "%s - Domain name too long", __func__);
+        //neat_log(NEAT_LOG_ERROR, "%s - Domain name too long", __func__);
         return RETVAL_FAILURE;
     }
 
@@ -881,7 +881,7 @@ uint8_t neat_resolve(struct neat_resolver *resolver,
 
 //Initialize the resolver. Set up callbacks etc.
 struct neat_resolver *
-neat_resolver_init(struct neat_ctx *nc, const char *resolv_conf_path)
+neat_resolver_init(struct neat_ctx *ctx, const char *resolv_conf_path)
 {
     struct neat_resolver *resolver;
 
@@ -894,7 +894,7 @@ neat_resolver_init(struct neat_ctx *nc, const char *resolv_conf_path)
     TAILQ_INIT(&(resolver->dead_request_queue));
 
     //We want to bind a resolver to one context to access address list
-    resolver->nc = nc;
+    resolver->nc = ctx;
 
     //Same timeouts accross all requests
     //TODO: Might be changed, for example due to different networks. Policy?
@@ -906,19 +906,19 @@ neat_resolver_init(struct neat_ctx *nc, const char *resolv_conf_path)
     resolver->deladdr_cb.event_cb = neat_resolver_handle_deladdr;
     resolver->deladdr_cb.data = resolver;
 
-    if (neat_add_event_cb(nc, NEAT_NEWADDR, &(resolver->newaddr_cb)) ||
-        neat_add_event_cb(nc, NEAT_DELADDR, &(resolver->deladdr_cb))) {
-        neat_log(NEAT_LOG_ERROR, "%s - Could not add one or more resolver callbacks", __func__);
+    if (neat_add_event_cb(ctx, NEAT_NEWADDR, &(resolver->newaddr_cb)) ||
+        neat_add_event_cb(ctx, NEAT_DELADDR, &(resolver->deladdr_cb))) {
+        neat_log(ctx, NEAT_LOG_ERROR, "%s - Could not add one or more resolver callbacks", __func__);
         return NULL;
     }
 
     LIST_INIT(&(resolver->resolver_pairs_del));
 
-    uv_idle_init(nc->loop, &(resolver->idle_handle));
+    uv_idle_init(ctx->loop, &(resolver->idle_handle));
     resolver->idle_handle.data = resolver;
 
-    if (uv_fs_event_init(nc->loop, &(resolver->resolv_conf_handle))) {
-        neat_log(NEAT_LOG_ERROR, "%s - Could not initialize fs event handle", __func__);
+    if (uv_fs_event_init(ctx->loop, &(resolver->resolv_conf_handle))) {
+        neat_log(ctx, NEAT_LOG_ERROR, "%s - Could not initialize fs event handle", __func__);
         return NULL;
     }
 
@@ -927,7 +927,7 @@ neat_resolver_init(struct neat_ctx *nc, const char *resolv_conf_path)
     if (uv_fs_event_start(&(resolver->resolv_conf_handle),
                       neat_resolver_resolv_conf_updated,
                       resolv_conf_path, 0)) {
-        neat_log(NEAT_LOG_WARNING, "%s - Could not start fs event handle", __func__);
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - Could not start fs event handle", __func__);
     }
 
     if (!neat_resolver_add_initial_servers(resolver))

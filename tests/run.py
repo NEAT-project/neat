@@ -56,7 +56,7 @@ for test in tests:
     print("\n\n############################### TEST")
     print("Runnning: " + test[2])
     try:
-        result = subprocess.call(prefix + test[2], shell=True, timeout=40)
+        result = subprocess.call(prefix + test[2], shell=True, timeout=70)
         if result != test[0]:
             print("Test failed: program returned with error")
             test[1] = 2

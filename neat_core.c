@@ -106,7 +106,6 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
     TAG_STRING(NEAT_TAG_PRIORITY),
     TAG_STRING(NEAT_TAG_FLOW_GROUP),
     TAG_STRING(NEAT_TAG_CC_ALGORITHM),
-    TAG_STRING(NEAT_TAG_MULTIHOMING),
 };
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -2545,6 +2544,60 @@ error:
 }
 
 static void
+combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
+{
+    struct neat_he_candidate *candidate = NULL;
+    if (!flow->isSCTPMultihoming) {
+        return;
+    }
+    if (flow->user_ips == NULL) {
+        return;
+    }
+    neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+    TAILQ_FOREACH(candidate, candidate_list, next) {
+        if (neat_base_stack(candidate->pollable_socket->stack) != NEAT_STACK_SCTP) {
+            continue;
+        }
+        candidate->pollable_socket->nr_local_addr = 0;
+        struct neat_he_candidate *cand;
+        TAILQ_FOREACH(cand, candidate_list, next) {
+            if (neat_base_stack(candidate->pollable_socket->stack) != NEAT_STACK_SCTP) {
+                continue;
+            }
+            if (strcmp(candidate->pollable_socket->dst_address, cand->pollable_socket->dst_address)) {
+                continue;
+            } else {
+                if (candidate->pollable_socket->nr_local_addr < MAX_LOCAL_ADDR) {
+                    memcpy(&(candidate->pollable_socket->local_addr[candidate->pollable_socket->nr_local_addr]), &(candidate->pollable_socket->src_sockaddr), candidate->pollable_socket->src_len);
+                    if (candidate->pollable_socket->nr_local_addr == 0) {
+                        candidate->pollable_socket->src_address = strdup(cand->pollable_socket->src_address);
+                    } else {
+                        candidate->pollable_socket->src_address =
+                                        realloc(candidate->pollable_socket->src_address,
+                                            strlen(candidate->pollable_socket->src_address) + strlen(cand->pollable_socket->src_address) + 2 * sizeof(char));
+                        strcat(candidate->pollable_socket->src_address, ",");
+                        strcat(candidate->pollable_socket->src_address, cand->pollable_socket->src_address);
+                    }
+                    candidate->pollable_socket->nr_local_addr++;
+                } else {
+                    neat_log(flow->ctx, NEAT_LOG_ERROR, "The maximum number of local addresses (%d) is exceeded", MAX_LOCAL_ADDR);
+                }
+                if (!(TAILQ_EMPTY(candidate_list)) && strcmp(candidate->pollable_socket->src_address, cand->pollable_socket->src_address)) {
+                    TAILQ_REMOVE(candidate_list, cand, next);
+                    free(cand->pollable_socket->dst_address);
+                    free(cand->pollable_socket->src_address);
+                    free(cand->pollable_socket);
+                    free(cand->if_name);
+                    json_decref(cand->properties);
+                    free(cand);
+                }
+            }
+        }
+    }
+}
+
+static void
 on_pm_reply_post_resolve(neat_ctx *ctx, neat_flow *flow, json_t *json)
 {
     struct neat_he_candidates *candidate_list = NULL;
@@ -2554,7 +2607,7 @@ on_pm_reply_post_resolve(neat_ctx *ctx, neat_flow *flow, json_t *json)
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-#if 0
+#if 1
     char *str = json_dumps(json, JSON_INDENT(2));
     neat_log(ctx, NEAT_LOG_DEBUG, "Reply from PM was: %s", str);
     free(str);
@@ -2582,6 +2635,9 @@ on_pm_reply_post_resolve(neat_ctx *ctx, neat_flow *flow, json_t *json)
                candidate->pollable_socket->family == AF_INET6);
     }
 
+    if (flow->isSCTPMultihoming) {
+        combine_candidates(flow, candidate_list);
+    }
     json_decref(json);
 
     neat_he_open(ctx, flow, candidate_list, he_connected_cb);
@@ -2971,66 +3027,34 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             json_incref(flow->properties);
             candidate->properties = flow->properties;
 
-            if (flow->isSCTPMultihoming && flow->local_address && neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) {
-                struct neat_he_candidate *cand;
-                char *address_name;
-                char *ptr;
-                int dstfound = false;
+            if (flow->user_ips != NULL) {
+                size_t index;
+                json_t *addr, *ipvalue;
+                char *ip;
+                char newIp[100];
                 int srcfound = false;
-                char *tmp = strdup(flow->local_address);
-                address_name = strtok_r((char *)tmp, ",", &ptr);
-                while (address_name != NULL) {
-                    if (!strcmp(address_name, src_buffer)) {
-                       srcfound = true;
-                       break;
+                for (index = 0; index < json_array_size(flow->user_ips); index++) {
+                    uint32_t i, j;
+                    addr = json_array_get(flow->user_ips, index);
+                    ipvalue = json_object_get(addr, "value");
+                    ip = json_dumps(ipvalue, JSON_ENCODE_ANY);
+                    // Remove quotes
+                    for (i = 1, j = 0; i <= strlen(ip) - 2; i++, j++) {
+                        newIp[j] = ip[i];
                     }
-                    address_name = strtok_r(NULL, ",", &ptr);
+                    newIp[j] = '\0';;
+                    free (ip);
+                    if (strcmp(src_buffer, newIp) != 0) {
+                        neat_log(flow->ctx, NEAT_LOG_DEBUG, "no match");
+                        continue;
+                    } else {
+                        srcfound = true;
+                        break;
+                    }
                 }
-                free (tmp);
                 if (!srcfound) {
                     free (candidate);
                     continue;
-                } else {
-                    struct sockaddr_storage tmpsrc;
-                    candidate->pollable_socket->nr_local_addr = 0;
-                    TAILQ_FOREACH(cand, candidates, next) {
-                        if (cand->pollable_socket->stack == (int)stacks[i]) {
-                            memcpy(&tmpsrc, &result->src_addr, result->src_addr_len);
-                            if (!strcmp(cand->pollable_socket->dst_address, dst_buffer)) {
-                                dstfound = true;
-                                for (uint16_t i = 0; i < cand->pollable_socket->nr_local_addr; i++) {
-                                    memcpy((void *)&(candidate->pollable_socket->local_addr[i]), &(cand->pollable_socket->local_addr[i]), sizeof(cand->pollable_socket->local_addr[i]));
-                                    candidate->pollable_socket->nr_local_addr++;
-                                }
-                                if (candidate->pollable_socket->nr_local_addr < MAX_LOCAL_ADDR) {
-                                    memcpy(&(candidate->pollable_socket->local_addr[candidate->pollable_socket->nr_local_addr]), &tmpsrc, result->src_addr_len);
-                                    candidate->pollable_socket->nr_local_addr++;
-                                    candidate->pollable_socket->src_address = strdup(cand->pollable_socket->src_address);
-                                    candidate->pollable_socket->src_address =
-                                        realloc(candidate->pollable_socket->src_address,
-                                            strlen(candidate->pollable_socket->src_address) + strlen(src_buffer) + 2 * sizeof(char));
-                                    strcat(candidate->pollable_socket->src_address, ",");
-                                    strcat(candidate->pollable_socket->src_address, src_buffer);
-                                } else {
-                                    neat_log(ctx, NEAT_LOG_ERROR, "The maximum number of local addresses (%d) is exceeded", MAX_LOCAL_ADDR);
-                                }
-                                TAILQ_REMOVE(candidates, cand, next);
-                                free(cand->pollable_socket->dst_address);
-                                free(cand->pollable_socket->src_address);
-                                free(cand->pollable_socket);
-                                free(cand->if_name);
-                                json_decref(cand->properties);
-                                free(cand);
-
-                                break;
-                            }
-                        }
-                    }
-                    if (!dstfound) {
-                        memcpy(&(candidate->pollable_socket->local_addr[0]), &tmpsrc, result->src_addr_len);
-                        candidate->pollable_socket->nr_local_addr++;
-                        candidate->pollable_socket->src_address = strdup(src_buffer);
-                    }
                 }
             } else {
                 free(candidate->pollable_socket->src_address);
@@ -3041,8 +3065,6 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             free(candidate->pollable_socket->dst_address);
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
             candidate->pollable_socket->dst_len     = result->dst_addr_len;
-            // assert(candidate->if_name);
-            // assert(candidate->pollable_socket->src_address);
 
             memcpy(&candidate->pollable_socket->dst_sockaddr, &result->dst_addr, result->dst_addr_len);
 
@@ -3056,6 +3078,8 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             TAILQ_INSERT_TAIL(candidates, candidate, next);
         }
     }
+
+    combine_candidates(flow, candidates);
 
     neat_he_open(ctx, flow, candidates, he_connected_cb);
 
@@ -3217,7 +3241,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
 {
     int rc = NEAT_ERROR_OUT_OF_MEMORY;
     struct ifaddrs *ifaddrs = NULL;
-    json_t *array = NULL, *endpoints = NULL, *properties = NULL, *address, *port;
+    json_t *array = NULL, *endpoints = NULL, *properties = NULL, *domains = NULL, *address, *port;
     const char *home_dir;
     const char *socket_path;
     char socket_path_buf[128];
@@ -3285,6 +3309,37 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
             continue;
         }
 
+        if (flow->user_ips != NULL) {
+            printf("number local_ips=%zu\n", json_array_size(flow->user_ips));
+            size_t index;
+            json_t *addr, *ipvalue;
+            char *ip;
+            char newIp[100];
+            uint16_t found = 0;
+            for (index = 0; index < json_array_size(flow->user_ips); index++) {
+                uint32_t i, j;
+                addr = json_array_get(flow->user_ips, index);
+                ipvalue = json_object_get(addr, "value");
+                ip = json_dumps(ipvalue, JSON_ENCODE_ANY);
+                // Remove quotes
+                for (i = 1, j = 0; i <= strlen(ip) - 2; i++, j++) {
+                    newIp[j] = ip[i];
+                }
+                newIp[j] = '\0';;
+                free (ip);
+                if (strcmp(namebuf, newIp) != 0) {
+                    neat_log(ctx, NEAT_LOG_DEBUG, "no match");
+                    continue;
+                } else {
+                    found = 1;
+                    break;
+                }
+            }
+            if (found == 0) {
+                continue;
+            }
+        }
+
         endpoint = json_pack("{ss++si}", "value", namebuf, "@", ifaddr->ifa_name, "precedence", 2);
 
         if (endpoint == NULL)
@@ -3306,13 +3361,37 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
     json_object_set(properties, "port", port);
     json_decref(port);
 
-    address = json_pack("{sssi}", "value", flow->name, "precedence", 2);
-    if (address == NULL)
+    if ((domains = json_array()) == NULL)
         goto end;
 
-    json_object_set(properties, "domain_name", address);
-    json_decref(address);
+    char *tmp = strdup(flow->name);
+    char *ptr = NULL;
 
+    char *address_name = strtok_r((char *)tmp, ",", &ptr);
+    if (address_name == NULL) {
+        address = json_pack("{sssi}", "value", flow->name, "precedence", 2);
+        if (address == NULL) {
+            free (tmp);
+            goto end;
+        }
+        json_object_set(properties, "domain_name", address);
+        json_decref(address);
+    } else {
+        while (address_name != NULL) {
+            address = json_pack("{sssi}", "value", address_name, "precedence", 2);
+            if (address == NULL) {
+                free (tmp);
+                goto end;
+            }
+
+            json_array_append(domains, address);
+
+            json_decref(address);
+            address_name = strtok_r(NULL, ",", &ptr);
+        }
+        json_object_set(properties, "domain_name", domains);
+    }
+    free (tmp);
     json_array_append(array, properties);
 
     neat_json_send_once(ctx, flow, socket_path, array, on_pm_reply_pre_resolve, on_pm_error);
@@ -3326,6 +3405,8 @@ end:
         json_decref(endpoints);
     if (array)
         json_decref(array);
+    if (domains)
+        json_decref(domains);
 
     if (rc != NEAT_OK)
         neat_io_error(ctx, flow, rc);
@@ -3338,9 +3419,8 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     int stream_count = 0;
     int group = 0;
     float priority = 0.5f;
-    int sctp_multihoming = 0;
     const char *cc_algorithm = NULL;
-    const char *local_address = NULL;
+    json_t *multihoming = NULL, *val = NULL;
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -3354,8 +3434,6 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
         OPTIONAL_INTEGER(NEAT_TAG_FLOW_GROUP, group)
         OPTIONAL_FLOAT(NEAT_TAG_PRIORITY, priority)
         OPTIONAL_STRING(NEAT_TAG_CC_ALGORITHM, cc_algorithm)
-        OPTIONAL_STRING(NEAT_TAG_LOCAL_ADDRESS, local_address)
-        OPTIONAL_INTEGER(NEAT_TAG_MULTIHOMING, sctp_multihoming)
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if (stream_count > 1) {
@@ -3377,13 +3455,18 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     flow->ctx = ctx;
     flow->group = group;
     flow->priority = priority;
-    flow->isSCTPMultihoming = (sctp_multihoming > 0? 1: 0);
-
-    if (local_address) {
-        flow->local_address = strdup(local_address);
+    if ((multihoming = json_object_get(flow->properties, "multihoming")) != NULL &&
+        (val = json_object_get(multihoming, "value")) != NULL &&
+        json_typeof(val) == JSON_TRUE)
+    {
+        flow->isSCTPMultihoming = 1;
     } else {
-        flow->local_address = NULL;
+        flow->isSCTPMultihoming = 0;
     }
+
+    flow->user_ips = json_copy(json_object_get(flow->properties, "local_ips"));
+    json_object_del(flow->properties, "local_ips");
+
     if (!ctx->resolver)
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
 
@@ -5562,7 +5645,7 @@ neat_flow
 #endif // SCTP_MULTISTREAMING
 
     rv->properties = json_object();
-    rv->local_address = NULL;
+    rv->user_ips = NULL;
 
     rv->socket = calloc(1, sizeof(struct neat_pollable_socket));
     if (!rv->socket) {

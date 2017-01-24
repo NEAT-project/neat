@@ -385,7 +385,7 @@ static void neat_resolver_literal_timeout_cb(uv_timer_t *handle)
 //query to the application using NEAT
 static void neat_resolver_timeout_cb(uv_timer_t *handle)
 {
-neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     neat_resolver_timeout_shared(handle, 0);
 }
 
@@ -831,7 +831,7 @@ uint8_t neat_resolve(struct neat_resolver *resolver,
     struct neat_resolver_request *request;
     int8_t is_literal = 0;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (port == 0) {
         //neat_log(NEAT_LOG_ERROR, "%s - Invalid port specified", __func__);

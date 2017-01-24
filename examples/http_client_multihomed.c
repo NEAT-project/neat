@@ -186,7 +186,7 @@ main(int argc, char *argv[])
         result = EXIT_FAILURE;
         goto cleanup;
     }
-    neat_log_level(NEAT_LOG_DEBUG);
+    neat_log_level(ctx, NEAT_LOG_DEBUG);
 
     for (i = 0; i < num_flows; i++) {
         if ((flows[i] = neat_new_flow(ctx)) == NULL) {

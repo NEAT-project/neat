@@ -158,7 +158,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     struct neat_he_candidate *next_candidate;
     uint8_t multistream_probe = 0;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
 #ifdef SCTP_MULTISTREAMING
     struct neat_pollable_socket *multistream_socket = NULL;

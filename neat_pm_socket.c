@@ -87,7 +87,7 @@ on_pm_connected(struct neat_ipc_context *context, void *data)
 {
     struct neat_pm_context *pm_context = data;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if ((neat_unix_json_send(context, pm_context->output_buffer, on_pm_written, context->on_error)) != NEAT_ERROR_OK) {
         pm_context->on_pm_error(pm_context->ipc_context->ctx, pm_context->ipc_context->flow, PM_ERROR_SOCKET);

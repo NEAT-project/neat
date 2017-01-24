@@ -2553,7 +2553,7 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
     if (flow->user_ips == NULL) {
         return;
     }
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     TAILQ_FOREACH(candidate, candidate_list, next) {
         if (neat_base_stack(candidate->pollable_socket->stack) != NEAT_STACK_SCTP) {
@@ -2581,7 +2581,7 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
                     }
                     candidate->pollable_socket->nr_local_addr++;
                 } else {
-                    neat_log(NEAT_LOG_ERROR, "The maximum number of local addresses (%d) is exceeded", MAX_LOCAL_ADDR);
+                    neat_log(flow->ctx, NEAT_LOG_ERROR, "The maximum number of local addresses (%d) is exceeded", MAX_LOCAL_ADDR);
                 }
                 if (!(TAILQ_EMPTY(candidate_list)) && strcmp(candidate->pollable_socket->src_address, cand->pollable_socket->src_address)) {
                     TAILQ_REMOVE(candidate_list, cand, next);
@@ -3045,7 +3045,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     newIp[j] = '\0';;
                     free (ip);
                     if (strcmp(src_buffer, newIp) != 0) {
-                        neat_log(NEAT_LOG_DEBUG, "no match");
+                        neat_log(flow->ctx, NEAT_LOG_DEBUG, "no match");
                         continue;
                     } else {
                         srcfound = true;
@@ -3328,7 +3328,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
                 newIp[j] = '\0';;
                 free (ip);
                 if (strcmp(namebuf, newIp) != 0) {
-                    neat_log(NEAT_LOG_DEBUG, "no match");
+                    neat_log(ctx, NEAT_LOG_DEBUG, "no match");
                     continue;
                 } else {
                     found = 1;

@@ -123,7 +123,7 @@ neat_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
                 }
 
             } else {
-                neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
+                // neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
                 *stack_count = 0;
             }
 
@@ -149,7 +149,7 @@ neat_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
                     }
                 }
             } else {
-                neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
+                // neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
             }
 #else
             if ((stack = string_to_stack(value)) != 0) {
@@ -159,11 +159,11 @@ neat_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
                     *(precedences++) = precedence;
                 }
             } else {
-                neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
+                // neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
             }
 #endif
         } else {
-            neat_log(NEAT_LOG_ERROR, "Invalid precedence %d in JSON", precedence);
+            // neat_log(NEAT_LOG_ERROR, "Invalid precedence %d in JSON", precedence);
             *stack_count = 0;
             return;
         }
@@ -198,17 +198,19 @@ get_property(json_t *json, const char *key, json_type expected_type)
     json_t *obj = json_object_get(json, key);
 
     if (!obj) {
-        neat_log(NEAT_LOG_DEBUG, "Unable to find property with key \"%s\"", key);
+        // neat_log(NEAT_LOG_DEBUG, "Unable to find property with key \"%s\"", key);
         return NULL;
     }
 
     obj = json_object_get(obj, "value");
     if (!obj) {
-        neat_log(NEAT_LOG_DEBUG, "Object with key \"%s\" is missing value key");
+        // neat_log(NEAT_LOG_DEBUG, "Object with key \"%s\" is missing value key");
         return NULL;
     }
 
     if (json_typeof(obj) != expected_type) {
+#if 0
+        // no ctx, can't log!
         const char *typename = NULL;
         switch (json_typeof(obj)) {
         case JSON_OBJECT:
@@ -235,7 +237,8 @@ get_property(json_t *json, const char *key, json_type expected_type)
             break;
         }
 
-        neat_log(NEAT_LOG_DEBUG, "Key \"%s\" had unexpected type", key, typename);
+        neat_log(ctx, NEAT_LOG_DEBUG, "Key \"%s\" had unexpected type", key, typename);
+#endif
         return NULL;
     }
 

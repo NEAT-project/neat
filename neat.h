@@ -209,6 +209,7 @@ NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
 #define NEAT_ERROR_MESSAGE_TOO_BIG  (8)
 #define NEAT_ERROR_REMOTE           (9)
 #define NEAT_ERROR_OUT_OF_MEMORY    (10)
+#define NEAT_ERROR_DSCP_RETRY       (11)
 
 #define NEAT_INVALID_STREAM (-1)
 

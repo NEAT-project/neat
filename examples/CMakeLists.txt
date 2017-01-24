@@ -13,6 +13,7 @@ LIST(APPEND neat_programs
     tneat.c
     peer.c
     http_client_multihomed.c
+    dscp_test.c
 )
 
 LIST(APPEND neat_property_examples

@@ -24,15 +24,24 @@ static uint16_t config_port                 = 8080;
 static uint16_t config_log_level            = 1;
 static uint16_t config_num_flows            = 3;
 static uint16_t config_max_flows            = 100;
-static char *config_property = "\
-{\
+static char *config_property = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
             \"precedence\": 1\
         }\
+    ],\
+    \"local_ips\": [\
+        {\
+            \"value\": \"10.1.1.2\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"10.1.2.2\",\
+            \"precedence\": 2\
+        }\
     ]\
-}";
+}";\
 
 static uint32_t flows_active = 0;
 

@@ -31,6 +31,10 @@ static char *config_property = "{\
             \"precedence\": 1\
         }\
     ],\
+    \"multihoming\": {\
+        \"value\": true,\
+        \"precedence\": 2\
+    },\
     \"local_ips\": [\
         {\
             \"value\": \"10.1.1.2\",\
@@ -303,7 +307,7 @@ on_readable(struct neat_flow_operations *opCB)
             timersub(&(tnf->rcv.tv_last), (struct timeval*) &(tnf->rcv.tv_first), &diff_time);
             time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
-            printf("%u, %u, %.2f, %.2f, %s\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+            printf("%u, %u, %.2f, %.2f, %s, %.2f\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)), (double) tnf->rcv.delay_sum / tnf->rcv.calls);
 
             if (config_log_level >= 1) {
                 printf("client disconnected - statistics\n");

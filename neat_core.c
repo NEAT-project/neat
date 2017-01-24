@@ -3049,6 +3049,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                         continue;
                     } else {
                         srcfound = true;
+                        memcpy(&candidate->pollable_socket->src_sockaddr, &result->src_addr, result->src_addr_len);
                         break;
                     }
                 }

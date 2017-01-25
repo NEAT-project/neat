@@ -24,6 +24,8 @@ static uint16_t config_port                 = 8080;
 static uint16_t config_log_level            = 1;
 static uint16_t config_num_flows            = 3;
 static uint16_t config_max_flows            = 100;
+static uint32_t config_delay                = 0;
+static uint32_t config_loss                 = 0;
 static char *config_property = "{\
     \"transport\": [\
         {\
@@ -65,22 +67,29 @@ static uint32_t flows_active = 0;
     } while (0)
 #endif
 
+struct tneat_payload {
+    struct timeval  tv;
+    uint32_t        delay;
+    uint32_t        loss; // plr * 1000
+};
+
 struct tneat_flow_direction {
-    unsigned char *buffer;
-    uint32_t calls;
-    uint32_t bytes;
-    struct timeval tv_first;
-    struct timeval tv_last;
-    uint64_t delay_sum;
+    unsigned char   *buffer;
+    uint32_t        calls;
+    uint32_t        bytes;
+    struct timeval  tv_first;
+    struct timeval  tv_last;
+    uint64_t        delay_sum;
 };
 
 struct tneat_flow {
-    uint8_t     done;
-    struct      tneat_flow_direction rcv;
-    struct      tneat_flow_direction snd;
-    uint16_t    send_interval;
-    uv_timer_t  send_timer;
-    struct      neat_flow_operations *ops;
+    uint8_t                     done;
+    struct tneat_flow_direction rcv;
+    struct tneat_flow_direction snd;
+    uint16_t                    send_interval;
+    uv_timer_t                  send_timer;
+    struct                      neat_flow_operations *ops;
+    struct tneat_payload        payload;
 };
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
@@ -218,7 +227,10 @@ on_writable(struct neat_flow_operations *opCB)
         exit(EXIT_FAILURE);
     }
 
-    memcpy(tnf->snd.buffer, &(tnf->snd.tv_last), sizeof(struct timeval));
+    tnf->payload.tv     = tnf->snd.tv_last;
+    tnf->payload.loss   = config_loss;
+    tnf->payload.delay  = config_delay;
+    memcpy(tnf->snd.buffer, &(tnf->payload), sizeof(struct tneat_payload));
 
     if (config_log_level >= 2) {
         printf("neat_write - # %u - %d byte\n", tnf->snd.calls, config_snd_buffer_size);
@@ -248,7 +260,7 @@ on_readable(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = opCB->userData;
     uint32_t buffer_filled;
     struct timeval diff_time;
-    struct timeval *remote_time;
+    struct tneat_payload *payload;
     neat_error_code code;
     char buffer_filesize_human[32];
     double time_elapsed;
@@ -282,11 +294,14 @@ on_readable(struct neat_flow_operations *opCB)
         tnf->rcv.calls++;
         tnf->rcv.bytes += buffer_filled;
         gettimeofday(&(tnf->rcv.tv_last), NULL);
-        remote_time = (struct timeval*) tnf->rcv.buffer;
-        timersub(&(tnf->rcv.tv_last), remote_time, &diff_time);
+
+        payload = (struct tneat_payload*) tnf->rcv.buffer;
+        timersub(&(tnf->rcv.tv_last), &(payload->tv), &diff_time);
         app_delay = (double) diff_time.tv_sec * 1000.0 + (double) diff_time.tv_usec / 1000.0;
         app_delay += 0.5;
         tnf->rcv.delay_sum += (int) app_delay;
+        tnf->payload.delay = payload->delay;
+        tnf->payload.loss = payload->loss;
         //fprintf(stderr, "%s - app_delay %f\n", __func__, app_delay);
         //fprintf(stderr, "%s - app_delay s:%d - usec:%d\n", __func__, (int)diff_time.tv_sec, (int)diff_time.tv_usec);
 
@@ -307,15 +322,15 @@ on_readable(struct neat_flow_operations *opCB)
             timersub(&(tnf->rcv.tv_last), (struct timeval*) &(tnf->rcv.tv_first), &diff_time);
             time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
-            printf("%u, %u, %.2f, %.2f, %s, %.2f\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)), (double) tnf->rcv.delay_sum / tnf->rcv.calls);
+            printf("%u, %u, %.2f, %.2f, %s, %.2f, %d, %d\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)), (double) tnf->rcv.delay_sum / tnf->rcv.calls, tnf->payload.loss, tnf->payload.delay);
 
             if (config_log_level >= 1) {
                 printf("client disconnected - statistics\n");
                 printf("\tbytes\t\t: %u\n",         tnf->rcv.bytes);
                 printf("\trcv-calls\t: %u\n",       tnf->rcv.calls);
-                printf("\tduration\t: %.2f s\n",     time_elapsed);
+                printf("\tduration\t: %.2f s\n",    time_elapsed);
                 printf("\tbandwidth\t: %s/s\n",     filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
-                printf("\tavg-delay\t: %.2f ms\n",    (double) tnf->rcv.delay_sum / tnf->rcv.calls);
+                printf("\tavg-delay\t: %.2f ms\n",  (double) tnf->rcv.delay_sum / tnf->rcv.calls);
             }
         }
 
@@ -443,7 +458,7 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:D:L:")) != -1) {
         switch(arg) {
         case 'l':
             config_snd_buffer_size = atoi(optarg);
@@ -490,6 +505,18 @@ main(int argc, char *argv[])
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {
                 printf("option - log level: %d\n", config_log_level);
+            }
+            break;
+        case 'L':
+            config_loss = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - log loss: %d\n", config_loss);
+            }
+            break;
+        case 'D':
+            config_delay = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - log delay: %d\n", config_delay);
             }
             break;
         default:

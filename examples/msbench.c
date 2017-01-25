@@ -17,7 +17,7 @@
 static uint32_t config_rcv_buffer_size      = 10000;
 static uint32_t config_snd_buffer_size      = 100;
 static uint32_t config_message_count        = 0;
-static uint32_t config_runtime_max          = 30;
+static uint32_t config_runtime_max          = 3;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_active               = 0;
 static uint16_t config_port                 = 8080;
@@ -44,6 +44,10 @@ static char *config_property = "{\
         },\
         {\
             \"value\": \"10.1.2.2\",\
+            \"precedence\": 2\
+        },\
+        {\
+            \"value\": \"127.0.0.1\",\
             \"precedence\": 2\
         }\
     ]\

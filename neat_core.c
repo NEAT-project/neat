@@ -457,7 +457,6 @@ neat_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
         uv_timer_stop(candidate->prio_timer);
         uv_close((uv_handle_t *) candidate->prio_timer, on_handle_closed);
     }
-
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
 
@@ -2537,8 +2536,9 @@ out_of_memory:
 error:
         if (candidate) {
             if (candidate->pollable_socket) {
-                if (candidate->pollable_socket->src_address)
+                if (candidate->pollable_socket->src_address) {
                     free(candidate->pollable_socket->src_address);
+                }
                 if (candidate->pollable_socket->dst_address)
                     free(candidate->pollable_socket->dst_address);
                 free(candidate->pollable_socket);
@@ -2582,7 +2582,12 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
                 if (candidate->pollable_socket->nr_local_addr < MAX_LOCAL_ADDR) {
                     memcpy(&(candidate->pollable_socket->local_addr[candidate->pollable_socket->nr_local_addr]), &(candidate->pollable_socket->src_sockaddr), candidate->pollable_socket->src_len);
                     if (candidate->pollable_socket->nr_local_addr == 0) {
-                        candidate->pollable_socket->src_address = strdup(cand->pollable_socket->src_address);
+                        if (strcmp(candidate->pollable_socket->src_address, cand->pollable_socket->src_address)) {
+                            if (candidate->pollable_socket->src_address != NULL) {
+                    	        free(candidate->pollable_socket->src_address);
+                    	    }
+                            candidate->pollable_socket->src_address = strdup(cand->pollable_socket->src_address);
+                        }
                     } else {
                         candidate->pollable_socket->src_address =
                                         realloc(candidate->pollable_socket->src_address,
@@ -2602,6 +2607,7 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
                     free(cand->if_name);
                     json_decref(cand->properties);
                     free(cand);
+                    break;
                 }
             }
         }
@@ -3064,6 +3070,11 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     }
                 }
                 if (!srcfound) {
+                    free(candidate->pollable_socket->dst_address);
+                    free(candidate->pollable_socket->src_address);
+                    free(candidate->pollable_socket);
+                    free(candidate->if_name);
+                    json_decref(candidate->properties);
                     free (candidate);
                     continue;
                 }
@@ -3210,8 +3221,9 @@ loop_error:
         if (candidate->if_name)
             free(candidate->if_name);
         if (candidate->pollable_socket) {
-            if (candidate->pollable_socket->src_address)
+            if (candidate->pollable_socket->src_address) {
                 free(candidate->pollable_socket->src_address);
+            }
             if (candidate->pollable_socket->dst_address)
                 free(candidate->pollable_socket->dst_address);
             free(candidate->pollable_socket);
@@ -3321,7 +3333,6 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
         }
 
         if (flow->user_ips != NULL) {
-            printf("number local_ips=%zu\n", json_array_size(flow->user_ips));
             size_t index;
             json_t *addr, *ipvalue;
             char *ip;
@@ -3475,8 +3486,8 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
         flow->isSCTPMultihoming = 0;
     }
 
-    flow->user_ips = json_copy(json_object_get(flow->properties, "local_ips"));
-    json_object_del(flow->properties, "local_ips");
+    flow->user_ips = json_object_get(flow->properties, "local_ips");
+    //json_object_del(flow->properties, "local_ips");
 
     if (!ctx->resolver)
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
@@ -4555,7 +4566,6 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         while (address_name != NULL) {
             struct sockaddr_in *s4 = (struct sockaddr_in*) local_addr_ptr;
             struct sockaddr_in6 *s6 = (struct sockaddr_in6*) local_addr_ptr;
-            printf("address_name=%s\n", address_name);
             if (inet_pton(AF_INET6, address_name, &s6->sin6_addr)) {
                 s6->sin6_family = AF_INET6;
 #ifdef HAVE_SIN_LEN

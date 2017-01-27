@@ -112,7 +112,9 @@ def cleanup_special_properties(r):
     # convert socket options
     for key, prop in r.items():
         so_key = pmhelper.sock_prop(prop.key)
-        if so_key:
+        if so_key == -1:
+            old_properties.append(key)
+        elif so_key:
             prop.key = so_key
             new_properties.add(prop)
             old_properties.append(key)

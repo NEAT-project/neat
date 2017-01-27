@@ -846,6 +846,9 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
         case NEAT_STACK_TCP:
             snprintf(proto, 16, "TCP");
             break;
+        case NEAT_STACK_MPTCP:
+            snprintf(proto, 16, "MPTCP");
+            break;
         case NEAT_STACK_SCTP:
             snprintf(proto, 16, "SCTP");
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
@@ -1803,6 +1806,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     case NEAT_STACK_TCP:
         proto = "TCP";
         break;
+    case NEAT_STACK_MPTCP:
+        proto = "MPTCP";
+        break;
     case NEAT_STACK_SCTP:
         proto = "SCTP";
         break;
@@ -1876,6 +1882,37 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         // this callback
         uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
     } else if (flow->hefirstConnect && (status == 0)) {
+        /* if MPTCP was chosen, don't accept fallback to TCP */
+#ifdef MPTCP_SUPPORT
+        if (candidate->pollable_socket->stack == NEAT_STACK_MPTCP) {
+            int mptcp_enabled = 0;
+            unsigned int len = sizeof(mptcp_enabled);
+            getsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_enabled, &len);
+
+            if (!mptcp_enabled) {
+                uv_poll_stop(handle);
+                uv_close((uv_handle_t*)handle, free_he_handle_cb);
+
+                TAILQ_REMOVE(candidate_list, candidate, next);
+                free(candidate->pollable_socket->dst_address);
+                free(candidate->pollable_socket->src_address);
+                free(candidate->pollable_socket);
+                free(candidate->if_name);
+                json_decref(candidate->properties);
+                free(candidate);
+
+                free(he_res->interface);
+                free(he_res->remote_ip);
+                free(he_res);
+
+                if (!(--flow->heConnectAttemptCount)) {
+                    neat_io_error(flow->ctx, flow, NEAT_ERROR_UNABLE);
+                }
+
+                return;
+            }
+        }
+#endif
         flow->hefirstConnect = 0;
         neat_log(ctx, NEAT_LOG_DEBUG, "First successful connect (flow->hefirstConnect)");
 
@@ -2181,6 +2218,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             break;
         case NEAT_STACK_TCP:
             proto = "TCP";
+            break;
+        case NEAT_STACK_MPTCP:
+            proto = "MPTCP";
             break;
         case NEAT_STACK_SCTP:
             proto = "SCTP";
@@ -3728,6 +3768,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
         stacks[nr_of_stacks++] = NEAT_STACK_UDP;
         stacks[nr_of_stacks++] = NEAT_STACK_UDPLITE;
         stacks[nr_of_stacks++] = NEAT_STACK_TCP;
+        stacks[nr_of_stacks++] = NEAT_STACK_MPTCP;
         stacks[nr_of_stacks++] = NEAT_STACK_SCTP;
         stacks[nr_of_stacks++] = NEAT_STACK_SCTP_UDP;
     } else {
@@ -3818,7 +3859,8 @@ accept_resolve_cb(struct neat_resolver_results *results,
             if ((neat_base_stack(stacks[i]) == NEAT_STACK_SCTP) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_UDP) ||
                 (neat_base_stack(stacks[i]) == NEAT_STACK_UDPLITE) ||
-                (neat_base_stack(stacks[i]) == NEAT_STACK_TCP)) {
+                (neat_base_stack(stacks[i]) == NEAT_STACK_TCP) ||
+                (neat_base_stack(stacks[i]) == NEAT_STACK_MPTCP)) {
                 uv_poll_start(handle, UV_READABLE, uvpollable_cb);
             } else {
                 // do normal i/o events without accept() for non connected protocols
@@ -4178,6 +4220,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
     switch (flow->socket->stack) {
     case NEAT_STACK_TCP:
+    case NEAT_STACK_MPTCP:
         atomic = 0;
         break;
     case NEAT_STACK_SCTP_UDP:
@@ -4464,6 +4507,10 @@ int neat_stack_to_protocol(neat_protocol_stack_type stack)
         case NEAT_STACK_UDPLITE:
             return IPPROTO_UDPLITE;
 #endif
+        case NEAT_STACK_MPTCP:
+#if !defined(MPTCP_SUPPORT)
+            return 0;
+#endif
         case NEAT_STACK_TCP:
             return IPPROTO_TCP;
 #ifdef IPPROTO_SCTP
@@ -4483,6 +4530,7 @@ neat_base_stack(neat_protocol_stack_type stack)
         case NEAT_STACK_UDP:
         case NEAT_STACK_UDPLITE:
         case NEAT_STACK_TCP:
+        case NEAT_STACK_MPTCP:
         case NEAT_STACK_SCTP:
             return stack;
         case NEAT_STACK_SCTP_UDP:
@@ -4535,6 +4583,18 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     }
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+
+#if defined(MPTCP_SUPPORT)
+    if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_MPTCP) {
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &enable, sizeof(int)) < 0) {
+            neat_log(NEAT_LOG_WARNING, "Could not use MPTCP over for socket %d", candidate->pollable_socket->fd);
+            return -2;
+        }
+    } else if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_TCP) {
+        int mptcp_disable = 0;
+        setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_disable, sizeof(int));
+    }
+#endif
 
     if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);

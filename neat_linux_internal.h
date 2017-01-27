@@ -6,6 +6,10 @@
 //lo interface has fixed index 1
 #define LO_DEV_IDX 1
 
+#if defined(MPTCP_SUPPORT) && !defined(MPTCP_ENABLED)
+#define MPTCP_ENABLED 42
+#endif
+
 struct nlattr;
 struct neat_ctx;
 

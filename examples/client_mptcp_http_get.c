@@ -144,7 +144,6 @@ main(int argc, char *argv[])
     char *arg_property = NULL;
     result = EXIT_SUCCESS;
 
-    neat_log_level(NEAT_LOG_DEBUG);
 
     memset(&ops, 0, sizeof(ops));
     memset(flows, 0, sizeof(flows));
@@ -187,14 +186,6 @@ main(int argc, char *argv[])
         }
     }
 
-    if (config_log_level == 0) {
-        neat_log_level(NEAT_LOG_ERROR);
-    } else if (config_log_level == 1){
-        neat_log_level(NEAT_LOG_WARNING);
-    } else {
-        neat_log_level(NEAT_LOG_DEBUG);
-    }
-
     if (optind + 1 != argc) {
         fprintf(stderr, "usage: client_http_get [OPTIONS] HOST\n");
         goto cleanup;
@@ -206,6 +197,16 @@ main(int argc, char *argv[])
         fprintf(stderr, "could not initialize context\n");
         result = EXIT_FAILURE;
         goto cleanup;
+    }
+
+    neat_log_level(ctx, NEAT_LOG_DEBUG);
+
+    if (config_log_level == 0) {
+        neat_log_level(ctx, NEAT_LOG_ERROR);
+    } else if (config_log_level == 1){
+        neat_log_level(ctx, NEAT_LOG_WARNING);
+    } else {
+        neat_log_level(ctx, NEAT_LOG_DEBUG);
     }
 
     for (i = 0; i < num_flows; i++) {

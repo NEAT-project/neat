@@ -4587,7 +4587,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #if defined(MPTCP_SUPPORT)
     if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_MPTCP) {
         if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &enable, sizeof(int)) < 0) {
-            neat_log(NEAT_LOG_WARNING, "Could not use MPTCP over for socket %d", candidate->pollable_socket->fd);
+            neat_log(ctx, NEAT_LOG_WARNING, "Could not use MPTCP over for socket %d", candidate->pollable_socket->fd);
             return -2;
         }
     } else if (neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_TCP) {

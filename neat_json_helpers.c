@@ -235,7 +235,7 @@ get_property(json_t *json, const char *key, json_type expected_type)
             break;
         }
 
-        neat_log(NEAT_LOG_DEBUG, "Key \"%s\" had unexpected type", key, typename);
+        neat_log(NEAT_LOG_DEBUG, "Key \"%s\" had unexpected type: \"%s\"", key, typename);
         return NULL;
     }
 

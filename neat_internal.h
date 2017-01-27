@@ -369,6 +369,24 @@ struct neat_resolver_res {
     LIST_ENTRY(neat_resolver_res) next_res;
 };
 
+enum neat_sockopt_type {
+    NEAT_SOCKOPT_INT = 0,
+    NEAT_SOCKOPT_STRING,
+};
+
+struct neat_he_sockopt {
+    uint32_t level;
+    uint32_t name;
+    enum neat_sockopt_type type;
+    union {
+        int i_val;
+        char *s_val;
+    } value;
+    TAILQ_ENTRY(neat_he_sockopt) next;
+};
+
+TAILQ_HEAD(sock_opts_head, neat_he_sockopt);
+
 // Linked list passed to HE after the first PM call.
 // The list contains each candidate HE should get resolved.
 struct neat_he_candidate {
@@ -380,6 +398,7 @@ struct neat_he_candidate {
     int32_t priority;
     json_t *properties;
     struct neat_ctx *ctx;
+    struct sock_opts_head sock_opts;
     TAILQ_ENTRY(neat_he_candidate) next;
     TAILQ_ENTRY(neat_he_candidate) resolution_list;
 };

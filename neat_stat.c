@@ -16,7 +16,7 @@ void neat_get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
 {
     /* Call the os-specific TCP-info-gathering function and copy the outputs into the
      * relevant fields of the neat-generic tcp-info struct */
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
 #ifdef __linux__
     linux_get_tcp_info(flow, tcpinfo);
@@ -28,7 +28,7 @@ void neat_get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
 
 /* Traverse the relevant subsystems of NEAT and gather the stats
    then format the stats as a json string to return */
-void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
+void neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
 {
     json_t *json_root, *protostat, *newflow;
     struct neat_flow *flow;
@@ -36,12 +36,12 @@ void neat_stats_build_json(struct neat_ctx *mgr, char **json_stats)
     uint flowcount;
     char flow_name[128];
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     flowcount = 0;
     json_root = json_object();
 
-    LIST_FOREACH(flow, &mgr->flows, next_flow) {
+    LIST_FOREACH(flow, &ctx->flows, next_flow) {
         flowcount++;
 
         /* Create entries for flow#n in a separate object */

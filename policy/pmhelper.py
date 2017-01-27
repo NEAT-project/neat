@@ -8,7 +8,6 @@ def sock_prop(so_str):
     if not so_str.startswith(so_prefix + so_separator):
         return
     _, level, optname = so_str.split(so_separator)
-    if level.isdigit() and optname.isdigit():
     try:
         # get socket level
         if level.isdigit():

@@ -2490,21 +2490,21 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
                 case JSON_INTEGER:
                     sockopt->type = NEAT_SOCKOPT_INT;
                     sockopt->value.i_val = json_integer_value(get_property(value, so_key, JSON_INTEGER));
-                    neat_log(NEAT_LOG_DEBUG, "Got socket option \"%s\" with value \"%d\"", so_key, sockopt->value.i_val);
+                    neat_log(ctx, NEAT_LOG_DEBUG, "Got socket option \"%s\" with value \"%d\"", so_key, sockopt->value.i_val);
                     break;
                 case JSON_STRING:
                     sockopt->type = NEAT_SOCKOPT_STRING;
                     sockopt->value.s_val = strdup(json_string_value(get_property(value, so_key, JSON_STRING)));
-                    neat_log(NEAT_LOG_DEBUG, "Got socket option \"%s\" with value \"%s\"", so_key, sockopt->value.s_val);
+                    neat_log(ctx, NEAT_LOG_DEBUG, "Got socket option \"%s\" with value \"%s\"", so_key, sockopt->value.s_val);
                     break;
                 case JSON_TRUE:
                 case JSON_FALSE:
                     sockopt->type = NEAT_SOCKOPT_INT;
                     sockopt->value.i_val = json_boolean_value(get_property(value, so_key, JSON_TRUE)); /* JSON_TRUE is just to get a "boolean" value, could be replaced with JSON_FALSE */
-                    neat_log(NEAT_LOG_DEBUG, "Got socket option \"%s\" with value \"%s\"", so_key, sockopt->value.i_val ? "True" : "False");
+                    neat_log(ctx, NEAT_LOG_DEBUG, "Got socket option \"%s\" with value \"%s\"", so_key, sockopt->value.i_val ? "True" : "False");
                     break;
                 default:
-                    neat_log(NEAT_LOG_ERROR, "Socket option value type (\"%d\") not supported", type);
+                    neat_log(ctx, NEAT_LOG_ERROR, "Socket option value type (\"%d\") not supported", type);
                     continue;
                 }
                 TAILQ_INSERT_TAIL(&(candidate->sock_opts), sockopt, next);
@@ -4604,14 +4604,14 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         switch (sockopt_ptr->type) {
         case NEAT_SOCKOPT_INT:
             if (setsockopt(candidate->pollable_socket->fd, sockopt_ptr->level, sockopt_ptr->name, &(sockopt_ptr->value.i_val), sizeof(int)) < 0)
-                neat_log(NEAT_LOG_ERROR, "Socket option error: %s", strerror(errno));
+                neat_log(ctx, NEAT_LOG_ERROR, "Socket option error: %s", strerror(errno));
             break;
         case NEAT_SOCKOPT_STRING:
             if (setsockopt(candidate->pollable_socket->fd, sockopt_ptr->level, sockopt_ptr->name, sockopt_ptr->value.s_val, (socklen_t)strlen(sockopt_ptr->value.s_val)) < 0)
-                neat_log(NEAT_LOG_ERROR, "Socket option error: %s", strerror(errno));
+                neat_log(ctx, NEAT_LOG_ERROR, "Socket option error: %s", strerror(errno));
             break;
         default:
-            neat_log(NEAT_LOG_ERROR, "Illegal socket option");
+            neat_log(ctx, NEAT_LOG_ERROR, "Illegal socket option");
         }
     }
 

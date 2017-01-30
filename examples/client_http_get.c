@@ -68,12 +68,6 @@ static neat_error_code
 on_error(struct neat_flow_operations *opCB)
 {
     fprintf(stderr, "%s\n", __func__);
-    struct stat_flow *stat = opCB->userData;
-
-    if (stat) {
-        fprintf(stderr, "oh shit\n");
-        uv_close((uv_handle_t*)&(stat->timer), NULL);
-    }
 
     result = EXIT_FAILURE;
 
@@ -178,10 +172,11 @@ on_close(struct neat_flow_operations *opCB)
 {
     struct stat_flow *stat = opCB->userData;
     fprintf(stderr, "%s - flow closed OK - bytes: %d - calls: %d\n", __func__, stat->rcv_bytes, stat->rcv_calls);
-    free(opCB->userData);
-    uv_close((uv_handle_t*)&(stat->timer), NULL);
-
-    // cleanup
+    uv_timer_stop(&(stat->timer));
+	//uv_close((uv_handle_t*)&(stat->timer), NULL);
+	//free(stat);
+    
+	// cleanup
     opCB->on_close = NULL;
     opCB->on_readable = NULL;
     opCB->on_writable = NULL;
@@ -309,7 +304,7 @@ main(int argc, char *argv[])
 
 cleanup:
     for (i = 0; i < num_flows; i++) {
-        flows[i] = NULL;
+        //free((flows[i])->userData);
     }
 
     if (ctx != NULL) {

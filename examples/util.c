@@ -54,3 +54,20 @@ error:
     *bufptr = NULL;
     return rc;
 }
+
+/*
+    print human readable file sizes - helper function
+*/
+char
+*filesize_human(double bytes, char *buffer, size_t buffersize)
+{
+    uint8_t i = 0;
+    const char* units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+
+    while (bytes > 1000) {
+        bytes /= 1000;
+        i++;
+    }
+    snprintf(buffer, buffersize, "%.*f %s", i, bytes, units[i]);
+    return buffer;
+}

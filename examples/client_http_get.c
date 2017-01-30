@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/time.h>
 
 /**********************************************************************
 
@@ -20,13 +21,25 @@
 
 **********************************************************************/
 
-static uint32_t config_rcv_buffer_size = 65536;
-static uint32_t config_max_flows = 50;
-static uint8_t  config_log_level = 1;
-static char request[512];
-static uint32_t flows_active = 0;
-static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static char *config_property = "{\
+#ifndef timersub
+#define timersub(tvp, uvp, vvp)                                 \
+    do {                                                        \
+        (vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec;          \
+        (vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec;       \
+        if ((vvp)->tv_usec < 0) {                               \
+            (vvp)->tv_sec--;                                    \
+            (vvp)->tv_usec += 1000000;                          \
+        }                                                       \
+    } while (0)
+#endif
+
+static uint32_t     config_rcv_buffer_size  = 65536;
+static uint32_t     config_max_flows        = 50;
+static uint8_t      config_log_level        = 0;
+static char         request[512];
+static uint32_t     flows_active            = 0;
+static const char   *request_tail           = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
+static char         *config_property        = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
@@ -38,6 +51,16 @@ static char *config_property = "{\
         }\
     ]\
 }";
+
+struct stat_flow {
+    uint32_t rcv_bytes;
+    uint32_t rcv_bytes_last;
+    uint32_t rcv_calls;
+    struct timeval begin;
+    struct timeval stat_last;
+    uv_timer_t timer;
+};
+
 
 static neat_error_code on_close(struct neat_flow_operations *opCB);
 
@@ -60,9 +83,11 @@ on_readable(struct neat_flow_operations *opCB)
     // data is available to read
     unsigned char buffer[config_rcv_buffer_size];
     uint32_t bytes_read = 0;
+    struct stat_flow *stat;
     neat_error_code code;
 
-    fprintf(stderr, "%s - reading from flow\n", __func__);
+
+    //fprintf(stderr, "%s - reading from flow\n", __func__);
     code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read, NULL, 0);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
         fprintf(stderr, "%s - would block\n", __func__);
@@ -77,8 +102,11 @@ on_readable(struct neat_flow_operations *opCB)
         on_close(opCB);
 
     } else if (bytes_read > 0) {
-        fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
-        fwrite(buffer, sizeof(char), bytes_read, stdout);
+        stat = opCB->userData;
+        stat->rcv_bytes += bytes_read;
+        stat->rcv_calls++;
+        //fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
+        //fwrite(buffer, sizeof(char), bytes_read, stdout);
     }
     return NEAT_OK;
 }
@@ -98,11 +126,44 @@ on_writable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
+static void
+timer_write_stats(uv_timer_t *handle)
+{
+    struct stat_flow *stat = handle->data;
+    struct timeval now, delta;
+    double time_elapsed = 0.0;
+    char buffer_filesize_human[32];
+
+    gettimeofday(&now, NULL);
+
+    timersub(&now, &(stat->stat_last), &delta);
+    time_elapsed = delta.tv_sec + (double)delta.tv_usec/1000000.0;
+    filesize_human((stat->rcv_bytes - stat->rcv_bytes_last) / time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human));
+
+    fprintf(stderr, "%d bytes in %.2fs = %s/s\n", stat->rcv_bytes - stat->rcv_bytes_last, time_elapsed, buffer_filesize_human);
+
+    stat->rcv_bytes_last = stat->rcv_bytes;
+    gettimeofday(&(stat->stat_last), NULL);
+    uv_timer_again(&(stat->timer));
+}
+
 static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
+    struct stat_flow *stat;
+    uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
     // now we can start writing
     fprintf(stderr, "%s - connection established\n", __func__);
+
+    opCB->userData = calloc(1, sizeof(struct stat_flow));
+    stat = opCB->userData;
+    gettimeofday(&(stat->begin), NULL);
+    gettimeofday(&(stat->stat_last), NULL);
+
+    uv_timer_init(loop, &(stat->timer));
+    stat->timer.data = stat;
+    uv_timer_start(&(stat->timer), timer_write_stats, 0, 1000);
+
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
@@ -113,7 +174,10 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    fprintf(stderr, "%s - flow closed OK!\n", __func__);
+    struct stat_flow *stat = opCB->userData;
+    fprintf(stderr, "%s - flow closed OK - bytes: %d - calls: %d\n", __func__, stat->rcv_bytes, stat->rcv_calls);
+
+    uv_close((uv_handle_t*)&(stat->timer), NULL);
 
     // cleanup
     opCB->on_close = NULL;
@@ -121,8 +185,6 @@ on_close(struct neat_flow_operations *opCB)
     opCB->on_writable = NULL;
     opCB->on_error = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
-
-    //neat_close(opCB->ctx, opCB->flow);
 
     // stop event loop if all flows are closed
     flows_active--;

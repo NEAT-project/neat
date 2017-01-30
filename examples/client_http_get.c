@@ -71,6 +71,7 @@ on_error(struct neat_flow_operations *opCB)
     struct stat_flow *stat = opCB->userData;
 
     if (stat) {
+        fprintf(stderr, "oh shit\n");
         uv_close((uv_handle_t*)&(stat->timer), NULL);
     }
 
@@ -319,5 +320,6 @@ cleanup:
     if (arg_property) {
         free(arg_property);
     }
+    fprintf(stderr, "returning with %d\n", result);
     exit(result);
 }

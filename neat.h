@@ -33,8 +33,8 @@ NEAT_EXTERN void neat_stop_event_loop(struct neat_ctx *nc);
 NEAT_EXTERN int neat_get_backend_fd(struct neat_ctx *nc);
 NEAT_EXTERN int neat_get_backend_timeout(struct neat_ctx *nc);
 NEAT_EXTERN void neat_free_ctx(struct neat_ctx *nc);
-NEAT_EXTERN void neat_log_level(uint8_t level);
-NEAT_EXTERN uint8_t neat_log_file(const char* file_name);
+NEAT_EXTERN void neat_log_level(struct neat_ctx *ctx, uint8_t level);
+NEAT_EXTERN uint8_t neat_log_file(struct neat_ctx *ctx, const char* file_name);
 
 struct neat_flow_operations;
 typedef neat_error_code (*neat_flow_operations_fx)(struct neat_flow_operations *);
@@ -97,7 +97,6 @@ enum neat_tlv_tag {
     NEAT_TAG_PRIORITY,
     NEAT_TAG_FLOW_GROUP,
     NEAT_TAG_CC_ALGORITHM,
-    NEAT_TAG_MULTIHOMING,
 
     NEAT_TAG_LAST
 };

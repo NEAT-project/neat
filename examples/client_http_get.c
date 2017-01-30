@@ -158,8 +158,6 @@ on_connected(struct neat_flow_operations *opCB)
     uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
     // now we can start writing
     fprintf(stderr, "%s - connection established\n", __func__);
-
-    opCB->userData = calloc(1, sizeof(struct stat_flow));
     stat = opCB->userData;
     gettimeofday(&(stat->begin), NULL);
     gettimeofday(&(stat->stat_last), NULL);
@@ -180,7 +178,7 @@ on_close(struct neat_flow_operations *opCB)
 {
     struct stat_flow *stat = opCB->userData;
     fprintf(stderr, "%s - flow closed OK - bytes: %d - calls: %d\n", __func__, stat->rcv_bytes, stat->rcv_calls);
-
+    free(opCB->userData);
     uv_close((uv_handle_t*)&(stat->timer), NULL);
 
     // cleanup
@@ -294,6 +292,7 @@ main(int argc, char *argv[])
         ops[i].on_connected = on_connected;
         ops[i].on_error = on_error;
         ops[i].on_close = on_close;
+        ops[i].userData = calloc(1, sizeof(struct stat_flow));
         neat_set_operations(ctx, flows[i], &(ops[i]));
 
         // wait for on_connected or on_error to be invoked

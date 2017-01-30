@@ -32,7 +32,7 @@
         }                                                       \
     } while (0)
 #endif
-
+static int          result                  = 0;
 static uint32_t     config_rcv_buffer_size  = 65536;
 static uint32_t     config_max_flows        = 50;
 static uint8_t      config_log_level        = 0;
@@ -73,6 +73,8 @@ on_error(struct neat_flow_operations *opCB)
     if (stat) {
         uv_close((uv_handle_t*)&(stat->timer), NULL);
     }
+
+    result = EXIT_FAILURE;
 
     neat_close(opCB->ctx, opCB->flow);
     return NEAT_OK;
@@ -204,7 +206,6 @@ main(int argc, char *argv[])
     struct neat_ctx *ctx = NULL;
     struct neat_flow *flows[config_max_flows];
     struct neat_flow_operations ops[config_max_flows];
-    int result = 0;
     int arg = 0;
     uint32_t num_flows = 1; //xxx todo : check for multiple flow
     uint32_t i = 0;

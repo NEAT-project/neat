@@ -68,6 +68,8 @@ static neat_error_code
 on_error(struct neat_flow_operations *opCB)
 {
     fprintf(stderr, "%s\n", __func__);
+    struct stat_flow *stat = opCB->userData;
+    uv_close((uv_handle_t*)&(stat->timer), NULL);
 
     int *result = (int*)opCB->userData;
     if (*result != EXIT_FAILURE)

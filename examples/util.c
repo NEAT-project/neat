@@ -4,6 +4,7 @@
 
 #include <sys/stat.h>
 #include <assert.h>
+#include <stdint.h>
 
 int
 read_file(const char *filename, const char **bufptr)

@@ -69,11 +69,10 @@ on_error(struct neat_flow_operations *opCB)
 {
     fprintf(stderr, "%s\n", __func__);
     struct stat_flow *stat = opCB->userData;
-    uv_close((uv_handle_t*)&(stat->timer), NULL);
 
-    int *result = (int*)opCB->userData;
-    if (*result != EXIT_FAILURE)
-        *result = EXIT_FAILURE;
+    if (stat) {
+        uv_close((uv_handle_t*)&(stat->timer), NULL);
+    }
 
     neat_close(opCB->ctx, opCB->flow);
     return NEAT_OK;
@@ -293,7 +292,6 @@ main(int argc, char *argv[])
         ops[i].on_connected = on_connected;
         ops[i].on_error = on_error;
         ops[i].on_close = on_close;
-        ops[i].userData = &result; // allow on_error to modify the result variable
         neat_set_operations(ctx, flows[i], &(ops[i]));
 
         // wait for on_connected or on_error to be invoked

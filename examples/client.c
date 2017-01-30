@@ -1,5 +1,4 @@
 #include <neat.h>
-#include <neat_internal.h>
 #include "util.h"
 
 #include <stdlib.h>
@@ -101,12 +100,12 @@ on_error(struct neat_flow_operations *opCB)
 }
 
 static void
-print_neat_stats(neat_ctx *mgr)
+print_neat_stats(struct neat_ctx *ctx)
 {
     neat_error_code error;
 
     char* stats = NULL;
-    error = neat_get_stats(mgr, &stats);
+    error = neat_get_stats(ctx, &stats);
     if (error != NEAT_OK){
         printf("NEAT ERROR: %i\n", (int)error);
         return;
@@ -254,6 +253,7 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     int rc;
+    uv_loop_t *loop;
 
     /*
     if (config_log_level >= 1) {
@@ -262,8 +262,9 @@ on_connected(struct neat_flow_operations *opCB)
     */
 
     last_stream = 0;
+    loop = neat_get_event_loop(opCB->ctx);
 
-    uv_tty_init(ctx->loop, &tty, 0, 1);
+    uv_tty_init(loop, &tty, 0, 1);
     uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
 
     ops.on_readable = on_readable;
@@ -289,7 +290,7 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    fprintf(stderr, "%s - flow closed OK! - %s\n", __func__, opCB->flow->name);
+    fprintf(stderr, "%s - flow closed OK!\n", __func__);
 
     // cleanup
     ops.on_close = NULL;

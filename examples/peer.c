@@ -1,5 +1,4 @@
 #include <neat.h>
-#include <neat_internal.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -676,6 +675,7 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct peer *pf = NULL;
+    uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -694,7 +694,7 @@ on_connected(struct neat_flow_operations *opCB)
     neat_set_ecn(opCB->ctx, opCB->flow, 0x00);
 
     pf = opCB->userData;
-    uv_timer_init(opCB->ctx->loop, pf->timer);
+    uv_timer_init(loop, pf->timer);
     pf->timer->data = opCB;
 
     if ((pf->buffer = malloc(config_buffer_size_max)) == NULL) {

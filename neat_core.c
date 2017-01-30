@@ -206,6 +206,15 @@ int neat_get_backend_fd(struct neat_ctx *nc)
     return uv_backend_fd(nc->loop);
 }
 
+uv_loop_t
+*neat_get_event_loop(struct neat_ctx *ctx)
+{
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    assert(ctx);
+
+    return ctx->loop;
+}
+
 /*
  * Terminate a NEAT context upon error.
  * Errors are reported back to the user through neat_start_event_loop.

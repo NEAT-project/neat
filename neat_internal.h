@@ -234,9 +234,6 @@ struct neat_flow
     uint16_t port;
     uint8_t qos;
     uint8_t ecn;
-    uint64_t propertyMask;
-    uint64_t propertyAttempt;
-    uint64_t propertyUsed;
     //uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results

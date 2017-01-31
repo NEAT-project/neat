@@ -28,6 +28,8 @@
 **********************************************************************/
 
 static uint64_t config_snd_bytes = 1;
+static uint64_t config_snd_chunk_bytes = 10000;
+static uint64_t config_sent_bytes = 0;
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
@@ -211,6 +213,8 @@ on_writable(struct neat_flow_operations *opCB)
     neat_error_code code;
     struct neat_tlv options[1];
 
+    fprintf(stderr, "%s()\n", __func__);
+
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -223,24 +227,23 @@ on_writable(struct neat_flow_operations *opCB)
     //ZDR
     unsigned char msg[config_snd_bytes];
     memset(msg, 0x4e, config_snd_bytes);
-    //for  ( uint32_t i = 0; i < config_snd_bytes; i++ ) {
-      code = neat_write(opCB->ctx, opCB->flow, msg,  sizeof(msg), options, 1);
-      if (code != NEAT_OK) {
-        fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
-        return on_error(opCB);
-      }
-      //}
-    if (config_json_stats){
-       print_neat_stats(ctx);
-    }
 
-    if (config_log_level >= 1) {
-        fprintf(stderr, "%s - sent %d bytes on stream %d\n", __func__, stdin_buffer.buffer_filled, last_stream);
+    config_sent_bytes =+ config_snd_bytes
+    code = neat_write(opCB->ctx, opCB->flow, msg, sizeof(msg), options, 1);
+    if (code != NEAT_OK) {
+      fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
+      return on_error(opCB);
     }
+      
+    // if (config_json_stats){
+    // print_neat_stats(ctx);
+    //}
+
 
     // stop writing
-    ops.on_writable = NULL;
-    neat_set_operations(ctx, flow, &ops);
+    //ops.on_writable = NULL;
+    //ops.on_all_written = on_all_written;
+    //neat_set_operations(ctx, flow, &ops);
     return NEAT_OK;
 }
 
@@ -250,9 +253,15 @@ on_all_written(struct neat_flow_operations *opCB)
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
+    fprintf(stderr, "%s()\n", __func__);
 
+    // stop writing
+    ops.on_writable = on_writable;
+    ops.on_all_written = NULL;
+    neat_set_operations(ctx, flow, &ops);
+    
     // data sent completely - continue reading from stdin
-    uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
+    //uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
     return NEAT_OK;
 }
 
@@ -274,7 +283,7 @@ on_connected(struct neat_flow_operations *opCB)
     
     ops.on_writable = on_writable;
 
-    ops.on_readable = on_readable;
+    //ops.on_readable = on_readable;
     neat_set_operations(ctx, flow, &ops);
 
     if (config_primary_dest_addr != NULL) {

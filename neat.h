@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <uv.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +30,7 @@ typedef uint64_t neat_error_code;
 
 NEAT_EXTERN struct neat_ctx *neat_init_ctx();
 NEAT_EXTERN neat_error_code neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
+NEAT_EXTERN uv_loop_t *neat_get_event_loop(struct neat_ctx *ctx);
 NEAT_EXTERN void neat_stop_event_loop(struct neat_ctx *nc);
 NEAT_EXTERN int neat_get_backend_fd(struct neat_ctx *nc);
 NEAT_EXTERN int neat_get_backend_timeout(struct neat_ctx *nc);
@@ -97,6 +99,7 @@ enum neat_tlv_tag {
     NEAT_TAG_PRIORITY,
     NEAT_TAG_FLOW_GROUP,
     NEAT_TAG_CC_ALGORITHM,
+    NEAT_TAG_TRANSPORT_STACK,
 
     NEAT_TAG_LAST
 };
@@ -168,34 +171,6 @@ NEAT_EXTERN neat_error_code neat_set_qos(struct neat_ctx *ctx,
                     struct neat_flow *flow, uint8_t qos);
 NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
                     struct neat_flow *flow, uint8_t ecn);
-
-// do we also need a set property with a void * or an int (e.g. timeouts) or should
-// we create higher level named functions for such things?
-
-// for property mask
-#define NEAT_PROPERTY_OPTIONAL_SECURITY                 (1 << 0)
-#define NEAT_PROPERTY_REQUIRED_SECURITY                 (1 << 1)
-#define NEAT_PROPERTY_MESSAGE                           (1 << 2) // stream is default
-#define NEAT_PROPERTY_IPV4_REQUIRED                     (1 << 3)
-#define NEAT_PROPERTY_IPV4_BANNED                       (1 << 4)
-#define NEAT_PROPERTY_IPV6_REQUIRED                     (1 << 5)
-#define NEAT_PROPERTY_IPV6_BANNED                       (1 << 6)
-#define NEAT_PROPERTY_SCTP_REQUIRED                     (1 << 7)
-#define NEAT_PROPERTY_SCTP_BANNED                       (1 << 8)
-#define NEAT_PROPERTY_TCP_REQUIRED                      (1 << 9)
-#define NEAT_PROPERTY_TCP_BANNED                        (1 << 10)
-#define NEAT_PROPERTY_UDP_REQUIRED                      (1 << 11)
-#define NEAT_PROPERTY_UDP_BANNED                        (1 << 12)
-#define NEAT_PROPERTY_UDPLITE_REQUIRED                  (1 << 13)
-#define NEAT_PROPERTY_UDPLITE_BANNED                    (1 << 14)
-#define NEAT_PROPERTY_CONGESTION_CONTROL_REQUIRED       (1 << 15)
-#define NEAT_PROPERTY_CONGESTION_CONTROL_BANNED         (1 << 16)
-#define NEAT_PROPERTY_RETRANSMISSIONS_REQUIRED          (1 << 17)
-#define NEAT_PROPERTY_RETRANSMISSIONS_BANNED            (1 << 18)
-#define NEAT_PROPERTY_SEAMLESS_HANDOVER_DESIRED         (1 << 19)
-#define NEAT_PROPERTY_CONTINUOUS_CONNECTIVITY_DESIRED   (1 << 20)
-#define NEAT_PROPERTY_DISABLE_DYNAMIC_ENHANCEMENT       (1 << 21)
-#define NEAT_PROPERTY_LOW_LATENCY_DESIRED               (1 << 22)
 
 #define NEAT_ERROR_OK               (0)
 #define NEAT_OK NEAT_ERROR_OK
@@ -297,6 +272,14 @@ NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
     } while (0);
 
 #endif // ifdef assert else
+
+typedef enum {
+    NEAT_STACK_UDP = 1,
+    NEAT_STACK_UDPLITE,
+    NEAT_STACK_TCP,
+    NEAT_STACK_SCTP,
+    NEAT_STACK_SCTP_UDP
+} neat_protocol_stack_type;
 
 
 // cleanup extern "C"

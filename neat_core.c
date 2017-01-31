@@ -32,7 +32,6 @@
 #include "neat_queue.h"
 #include "neat_addr.h"
 #include "neat_queue.h"
-#include "neat_property_helpers.h"
 #include "neat_stat.h"
 #include "neat_resolver_helpers.h"
 #include "neat_json_helpers.h"
@@ -205,6 +204,15 @@ int neat_get_backend_fd(struct neat_ctx *nc)
     neat_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
 
     return uv_backend_fd(nc->loop);
+}
+
+uv_loop_t
+*neat_get_event_loop(struct neat_ctx *ctx)
+{
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    assert(ctx);
+
+    return ctx->loop;
 }
 
 /*
@@ -2170,9 +2178,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     }
 
     newFlow->port               = flow->port;
-    newFlow->propertyMask       = flow->propertyMask;
-    newFlow->propertyAttempt    = flow->propertyAttempt;
-    newFlow->propertyUsed       = flow->propertyUsed;
     newFlow->everConnected      = 1;
 
     switch (listen_socket->stack) {
@@ -2375,7 +2380,8 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             }
 
             newFlow->acceptPending = 0;
-            if ((newFlow->propertyMask & NEAT_PROPERTY_REQUIRED_SECURITY) &&
+            // xxx patrick?
+            if ((false) &&
                 (newFlow->socket->stack == NEAT_STACK_TCP)) {
                 neat_log(ctx, NEAT_LOG_DEBUG, "TCP Server Security");
                 if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
@@ -3452,7 +3458,6 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     if (flow->name == NULL)
         return NEAT_ERROR_OUT_OF_MEMORY;
     flow->port = port;
-    flow->propertyAttempt = flow->propertyMask;
     //flow->stream_count = stream_count;
     flow->ctx = ctx;
     flow->group = group;
@@ -3880,15 +3885,13 @@ neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 {
     // const char *service_name = NULL;
     const char *local_name = NULL;
-    neat_protocol_stack_type stacks[NEAT_STACK_MAX_NUM]; /* We only support SCTP, TCP, UDP, and UDPLite */
-    uint8_t nr_of_stacks;
     int stream_count = 0;
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    nr_of_stacks = neat_property_translate_protocols(flow->propertyMask, stacks);
+    //nr_of_stacks = neat_property_translate_protocols(flow->propertyMask, stacks);
 
-    if (nr_of_stacks == 0)
-        return NEAT_ERROR_UNABLE;
+    //if (nr_of_stacks == 0)
+        //return NEAT_ERROR_UNABLE;
 
     if (flow->name)
         return NEAT_ERROR_BAD_ARGUMENT;
@@ -3913,7 +3916,6 @@ neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     }
 
     flow->port = port;
-    flow->propertyAttempt = flow->propertyMask;
     flow->ctx = ctx;
 
     if (!ctx->resolver)
@@ -4437,6 +4439,10 @@ end:
             case NEAT_TAG_UNORDERED_SEQNUM:
                 // TODO: Assign meaningful values
                 optional[i].value.integer = 0;
+                optional[i].type = NEAT_TYPE_INTEGER;
+                break;
+            case NEAT_TAG_TRANSPORT_STACK:
+                optional[i].value.integer = flow->socket->stack;
                 optional[i].type = NEAT_TYPE_INTEGER;
                 break;
             default:

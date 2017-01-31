@@ -10,7 +10,6 @@
 #include "neat.h"
 #include "neat_he.h"
 #include "neat_internal.h"
-#include "neat_property_helpers.h"
 
 
 static void he_print_results(struct neat_resolver_results *results)

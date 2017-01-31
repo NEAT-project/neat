@@ -131,14 +131,6 @@ struct neat_read_queue_message {
 #endif
 
 typedef enum {
-    NEAT_STACK_UDP = 1,
-    NEAT_STACK_UDPLITE,
-    NEAT_STACK_TCP,
-    NEAT_STACK_SCTP,
-    NEAT_STACK_SCTP_UDP
-} neat_protocol_stack_type;
-
-typedef enum {
     NEAT_FLOW_CLOSED = 1,
     NEAT_FLOW_CONNECTING,
     NEAT_FLOW_OPEN,
@@ -234,9 +226,6 @@ struct neat_flow
     uint16_t port;
     uint8_t qos;
     uint8_t ecn;
-    uint64_t propertyMask;
-    uint64_t propertyAttempt;
-    uint64_t propertyUsed;
     //uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results

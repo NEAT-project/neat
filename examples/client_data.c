@@ -28,8 +28,6 @@
 **********************************************************************/
 
 static uint64_t config_snd_bytes = 1;
-static uint64_t config_snd_chunk_bytes = 10000;
-static uint64_t config_sent_bytes = 0;
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
@@ -83,7 +81,7 @@ print_usage()
 
     printf("client [OPTIONS] HOST PORT\n");
     printf("\t- P <filename>\tneat properties, default properties:\n%s\n", config_property);
-    printf("\t- D \tnumber of bytes to send (%lu)\n", config_snd_bytes);
+    printf("\t- D \tnumber of bytes to send (%lld)\n", config_snd_bytes);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- S \tsend buffer in byte (%d)\n", config_snd_buffer_size);
     printf("\t- J \tprint json stats for each time data is sent\n");
@@ -228,7 +226,6 @@ on_writable(struct neat_flow_operations *opCB)
     unsigned char msg[config_snd_bytes];
     memset(msg, 0x4e, config_snd_bytes);
 
-    config_sent_bytes =+ config_snd_bytes
     code = neat_write(opCB->ctx, opCB->flow, msg, sizeof(msg), options, 1);
     if (code != NEAT_OK) {
       fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
@@ -436,7 +433,7 @@ main(int argc, char *argv[])
           //ZDR
             config_snd_bytes = atoi(optarg);
             if (config_log_level >= 1) {
-                fprintf(stderr, "%s - option - number of bytes to send: %lu\n", __func__, config_snd_bytes);
+                fprintf(stderr, "%s - option - number of bytes to send: %lld\n", __func__, config_snd_bytes);
             }
             break;
         case 'R':

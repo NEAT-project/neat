@@ -2762,8 +2762,8 @@ on_candidate_resolved(struct neat_resolver_results *results,
     }
 
     LIST_FOREACH(result, results, next_res) {
-        char ifname1[IF_NAMESIZE];
-        char ifname2[IF_NAMESIZE];
+        //char ifname1[IF_NAMESIZE];
+        //char ifname2[IF_NAMESIZE];
 
         if ((rc = getnameinfo((struct sockaddr*)&result->dst_addr, result->dst_addr_len, namebuf, NI_MAXHOST, NULL, 0, NI_NUMERICHOST)) != 0) {
             //neat_log(ctx, NEAT_LOG_DEBUG, "getnameinfo error");
@@ -2771,23 +2771,23 @@ on_candidate_resolved(struct neat_resolver_results *results,
         }
 
         TAILQ_FOREACH_SAFE(candidate, &data->resolution_group, resolution_list, tmp) {
-            struct neat_ctx *ctx = candidate->ctx;
+            //struct neat_ctx *ctx = candidate->ctx;
 
             // The interface index must be the same as the interface index of the candidate
             if (result->if_idx != candidate->if_idx) {
-                neat_log(ctx, NEAT_LOG_DEBUG, "Interface did not match, %s [%d] != %s [%d]", if_indextoname(result->if_idx, ifname1), result->if_idx, if_indextoname(candidate->if_idx, ifname2), candidate->if_idx);
+                //neat_log(ctx, NEAT_LOG_DEBUG, "Interface did not match, %s [%d] != %s [%d]", if_indextoname(result->if_idx, ifname1), result->if_idx, if_indextoname(candidate->if_idx, ifname2), candidate->if_idx);
                 continue;
             }
 
             // TODO: Move inet_pton out of the loop
             if (result->ai_family == AF_INET && inet_pton(AF_INET6, candidate->pollable_socket->src_address, &dummy) == 1) {
-                neat_log(ctx, NEAT_LOG_DEBUG, "Address family did not match");
+                //neat_log(ctx, NEAT_LOG_DEBUG, "Address family did not match");
                 continue;
             }
 
             // TODO: Move inet_pton out of the loop
             if (result->ai_family == AF_INET6 && inet_pton(AF_INET, candidate->pollable_socket->src_address, &dummy) == 1) {
-                neat_log(ctx, NEAT_LOG_DEBUG, "Address family did not match");
+                //neat_log(ctx, NEAT_LOG_DEBUG, "Address family did not match");
                 continue;
             }
 
@@ -2795,7 +2795,7 @@ on_candidate_resolved(struct neat_resolver_results *results,
             free(candidate->pollable_socket->dst_address);
 
             if ((candidate->pollable_socket->dst_address = strdup(namebuf)) != NULL) {
-                neat_log(ctx, NEAT_LOG_DEBUG, "%s -> %s", candidate->pollable_socket->src_address, namebuf);
+                //neat_log(ctx, NEAT_LOG_DEBUG, "%s -> %s", candidate->pollable_socket->src_address, namebuf);
             } else {
                 *(data->status) = NEAT_ERROR_OUT_OF_MEMORY;
             }

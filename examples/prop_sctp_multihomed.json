@@ -11,7 +11,7 @@
     },
     "local_ips": [
         {
-            "value": "10.2.2.1",
+            "value": "10.1.1.1",
             "precedence": 1
         },
         {

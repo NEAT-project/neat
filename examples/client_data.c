@@ -27,9 +27,9 @@
 
 **********************************************************************/
 
-static uint64_t config_snd_chunk = 1000;
-static uint64_t config_snd_bytes = 1;
-static uint64_t config_snd_count = 0;
+static uint32_t config_snd_chunk = 1000;
+static uint32_t config_snd_bytes = 1;
+static uint32_t config_snd_count = 0;
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
@@ -83,7 +83,7 @@ print_usage()
 
     printf("client [OPTIONS] HOST PORT\n");
     printf("\t- P <filename>\tneat properties, default properties:\n%s\n", config_property);
-    printf("\t- D \tnumber of bytes to send (%lld)\n", config_snd_bytes);
+    printf("\t- D \tnumber of bytes to send (%d)\n", config_snd_bytes);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- S \tsend buffer in byte (%d)\n", config_snd_buffer_size);
     printf("\t- J \tprint json stats for each time data is sent\n");
@@ -436,7 +436,7 @@ main(int argc, char *argv[])
           //ZDR
             config_snd_bytes = atoi(optarg);
             if (config_log_level >= 1) {
-                fprintf(stderr, "%s - option - number of bytes to send: %lld\n", __func__, config_snd_bytes);
+                fprintf(stderr, "%s - option - number of bytes to send: %d\n", __func__, config_snd_bytes);
             }
             break;
         case 'R':

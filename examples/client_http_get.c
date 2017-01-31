@@ -34,7 +34,7 @@
 #endif
 
 static int          result                  = 0;
-static uint32_t     config_rcv_buffer_size  = 65536;
+static uint32_t     config_rcv_buffer_size  = 32*1024*1024; // 32MB rcv buffer
 static uint32_t     config_max_flows        = 50;
 static uint8_t      config_log_level        = 0;
 static char         request[512];

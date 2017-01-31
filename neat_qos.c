@@ -55,6 +55,8 @@ neat_set_tos(struct neat_ctx *ctx, struct neat_flow *flow)
         return NEAT_OK;
     }
 #endif //SCTP_PEER_ADDR_PARAMS
+    case NEAT_STACK_TCP:
+        // fallthrough;
     case NEAT_STACK_UDP:
     {
         if(setsockopt(flow->socket->fd, 

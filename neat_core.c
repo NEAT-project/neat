@@ -1795,6 +1795,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     struct neat_he_candidates *candidate_list = flow->candidate_list;
     struct cib_he_res *he_res = NULL;
     struct neat_ctx *ctx = flow->ctx;
+    json_t *prop;
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     c++;
@@ -1931,6 +1932,18 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->isPolling = 1;
 
         send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
+
+        if ((prop = json_object_get(candidate->properties, "dscp")) != NULL) {
+            if (json_typeof(prop) == JSON_INTEGER) {
+                int i = json_integer_value(prop);
+                neat_set_qos(ctx, flow, i);
+                neat_log(ctx, NEAT_LOG_DEBUG, "-- Applied property \"dscp\"");
+            } else {
+                neat_log(ctx, NEAT_LOG_DEBUG, "Expected property 'dscp' to be integer, ignoring");
+            }
+        } else {
+            neat_log(ctx, NEAT_LOG_DEBUG, "No dscp value");
+        }
 
         if (!install_security(candidate)) {
             // Transfer this handle to the "main" polling callback
@@ -3692,6 +3705,30 @@ neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow, unsigne
     return NEAT_ERROR_UNABLE;
 }
 
+static int
+neat_dscp_second_chance(struct neat_ctx *ctx, struct neat_flow *flow)
+{
+    json_t *dscp;
+    // neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (flow->qos == 0)
+        return -1;
+
+    neat_close_socket(ctx, flow);
+
+    uv_poll_stop(flow->socket->handle);
+    uv_close((uv_handle_t*)flow->socket->handle, NULL);
+
+    dscp = json_integer(0);
+    json_object_set(flow->properties, "dscp", dscp);
+    json_decref(dscp);
+
+    neat_resolve(ctx->resolver, AF_UNSPEC, flow->name, flow->port,
+                 open_resolve_cb, flow);
+
+    return 0;
+}
+
 static neat_error_code
 accept_resolve_cb(struct neat_resolver_results *results,
                   uint8_t code,
@@ -4414,6 +4451,11 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             neat_log(ctx, NEAT_LOG_ERROR, "%s: err %d (%s)", __func__,
                      errno, strerror(errno));
         }
+
+        if (neat_dscp_second_chance(ctx, flow) == 0) {
+            return NEAT_ERROR_DSCP_RETRY;
+        }
+
         return NEAT_ERROR_IO;
     }
     neat_log(ctx, NEAT_LOG_DEBUG, "%s %d", __func__, rv);

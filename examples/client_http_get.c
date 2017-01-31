@@ -32,6 +32,7 @@
         }                                                       \
     } while (0)
 #endif
+
 static int          result                  = 0;
 static uint32_t     config_rcv_buffer_size  = 65536;
 static uint32_t     config_max_flows        = 50;
@@ -39,7 +40,8 @@ static uint8_t      config_log_level        = 0;
 static char         request[512];
 static uint32_t     flows_active            = 0;
 static const char   *request_tail           = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static char         *config_property        = "{\
+static char         *config_property        = "\
+{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
@@ -49,7 +51,11 @@ static char         *config_property        = "{\
             \"value\": \"TCP\",\
             \"precedence\": 1\
         }\
-    ]\
+    ],\
+    \"multihoming\": {\
+        \"value\": true,\
+        \"precedence\": 2\
+    }\
 }";
 
 struct stat_flow {
@@ -175,7 +181,7 @@ on_close(struct neat_flow_operations *opCB)
     uv_timer_stop(&(stat->timer));
 	//uv_close((uv_handle_t*)&(stat->timer), NULL);
 	//free(stat);
-    
+
 	// cleanup
     opCB->on_close = NULL;
     opCB->on_readable = NULL;

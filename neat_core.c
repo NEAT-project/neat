@@ -1756,11 +1756,6 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         goto end;
     }
 
-    char *tmp;
-    tmp = json_dumps(result_array, JSON_INDENT(2));
-    neat_log(ctx, NEAT_LOG_DEBUG, "JSON XXX %s", tmp);
-
-    //ZDR
     neat_json_send_once(ctx, flow, socket_path, result_array, NULL, on_pm_he_error);
 
 end:
@@ -2778,7 +2773,7 @@ on_candidate_resolved(struct neat_resolver_results *results,
         }
 
         TAILQ_FOREACH_SAFE(candidate, &data->resolution_group, resolution_list, tmp) {
-            
+
             // The interface index must be the same as the interface index of the candidate
             if (result->if_idx != candidate->if_idx) {
                 neat_log(ctx, NEAT_LOG_DEBUG, "Interface did not match, %s [%d] != %s [%d]", if_indextoname(result->if_idx, ifname1), result->if_idx, if_indextoname(candidate->if_idx, ifname2), candidate->if_idx);

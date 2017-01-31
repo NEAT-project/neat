@@ -158,9 +158,9 @@ print_timer_stats(uv_timer_t *handle)
     gettimeofday(&tv_now, NULL);
     timersub(&tv_now, &(stat->tv_delta), &tv_delta);
     time_elapsed = tv_delta.tv_sec + (double)tv_delta.tv_usec / 1000000.0;
-    filesize_human((stat->rcv_bytes - stat->rcv_bytes_last) / time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human));
+    filesize_human(8 * (stat->rcv_bytes - stat->rcv_bytes_last) / time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human));
 
-    fprintf(stderr, "%d bytes in %.2fs = %s/s\n", stat->rcv_bytes - stat->rcv_bytes_last, time_elapsed, buffer_filesize_human);
+    fprintf(stderr, "%d bytes in %.2fs = %sit/s\n", stat->rcv_bytes - stat->rcv_bytes_last, time_elapsed, buffer_filesize_human);
 
     stat->rcv_bytes_last = stat->rcv_bytes;
     gettimeofday(&(stat->tv_delta), NULL);

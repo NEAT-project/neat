@@ -2567,7 +2567,9 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
     if (!flow->isSCTPMultihoming) {
         return;
     }
-
+    if (flow->user_ips == NULL) {
+        return;
+    }
     neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     TAILQ_FOREACH(candidate, candidate_list, next) {

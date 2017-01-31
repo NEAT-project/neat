@@ -11,6 +11,7 @@ try:
     from aiohttp import web
 except ImportError as e:
     web = None
+
     logging.warning("aiohttp in required to start the REST interface, but it is not installed")
 
 profiles = None

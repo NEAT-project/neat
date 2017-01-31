@@ -19,7 +19,7 @@ from policy import PropertyMultiArray
 
 # make sure output works on terminals without UTF support
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=sys.stdout.encoding,
-                              errors='replace',
+                              errors='ignore',
                               line_buffering=sys.stdout.line_buffering)
 
 parser = argparse.ArgumentParser(description='NEAT Policy Manager')
@@ -50,9 +50,6 @@ if args.debug:
     PM.DEBUG = args.debug
 if args.rest:
     PM.REST_ENABLE = args.rest
-
-if PM.DEBUG:
-    print(sys.stdout.encoding)
 
 try:
     os.makedirs(os.path.dirname(PM.DOMAIN_SOCK), exist_ok=True)
@@ -274,7 +271,7 @@ def signal_handler():
     print(policy.term_separator('ENTERING INTERACTIVE DEBUG MODE', line_char='#'))
     print()
     import code
-    code.interact(local=globals(), banner='use Ctrl-D to exit')
+    code.interact(local=globals(), banner='use Ctrl-D to exit debug mode')
     print()
     print(policy.term_separator('EXITING INTERACTIVE DEBUG MODE', line_char='#'))
     print()

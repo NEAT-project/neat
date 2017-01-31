@@ -1,8 +1,10 @@
 import logging
 import os
+import sys
 import uuid
 
 DEBUG = True
+UTF = True if sys.stdout.encoding == 'UTF-8' else False
 
 if DEBUG:
     log_level = logging.DEBUG
@@ -40,7 +42,7 @@ CONTROLLER_PASS = 'admin'
 CONTROLLER_ANNOUNCE = 3 * 60
 
 
-class STYLE(object):
+class STYLES(object):
     DARK_GRAY_START = '\033[90m'
     BOLD_START = '\033[1m'
     BOLD_END = '\033[21m'
@@ -48,3 +50,9 @@ class STYLE(object):
     UNDERLINE_END = '\033[24m'
     STRIKETHROUGH_START = '\033[9m'
     FORMAT_END = '\033[0m'
+
+
+class CHARS(object):
+    RIGHT_ARROW = '⟶' if UTF else '>>'
+    LINE_SEPARATOR = '═' if UTF else '='
+    DASH = '─' if UTF else '-'

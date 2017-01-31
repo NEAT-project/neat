@@ -5,14 +5,8 @@ import numbers
 import shutil
 
 from pmdefaults import *
+from pmdefaults import STYLES, CHARS
 
-DARK_GRAY_START = '\033[90m'
-BOLD_START = '\033[1m'
-BOLD_END = '\033[21m'
-UNDERLINE_START = '\033[4m'
-UNDERLINE_END = '\033[24m'
-STRIKETHROUGH_START = '\033[9m'
-FORMAT_END = '\033[0m'
 SUB = str.maketrans("0123456789+-", "₀₁₂₃₄₅₆₇₈₉₊₋")
 
 
@@ -448,10 +442,10 @@ class NEATProperty(object):
         else:
             score_str = ''
         # use subscript UTF8 characters
-        score_str = BOLD_START + score_str.translate(SUB) + BOLD_END
+        score_str = STYLES.BOLD_START + score_str.translate(SUB) + STYLES.BOLD_END
 
         if self.evaluated:
-            keyval_str = UNDERLINE_START + keyval_str + UNDERLINE_END
+            keyval_str = STYLES.UNDERLINE_START + keyval_str + STYLES.UNDERLINE_END
 
         if self.precedence == NEATProperty.IMMUTABLE:
             property_str = '[%s]%s' % (keyval_str, score_str)
@@ -462,7 +456,7 @@ class NEATProperty(object):
         else:
             property_str = '?%s?%s' % (keyval_str, score_str)
 
-        property_str = DARK_GRAY_START + property_str + FORMAT_END
+        property_str = STYLES.DARK_GRAY_START + property_str + STYLES.FORMAT_END
 
         return property_str
 
@@ -531,7 +525,8 @@ class PropertyArray(dict):
     def __repr__(self):
         # sort alphabetically by property key
         str_list = [str(i) for i in sorted(list(self.values()), key=lambda v: v.key.lower())]
-        return '├─' + '──'.join(str_list) + '─┤'
+        j = CHARS.DASH*2
+        return '├─' + j.join(str_list) + '─┤'
 
 
 class PropertyMultiArray(dict):
@@ -598,11 +593,12 @@ class PropertyMultiArray(dict):
         slist = []
         for i in self.values():
             slist.append(str(i))
-        return '╠═' + '══'.join(slist) + '═╣'  # UTF8
+        j = CHARS.LINE_SEPARATOR*2
+        return '╠═' + j.join(slist) + '═╣'  # UTF8
 
 
 # TODO move to pm_util ############
-def term_separator(text='', line_char='═', offset=0):
+def term_separator(text='', line_char=CHARS.LINE_SEPARATOR, offset=0):
     """
     Get a separator line with the width of the terminal with a centered text
     """
@@ -623,4 +619,5 @@ def term_separator(text='', line_char='═', offset=0):
 
 if __name__ == "__main__":
     import code
+
     code.interact(local=locals(), banner='policy')

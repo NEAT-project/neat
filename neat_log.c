@@ -100,6 +100,11 @@ neat_log(struct neat_ctx *ctx, uint8_t level, const char* format, ...)
 {
 
     struct timeval tv_now, tv_diff;
+
+    if (ctx == NULL) {
+        return;
+    }
+
     // skip unwanted loglevels
     if (ctx->log_level < level) {
         return;
@@ -195,6 +200,10 @@ neat_log_usrsctp(const char* format, ...)
 uint8_t
 neat_log_close(struct neat_ctx *ctx)
 {
+    if (ctx == NULL) {
+        return RETVAL_FAILURE;
+    }
+
     neat_log(ctx, NEAT_LOG_INFO, "%s - closing logfile ...", __func__);
     if (ctx->neat_log_fd != stderr) {
         if (fclose(ctx->neat_log_fd) == 0) {

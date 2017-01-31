@@ -10,7 +10,8 @@
 #include "neat_addr.h"
 #include "neat_resolver.h"
 
-static void neat_resolver_reset_mark(struct neat_resolver *resolver)
+static void
+neat_resolver_reset_mark(struct neat_resolver *resolver)
 {
     struct neat_resolver_server *server = resolver->server_list.lh_first;
 
@@ -20,7 +21,8 @@ static void neat_resolver_reset_mark(struct neat_resolver *resolver)
     }
 }
 
-static void neat_resolver_delete_servers(struct neat_resolver *resolver)
+static void
+neat_resolver_delete_servers(struct neat_resolver *resolver)
 {
     struct neat_resolver_server *server = resolver->server_list.lh_first;
     struct neat_resolver_server *server_to_delete;
@@ -52,8 +54,8 @@ static void neat_resolver_delete_servers(struct neat_resolver *resolver)
     }
 }
 
-static void neat_resolver_resolv_check_addr(struct neat_resolver *resolver,
-                                            struct sockaddr_storage *dst_addr)
+static void
+neat_resolver_resolv_check_addr(struct neat_resolver *resolver, struct sockaddr_storage *dst_addr)
 {
     struct neat_resolver_server *server;
     struct sockaddr_in *dst_addr4, *server_addr4;
@@ -108,7 +110,8 @@ static void neat_resolver_resolv_check_addr(struct neat_resolver *resolver,
     //neat_log(NEAT_LOG_INFO, "Added %s to resolver list", dst_addr_buf);
 }
 
-void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
+void
+neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
         const char *filename, int events, int status)
 {
     struct neat_resolver *resolver = handle->data;
@@ -193,7 +196,8 @@ void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
     fclose(resolv_ptr);
 }
 
-uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver)
+uint8_t
+neat_resolver_add_initial_servers(struct neat_resolver *resolver)
 {
     struct neat_resolver_server *server;
     struct sockaddr_storage server_addr;

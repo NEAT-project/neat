@@ -1756,6 +1756,11 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         goto end;
     }
 
+    char *tmp;
+    tmp = json_dumps(result_array, JSON_INDENT(2));
+    neat_log(ctx, NEAT_LOG_DEBUG, "JSON XXX %s", tmp);
+
+    //ZDR
     neat_json_send_once(ctx, flow, socket_path, result_array, NULL, on_pm_he_error);
 
 end:
@@ -2747,18 +2752,20 @@ on_candidate_resolved(struct neat_resolver_results *results,
     struct sockaddr_storage dummy;
     struct neat_resolver_res *result;
     struct candidate_resolver_data *data = user_data;
+    struct neat_ctx *ctx = data->flow->ctx;
+    struct neat_flow *flow = data->flow;
     struct neat_he_candidate *candidate, *tmp;
 
-    //neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code == NEAT_RESOLVER_TIMEOUT)  {
         *data->status = -1;
-        // neat_io_error(flow->ctx, flow, NEAT_ERROR_IO);
-        // neat_log(ctx, NEAT_LOG_DEBUG, "Resolution timed out");
+        neat_io_error(ctx, flow, NEAT_ERROR_IO);
+        neat_log(ctx, NEAT_LOG_DEBUG, "Resolution timed out");
     } else if ( code == NEAT_RESOLVER_ERROR ) {
         *data->status = -1;
-        // neat_io_error(flow->ctx, flow, NEAT_ERROR_IO);
-        //neat_log(ctx, NEAT_LOG_DEBUG, "Resolver error");
+        neat_io_error(ctx, flow, NEAT_ERROR_IO);
+        neat_log(ctx, NEAT_LOG_DEBUG, "Resolver error");
     }
 
     LIST_FOREACH(result, results, next_res) {
@@ -2766,13 +2773,12 @@ on_candidate_resolved(struct neat_resolver_results *results,
         char ifname2[IF_NAMESIZE];
 
         if ((rc = getnameinfo((struct sockaddr*)&result->dst_addr, result->dst_addr_len, namebuf, NI_MAXHOST, NULL, 0, NI_NUMERICHOST)) != 0) {
-            //neat_log(ctx, NEAT_LOG_DEBUG, "getnameinfo error");
+            neat_log(ctx, NEAT_LOG_DEBUG, "getnameinfo error");
             continue;
         }
 
         TAILQ_FOREACH_SAFE(candidate, &data->resolution_group, resolution_list, tmp) {
-            struct neat_ctx *ctx = candidate->ctx;
-
+            
             // The interface index must be the same as the interface index of the candidate
             if (result->if_idx != candidate->if_idx) {
                 neat_log(ctx, NEAT_LOG_DEBUG, "Interface did not match, %s [%d] != %s [%d]", if_indextoname(result->if_idx, ifname1), result->if_idx, if_indextoname(candidate->if_idx, ifname2), candidate->if_idx);

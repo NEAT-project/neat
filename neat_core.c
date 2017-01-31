@@ -2595,6 +2595,7 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
                     free(cand->if_name);
                     json_decref(cand->properties);
                     free(cand);
+                    break;
                 }
             }
         }

@@ -1756,6 +1756,11 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         goto end;
     }
 
+    char *tmp;
+    tmp = json_dumps(result_array, JSON_INDENT(2));
+    neat_log(ctx, NEAT_LOG_DEBUG, "JSON XXX %s", tmp);
+
+    //ZDR
     neat_json_send_once(ctx, flow, socket_path, result_array, NULL, on_pm_he_error);
 
 end:

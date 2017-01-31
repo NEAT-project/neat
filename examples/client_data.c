@@ -27,7 +27,9 @@
 
 **********************************************************************/
 
+static uint64_t config_snd_chunk = 1000;
 static uint64_t config_snd_bytes = 1;
+static uint64_t config_snd_count = 0;
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
@@ -211,8 +213,6 @@ on_writable(struct neat_flow_operations *opCB)
     neat_error_code code;
     struct neat_tlv options[1];
 
-    fprintf(stderr, "%s()\n", __func__);
-
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -223,22 +223,25 @@ on_writable(struct neat_flow_operations *opCB)
     options[0].value.integer = last_stream;
 
     //ZDR
-    unsigned char msg[config_snd_bytes];
-    memset(msg, 0x4e, config_snd_bytes);
+    unsigned char msg[config_snd_chunk];
+    memset(msg, 0x4e, config_snd_chunk);
 
     code = neat_write(opCB->ctx, opCB->flow, msg, sizeof(msg), options, 1);
     if (code != NEAT_OK) {
       fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
       return on_error(opCB);
     }
-      
+
+    config_snd_count += config_snd_chunk;
     // if (config_json_stats){
     // print_neat_stats(ctx);
     //}
 
-
     // stop writing
-    //ops.on_writable = NULL;
+    if  (config_snd_count>=config_snd_bytes) {
+      neat_close(ctx, flow);
+    }
+    
     //ops.on_all_written = on_all_written;
     //neat_set_operations(ctx, flow, &ops);
     return NEAT_OK;

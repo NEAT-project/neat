@@ -491,7 +491,6 @@ neat_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
     free(candidate->if_name);
     json_decref(candidate->properties);
     free(candidate);
-    candidate = NULL;
 }
 
 void
@@ -1571,10 +1570,13 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 static void
 updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
-    struct neat_pollable_socket *pollable_socket = handle->data;
+    struct neat_pollable_socket *pollable_socket;
     int newEvents = 0;
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+    assert(handle);
+    pollable_socket = handle->data;
 
 #ifdef SCTP_MULTISTREAMING
     if (pollable_socket != NULL && pollable_socket->multistream) {
@@ -1587,10 +1589,8 @@ updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     assert(flow->socket);
     assert(flow->socket->handle);
 
-    if (handle != NULL) {
-        if (handle->loop == NULL || uv_is_closing((uv_handle_t *)handle)) {
-            return;
-        }
+    if (handle->loop == NULL || uv_is_closing((uv_handle_t *)handle)) {
+        return;
     }
 
     do {
@@ -5359,7 +5359,7 @@ handle_connect(struct socket *sock, void *arg, int flags)
     he_res->transport = candidate->pollable_socket->stack;
 
     if (usrsctp_get_events(sock) & SCTP_EVENT_WRITE) {
-        if (flow != NULL && flow->hefirstConnect) {
+        if (flow->hefirstConnect) {
             flow->hefirstConnect = 0;
             neat_log(candidate->ctx, NEAT_LOG_DEBUG, "First successful connect (flow->hefirstConnect)");
             assert(flow->socket);

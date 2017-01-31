@@ -62,8 +62,9 @@ struct stat_flow {
     uint32_t rcv_bytes;
     uint32_t rcv_bytes_last;
     uint32_t rcv_calls;
-    struct timeval tv_begin;
+    struct timeval tv_first;
     struct timeval tv_last;
+    struct timeval tv_delta;
     uv_timer_t timer;
 };
 
@@ -86,21 +87,35 @@ on_readable(struct neat_flow_operations *opCB)
     // data is available to read
     unsigned char buffer[config_rcv_buffer_size];
     uint32_t bytes_read = 0;
-    struct stat_flow *stat;
+    struct stat_flow *stat = opCB->userData;
     neat_error_code code;
-
+    struct timeval tv_duration;
+    double time_elapsed = 0.0;
+    char buffer_filesize_human[32];
 
     //fprintf(stderr, "%s - reading from flow\n", __func__);
     code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read, NULL, 0);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
-        fprintf(stderr, "%s - would block\n", __func__);
+        if (config_log_level >= 1) {
+            fprintf(stderr, "%s - would block\n", __func__);
+        }
         return NEAT_OK;
     } else if (code != NEAT_OK) {
         return on_error(opCB);
     }
 
     if (!bytes_read) { // eof
-        fprintf(stderr, "%s - neat_read() returned 0 bytes - connection closed\n", __func__);
+        if (config_log_level >= 1) {
+            fprintf(stderr, "%s - neat_read() returned 0 bytes - connection closed\n", __func__);
+        }
+
+        timersub(&(stat->tv_last), &(stat->tv_first), &tv_duration);
+        time_elapsed = tv_duration.tv_sec + (double)tv_duration.tv_usec / 1000000.0;
+        filesize_human(8 * (stat->rcv_bytes - stat->rcv_bytes_last) / time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human));
+
+
+        fprintf(stderr, "%s - flow closed OK - bytes: %d - calls: %d\n", __func__, stat->rcv_bytes, stat->rcv_calls);
+        fprintf(stderr, "%d bytes in %.2fs = %sit/s\n", stat->rcv_bytes - stat->rcv_bytes_last, time_elapsed, buffer_filesize_human);
         fflush(stdout);
         on_close(opCB);
 
@@ -108,6 +123,7 @@ on_readable(struct neat_flow_operations *opCB)
         stat = opCB->userData;
         stat->rcv_bytes += bytes_read;
         stat->rcv_calls++;
+        gettimeofday(&(stat->tv_last), NULL);
         if (config_log_level >= 1) {
             fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
             fwrite(buffer, sizeof(char), bytes_read, stdout);
@@ -135,36 +151,36 @@ static void
 print_timer_stats(uv_timer_t *handle)
 {
     struct stat_flow *stat = handle->data;
-    struct timeval now, delta;
+    struct timeval tv_now, tv_delta;
     double time_elapsed = 0.0;
     char buffer_filesize_human[32];
 
-    gettimeofday(&now, NULL);
-    timersub(&now, &(stat->tv_last), &delta);
-    time_elapsed = delta.tv_sec + (double)delta.tv_usec/1000000.0;
+    gettimeofday(&tv_now, NULL);
+    timersub(&tv_now, &(stat->tv_delta), &tv_delta);
+    time_elapsed = tv_delta.tv_sec + (double)tv_delta.tv_usec / 1000000.0;
     filesize_human((stat->rcv_bytes - stat->rcv_bytes_last) / time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human));
 
     fprintf(stderr, "%d bytes in %.2fs = %s/s\n", stat->rcv_bytes - stat->rcv_bytes_last, time_elapsed, buffer_filesize_human);
 
     stat->rcv_bytes_last = stat->rcv_bytes;
-    gettimeofday(&(stat->tv_last), NULL);
+    gettimeofday(&(stat->tv_delta), NULL);
     uv_timer_again(&(stat->timer));
 }
 
 static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
-    struct stat_flow *stat;
-    uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
+    struct stat_flow *stat = opCB->userData;
+    //uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
     // now we can start writing
     fprintf(stderr, "%s - connection established\n", __func__);
-    stat = opCB->userData;
-    gettimeofday(&(stat->tv_begin), NULL);
+
+    gettimeofday(&(stat->tv_first), NULL);
     gettimeofday(&(stat->tv_last), NULL);
 
-    uv_timer_init(loop, &(stat->timer));
-    stat->timer.data = stat;
-    uv_timer_start(&(stat->timer), print_timer_stats, 0, 1000);
+    //uv_timer_init(loop, &(stat->timer));
+    //stat->timer.data = stat;
+    //uv_timer_start(&(stat->timer), print_timer_stats, 0, 1000);
 
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
@@ -176,9 +192,9 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    struct stat_flow *stat = opCB->userData;
-    fprintf(stderr, "%s - flow closed OK - bytes: %d - calls: %d\n", __func__, stat->rcv_bytes, stat->rcv_calls);
-    uv_timer_stop(&(stat->timer));
+    //struct stat_flow *stat = opCB->userData;
+    //fprintf(stderr, "%s - flow closed OK - bytes: %d - calls: %d\n", __func__, stat->rcv_bytes, stat->rcv_calls);
+    //uv_timer_stop(&(stat->timer));
 	//uv_close((uv_handle_t*)&(stat->timer), NULL);
 	//free(stat);
 

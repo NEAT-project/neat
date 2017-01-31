@@ -4440,6 +4440,10 @@ end:
                 optional[i].value.integer = 0;
                 optional[i].type = NEAT_TYPE_INTEGER;
                 break;
+            case NEAT_TAG_TRANSPORT_STACK:
+                optional[i].value.integer = flow->socket->stack;
+                optional[i].type = NEAT_TYPE_INTEGER;
+                break;
             default:
                 break;
             }

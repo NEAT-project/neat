@@ -93,9 +93,14 @@ on_readable(struct neat_flow_operations *opCB)
     double time_elapsed = 0.0;
     char buffer_filesize_human[32];
     char buffer_bandwidth_human[32];
+    struct neat_tlv options[1];
+
+    //last_stream = (last_stream + 1) % opCB->flow->stream_count;
+    options[0].tag           = NEAT_TAG_TRANSPORT_STACK;
+    options[0].type          = NEAT_TYPE_INTEGER;
 
     //fprintf(stderr, "%s - reading from flow\n", __func__);
-    code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read, NULL, 0);
+    code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read, options, 1);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
         if (config_log_level >= 1) {
             fprintf(stderr, "%s - would block\n", __func__);
@@ -117,13 +122,32 @@ on_readable(struct neat_flow_operations *opCB)
         filesize_human(8 * (stat->rcv_bytes) / time_elapsed, buffer_bandwidth_human, sizeof(buffer_bandwidth_human));
         filesize_human(stat->rcv_bytes, buffer_filesize_human, sizeof(buffer_filesize_human));
 
-        fprintf(stderr, "########################################################\n");
-        fprintf(stderr, "# transfer finished! :)\n");
-        fprintf(stderr, "########################################################\n");
-        fprintf(stderr, "# size:\t\t%s\n", buffer_filesize_human);
-        fprintf(stderr, "# duration:\t%.2f s\n", time_elapsed);
-        fprintf(stderr, "# bandwidth:\t%sit/s\n", buffer_bandwidth_human);
-        fprintf(stderr, "########################################################\n");
+        printf("########################################################\n");
+        printf("# transfer finished! :)\n");
+        printf("########################################################\n");
+        printf("# size:\t\t%s\n", buffer_filesize_human);
+        printf("# duration:\t%.2f s\n", time_elapsed);
+        printf("# bandwidth:\t%sit/s\n", buffer_bandwidth_human);
+        printf("# protocol:\t");
+
+        switch ((int)options[0].value.integer) {
+            case NEAT_STACK_TCP:
+                printf("TCP");
+                break;
+            case NEAT_STACK_SCTP:
+                printf("SCTP");
+                break;
+            case NEAT_STACK_SCTP_UDP:
+                printf("SCTP/UDP");
+                break;
+            default:
+                printf("OTHER");
+                break;
+        }
+        printf("\n");
+
+        printf("########################################################\n");
+
         fflush(stdout);
         on_close(opCB);
 

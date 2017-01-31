@@ -99,6 +99,7 @@ enum neat_tlv_tag {
     NEAT_TAG_PRIORITY,
     NEAT_TAG_FLOW_GROUP,
     NEAT_TAG_CC_ALGORITHM,
+    NEAT_TAG_TRANSPORT_STACK,
 
     NEAT_TAG_LAST
 };
@@ -271,6 +272,14 @@ NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
     } while (0);
 
 #endif // ifdef assert else
+
+typedef enum {
+    NEAT_STACK_UDP = 1,
+    NEAT_STACK_UDPLITE,
+    NEAT_STACK_TCP,
+    NEAT_STACK_SCTP,
+    NEAT_STACK_SCTP_UDP
+} neat_protocol_stack_type;
 
 
 // cleanup extern "C"

@@ -12,7 +12,8 @@
 #include "neat_internal.h"
 
 
-static void he_print_results(struct neat_resolver_results *results)
+static void
+he_print_results(struct neat_resolver_results *results)
 {
     struct neat_resolver_res *result;
     char addr_name_src[INET6_ADDRSTRLEN], addr_name_dst[INET6_ADDRSTRLEN];
@@ -50,14 +51,16 @@ static void he_print_results(struct neat_resolver_results *results)
 }
 
 
-static void free_handle_cb(uv_handle_t *handle)
+static void
+free_handle_cb(uv_handle_t *handle)
 {
     //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     free(handle);
 }
 
 
-static void free_prio_timer_handle_cb(uv_handle_t *handle)
+static void
+free_prio_timer_handle_cb(uv_handle_t *handle)
 {
     struct neat_he_candidate *candidate  = (struct neat_he_candidate *) (handle->data);
     neat_log(candidate->ctx, NEAT_LOG_DEBUG, "%s", __func__);
@@ -66,7 +69,8 @@ static void free_prio_timer_handle_cb(uv_handle_t *handle)
 }
 
 
-static void on_he_connect_req(uv_timer_t *handle)
+static void
+on_he_connect_req(uv_timer_t *handle)
 {
     struct neat_he_candidate *candidate       = (struct neat_he_candidate *) (handle->data);
     struct neat_he_candidates *candidate_list = candidate->pollable_socket->flow->candidate_list;
@@ -114,7 +118,8 @@ static void on_he_connect_req(uv_timer_t *handle)
 }
 
 
-static void delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
+static void
+delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 {
     candidate->prio_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
     assert(candidate->prio_timer != NULL);

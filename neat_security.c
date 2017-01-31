@@ -137,7 +137,8 @@ neat_security_filter_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           uint32_t *actualAmt,
                           struct neat_tlv optional[], unsigned int opt_count);
 
-static neat_error_code neat_security_handshake(struct neat_flow_operations *opCB)
+static neat_error_code
+neat_security_handshake(struct neat_flow_operations *opCB)
 {
     // neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     neat_error_code rv = neat_write(opCB->ctx, opCB->flow, NULL, 0, NULL, 0);

@@ -54,7 +54,7 @@ static char         *config_property        = "\
     ],\
     \"multihoming\": {\
         \"value\": true,\
-        \"precedence\": 2\
+        \"precedence\": 1\
     }\
 }";
 

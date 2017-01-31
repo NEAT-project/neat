@@ -120,27 +120,6 @@ print_usage()
 }
 
 /*
-    print human readable file sizes - helper function
-*/
-static char
-*filesize_human(double bytes, char *buffer, size_t buffersize)
-{
-    uint8_t i = 0;
-    const char* units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
-
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
-
-    while (bytes > 1000) {
-        bytes /= 1000;
-        i++;
-    }
-    snprintf(buffer, buffersize, "%.*f %s", i, bytes, units[i]);
-    return buffer;
-}
-
-/*
     error handler
 */
 static neat_error_code

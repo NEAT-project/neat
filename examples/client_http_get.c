@@ -34,7 +34,7 @@
 #endif
 
 static int          result                  = 0;
-static uint32_t     config_rcv_buffer_size  = 32*1024*1024; // 32MB rcv buffer
+static uint32_t     config_rcv_buffer_size  = 1024*1024; // 1MB rcv buffer
 static uint32_t     config_max_flows        = 50;
 static uint8_t      config_log_level        = 0;
 static char         request[512];
@@ -171,16 +171,16 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct stat_flow *stat = opCB->userData;
-    //uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
+    uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
     // now we can start writing
     fprintf(stderr, "%s - connection established\n", __func__);
 
     gettimeofday(&(stat->tv_first), NULL);
     gettimeofday(&(stat->tv_last), NULL);
 
-    //uv_timer_init(loop, &(stat->timer));
-    //stat->timer.data = stat;
-    //uv_timer_start(&(stat->timer), print_timer_stats, 0, 1000);
+    uv_timer_init(loop, &(stat->timer));
+    stat->timer.data = stat;
+    uv_timer_start(&(stat->timer), print_timer_stats, 0, 1000);
 
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
@@ -192,9 +192,9 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    //struct stat_flow *stat = opCB->userData;
+    struct stat_flow *stat = opCB->userData;
     //fprintf(stderr, "%s - flow closed OK - bytes: %d - calls: %d\n", __func__, stat->rcv_bytes, stat->rcv_calls);
-    //uv_timer_stop(&(stat->timer));
+    uv_timer_stop(&(stat->timer));
 	//uv_close((uv_handle_t*)&(stat->timer), NULL);
 	//free(stat);
 

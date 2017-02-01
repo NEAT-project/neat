@@ -12,7 +12,7 @@
 #define DNS_TIMEOUT             30000
 //Timeout after first good reply
 #define DNS_RESOLVED_TIMEOUT    1000
-#define DNS_LITERAL_TIMEOUT     1000
+#define DNS_LITERAL_TIMEOUT     1
 #define DNS_BUF_SIZE            1472
 #define MAX_NUM_RESOLVED        3
 #define NO_PROTOCOL             0xFFFFFFFF
@@ -112,7 +112,7 @@ struct neat_resolver_request {
     struct neat_resolver_pairs resolver_pairs;
 
     //Callback that will be called when resolving is done
-    neat_resolver_handle_t resolve_cb; 
+    neat_resolver_handle_t resolve_cb;
 
     //Timeout handle owned by this request
     uv_timer_t timeout_handle;

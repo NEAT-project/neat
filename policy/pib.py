@@ -5,9 +5,8 @@ import logging
 import os
 import time
 
+import pmdefaults as PM
 from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
-from pmdefaults import STYLE
-
 
 PIB_EXTENSIONS = ('.policy', '.profile', '.pib')
 
@@ -36,8 +35,14 @@ def load_policy_json(filename):
 class NEATPolicy(object):
     """NEAT policy representation"""
 
-    def __init__(self, policy_dict, policy_file=None):
+    def __init__(self, policy_dict=None, uid=None):
         # set default values
+
+        if policy_dict is None:
+            policy_dict = dict()
+
+        if uid is not None:
+            policy_dict['uid'] = uid
 
         # TODO do we need to handle unknown attributes?
         for k, v in policy_dict.items():
@@ -128,7 +133,7 @@ class NEATPolicy(object):
             properties.add(*p)
 
     def __str__(self):
-        return '%3s. %-8s %s  ⟶  %s' % (self.priority, self.uid, self.match, self.properties)
+        return '%3s. %-8s %s  %s  %s' % (self.priority, self.uid, self.match, PM.CHARS.RIGHT_ARROW, self.properties)
 
     def __repr__(self):
         return repr({a: getattr(self, a) for a in ['uid', 'match', 'properties', 'priority']})
@@ -300,7 +305,8 @@ class PIB(list):
                             try:
                                 new_candidate = candidate + policy_properties
                             except ImmutablePropertyError:
-                                logging.info(' ' * 4 + policy_info + STYLE.BOLD_START + ' *REJECTED*' + STYLE.FORMAT_END)
+                                logging.info(
+                                    ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *REJECTED*' + PM.STYLES.FORMAT_END)
                                 return []
                             # TODO copy policies from candidate and policy_properties for debugging
                             #  if hasattr(new_candidate, 'policies'):
@@ -325,4 +331,5 @@ if __name__ == "__main__":
     pib.dump()
 
     import code
+
     code.interact(local=locals(), banner='PIB loaded:')

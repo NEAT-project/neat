@@ -419,7 +419,12 @@ class CIB(object):
             return
 
         # convert to CIB node object to do sanity check
-        cs = CIBNode(json_slim)
+        try:
+            cs = CIBNode(json_slim)
+        except CIBEntryError as e:
+            print(e)
+            return
+
 
         if uid is not None:
             cs.uid = uid

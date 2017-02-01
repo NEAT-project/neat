@@ -3,10 +3,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-#include "../neat.h"
-
-// The resolver interface is internal - but this is still a good test
-#include "../neat_internal.h"
+#include "neat.h"
 
 //HACKHACKHACK, code is not supposed to access resolver directly
 #include "../neat_resolver.h"

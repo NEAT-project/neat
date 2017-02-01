@@ -72,6 +72,12 @@ struct neat_ctx
 
     neat_error_code error;
 
+    /* logging members */
+    uint8_t log_level;
+    uint8_t color_supported;
+    struct timeval tv_init;
+    FILE *neat_log_fd;
+
     // resolver
     NEAT_INTERNAL_CTX;
     NEAT_INTERNAL_OS;
@@ -123,14 +129,6 @@ struct neat_read_queue_message {
     TAILQ_ENTRY(neat_read_queue_message) message_next;
 };
 #endif
-
-typedef enum {
-    NEAT_STACK_UDP = 1,
-    NEAT_STACK_UDPLITE,
-    NEAT_STACK_TCP,
-    NEAT_STACK_SCTP,
-    NEAT_STACK_SCTP_UDP
-} neat_protocol_stack_type;
 
 typedef enum {
     NEAT_FLOW_CLOSED = 1,
@@ -228,9 +226,6 @@ struct neat_flow
     uint16_t port;
     uint8_t qos;
     uint8_t ecn;
-    uint64_t propertyMask;
-    uint64_t propertyAttempt;
-    uint64_t propertyUsed;
     //uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
@@ -241,10 +236,8 @@ struct neat_flow
     float priority;
 
     const char *cc_algorithm;
-    const char *local_address; // Src address or addresses
 
     struct neat_message_queue_head bufferedMessages;
-    size_t buffer_count;
     struct neat_flow_statistics flow_stats;
 
     // The memory buffer for reading. Used of SCTP reassembly.
@@ -254,13 +247,13 @@ struct neat_flow
     int             readBufferMsgComplete;    // it contains a complete user message
 
     json_t *properties;
+    json_t *user_ips;
 
     neat_read_impl      readfx;
     neat_write_impl     writefx;
     neat_accept_impl    acceptfx;
     neat_connect_impl   connectfx;
     neat_close_impl     closefx;
-    neat_close2_impl    close2fx;
     neat_listen_impl    listenfx;
     neat_shutdown_impl  shutdownfx;
 
@@ -395,8 +388,8 @@ struct cib_he_res {
     int transport;
 };
 
-void neat_free_candidates(struct neat_he_candidates *candidates);
-void neat_free_candidate(struct neat_he_candidate *candidate);
+void neat_free_candidates(struct neat_ctx *ctx, struct neat_he_candidates *candidates);
+void neat_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate);
 
 // Connect context needed during HE.
 struct he_cb_ctx {
@@ -514,7 +507,7 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
 #define OPTIONAL_ARGUMENT(tag, var, field, vartype, typestr)\
     case tag:\
              if (optional[i].type != vartype)\
-        neat_log(NEAT_LOG_DEBUG,\
+        neat_log(ctx, NEAT_LOG_DEBUG,\
                  "Optional argument \"%s\" passed to function %s: "\
                  "Expected type %s, specified as something else. "\
                  "Ignoring.", #tag, __func__, #typestr);\
@@ -541,7 +534,7 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
 #define OPTIONAL_ARGUMENT_PRESENT(tag, var, field, presence, vartype, typestr)\
     case tag:\
         if (optional[i].type != vartype) {\
-            neat_log(NEAT_LOG_DEBUG,\
+            neat_log(ctx, NEAT_LOG_DEBUG,\
                      "Optional argument \"%s\" passed to function %s: "\
                      "Expected type %s, specified as something else. "\
                      "Ignoring.", "stream", #tag, __func__, typestr);\
@@ -562,7 +555,7 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
 
 #define HANDLE_OPTIONAL_ARGUMENTS_END() \
                 default:\
-                    neat_log(NEAT_LOG_DEBUG,\
+                    neat_log(ctx, NEAT_LOG_DEBUG,\
                              "Unexpected optional argument \"%s\" passed to function %s, "\
                              "ignoring.", neat_tag_name[optional[i].tag], __func__);\
                     break;\

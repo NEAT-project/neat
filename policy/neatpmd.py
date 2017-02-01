@@ -1,9 +1,11 @@
-#!/usr/bin/env python3.5
+#!/usr/bin/env python3
 import argparse
 import asyncio
+import io
 import logging
 import os
 import signal
+import sys
 from copy import deepcopy
 from operator import attrgetter
 
@@ -14,11 +16,18 @@ from cib import CIB
 from pib import PIB
 from policy import PropertyMultiArray
 
+
+# make sure output works on terminals without UTF support
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=sys.stdout.encoding,
+                              errors='ignore',
+                              line_buffering=sys.stdout.line_buffering)
+
 parser = argparse.ArgumentParser(description='NEAT Policy Manager')
 parser.add_argument('--cib', type=str, default=None, help='specify directory in which to look for CIB files')
 parser.add_argument('--pib', type=str, default=None, help='specify directory in which to look for PIB files')
-parser.add_argument('--sock', type=str, default=None, help='set Unix domain socket')
-parser.add_argument('--controller', type=str, default=None, help='set controller REST API')
+parser.add_argument('--sock', type=str, default=None, help='set Unix domain socket path')
+parser.add_argument('--controller', type=str, default=None, help='set URL of controller REST API')
+parser.add_argument('--rest-ip', type=str, default=None, help='set local management IP:PORT for external REST calls')
 parser.add_argument('--debug', type=bool, default=None, help='enable debugging')
 parser.add_argument('--rest', type=bool, default=None, help='enable REST API')
 parser.add_argument('--bypass', type=bool, default=False, help='enable debugging')
@@ -32,12 +41,15 @@ if args.sock:
     PM.DOMAIN_SOCK = args.sock
 if args.controller:
     PM.CONTROLLER_REST = args.controller
+if args.rest_ip:
+    ip_port = args.rest_ip.split(':')
+    PM.REST_IP = ip_port[0]
+    if len(ip_port) > 1:
+        PM.REST_PORT = int(ip_port[1])
 if args.debug:
     PM.DEBUG = args.debug
 if args.rest:
     PM.REST_ENABLE = args.rest
-
-
 
 try:
     os.makedirs(os.path.dirname(PM.DOMAIN_SOCK), exist_ok=True)
@@ -56,7 +68,6 @@ try:
     if os.path.exists(PM.CIB_SOCK):
         os.unlink(PM.CIB_SOCK)
 except OSError as e:
-    print("here")
     print(e)
     raise SystemExit()
 
@@ -260,7 +271,7 @@ def signal_handler():
     print(policy.term_separator('ENTERING INTERACTIVE DEBUG MODE', line_char='#'))
     print()
     import code
-    code.interact(local=globals(), banner='use Ctrl-D to exit')
+    code.interact(local=globals(), banner='use Ctrl-D to exit debug mode')
     print()
     print(policy.term_separator('EXITING INTERACTIVE DEBUG MODE', line_char='#'))
     print()
@@ -314,15 +325,25 @@ if __name__ == "__main__":
         loop.run_forever()
     except KeyboardInterrupt:
         print("\nQuitting policy manager.")
+
+    try:
+        # Close the servers
+        pmrest.close()
+
+        server.close()
+        loop.run_until_complete(server.wait_closed())
+
+        pib_server.close()
+        loop.run_until_complete(pib_server.wait_closed())
+        cib_server.close()
+        loop.run_until_complete(cib_server.wait_closed())
+    except (AttributeError, OSError) as e:
         pass
-    # TODO implement http://aiohttp.readthedocs.io/en/stable/web.html#graceful-shutdown
+    except Exception as e:
+        import code
 
-    # Close the server
-    server.close()
-    pib_server.close()
-    cib_server.close()
-    pmrest.close()
+        code.interact(local=locals(), banner='unhandled exception debug')
 
-    loop.run_until_complete(server.wait_closed())
     loop.close()
+
     raise SystemExit(0)

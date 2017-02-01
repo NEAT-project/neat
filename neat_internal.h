@@ -11,18 +11,18 @@
 #include "neat_pm_socket.h"
 
 #ifdef __linux__
-#include "neat_linux.h"
+    #include "neat_linux.h"
 #endif //  __linux__
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-#include "neat_bsd.h"
+    #include "neat_bsd.h"
 #endif // defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 
 #ifdef USRSCTP_SUPPORT
-#include "neat_usrsctp.h"
-#include <usrsctp.h>
+    #include "neat_usrsctp.h"
+    #include <usrsctp.h>
 #else // USRSCTP_SUPPORT
-#define NEAT_INTERNAL_USRSCTP
+    #define NEAT_INTERNAL_USRSCTP
 #endif // USRSCTP_SUPPORT
 
 #include "neat_log.h"

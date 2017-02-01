@@ -1,5 +1,3 @@
-// this is the public API..
-
 #ifndef NEAT_H
 #define NEAT_H
 
@@ -131,8 +129,9 @@ struct neat_flow_security {
 
 NEAT_EXTERN struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
 
-NEAT_EXTERN neat_error_code neat_set_operations(struct neat_ctx *ctx, struct neat_flow *flow,
-                                    struct neat_flow_operations *ops);
+NEAT_EXTERN neat_error_code neat_set_operations(struct neat_ctx *ctx,
+                                                struct neat_flow *flow,
+                                                struct neat_flow_operations *ops);
 
 NEAT_EXTERN neat_error_code neat_get_stats(struct neat_ctx *ctx, char **neat_stats);
 
@@ -173,7 +172,7 @@ NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
                     struct neat_flow *flow, uint8_t ecn);
 
 #define NEAT_ERROR_OK               (0)
-#define NEAT_OK NEAT_ERROR_OK
+#define NEAT_OK                     NEAT_ERROR_OK
 #define NEAT_ERROR_WOULD_BLOCK      (1)
 #define NEAT_ERROR_BAD_ARGUMENT     (2)
 #define NEAT_ERROR_IO               (3)
@@ -185,25 +184,25 @@ NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
 #define NEAT_ERROR_REMOTE           (9)
 #define NEAT_ERROR_OUT_OF_MEMORY    (10)
 
-#define NEAT_INVALID_STREAM (-1)
+#define NEAT_INVALID_STREAM         (-1)
 
-#define NEAT_LOG_OFF            (0)
-#define NEAT_LOG_ERROR          (1)
-#define NEAT_LOG_WARNING        (2)
-#define NEAT_LOG_INFO           (3)
-#define NEAT_LOG_DEBUG          (4)
+#define NEAT_LOG_OFF                (0)
+#define NEAT_LOG_ERROR              (1)
+#define NEAT_LOG_WARNING            (2)
+#define NEAT_LOG_INFO               (3)
+#define NEAT_LOG_DEBUG              (4)
 
-#define NEAT_OPTARGS (__optional_arguments)
-#define NEAT_OPTARGS_COUNT (__optional_argument_count)
+#define NEAT_OPTARGS                (__optional_arguments)
+#define NEAT_OPTARGS_COUNT          (__optional_argument_count)
 
-#define NEAT_OPTARGS_MAX (NEAT_TAG_LAST)
+#define NEAT_OPTARGS_MAX            (NEAT_TAG_LAST)
 
 #define NEAT_OPTARGS_INIT() \
     do { \
         NEAT_OPTARGS_COUNT = 0; \
     } while (0);
 
-#define NEAT_OPTARGS_RESET NEAT_OPTARGS_INIT
+#define NEAT_OPTARGS_RESET          NEAT_OPTARGS_INIT
 
 #ifdef assert
 

@@ -223,14 +223,6 @@ main(int argc, char *argv[])
         }
     }
 
-    if (config_log_level == 0) {
-        neat_log_level(NEAT_LOG_ERROR);
-    } else if (config_log_level == 1){
-        neat_log_level(NEAT_LOG_WARNING);
-    } else {
-        neat_log_level(NEAT_LOG_DEBUG);
-    }
-
     if (optind != argc) {
         fprintf(stderr, "%s - argument error\n", __func__);
         print_usage();
@@ -241,6 +233,14 @@ main(int argc, char *argv[])
         fprintf(stderr, "%s - neat_init_ctx failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
+    }
+
+    if (config_log_level == 0) {
+        neat_log_level(ctx, NEAT_LOG_ERROR);
+    } else if (config_log_level == 1){
+        neat_log_level(ctx, NEAT_LOG_WARNING);
+    } else {
+        neat_log_level(ctx, NEAT_LOG_DEBUG);
     }
 
     // new neat flow

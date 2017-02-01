@@ -51,7 +51,7 @@ static int neat_linux_parse_nlattr(const struct nlattr *attr, void *data)
 //Function which parses the netlink message (*ADDR) we have received and extract
 //relevant information, which is parsed to OS-independent
 //neat_addr_update_src_list
-static neat_error_code neat_linux_handle_addr(struct neat_ctx *nc,
+static neat_error_code neat_linux_handle_addr(struct neat_ctx *ctx,
                                    struct nlmsghdr *nl_hdr)
 {
     struct ifaddrmsg *ifm = (struct ifaddrmsg*) mnl_nlmsg_get_payload(nl_hdr);
@@ -74,7 +74,7 @@ static neat_error_code neat_linux_handle_addr(struct neat_ctx *nc,
 
     if (mnl_attr_parse(nl_hdr, sizeof(struct ifaddrmsg),
                 neat_linux_parse_nlattr, &tb_storage) != MNL_CB_OK) {
-        neat_log(NEAT_LOG_ERROR, "Failed to parse nlattr for msg of type %d",
+        neat_log(ctx, NEAT_LOG_ERROR, "Failed to parse nlattr for msg of type %d",
                 __func__, nl_hdr->nlmsg_type);
         return NEAT_ERROR_OK;
     }
@@ -97,7 +97,7 @@ static neat_error_code neat_linux_handle_addr(struct neat_ctx *nc,
 
     //TODO: Should this function be a callback instead? Will we have multiple
     //addresses handlers/types of context?
-    return neat_addr_update_src_list(nc, &src_addr, ifm->ifa_index,
+    return neat_addr_update_src_list(ctx, &src_addr, ifm->ifa_index,
                                      nl_hdr->nlmsg_type == RTM_NEWADDR,
                                      ifm->ifa_prefixlen, ifa_pref, ifa_valid);
 }
@@ -143,57 +143,57 @@ static void neat_linux_cleanup(struct neat_ctx *nc)
 
 //Initialize the Linux-specific part of the context. All is related to
 //libmnl/netfilter
-struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *nc)
+struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *ctx)
 {
     //TODO: Consider allocator function
-    if ((nc->mnl_rcv_buf = calloc(MNL_SOCKET_BUFFER_SIZE, 1)) == NULL) {
-        neat_log(NEAT_LOG_ERROR, "Failed to allocate netlink buffer", __func__);
+    if ((ctx->mnl_rcv_buf = calloc(MNL_SOCKET_BUFFER_SIZE, 1)) == NULL) {
+        neat_log(ctx, NEAT_LOG_ERROR, "Failed to allocate netlink buffer", __func__);
         return NULL;
     }
 
     //Configure netlink and start requesting addresses
-    if ((nc->mnl_sock = mnl_socket_open(NETLINK_ROUTE)) == NULL) {
-        neat_log(NEAT_LOG_ERROR, "Failed to allocate netlink socket", __func__);
+    if ((ctx->mnl_sock = mnl_socket_open(NETLINK_ROUTE)) == NULL) {
+        neat_log(ctx, NEAT_LOG_ERROR, "Failed to allocate netlink socket", __func__);
         return NULL;
     }
 
-    if (mnl_socket_bind(nc->mnl_sock, (1 << (RTNLGRP_IPV4_IFADDR - 1)) |
+    if (mnl_socket_bind(ctx->mnl_sock, (1 << (RTNLGRP_IPV4_IFADDR - 1)) |
                 (1 << (RTNLGRP_IPV6_IFADDR - 1)), 0)) {
-        neat_log(NEAT_LOG_ERROR, "Failed to bind netlink socket", __func__);
+        neat_log(ctx, NEAT_LOG_ERROR, "Failed to bind netlink socket", __func__);
         return NULL;
     }
 
     //We need to build a list of all available source addresses as soon as
     //possible. It is started here
-    if (neat_linux_request_addrs(nc->mnl_sock) <= 0) {
-        neat_log(NEAT_LOG_ERROR, "Failed to request addresses", __func__);
+    if (neat_linux_request_addrs(ctx->mnl_sock) <= 0) {
+        neat_log(ctx, NEAT_LOG_ERROR, "Failed to request addresses", __func__);
         return NULL;
     }
 
     //Add socket to event loop
-    if (uv_udp_init(nc->loop, &(nc->uv_nl_handle))) {
-        neat_log(NEAT_LOG_ERROR, "Failed to initialize uv UDP handle", __func__);
+    if (uv_udp_init(ctx->loop, &(ctx->uv_nl_handle))) {
+        neat_log(ctx, NEAT_LOG_ERROR, "Failed to initialize uv UDP handle", __func__);
         return NULL;
     }
 
     //TODO: We could use offsetof, but libuv has a pointer so ...
-    nc->uv_nl_handle.data = nc;
+    ctx->uv_nl_handle.data = ctx;
 
-    if (uv_udp_open(&(nc->uv_nl_handle), mnl_socket_get_fd(nc->mnl_sock))) {
-        neat_log(NEAT_LOG_ERROR, "Could not add netlink socket to uv", __func__);
+    if (uv_udp_open(&(ctx->uv_nl_handle), mnl_socket_get_fd(ctx->mnl_sock))) {
+        neat_log(ctx, NEAT_LOG_ERROR, "Could not add netlink socket to uv", __func__);
         return NULL;
     }
 
-    if (uv_udp_recv_start(&(nc->uv_nl_handle), neat_linux_nl_alloc,
+    if (uv_udp_recv_start(&(ctx->uv_nl_handle), neat_linux_nl_alloc,
                 neat_linux_nl_recv)) {
-        neat_log(NEAT_LOG_ERROR, "Could not start receiving netlink packets", __func__);
+        neat_log(ctx, NEAT_LOG_ERROR, "Could not start receiving netlink packets", __func__);
         return NULL;
     }
 
-    nc->cleanup = neat_linux_cleanup;
+    ctx->cleanup = neat_linux_cleanup;
 
     //Configure netlink socket, add to event loop and start dumping
-    return nc;
+    return ctx;
 }
 
 /* Get the Linux TCP_INFO and copy the relevant fields into the neat-specific
@@ -203,7 +203,7 @@ void linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
     int tcp_info_length;
     struct tcp_info tcpi;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     tcp_info_length = sizeof(struct tcp_info);
     getsockopt(flow->socket->fd, SOL_TCP, TCP_INFO, (void *)&tcpi, (socklen_t *)&tcp_info_length );

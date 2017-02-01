@@ -2993,7 +2993,6 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     // Find the enabled stacks based on the properties
     // nr_of_stacks = neat_property_translate_protocols(flow->propertyAttempt, stacks);
     neat_find_enabled_stacks(flow->properties, stacks, &nr_of_stacks, NULL);
-    assert(nr_of_stacks);
     assert(results);
 
     flow->resolver_results = results;

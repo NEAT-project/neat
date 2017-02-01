@@ -3482,7 +3482,6 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
         return NEAT_ERROR_OUT_OF_MEMORY;
     flow->port = port;
     //flow->stream_count = stream_count;
-    flow->ctx = ctx;
     flow->group = group;
     flow->priority = priority;
     if ((multihoming = json_object_get(flow->properties, "multihoming")) != NULL &&
@@ -5658,6 +5657,7 @@ neat_flow
         goto error;
     }
 
+    rv->ctx                 = ctx;
     rv->writefx             = neat_write_to_lower_layer;
     rv->readfx              = neat_read_from_lower_layer;
     rv->acceptfx            = neat_accept_via_kernel;

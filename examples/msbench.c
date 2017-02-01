@@ -45,10 +45,6 @@ static char *config_property = "{\
         {\
             \"value\": \"10.1.2.2\",\
             \"precedence\": 2\
-        },\
-        {\
-            \"value\": \"127.0.0.1\",\
-            \"precedence\": 2\
         }\
     ]\
 }";\

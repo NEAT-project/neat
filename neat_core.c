@@ -105,6 +105,7 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
     TAG_STRING(NEAT_TAG_PRIORITY),
     TAG_STRING(NEAT_TAG_FLOW_GROUP),
     TAG_STRING(NEAT_TAG_CC_ALGORITHM),
+    TAG_STRING(NEAT_TAG_TRANSPORT_STACK)
 };
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -2579,7 +2580,7 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
         candidate->pollable_socket->nr_local_addr = 0;
         struct neat_he_candidate *cand;
         TAILQ_FOREACH(cand, candidate_list, next) {
-            if (neat_base_stack(candidate->pollable_socket->stack) != NEAT_STACK_SCTP) {
+            if (neat_base_stack(cand->pollable_socket->stack) != NEAT_STACK_SCTP) {
                 continue;
             }
             if (strcmp(candidate->pollable_socket->dst_address, cand->pollable_socket->dst_address)) {
@@ -2590,8 +2591,8 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
                     if (candidate->pollable_socket->nr_local_addr == 0) {
                         if (strcmp(candidate->pollable_socket->src_address, cand->pollable_socket->src_address)) {
                             if (candidate->pollable_socket->src_address != NULL) {
-                    	        free(candidate->pollable_socket->src_address);
-                    	    }
+                                free(candidate->pollable_socket->src_address);
+                            }
                             candidate->pollable_socket->src_address = strdup(cand->pollable_socket->src_address);
                         }
                     } else {
@@ -4365,6 +4366,7 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         SKIP_OPTARG(NEAT_TAG_PARTIAL_SEQNUM)
         SKIP_OPTARG(NEAT_TAG_UNORDERED)
         SKIP_OPTARG(NEAT_TAG_UNORDERED_SEQNUM)
+        SKIP_OPTARG(NEAT_TAG_TRANSPORT_STACK)
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_UDP) ||

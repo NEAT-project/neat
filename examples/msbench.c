@@ -245,6 +245,7 @@ on_readable(struct neat_flow_operations *opCB)
     double time_elapsed;
     struct neat_tlv options[1];
     double app_delay;
+    FILE *logfile = NULL;
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -301,7 +302,9 @@ on_readable(struct neat_flow_operations *opCB)
             timersub(&(tnf->rcv.tv_last), (struct timeval*) &(tnf->rcv.tv_first), &diff_time);
             time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
+            logfile = fopen("msbench.txt", "w+");
             printf("%u, %u, %.2f, %.2f, %s, %.2f, %d, %d\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)), (double) tnf->rcv.delay_sum / tnf->rcv.calls, tnf->payload.loss, tnf->payload.delay);
+            fclose(logfile);
 
             if (config_log_level >= 1) {
                 printf("client disconnected - statistics\n");

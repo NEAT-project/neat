@@ -2498,6 +2498,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
         candidate->if_idx                       = if_idx;
         candidate->priority                     = i; // TODO: Get priority from PM
         candidate->properties                   = value;
+        candidate->to_be_removed                = 0;
         json_incref(value);
 
         memset(dummy, 0, sizeof(dummy));
@@ -2568,9 +2569,9 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
     if (!flow->isSCTPMultihoming) {
         return;
     }
-    if (flow->user_ips == NULL) {
+   /* if (flow->user_ips == NULL) {
         return;
-    }
+    }*/
     neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     TAILQ_FOREACH(candidate, candidate_list, next) {
@@ -2583,6 +2584,9 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
             if (neat_base_stack(cand->pollable_socket->stack) != NEAT_STACK_SCTP) {
                 continue;
             }
+            if (cand->to_be_removed)
+                continue;
+            printf("candidate->pollable_socket->nr_local_addr=%d\n", candidate->pollable_socket->nr_local_addr);
             if (strcmp(candidate->pollable_socket->dst_address, cand->pollable_socket->dst_address)) {
                 continue;
             } else {
@@ -2607,17 +2611,31 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
                     neat_log(flow->ctx, NEAT_LOG_ERROR, "The maximum number of local addresses (%d) is exceeded", MAX_LOCAL_ADDR);
                 }
                 if (!(TAILQ_EMPTY(candidate_list)) && strcmp(candidate->pollable_socket->src_address, cand->pollable_socket->src_address)) {
-                    TAILQ_REMOVE(candidate_list, cand, next);
+                    cand->to_be_removed = 1;
+                  /*  TAILQ_REMOVE(candidate_list, cand, next);
                     free(cand->pollable_socket->dst_address);
                     free(cand->pollable_socket->src_address);
                     free(cand->pollable_socket);
                     free(cand->if_name);
                     json_decref(cand->properties);
                     free(cand);
-                    break;
+                    break;*/
                 }
             }
         }
+    }
+    struct neat_he_candidate *candid = NULL, *tmp = NULL;
+    TAILQ_FOREACH_SAFE(candid, candidate_list, next, tmp) {
+        if (!candid->to_be_removed) {
+            continue;
+        }
+        TAILQ_REMOVE(candidate_list, candid, next);
+        free(candid->pollable_socket->dst_address);
+        free(candid->pollable_socket->src_address);
+        free(candid->pollable_socket);
+        free(candid->if_name);
+        json_decref(candid->properties);
+        free(candid);
     }
 }
 

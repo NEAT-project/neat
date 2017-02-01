@@ -104,6 +104,7 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat/server_daytime
 /usr/lib/libneat/server_discard
 /usr/lib/libneat/server_echo
+/usr/lib/libneat/server_http
 /usr/lib/libneat/tneat
 
 %changelog

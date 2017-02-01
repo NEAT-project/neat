@@ -4546,7 +4546,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
     if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
-        char *address_name, *ptr;
+        char *address_name, *ptr = NULL;
         char *tmp = strdup(candidate->pollable_socket->src_address);
 
         address_name = strtok_r((char *)tmp, ",", &ptr);

@@ -374,6 +374,7 @@ struct neat_he_candidate {
     int32_t priority;
     json_t *properties;
     struct neat_ctx *ctx;
+    uint8_t to_be_removed;
     TAILQ_ENTRY(neat_he_candidate) next;
     TAILQ_ENTRY(neat_he_candidate) resolution_list;
 };

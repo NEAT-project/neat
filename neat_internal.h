@@ -11,18 +11,18 @@
 #include "neat_pm_socket.h"
 
 #ifdef __linux__
-#include "neat_linux.h"
+    #include "neat_linux.h"
 #endif //  __linux__
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-#include "neat_bsd.h"
+    #include "neat_bsd.h"
 #endif // defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 
 #ifdef USRSCTP_SUPPORT
-#include "neat_usrsctp.h"
-#include <usrsctp.h>
+    #include "neat_usrsctp.h"
+    #include <usrsctp.h>
 #else // USRSCTP_SUPPORT
-#define NEAT_INTERNAL_USRSCTP
+    #define NEAT_INTERNAL_USRSCTP
 #endif // USRSCTP_SUPPORT
 
 #include "neat_log.h"
@@ -131,14 +131,6 @@ struct neat_read_queue_message {
 #endif
 
 typedef enum {
-    NEAT_STACK_UDP = 1,
-    NEAT_STACK_UDPLITE,
-    NEAT_STACK_TCP,
-    NEAT_STACK_SCTP,
-    NEAT_STACK_SCTP_UDP
-} neat_protocol_stack_type;
-
-typedef enum {
     NEAT_FLOW_CLOSED = 1,
     NEAT_FLOW_CONNECTING,
     NEAT_FLOW_OPEN,
@@ -234,9 +226,6 @@ struct neat_flow
     uint16_t port;
     uint8_t qos;
     uint8_t ecn;
-    uint64_t propertyMask;
-    uint64_t propertyAttempt;
-    uint64_t propertyUsed;
     //uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
@@ -404,6 +393,7 @@ struct neat_he_candidate {
     json_t *properties;
     struct neat_ctx *ctx;
     struct sock_opts_head sock_opts;
+    uint8_t to_be_removed;
     TAILQ_ENTRY(neat_he_candidate) next;
     TAILQ_ENTRY(neat_he_candidate) resolution_list;
 };

@@ -9,7 +9,6 @@
 
 #include "neat.h"
 #include "neat_internal.h"
-#include "neat_property_helpers.h"
 #include "neat_security.h"
 
 #ifdef NEAT_USETLS
@@ -138,7 +137,8 @@ neat_security_filter_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           uint32_t *actualAmt,
                           struct neat_tlv optional[], unsigned int opt_count);
 
-static neat_error_code neat_security_handshake(struct neat_flow_operations *opCB)
+static neat_error_code
+neat_security_handshake(struct neat_flow_operations *opCB)
 {
     // neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     neat_error_code rv = neat_write(opCB->ctx, opCB->flow, NULL, 0, NULL, 0);
@@ -218,7 +218,7 @@ handshake(struct neat_ctx *ctx, struct neat_flow *flow,
     if (rv != NEAT_OK) {
         return rv;
     }
-        
+
     // its possible we have some tls data from the server (e.g. a server hello) that
     // we need to read from the network and push through the BIO
     rv = gather_input(ctx, flow, filter, optional, opt_count);

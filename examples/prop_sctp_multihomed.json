@@ -3,6 +3,10 @@
         {
             "value": "SCTP",
             "precedence": 1
+        },
+        {
+            "value": "TCP",
+            "precedence": 1
         }
     ],
     "multihoming": {
@@ -11,12 +15,12 @@
     },
     "local_ips": [
         {
-            "value": "212.201.121.81",
+            "value": "10.0.2.15",
             "precedence": 1
         },
         {
-            "value": "10.1.1.1",
-            "precedence": 2
+            "value": "192.168.56.2",
+            "precedence": 1
         }
     ]
 }

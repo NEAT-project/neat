@@ -12,7 +12,8 @@
 #endif
 
 /* This function assumes it is only called when the flow is a TCP flow */
-void neat_get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
+void
+neat_get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
 {
     /* Call the os-specific TCP-info-gathering function and copy the outputs into the
      * relevant fields of the neat-generic tcp-info struct */
@@ -28,7 +29,8 @@ void neat_get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
 
 /* Traverse the relevant subsystems of NEAT and gather the stats
    then format the stats as a json string to return */
-void neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
+void
+neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
 {
     json_t *json_root, *protostat, *newflow;
     struct neat_flow *flow;

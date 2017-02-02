@@ -210,7 +210,7 @@ on_connected(struct neat_flow_operations *opCB)
     struct stat_flow *stat = opCB->userData;
     uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
     // now we can start writing
-    if (config_log_level >= 0) {
+    if (config_log_level >= 1) {
         fprintf(stderr, "%s - connection established\n", __func__);
     }
 

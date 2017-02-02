@@ -176,8 +176,8 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
     pmrest.router.add_get('/pib/{uid}', handle_pib)
 
     pmrest.router.add_get('/cib', handle_cib)
-    pmrest.router.add_get('/cib/rows', handle_cib_rows)
     pmrest.router.add_get('/cib/{uid}', handle_cib)
+    pmrest.router.add_get('/cib/rows', handle_cib_rows)
 
     pmrest.router.add_put('/cib/{uid}', handle_cib_put)
     pmrest.router.add_put('/pib/{uid}', handle_pib_put)

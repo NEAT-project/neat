@@ -2,6 +2,7 @@
 #################################################
 LIST(APPEND neat_programs
     client.c
+    client_data.c
     client_http_get.c
     client_http_run_once.c
     client_https_get.c
@@ -12,7 +13,7 @@ LIST(APPEND neat_programs
     server_http.c
     tneat.c
     peer.c
-    http_client_multihomed.c
+    msbench.c
 )
 
 LIST(APPEND neat_property_examples
@@ -20,7 +21,7 @@ LIST(APPEND neat_property_examples
     prop_datagram.json
     prop_default.json
     prop_sctp.json
-	prop_sctp_multihomed.json
+    prop_sctp_multihomed.json
     prop_tcp.json
 )
 

@@ -11,7 +11,13 @@ if DEBUG:
 else:
     log_level = logging.INFO
 
-logging.basicConfig(format='[%(levelname)s]: %(message)s', level=log_level)
+logging.addLevelName(logging.INFO, 'INF')
+logging.addLevelName(logging.ERROR, 'ERR')
+logging.addLevelName(logging.DEBUG, 'DBG')
+logging.addLevelName(logging.WARN, 'WRN')
+
+logging.basicConfig(format='[%(levelname)s]: %(message)s',
+                    level=log_level)
 
 CLIENT_UID = str(uuid.uuid3(uuid.NAMESPACE_OID, str(uuid.getnode())))
 

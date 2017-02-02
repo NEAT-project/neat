@@ -34,7 +34,7 @@
 #endif
 
 static int          result                  = 0;
-static uint32_t     config_rcv_buffer_size  = 1024*1024; // 1MB rcv buffer
+static uint32_t     config_rcv_buffer_size  = 32*1024*1024; // 32MB rcv buffer
 static uint32_t     config_max_flows        = 2000;
 static uint8_t      config_log_level        = 0;
 static char         request[512];
@@ -86,7 +86,7 @@ static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
-    unsigned char buffer[config_rcv_buffer_size];
+    unsigned char* buffer = malloc(config_rcv_buffer_size);
     uint32_t bytes_read = 0;
     struct stat_flow *stat = opCB->userData;
     neat_error_code code;
@@ -159,9 +159,10 @@ on_readable(struct neat_flow_operations *opCB)
         gettimeofday(&(stat->tv_last), NULL);
         if (config_log_level >= 1) {
             fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
-            fwrite(buffer, sizeof(char), bytes_read, stdout);
+           // fwrite(buffer, sizeof(char), bytes_read, stdout);
         }
     }
+    free(buffer);
     return NEAT_OK;
 }
 

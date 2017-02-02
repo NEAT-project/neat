@@ -24,6 +24,8 @@ compute_reverse_ip(struct neat_addr *src_addr)
     int i;
     char *out;
     uint8_t family = src_addr->family;
+    
+    memset(reverse_ip, 0, sizeof(reverse_ip));
 
     if (family == AF_INET6) {
         // From fd17:625c:f037:2:a00:27ff:fe37:86b6/69 => _.pvd.8.0.7.3.0.f.c.5.2.6.7.1.d.f.ip6.arpa.

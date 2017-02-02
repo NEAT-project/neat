@@ -18,6 +18,17 @@
 #include "neat_internal.h"
 #include "neat_addr.h"
 
+#define NEAT_ROUTE_BUFFER_SIZE 8192
+
+#if defined(__APPLE__)
+#define ROUNDUP32(a) \
+    ((a) > 0 ? (1 + (((a) - 1) | (sizeof (uint32_t) - 1))) : sizeof (uint32_t))
+#define SA_SIZE(sa) ROUNDUP32((sa)->sa_len)
+#endif
+#if defined(__NetBSD__)
+#define SA_SIZE(sa) RT_ROUNDUP((sa)->sa_len)
+#endif
+
 /* On FreeBSD the number of seconds since booting is used.
    On other platforms, the number of seconds since 1.1.1970 is used. */
 static time_t
@@ -132,8 +143,6 @@ neat_bsd_get_addresses(struct neat_ctx *ctx)
     return rc;
 }
 
-#define NEAT_ROUTE_BUFFER_SIZE 8192
-
 static void
 neat_bsd_route_alloc(uv_handle_t *handle,
                         size_t suggested_size,
@@ -146,15 +155,6 @@ neat_bsd_route_alloc(uv_handle_t *handle,
     buf->base = ctx->route_buf;
     buf->len = NEAT_ROUTE_BUFFER_SIZE;
 }
-
-#if defined(__APPLE__)
-#define ROUNDUP32(a) \
-    ((a) > 0 ? (1 + (((a) - 1) | (sizeof (uint32_t) - 1))) : sizeof (uint32_t))
-#define SA_SIZE(sa) ROUNDUP32((sa)->sa_len)
-#endif
-#if defined(__NetBSD__)
-#define SA_SIZE(sa) RT_ROUNDUP((sa)->sa_len)
-#endif
 
 static void
 neat_bsd_get_rtaddrs(int addrs,

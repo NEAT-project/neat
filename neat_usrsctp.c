@@ -14,9 +14,8 @@
 #define MCLBYTES 2048
 
 
-static void neat_usrsctp_sctp4_readable(uv_poll_t *handle,
-                                    int status,
-                                    int events)
+static void
+neat_usrsctp_sctp4_readable(uv_poll_t *handle, int status, int events)
 {
     //neat_log(NEAT_LOG_DEBUG, "%s(status=%d, events=%d)", __func__, status, events);
     if (status < 0) {
@@ -26,11 +25,10 @@ static void neat_usrsctp_sctp4_readable(uv_poll_t *handle,
     usrsctp_recv_function_sctp4();
 }
 
-static void neat_usrsctp_udpsctp4_readable(uv_poll_t *handle,
-                                    int status,
-                                    int events)
+static void
+neat_usrsctp_udpsctp4_readable(uv_poll_t *handle, int status, int events)
 {
-printf("neat_usrsctp_udpsctp4_readable\n");
+    printf("neat_usrsctp_udpsctp4_readable\n");
     if (status < 0) {
         //neat_log(NEAT_LOG_ERROR, "%s: socket not readable", __func__);
         return;
@@ -38,9 +36,8 @@ printf("neat_usrsctp_udpsctp4_readable\n");
     usrsctp_recv_function_udpsctp4();
 }
 
-static void neat_usrsctp_sctp6_readable(uv_poll_t *handle,
-                                    int status,
-                                    int events)
+static void
+neat_usrsctp_sctp6_readable(uv_poll_t *handle, int status, int events)
 {
     if (status < 0) {
         //neat_log(NEAT_LOG_ERROR, "%s: socket not readable", __func__);
@@ -49,9 +46,8 @@ static void neat_usrsctp_sctp6_readable(uv_poll_t *handle,
     usrsctp_recv_function_sctp6();
 }
 
-static void neat_usrsctp_udpsctp6_readable(uv_poll_t *handle,
-                                    int status,
-                                    int events)
+static void
+neat_usrsctp_udpsctp6_readable(uv_poll_t *handle, int status, int events)
 {
     if (status < 0) {
         //neat_log(NEAT_LOG_ERROR, "%s: socket not readable", __func__);
@@ -60,7 +56,8 @@ static void neat_usrsctp_udpsctp6_readable(uv_poll_t *handle,
     usrsctp_recv_function_udpsctp6();
 }
 
-static void neat_usrsctp_cleanup(struct neat_ctx *ctx)
+static void
+neat_usrsctp_cleanup(struct neat_ctx *ctx)
 {
     if (ctx->sctp4_fd >= 0) {
         close(ctx->sctp4_fd);
@@ -76,12 +73,14 @@ static void neat_usrsctp_cleanup(struct neat_ctx *ctx)
     }
 }
 
-void neat_handle_usrsctp_timeout(uv_timer_t *handle)
+void
+neat_handle_usrsctp_timeout(uv_timer_t *handle)
 {
     usrsctp_handle_timers(10);
 }
 
-struct neat_ctx *neat_usrsctp_init_ctx(struct neat_ctx *ctx)
+struct neat_ctx*
+neat_usrsctp_init_ctx(struct neat_ctx *ctx)
 {
     int ret;
 

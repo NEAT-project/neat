@@ -13,8 +13,8 @@
             "value": "SCTP", "precedence": 2,
             "score": 2
         },
-        "SO_SNDBUF": {"value": 4096, "precedence": 2},
-        "SCTP_NODELAY": {"value": false, "precedence": 2},
-        "SCTP_DISABLE_FRAGMENTS": {"value": 0, "precedence": 2}
+        "SO/SOL_SOCKET/SO_SNDBUF": {"value": 4096, "precedence": 2},
+        "SO/SOL_SOCKET/SCTP_NODELAY": {"value": false, "precedence": 2},
+        "SO/SOL_SOCKET/SCTP_DISABLE_FRAGMENTS": {"value": 0, "precedence": 2}
     }
 }

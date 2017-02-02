@@ -483,6 +483,15 @@ neat_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
 
+    if (!TAILQ_EMPTY(&(candidate->sock_opts))) {
+        struct neat_he_sockopt *sockopt, *tmp;
+        TAILQ_FOREACH_SAFE(sockopt, (&candidate->sock_opts), next, tmp) {
+            if (sockopt->type == NEAT_SOCKOPT_STRING)
+                free(sockopt->value.s_val);
+            TAILQ_REMOVE((&candidate->sock_opts), sockopt, next);
+        }
+    }
+
     // We should close the handle of this candidate asynchronously, but only if
     // this handle is not being used by the flow.
     if (candidate->pollable_socket->handle != NULL) {
@@ -2465,6 +2474,9 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
         char dummy[sizeof(struct sockaddr_storage)];
         struct neat_he_candidate *candidate;
 
+        const char *so_key=NULL, *so_prefix = "SO/";
+        json_t *so_value;
+
         neat_log(ctx, NEAT_LOG_DEBUG, "Now processing PM candidate %zu", i);
 
         interface = json_string_value(get_property(value, "interface", JSON_STRING));
@@ -2488,6 +2500,48 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
 
         if ((candidate = calloc(1, sizeof(*candidate))) == NULL)
             goto out_of_memory;
+
+        TAILQ_INIT(&(candidate->sock_opts));
+
+        // get socket options properties
+        json_object_foreach(value, so_key, so_value) {
+            if (strncmp(so_prefix, so_key, strlen(so_prefix))==0) {
+                uint32_t level, optname, type;
+                struct neat_he_sockopt *sockopt;
+
+                if ((sockopt = calloc(1, sizeof(struct neat_he_sockopt))) == NULL)
+                    goto out_of_memory;
+
+                sscanf(so_key, "SO/%u/%u", &level, &optname);
+
+                sockopt->level = level;
+                sockopt->name = optname;
+                type = json_typeof(json_object_get(json_object_get(value, so_key), "value"));
+
+                switch (type) {
+                case JSON_INTEGER:
+                    sockopt->type = NEAT_SOCKOPT_INT;
+                    sockopt->value.i_val = json_integer_value(get_property(value, so_key, JSON_INTEGER));
+                    neat_log(ctx, NEAT_LOG_DEBUG, "Got socket option \"%s\" with value \"%d\"", so_key, sockopt->value.i_val);
+                    break;
+                case JSON_STRING:
+                    sockopt->type = NEAT_SOCKOPT_STRING;
+                    sockopt->value.s_val = strdup(json_string_value(get_property(value, so_key, JSON_STRING)));
+                    neat_log(ctx, NEAT_LOG_DEBUG, "Got socket option \"%s\" with value \"%s\"", so_key, sockopt->value.s_val);
+                    break;
+                case JSON_TRUE:
+                case JSON_FALSE:
+                    sockopt->type = NEAT_SOCKOPT_INT;
+                    sockopt->value.i_val = json_boolean_value(get_property(value, so_key, JSON_TRUE)); /* JSON_TRUE is just to get a "boolean" value, could be replaced with JSON_FALSE */
+                    neat_log(ctx, NEAT_LOG_DEBUG, "Got socket option \"%s\" with value \"%s\"", so_key, sockopt->value.i_val ? "True" : "False");
+                    break;
+                default:
+                    neat_log(ctx, NEAT_LOG_ERROR, "Socket option value type (\"%d\") not supported", type);
+                    continue;
+                }
+                TAILQ_INSERT_TAIL(&(candidate->sock_opts), sockopt, next);
+            }
+         }
 
         if ((candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket))) == NULL)
             goto out_of_memory;
@@ -2568,6 +2622,14 @@ error:
             }
             if (candidate->if_name)
                 free(candidate->if_name);
+            if (!TAILQ_EMPTY(&(candidate->sock_opts))) {
+                struct neat_he_sockopt *sockopt, *tmp;
+                TAILQ_FOREACH_SAFE(sockopt, (&candidate->sock_opts), next, tmp) {
+                    if (sockopt->type == NEAT_SOCKOPT_STRING)
+                        free(sockopt->value.s_val);
+                    TAILQ_REMOVE((&candidate->sock_opts), sockopt, next);
+                }
+            }
             free(candidate);
         }
         if (rc)
@@ -4560,7 +4622,9 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #ifdef __linux__
     char if_name[IF_NAMESIZE];
 #endif
+    struct neat_he_sockopt *sockopt_ptr;
     struct neat_ctx *ctx = candidate->ctx;
+
     socklen_t slen =
             (candidate->pollable_socket->family == AF_INET) ?
                 sizeof (struct sockaddr_in) :
@@ -4587,6 +4651,21 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     }
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+
+    TAILQ_FOREACH(sockopt_ptr, &(candidate->sock_opts), next) {
+        switch (sockopt_ptr->type) {
+        case NEAT_SOCKOPT_INT:
+            if (setsockopt(candidate->pollable_socket->fd, sockopt_ptr->level, sockopt_ptr->name, &(sockopt_ptr->value.i_val), sizeof(int)) < 0)
+                neat_log(ctx, NEAT_LOG_ERROR, "Socket option error: %s", strerror(errno));
+            break;
+        case NEAT_SOCKOPT_STRING:
+            if (setsockopt(candidate->pollable_socket->fd, sockopt_ptr->level, sockopt_ptr->name, sockopt_ptr->value.s_val, (socklen_t)strlen(sockopt_ptr->value.s_val)) < 0)
+                neat_log(ctx, NEAT_LOG_ERROR, "Socket option error: %s", strerror(errno));
+            break;
+        default:
+            neat_log(ctx, NEAT_LOG_ERROR, "Illegal socket option");
+        }
+    }
 
     if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);

@@ -226,10 +226,10 @@ on_close(struct neat_flow_operations *opCB)
 {
     //struct stat_flow *stat = opCB->userData;
     //fprintf(stderr, "%s - flow closed OK - bytes: %d - calls: %d\n", __func__, stat->rcv_bytes, stat->rcv_calls);
-	//uv_close((uv_handle_t*)&(stat->timer), NULL);
-	//free(stat);
+    //uv_close((uv_handle_t*)&(stat->timer), NULL);
+    //free(stat);
 
-	// cleanup
+    // cleanup
     opCB->on_close = NULL;
     opCB->on_readable = NULL;
     opCB->on_writable = NULL;

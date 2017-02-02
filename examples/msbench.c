@@ -1,8 +1,6 @@
 #include "util.h"
 
 #include <neat.h>
-#include "../neat_internal.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -44,10 +42,6 @@ static char *config_property = "{\
         },\
         {\
             \"value\": \"10.1.2.2\",\
-            \"precedence\": 2\
-        },\
-        {\
-            \"value\": \"127.0.0.1\",\
             \"precedence\": 2\
         }\
     ]\
@@ -249,6 +243,7 @@ on_readable(struct neat_flow_operations *opCB)
     double time_elapsed;
     struct neat_tlv options[1];
     double app_delay;
+    FILE *logfile = NULL;
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -305,7 +300,9 @@ on_readable(struct neat_flow_operations *opCB)
             timersub(&(tnf->rcv.tv_last), (struct timeval*) &(tnf->rcv.tv_first), &diff_time);
             time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
-            printf("%u, %u, %.2f, %.2f, %s, %.2f, %d, %d\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)), (double) tnf->rcv.delay_sum / tnf->rcv.calls, tnf->payload.loss, tnf->payload.delay);
+            logfile = fopen("msbench.txt", "w+");
+            fprintf(logfile, "%u, %u, %.2f, %.2f, %s, %.2f, %d, %d\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)), (double) tnf->rcv.delay_sum / tnf->rcv.calls, tnf->payload.loss, tnf->payload.delay);
+            fclose(logfile);
 
             if (config_log_level >= 1) {
                 printf("client disconnected - statistics\n");
@@ -343,6 +340,7 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = NULL;
+    uv_loop_t *uv_loop = NULL;
 
     if (config_log_level >= 1) {
         fprintf(stderr, "%s() - connection established\n", __func__);
@@ -371,7 +369,8 @@ on_connected(struct neat_flow_operations *opCB)
         tnf->send_interval = 100;
 
         if (tnf->send_interval) {
-            uv_timer_init(opCB->ctx->loop, &(tnf->send_timer));
+            uv_loop = neat_get_event_loop(opCB->ctx);
+            uv_timer_init(uv_loop, &(tnf->send_timer));
             tnf->send_timer.data = opCB;
             tnf->ops = opCB;
             //int uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat)

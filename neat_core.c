@@ -1466,9 +1466,6 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
 
                 multistream_flow->name                      = strdup(listen_flow->name);
                 multistream_flow->port                      = listen_flow->port;
-                multistream_flow->propertyMask              = listen_flow->propertyMask;
-                multistream_flow->propertyAttempt           = listen_flow->propertyAttempt;
-                multistream_flow->propertyUsed              = listen_flow->propertyUsed;
                 multistream_flow->everConnected             = 1;
                 multistream_flow->socket                    = socket;
                 multistream_flow->ctx                       = ctx;

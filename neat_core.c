@@ -453,6 +453,19 @@ on_handle_closed(uv_handle_t *handle)
     free(handle);
 }
 
+static void
+on_handle_closed_candidate(uv_handle_t *handle)
+{
+    //neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    struct neat_he_candidate *candidate = (struct neat_he_candidate *)handle->data;
+    close(candidate->pollable_socket->fd);
+    free(candidate->pollable_socket);
+    free(candidate->if_name);
+    json_decref(candidate->properties);
+    free(candidate);
+    free(handle);
+}
+
 void
 neat_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
 {
@@ -479,8 +492,11 @@ neat_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
                 neat_log(ctx, NEAT_LOG_DEBUG,"%s: Candidate does not use a socket", __func__);
                 free(candidate->pollable_socket->handle);
             } else if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
-                neat_log(ctx, NEAT_LOG_DEBUG,"%s: Release candidate after closing", __func__);
-                uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed);
+                neat_log(ctx, NEAT_LOG_DEBUG,"%s: Release candidate after closing (%d)", __func__,
+                         candidate->pollable_socket->fd);
+                candidate->pollable_socket->handle->data = candidate;
+                uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed_candidate);
+                return;
             } else {
                 neat_log(ctx, NEAT_LOG_DEBUG,"%s: Candidate handle is already closing", __func__);
             }
@@ -4599,6 +4615,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                     "Failed to bindx fd %d socket to IP. Error: %s",
                     candidate->pollable_socket->fd,
                     strerror(errno));
+            close(candidate->pollable_socket->fd);
             return -1;
         }
 #endif
@@ -4618,6 +4635,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                      "Failed to bind fd %d socket to IP. Error: %s",
                      candidate->pollable_socket->fd,
                      strerror(errno));
+            close(candidate->pollable_socket->fd);
             return -1;
         }
     }
@@ -4696,6 +4714,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         }
         // Fallthrough to case NEAT_STACK_SCTP:
 #else
+        close(candidate->pollable_socket->fd);
         return -1; // Unavailable on other platforms
 #endif
     case NEAT_STACK_SCTP:
@@ -4742,6 +4761,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                         &enable,
                         sizeof(int)) < 0) {
             neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
+            close(candidate->pollable_socket->fd);
             return -1;
         }
 #endif // defined(SCTP_RECVRCVINFO)
@@ -4753,6 +4773,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                         &enable,
                         sizeof(int)) < 0) {
             neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
+            close(candidate->pollable_socket->fd);
             return -1;
         }
 #endif // defined(SCTP_RECVRCVINFO)
@@ -4767,6 +4788,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                         &adaptation,
                         sizeof(adaptation)) < 0) {
             neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
+            close(candidate->pollable_socket->fd);
             return -1;
         }
 #ifdef SCTP_MULTISTREAMING
@@ -4785,6 +4807,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                         &assoc_value,
                         sizeof(assoc_value)) < 0) {
             neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ENABLE_STREAM_RESET) failed");
+            close(candidate->pollable_socket->fd);
             return -1;
         }
 #endif // defined(SCTP_ENABLE_STREAM_RESET)
@@ -4809,6 +4832,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                        &init,
                        sizeof(struct sctp_initmsg)) < 0) {
             neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INITMSG) failed - Unable to set inbound/outbound stream count");
+            close(candidate->pollable_socket->fd);
             return -1;
         }
 
@@ -4837,7 +4861,6 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                  candidate->pollable_socket->fd,
                  errno,
                  strerror(errno));
-
         return -2;
     }
 
@@ -5009,14 +5032,15 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
     }
 
     if (listen_socket->stack == NEAT_STACK_UDP || listen_socket->stack == NEAT_STACK_UDPLITE) {
-        if (fd == -1 ||
-            bind(fd, (struct sockaddr *)(&listen_socket->src_sockaddr), slen) == -1) {
+        if (bind(fd, (struct sockaddr *)(&listen_socket->src_sockaddr), slen) == -1) {
             neat_log(ctx, NEAT_LOG_ERROR, "%s: (%s) bind failed - %s", __func__, (listen_socket->stack == NEAT_STACK_UDP ? "UDP" : "UDPLite"), strerror(errno));
+            close(fd);
             return -1;
         }
     } else {
-        if (fd == -1 || bind(fd, (struct sockaddr *)(&listen_socket->src_sockaddr), slen) == -1 || listen(fd, 100) == -1) {
+        if (bind(fd, (struct sockaddr *)(&listen_socket->src_sockaddr), slen) == -1 || listen(fd, 100) == -1) {
             neat_log(ctx, NEAT_LOG_ERROR, "%s: bind/listen failed - %s", __func__, strerror(errno));
+            close(fd);
             return -1;
         }
     }

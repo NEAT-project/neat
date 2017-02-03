@@ -8,6 +8,7 @@ import time
 from collections import ChainMap
 
 from pmdefaults import *
+import pmdefaults as PM
 from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
 from policy import dict_to_properties
 
@@ -285,7 +286,7 @@ class CIB(object):
 
     """
 
-    cib_dir = './cib/example/'
+    cib_dir = PM.CIB_DIR
     CIB_EXTENSIONS = ('.cib', '.local', '.connection', '.remote', '.slim')
 
     def __init__(self, cib_dir=None):

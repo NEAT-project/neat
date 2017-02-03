@@ -853,9 +853,11 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     const int stream_id = NEAT_INVALID_STREAM;
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
-    unsigned int optlen;
+    unsigned int statuslen;
     int rc;
     struct sctp_status status;
+    int value;
+    unsigned int valuelen;
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
     char proto[16];
 
@@ -869,15 +871,25 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
         case NEAT_STACK_SCTP:
             snprintf(proto, 16, "SCTP");
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
-            optlen = sizeof(status);
-            rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &optlen);
+            statuslen = sizeof(status);
+
+            rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &statuslen);
             if (rc < 0) {
                 neat_log(ctx, NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
                 flow->socket->sctp_streams_available = 1;
             } else {
                 flow->socket->sctp_streams_available = MIN(status.sstat_outstrms, status.sstat_outstrms);
             }
+            // number of outbound streams == number of inbound streams
+            neat_log(ctx, NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->socket->sctp_streams_available);
 
+            valuelen = sizeof(value);
+            rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED, &value, &valuelen);
+            if (rc < 0) {
+                neat_log(ctx, NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_INTERLEAVING_SUPPORTED) failed");
+            } else {
+                neat_log(ctx, NEAT_LOG_WARNING, "I-DATA support: %d", value == 2 ? "enable" : "disabled");
+            }
             // number of outbound streams == number of inbound streams
             neat_log(ctx, NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->socket->sctp_streams_available);
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)

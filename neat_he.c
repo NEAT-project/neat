@@ -54,20 +54,8 @@ he_print_results(struct neat_resolver_results *results)
 static void
 free_handle_cb(uv_handle_t *handle)
 {
-    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     free(handle);
 }
-
-
-static void
-free_prio_timer_handle_cb(uv_handle_t *handle)
-{
-    struct neat_he_candidate *candidate  = (struct neat_he_candidate *) (handle->data);
-    neat_log(candidate->ctx, NEAT_LOG_DEBUG, "%s", __func__);
-    free(handle);
-    candidate->prio_timer = NULL;
-}
-
 
 static void
 on_he_connect_req(uv_timer_t *handle)
@@ -80,8 +68,8 @@ on_he_connect_req(uv_timer_t *handle)
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     uv_timer_stop(candidate->prio_timer);
     candidate->prio_timer->data = candidate;
-    uv_close((uv_handle_t *) candidate->prio_timer, free_prio_timer_handle_cb);
-    uv_run(candidate->ctx->loop, UV_RUN_ONCE);
+    uv_close((uv_handle_t *) candidate->prio_timer, free_handle_cb);
+    candidate->prio_timer = NULL;
 
     int ret = candidate->pollable_socket->flow->connectfx(candidate,
                    candidate->callback_fx);

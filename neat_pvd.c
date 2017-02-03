@@ -586,6 +586,7 @@ neat_pvd_release(struct neat_pvd *pvd)
         LIST_REMOVE(async_query, next_query);
 
         free(async_query->data);
+        async_query->data = NULL;
         neat_pvd_free_async_query(async_query);
     }
 }

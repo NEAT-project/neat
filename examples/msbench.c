@@ -1,8 +1,6 @@
 #include "util.h"
 
 #include <neat.h>
-#include "../neat_internal.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -342,6 +340,7 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = NULL;
+    uv_loop_t *uv_loop = NULL;
 
     if (config_log_level >= 1) {
         fprintf(stderr, "%s() - connection established\n", __func__);
@@ -370,7 +369,8 @@ on_connected(struct neat_flow_operations *opCB)
         tnf->send_interval = 100;
 
         if (tnf->send_interval) {
-            uv_timer_init(opCB->ctx->loop, &(tnf->send_timer));
+            uv_loop = neat_get_event_loop(opCB->ctx);
+            uv_timer_init(uv_loop, &(tnf->send_timer));
             tnf->send_timer.data = opCB;
             tnf->ops = opCB;
             //int uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat)

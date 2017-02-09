@@ -165,6 +165,38 @@ struct neat_iofilter
     neat_filter_read_impl  readfx;
 };
 
+#define CIPHER_BUFFER_SIZE 8192
+
+struct security_data
+{
+    SSL_CTX *ctx;
+    SSL *ssl;
+
+    BIO *outputBIO;
+    int outCipherBufferUsed;
+    unsigned char outCipherBuffer[CIPHER_BUFFER_SIZE];
+
+    BIO *inputBIO;
+    int inCipherBufferUsed;
+    int inCipherBufferSent;
+    unsigned char inCipherBuffer[CIPHER_BUFFER_SIZE];
+
+    BIO *dtlsBIO;
+
+    neat_flow_operations_fx pushed_on_connected;
+    neat_flow_operations_fx pushed_on_readable;
+    neat_flow_operations_fx pushed_on_writable;
+};
+
+struct neat_dtls_data
+{
+    void *userData;
+
+    void (*dtor)(struct neat_dtls_data *);
+    neat_write_impl writefx;
+    neat_read_impl  readfx;
+};
+
 struct neat_pollable_socket
 {
     struct neat_flow    *flow;
@@ -231,6 +263,7 @@ struct neat_flow
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
     struct neat_iofilter *iofilters;
+    struct neat_dtls_data *dtls_data;
 
     uint32_t group;
     float priority;
@@ -259,6 +292,7 @@ struct neat_flow
 
     uint8_t heConnectAttemptCount;
 
+
 #if defined(USRSCTP_SUPPORT)
     neat_accept_usrsctp_impl acceptusrsctpfx;
 #endif
@@ -272,6 +306,7 @@ struct neat_flow
     unsigned int isDraining             : 1;
     unsigned int isServer               : 1; // i.e. created via accept()
     unsigned int isSCTPMultihoming      : 1;
+    unsigned int security_needed        : 1;
 
     unsigned int streams_requested;
 
@@ -588,6 +623,8 @@ neat_error_code neat_security_install(neat_ctx *ctx, neat_flow *flow);
 void            neat_security_init(neat_ctx *ctx);
 void            neat_security_close(neat_ctx *ctx);
 void uvpollable_cb(uv_poll_t *handle, int status, int events);
+neat_error_code neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock);
+neat_error_code neat_dtls_connect(neat_ctx *ctx, neat_flow *flow);
 
 neat_error_code neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
 

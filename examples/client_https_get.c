@@ -21,6 +21,19 @@ static const char *request_tail = "User-agent: libneat\r\nConnection: close\r\n\
 static char *config_property = "{\
     \"transport\": [\
         {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ],\
+    \"security\": {\
+        \"value\": true,\
+        \"precedence\": 2\
+    }\
+}";\
+/*
+static char *config_property = "{\
+    \"transport\": [\
+        {\
             \"value\": \"SCTP\",\
             \"precedence\": 1\
         },\
@@ -38,6 +51,7 @@ static char *config_property = "{\
         \"precedence\": 2\
     }\
 }";\
+*/
 
 static neat_error_code on_error(struct neat_flow_operations *opCB)
 {

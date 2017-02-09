@@ -445,6 +445,17 @@ static void free_iofilters(struct neat_iofilter *filter)
     free (filter);
 }
 
+static void free_dtlsdata(struct neat_dtls_data *dtls)
+{
+    if (!dtls) {
+        return;
+    }
+    if (dtls->dtor) {
+        dtls->dtor(dtls);
+    }
+    free (dtls);
+}
+
 static void
 on_handle_closed(uv_handle_t *handle)
 {
@@ -568,6 +579,7 @@ synchronous_free(neat_flow *flow)
     json_decref(flow->properties);
 
     free_iofilters(flow->iofilters);
+    free_dtlsdata(flow->dtls_data);
     free(flow->readBuffer);
 
     if (!flow->socket->multistream
@@ -1185,7 +1197,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
     ssize_t n;
     struct msghdr msghdr;
     //Not used when notifications aren't available:
-
+printf("io_readable\n");
 #ifdef MSG_NOTIFICATION
     int sctp_event_ret = 0;
 #endif //MSG_NOTIFICATION
@@ -1956,14 +1968,20 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         //flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
         flow->isPolling = 1;
 
-        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
+	    send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
 
-        if (!install_security(candidate)) {
-            // Transfer this handle to the "main" polling callback
-            // TODO: Consider doing this in some other way that directly calling
-            // this callback
-            flow->firstWritePending = 1;
-            uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
+        if (flow->security_needed) {
+            if (flow->socket->stack == NEAT_STACK_TCP) {
+                if (!install_security(candidate)) {
+                    // Transfer this handle to the "main" polling callback
+                    // TODO: Consider doing this in some other way that directly calling
+                    // this callback
+                    flow->firstWritePending = 1;
+                    uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
+                }
+            } else if (flow->socket->stack == NEAT_STACK_SCTP) {
+                neat_dtls_connect(ctx, flow);
+            }
         }
     } else {
         neat_log(ctx, NEAT_LOG_DEBUG, "%s - NOT first connect", __func__);
@@ -2005,7 +2023,6 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         flow = pollable_socket->flow;
         ctx  = flow->ctx;
     }
-
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -2131,7 +2148,6 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
 
     flow = pollable_socket->flow;
     updatePollHandle(ctx, flow, handle);
-
 }
 
 int
@@ -3151,11 +3167,12 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     }
                     newIp[j] = '\0';;
                     free (ip);
+                    printf("compare %s to %s\n", src_buffer, newIp);
                     if (strcmp(src_buffer, newIp) != 0) {
-                        neat_log(flow->ctx, NEAT_LOG_DEBUG, "no match");
                         continue;
                     } else {
                         srcfound = true;
+                        neat_log(flow->ctx, NEAT_LOG_DEBUG, "Address found");
                         memcpy(&candidate->pollable_socket->src_sockaddr, &result->src_addr, result->src_addr_len);
                         break;
                     }
@@ -3441,7 +3458,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
                 newIp[j] = '\0';;
                 free (ip);
                 if (strcmp(namebuf, newIp) != 0) {
-                    neat_log(ctx, NEAT_LOG_DEBUG, "no match");
+                    neat_log(ctx, NEAT_LOG_DEBUG, "%s: no match", __func__);
                     continue;
                 } else {
                     found = 1;
@@ -3533,7 +3550,7 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     int group = 0;
     float priority = 0.5f;
     const char *cc_algorithm = NULL;
-    json_t *multihoming = NULL, *val = NULL;
+    json_t *multihoming = NULL, *val = NULL, *security = NULL;
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -3573,6 +3590,15 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
         flow->isSCTPMultihoming = 1;
     } else {
         flow->isSCTPMultihoming = 0;
+    }
+
+    if ((security = json_object_get(flow->properties, "security")) != NULL &&
+        (val = json_object_get(security, "value")) != NULL &&
+        json_typeof(val) == JSON_TRUE)
+    {
+        flow->security_needed = 1;
+    } else {
+        flow->security_needed = 0;
     }
 
     flow->user_ips = json_object_get(flow->properties, "local_ips");
@@ -4115,7 +4141,18 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 
             msghdr.msg_flags = 0;
             if (flow->socket->fd != -1) {
+                if (flow->security_needed && flow->socket->stack == NEAT_STACK_SCTP) {
+                   printf("call SSL_write()\n");
+                    struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+                    struct bio_dgram_sctp_sndinfo sinfo;
+	                memset(&sinfo, 0, sizeof(struct bio_dgram_sctp_sndinfo));
+	                BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(struct bio_dgram_sctp_sndinfo), &sinfo);
+                socklen_t size = SSL_write(private->ssl, iov.iov_base, len);
+                printf("SSL write error: ");
+                printf("len=%d\n", size);
+                } else {
                 rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+                }
             } else {
 #if defined(USRSCTP_SUPPORT)
                 if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
@@ -4375,7 +4412,13 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
         msghdr.msg_flags = 0;
         if (flow->socket->fd != -1) {
-            rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+            if (flow->security_needed && flow->socket->stack == NEAT_STACK_SCTP) {
+                struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+                socklen_t len = SSL_write(private->ssl, buffer, amt);
+                printf("len=%d\n", len);
+            } else {
+                rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+            }
         } else {
 #if defined(USRSCTP_SUPPORT)
             neat_log(ctx, NEAT_LOG_INFO, "%s - send %zd bytes on flow %p and socket %p", __func__, len, (void *)flow, (void *)flow->socket->usrsctp_socket);
@@ -4647,6 +4690,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         neat_log(ctx, NEAT_LOG_ERROR, "Failed to create he socket");
         return -1;
     }
+    printf("socket %d created\n", candidate->pollable_socket->fd);
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
 
@@ -4933,6 +4977,11 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     uv_poll_init(candidate->ctx->loop,
                  candidate->pollable_socket->handle,
                  candidate->pollable_socket->fd); // makes fd nb as side effect
+    if (candidate->pollable_socket->flow->security_needed && candidate->pollable_socket->stack == NEAT_STACK_SCTP) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "Start DTLS over SCTP");
+            neat_dtls_install(ctx, candidate->pollable_socket);
+    }
+
 
     retval = connect(candidate->pollable_socket->fd,
                      (struct sockaddr *) &(candidate->pollable_socket->dst_sockaddr),
@@ -5696,6 +5745,10 @@ neat_write(struct neat_ctx *ctx,
         }
         return filter->writefx(ctx, flow, filter, buffer, amt, optional, opt_count);
     }
+    /*
+    if (flow->security_needed && flow->socket->stack == NEAT_STACK_SCTP) {
+        return flow->dtls_data->writefx(ctx, flow, buffer, amt, optional, opt_count);
+    }*/
     // there were no filters. call the flow writefx
     return flow->writefx(ctx, flow, buffer, amt, optional, opt_count);
 }
@@ -5784,6 +5837,7 @@ neat_flow
 
     rv->properties = json_object();
     rv->user_ips = NULL;
+    rv->security_needed = 0;
 
     rv->socket = calloc(1, sizeof(struct neat_pollable_socket));
     if (!rv->socket) {

@@ -33,9 +33,9 @@ static uint32_t config_message_count        = 10;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_active               = 0;
 static uint16_t config_chargen_offset       = 0;
-static uint16_t config_port                 = 8080;
+static uint16_t config_port                 = 23232;
 static uint16_t config_log_level            = 1;
-static uint16_t config_num_flows            = 5;
+static uint16_t config_num_flows            = 1;
 static uint16_t config_max_flows            = 100;
 static char *config_property = "\
 {\
@@ -43,10 +43,16 @@ static char *config_property = "\
         {\
             \"value\": \"SCTP\",\
             \"precedence\": 1\
-        },\
+        }\
+    ],\
+    \"security\": {\
+        \"value\": true,\
+        \"precedence\": 2\
+    },\
+    \"local_ips\": [\
         {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
+            \"value\": \"127.0.0.1\", \
+            \"precedence\": 1 \
         }\
     ]\
 }";
@@ -161,7 +167,7 @@ on_writable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
-
+printf("tneat: on_writable\n");
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -221,7 +227,7 @@ on_readable(struct neat_flow_operations *opCB)
     neat_error_code code;
     char buffer_filesize_human[32];
     double time_elapsed;
-
+printf("tneat: on_readable\n");
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -294,7 +300,7 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = NULL;
-
+printf("tneat: on_connected\n");
     if (config_log_level >= 1) {
         fprintf(stderr, "%s() - connection established\n", __func__);
     }

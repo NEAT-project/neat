@@ -3741,12 +3741,6 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
 }
 
 neat_error_code
-neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow, int rate, int seconds)
-{
-    return NEAT_ERROR_UNABLE;
-}
-
-neat_error_code
 neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow, unsigned int send_coverage, unsigned int receive_coverage)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);

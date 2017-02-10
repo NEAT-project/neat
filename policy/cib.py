@@ -1,14 +1,15 @@
 import bisect
 import copy
 import hashlib
-import itertools
 import json
 import operator
-import time
 from collections import ChainMap
 
-from pmdefaults import *
+import itertools
+import time
+
 import pmdefaults as PM
+from pmdefaults import *
 from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
 from policy import dict_to_properties
 
@@ -116,7 +117,7 @@ class CIBNode(object):
             # does not expire
             self._expire = value
         elif time.time() > value:
-            raise CIBEntryError('CIB node is expired')
+            raise CIBEntryError('ignoring expired CIB node')
         else:
             self._expire = value
 
@@ -344,6 +345,9 @@ class CIB(object):
 
         logging.info("checking for CIB updates...")
 
+        if not os.path.exists(cib_dir):
+            raise SystemExit('CIB directory does not exist')
+
         for dirpath, dirnames, filenames in os.walk(cib_dir):
             for filename in filenames:
                 if not filename.endswith(CIB.CIB_EXTENSIONS) or filename.startswith(('.', '#')):
@@ -425,7 +429,6 @@ class CIB(object):
         except CIBEntryError as e:
             print(e)
             return
-
 
         if uid is not None:
             cs.uid = uid

@@ -161,6 +161,9 @@ class PIB(list):
         if not policy_dir:
             policy_dir = self.policy_dir;
 
+        if not os.path.exists(policy_dir):
+            raise SystemExit('PIB directory does not exist')
+
         for filename in os.listdir(policy_dir):
             if filename.endswith(self.file_extension) and not filename.startswith(('.', '#')):
                 self.load_policy(os.path.join(policy_dir, filename))

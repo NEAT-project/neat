@@ -28,8 +28,8 @@ PIB_SOCK = os.environ['HOME'] + '/.neat/neat_pib_socket'
 CIB_SOCK = os.environ['HOME'] + '/.neat/neat_cib_socket'
 DOMAIN_SOCK = os.environ['HOME'] + '/.neat/neat_pm_socket'
 
-PIB_DIR = 'pib/example/'
-CIB_DIR = 'cib/example/'
+PIB_DIR = 'examples/pib/'
+CIB_DIR = 'examples/cib/'
 
 # default policy property attributes
 DEFAULT_SCORE = 0.0

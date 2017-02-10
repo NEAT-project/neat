@@ -340,13 +340,15 @@ class CIB(object):
         """
         Reload CIB files when a change is detected on disk
         """
-        cib_dir = self.cib_dir if not cib_dir else cib_dir
+        if not cib_dir:
+            cib_dir = self.cib_dir
+
         full_names = set()
 
         logging.info("checking for CIB updates...")
 
         if not os.path.exists(cib_dir):
-            raise SystemExit('CIB directory does not exist')
+            sys.exit('CIB directory %s does not exist' % cib_dir)
 
         for dirpath, dirnames, filenames in os.walk(cib_dir):
             for filename in filenames:

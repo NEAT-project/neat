@@ -2167,8 +2167,9 @@ neat_getlpaddrs(struct neat_ctx*  ctx,
            *addrs = (struct sockaddr*)malloc(namelen);
            if (*addrs) {
               memcpy(*addrs, &name, namelen);
+              return 1;
            }
-           return 1;
+           return -1; // out of memory
         }
     }
 

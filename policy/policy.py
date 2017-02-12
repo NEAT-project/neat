@@ -578,6 +578,20 @@ class PropertyMultiArray(list):
             new_list.append([pa.dict() for pa in l])
         return new_list
 
+    @staticmethod
+    def from_json(j):
+        pma_list = json.loads(j)
+        pma = PropertyMultiArray()
+        for l in pma_list:
+            if isinstance(l,dict):
+                pa = [PropertyArray.from_dict(l)]
+            elif isinstance(l,list):
+                pa = [PropertyArray.from_dict(pa) for pa in l]
+            else:
+                pa = []
+            pma.add(pa)
+        return pma
+
     def __repr__(self):
         j = CHARS.LINE_SEPARATOR * 2
         return '╠═' + j.join([str(i) for i in self]) + '═╣'  # UTF8

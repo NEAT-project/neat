@@ -3365,6 +3365,184 @@ error:
     neat_io_error(ctx, flow, rc);
 }
 
+
+
+static void
+send_properties_to_pm_orig(neat_ctx *ctx, neat_flow *flow)
+{
+    int rc = NEAT_ERROR_OUT_OF_MEMORY;
+    struct ifaddrs *ifaddrs = NULL;
+    json_t *array = NULL, *endpoints = NULL, *properties = NULL, *domains = NULL, *address, *port;
+    const char *home_dir;
+    const char *socket_path;
+    char socket_path_buf[128];
+
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+    socket_path = getenv("NEAT_PM_SOCKET");
+    if (!socket_path) {
+        if ((home_dir = getenv("HOME")) == NULL) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");
+
+            goto end;
+        }
+
+        rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_pm_socket", home_dir);
+        if (rc < 0 || rc >= 128) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
+            goto end;
+        }
+
+        socket_path = socket_path_buf;
+    }
+
+    if ((array = json_array()) == NULL)
+        goto end;
+
+    if ((endpoints = json_array()) == NULL)
+        goto end;
+
+    assert(ctx);
+    assert(flow);
+
+    rc = getifaddrs(&ifaddrs);
+    if (rc < 0) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "getifaddrs: %s", strerror(errno));
+        goto end;
+    }
+
+    for (struct ifaddrs *ifaddr = ifaddrs; ifaddr != NULL; ifaddr = ifaddr->ifa_next) {
+        socklen_t addrlen;
+        char namebuf[NI_MAXHOST];
+        json_t *endpoint;
+
+        // Doesn't actually contain any address (?)
+        if (ifaddr->ifa_addr == NULL) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "ifaddr entry with no address");
+            continue;
+        }
+
+        if (ifaddr->ifa_addr->sa_family != AF_INET &&
+            ifaddr->ifa_addr->sa_family != AF_INET6)
+            continue;
+
+        addrlen = (ifaddr->ifa_addr->sa_family) == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+
+        rc = getnameinfo(ifaddr->ifa_addr, addrlen, namebuf, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+
+        if (rc != 0) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "getnameinfo: %s", gai_strerror(rc));
+            continue;
+        }
+
+        if (strncmp(namebuf, "fe80::", 6) == 0) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s is a link-local address, skipping", namebuf);
+            continue;
+        }
+
+        if (flow->user_ips != NULL) {
+            size_t index;
+            json_t *addr, *ipvalue;
+            char *ip;
+            char newIp[100];
+            uint16_t found = 0;
+            for (index = 0; index < json_array_size(flow->user_ips); index++) {
+                uint32_t i, j;
+                addr = json_array_get(flow->user_ips, index);
+                ipvalue = json_object_get(addr, "value");
+                ip = json_dumps(ipvalue, JSON_ENCODE_ANY);
+                // Remove quotes
+                for (i = 1, j = 0; i <= strlen(ip) - 2; i++, j++) {
+                    newIp[j] = ip[i];
+                }
+                newIp[j] = '\0';;
+                free (ip);
+                if (strcmp(namebuf, newIp) != 0) {
+                    neat_log(ctx, NEAT_LOG_DEBUG, "no match");
+                    continue;
+                } else {
+                    found = 1;
+                    break;
+                }
+            }
+            if (found == 0) {
+                continue;
+            }
+        }
+
+        endpoint = json_pack("{ss++si}", "value", namebuf, "@", ifaddr->ifa_name, "precedence", 2);
+
+        if (endpoint == NULL)
+            goto end;
+
+        neat_log(ctx, NEAT_LOG_DEBUG, "Added endpoint \"%s@%s\" to PM request", namebuf, ifaddr->ifa_name);
+        json_array_append(endpoints, endpoint);
+        json_decref(endpoint);
+    }
+
+    properties = json_copy(flow->properties);
+
+    json_object_set(properties, "local_endpoint", endpoints);
+
+    port = json_pack("{sisi}", "value", flow->port, "precedence", 2);
+    if (port == NULL)
+        goto end;
+
+    json_object_set(properties, "port", port);
+    json_decref(port);
+
+    if ((domains = json_array()) == NULL)
+        goto end;
+
+    char *tmp = strdup(flow->name);
+    char *ptr = NULL;
+
+    char *address_name = strtok_r((char *)tmp, ",", &ptr);
+    if (address_name == NULL) {
+        address = json_pack("{sssi}", "value", flow->name, "precedence", 2);
+        if (address == NULL) {
+            free (tmp);
+            goto end;
+        }
+        json_object_set(properties, "domain_name", address);
+        json_decref(address);
+    } else {
+        while (address_name != NULL) {
+            address = json_pack("{sssi}", "value", address_name, "precedence", 2);
+            if (address == NULL) {
+                free (tmp);
+                goto end;
+            }
+
+            json_array_append(domains, address);
+
+            json_decref(address);
+            address_name = strtok_r(NULL, ",", &ptr);
+        }
+        json_object_set(properties, "domain_name", domains);
+    }
+    free (tmp);
+    json_array_append(array, properties);
+
+    neat_json_send_once(ctx, flow, socket_path, array, on_pm_reply_pre_resolve, on_pm_error);
+
+end:
+    if (ifaddrs)
+        freeifaddrs(ifaddrs);
+    if (properties)
+        json_decref(properties);
+    if (endpoints)
+        json_decref(endpoints);
+    if (array)
+        json_decref(array);
+    if (domains)
+        json_decref(domains);
+
+    if (rc != NEAT_OK)
+        neat_io_error(ctx, flow, rc);
+}
+
+
 static void
 send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
 {

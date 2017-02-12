@@ -877,14 +877,6 @@ neat_resolve(struct neat_resolver *resolver,
     if (!request)
       return RETVAL_FAILURE;
 
-    is_literal = neat_resolver_helpers_check_for_literal(&(request->family),
-                                                         node);
-
-    if (is_literal < 0) {
-        free(request);
-        return RETVAL_FAILURE;
-    }
-
     request->family = family;
     request->dst_port = htons(port);
     request->resolver = resolver;
@@ -892,6 +884,14 @@ neat_resolve(struct neat_resolver *resolver,
 
     uv_timer_init(resolver->nc->loop, &(request->timeout_handle));
     request->timeout_handle.data = request;
+
+    is_literal = neat_resolver_helpers_check_for_literal(&(request->family),
+                                                         node);
+
+    if (is_literal < 0) {
+        free(request);
+        return RETVAL_FAILURE;
+    }
 
     LIST_INIT(&(request->resolver_pairs));
 

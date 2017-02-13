@@ -12,8 +12,8 @@
 /*
     default values
 */
-static uint32_t config_rcv_buffer_size      = 10000;
-static uint32_t config_snd_buffer_size      = 100;
+static uint32_t config_rcv_buffer_size      = 100000;
+static uint32_t config_snd_buffer_size      = 10000;
 static uint32_t config_message_count        = 0;
 static uint32_t config_runtime_max          = 3;
 static uint16_t config_chargen_offset       = 0;
@@ -48,6 +48,7 @@ static char *config_property = "{\
 }";\
 
 static uint32_t flows_active = 0;
+enum payload_type {PAYLOAD_DATA, PAYLOAD_RESET};
 
 /*
     macro - tvp-uvp=vvp
@@ -66,6 +67,8 @@ static uint32_t flows_active = 0;
 #endif
 
 struct tneat_payload {
+    uint8_t         id;
+    uint8_t         type;
     struct timeval  tv;
     uint32_t        delay;
     uint32_t        loss; // plr * 1000
@@ -204,6 +207,7 @@ on_writable(struct neat_flow_operations *opCB)
         exit(EXIT_FAILURE);
     }
 
+    tnf->payload.type   = PAYLOAD_DATA;
     tnf->payload.tv     = tnf->snd.tv_last;
     tnf->payload.loss   = config_loss;
     tnf->payload.delay  = config_delay;
@@ -367,6 +371,7 @@ on_connected(struct neat_flow_operations *opCB)
     opCB->on_readable = on_readable;
     if (config_active) {
         tnf->send_interval = 100;
+        tnf->payload.id = flows_active;
 
         if (tnf->send_interval) {
             uv_loop = neat_get_event_loop(opCB->ctx);
@@ -374,10 +379,16 @@ on_connected(struct neat_flow_operations *opCB)
             tnf->send_timer.data = opCB;
             tnf->ops = opCB;
             //int uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat)
-            uv_timer_start(&(tnf->send_timer), timer_cb_writable, 0, tnf->send_interval);
+            if (flows_active == 0) {
+                uv_timer_start(&(tnf->send_timer), timer_cb_writable, 0, tnf->send_interval);
+            } else {
+                uv_timer_start(&(tnf->send_timer), timer_cb_writable, 1000 * flows_active, 0);
+            }
         } else {
             opCB->on_writable = on_writable;
         }
+
+        flows_active++;
     }
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
@@ -532,11 +543,11 @@ main(int argc, char *argv[])
 
     if (config_log_level == 0) {
         neat_log_level(ctx, NEAT_LOG_ERROR);
-    } else if (config_log_level == 1){
+    } else if (config_log_level == 1) {
         neat_log_level(ctx, NEAT_LOG_WARNING);
-    } else if (config_log_level == 2){
+    } else if (config_log_level == 2) {
         neat_log_level(ctx, NEAT_LOG_INFO);
-    }else {
+    } else {
         neat_log_level(ctx, NEAT_LOG_DEBUG);
     }
 
@@ -565,14 +576,9 @@ main(int argc, char *argv[])
             if (neat_open(ctx, flows[i], argv[optind], config_port, NULL, 0) != NEAT_OK) {
                 fprintf(stderr, "Could not open flow\n");
                 exit(EXIT_FAILURE);
-            } else {
-                fprintf(stderr, "Opened flow %d\n", i);
-                flows_active++;
             }
         }
-
     } else {
-
         // new neat flow
         if ((flows[0] = neat_new_flow(ctx)) == NULL) {
             fprintf(stderr, "%s - neat_new_flow failed\n", __func__);

@@ -13,14 +13,14 @@
     default values
 */
 static uint32_t config_rcv_buffer_size      = 100000;
-static uint32_t config_snd_buffer_size      = 10000;
+static uint32_t config_snd_buffer_size      = 100000;
 static uint32_t config_message_count        = 1;
 static uint32_t config_runtime_max          = 10;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_active               = 0;
 static uint16_t config_port                 = 8080;
 static uint16_t config_log_level            = 1;
-static uint16_t config_num_flows            = 3;
+static uint16_t config_num_flows            = 6;
 static uint16_t config_max_flows            = 100;
 static uint32_t config_delay                = 0;
 static uint32_t config_loss                 = 0;
@@ -50,6 +50,8 @@ static char *config_property = "{\
 static uint32_t flows_active = 0;
 static uint32_t flows_connected = 0;
 enum payload_type {PAYLOAD_DATA = 1, PAYLOAD_RESET, PAYLOAD_BULK};
+static uint32_t global_rcv_calls = 0;
+static uint32_t global_delay = 0;
 
 /*
     macro - tvp-uvp=vvp
@@ -290,6 +292,11 @@ on_readable(struct neat_flow_operations *opCB)
         tnf->rcv.delay_sum += (int) app_delay;
         tnf->payload.delay = payload->delay;
         tnf->payload.loss = payload->loss;
+
+        fprintf(stderr, "id: %d\n", payload->id);
+
+        global_delay += (uint32_t) app_delay;
+        global_rcv_calls++;
         //fprintf(stderr, "%s - app_delay %f\n", __func__, app_delay);
         //fprintf(stderr, "%s - app_delay s:%d - usec:%d\n", __func__, (int)diff_time.tv_sec, (int)diff_time.tv_usec);
 

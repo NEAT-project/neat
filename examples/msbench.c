@@ -153,7 +153,9 @@ on_all_written(struct neat_flow_operations *opCB)
         printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
         printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
         printf("\tduration\t: %.2fs\n", time_elapsed);
-        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+        if (time_elapsed > 0.0) {
+            printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+        }
 
         tnf->done = 1;
         uv_close((uv_handle_t*)&(tnf->send_timer), NULL);
@@ -308,8 +310,14 @@ on_readable(struct neat_flow_operations *opCB)
             timersub(&(tnf->rcv.tv_last), (struct timeval*) &(tnf->rcv.tv_first), &diff_time);
             time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
+            if (time_elapsed > 0.0) {
+                filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human));
+            } else {
+                sprintf(buffer_filesize_human, "0.0");
+            }
+
             logfile = fopen("msbench.txt", "a+");
-            fprintf(logfile, "%u, %u, %.2f, %.2f, %s, %.2f, %d, %d\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)), (double) tnf->rcv.delay_sum / tnf->rcv.calls, tnf->payload.loss, tnf->payload.delay);
+            fprintf(logfile, "%u, %u, %.2f, %.2f, %s, %.2f, %d, %d\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, buffer_filesize_human, (double) tnf->rcv.delay_sum / tnf->rcv.calls, tnf->payload.loss, tnf->payload.delay);
             fclose(logfile);
 
             if (config_log_level >= 1) {
@@ -317,8 +325,8 @@ on_readable(struct neat_flow_operations *opCB)
                 printf("\tbytes\t\t: %u\n",         tnf->rcv.bytes);
                 printf("\trcv-calls\t: %u\n",       tnf->rcv.calls);
                 printf("\tduration\t: %.2f s\n",    time_elapsed);
-                printf("\tbandwidth\t: %s/s\n",     filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
                 printf("\tavg-delay\t: %.2f ms\n",  (double) tnf->rcv.delay_sum / tnf->rcv.calls);
+                printf("\tbandwidth\t: %s/s\n", buffer_filesize_human);
             }
         }
 

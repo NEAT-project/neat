@@ -5,6 +5,8 @@ import logging
 import os
 import time
 
+import sys
+
 import pmdefaults as PM
 from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
 
@@ -158,8 +160,12 @@ class PIB(list):
 
     def load_policies(self, policy_dir=None):
         """Load all policies in policy directory."""
+
         if not policy_dir:
-            policy_dir = self.policy_dir;
+            policy_dir = self.policy_dir
+
+        if not os.path.exists(policy_dir):
+            sys.exit('PIB directory %s does not exist' % policy_dir)
 
         for filename in os.listdir(policy_dir):
             if filename.endswith(self.file_extension) and not filename.startswith(('.', '#')):

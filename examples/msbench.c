@@ -14,8 +14,8 @@
 */
 static uint32_t config_rcv_buffer_size      = 100000;
 static uint32_t config_snd_buffer_size      = 10000;
-static uint32_t config_message_count        = 0;
-static uint32_t config_runtime_max          = 3;
+static uint32_t config_message_count        = 1;
+static uint32_t config_runtime_max          = 10;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_active               = 0;
 static uint16_t config_port                 = 8080;
@@ -48,7 +48,8 @@ static char *config_property = "{\
 }";\
 
 static uint32_t flows_active = 0;
-enum payload_type {PAYLOAD_DATA, PAYLOAD_RESET};
+static uint32_t flows_connected = 0;
+enum payload_type {PAYLOAD_DATA = 1, PAYLOAD_RESET, PAYLOAD_BULK};
 
 /*
     macro - tvp-uvp=vvp
@@ -145,10 +146,10 @@ on_all_written(struct neat_flow_operations *opCB)
 
     // runtime- or message-limit reached
     if ((config_runtime_max > 0 && time_elapsed >= config_runtime_max) ||
-        (config_message_count > 0 && tnf->snd.calls >= config_message_count)) {
+        (config_message_count > 0 && tnf->snd.calls >= config_message_count && tnf->payload.type != PAYLOAD_BULK)) {
 
         // print statistics
-        printf("neat_write finished - statistics\n");
+        printf("neat_write finished - statistics - %d\n", tnf->payload.type);
         printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
         printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
         printf("\tduration\t: %.2fs\n", time_elapsed);
@@ -160,7 +161,6 @@ on_all_written(struct neat_flow_operations *opCB)
 
     if (tnf->send_interval && !tnf->done) {
         uv_timer_again(&(tnf->send_timer));
-
     } else {
         opCB->on_writable = on_writable;
     }
@@ -207,7 +207,6 @@ on_writable(struct neat_flow_operations *opCB)
         exit(EXIT_FAILURE);
     }
 
-    tnf->payload.type   = PAYLOAD_DATA;
     tnf->payload.tv     = tnf->snd.tv_last;
     tnf->payload.loss   = config_loss;
     tnf->payload.delay  = config_delay;
@@ -220,10 +219,15 @@ on_writable(struct neat_flow_operations *opCB)
     code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size, NULL, 0);
 
     if (tnf->done) {
+        if (config_log_level >= 2) {
+            printf("neat_write - done!\n");
+        }
         opCB->on_writable = NULL;
         opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
         neat_shutdown(opCB->ctx, opCB->flow);
+
+
         return NEAT_OK;
     }
 
@@ -329,7 +333,7 @@ timer_cb_writable(uv_timer_t *handle) {
     struct neat_flow_operations *opCB = (struct neat_flow_operations*) handle->data;
 
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
+        fprintf(stderr, "%s() - timer finished\n", __func__);
     }
 
     opCB->on_writable = on_writable;
@@ -371,7 +375,7 @@ on_connected(struct neat_flow_operations *opCB)
     opCB->on_readable = on_readable;
     if (config_active) {
         tnf->send_interval = 100;
-        tnf->payload.id = flows_active;
+        tnf->payload.id = flows_connected;
 
         if (tnf->send_interval) {
             uv_loop = neat_get_event_loop(opCB->ctx);
@@ -379,16 +383,17 @@ on_connected(struct neat_flow_operations *opCB)
             tnf->send_timer.data = opCB;
             tnf->ops = opCB;
             //int uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat)
-            if (flows_active == 0) {
+            if (flows_connected == 0) {
+                tnf->payload.type = PAYLOAD_BULK;
                 uv_timer_start(&(tnf->send_timer), timer_cb_writable, 0, tnf->send_interval);
             } else {
-                uv_timer_start(&(tnf->send_timer), timer_cb_writable, 1000 * flows_active, 0);
+                uv_timer_start(&(tnf->send_timer), timer_cb_writable, 1000 * flows_connected, 0);
             }
         } else {
             opCB->on_writable = on_writable;
         }
 
-        flows_active++;
+        flows_connected++;
     }
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
@@ -577,6 +582,8 @@ main(int argc, char *argv[])
                 fprintf(stderr, "Could not open flow\n");
                 exit(EXIT_FAILURE);
             }
+
+            flows_active++;
         }
     } else {
         // new neat flow

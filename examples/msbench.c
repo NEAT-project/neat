@@ -311,6 +311,22 @@ on_readable(struct neat_flow_operations *opCB)
         if (payload->type == PAYLOAD_DATA) {
             global_delay += (uint32_t) app_delay;
             global_rcv_calls++;
+        } else if (payload->type == PAYLOAD_RESET) {
+            fprintf(stderr, "GOT RESET!!!\n");
+            printf("\tavg-delay\t: %.2f ms\n",  (double) global_delay / global_rcv_calls);
+            timersub(&(tnf->rcv.tv_last), (struct timeval*) &(tnf->rcv.tv_first), &diff_time);
+            time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+            if (time_elapsed > 0.0) {
+                filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human));
+            } else {
+                sprintf(buffer_filesize_human, "0.0");
+            }
+            logfile = fopen("global_delay.txt", "a+");
+            fprintf(logfile, "%u, %.2f, %d, %d\n", global_rcv_calls, (double) global_delay / global_rcv_calls, tnf->payload.loss, tnf->payload.delay);
+            fclose(logfile);
+
+            global_delay = 0;
+            global_rcv_calls = 0;
         }
         //fprintf(stderr, "%s - app_delay %f\n", __func__, app_delay);
         //fprintf(stderr, "%s - app_delay s:%d - usec:%d\n", __func__, (int)diff_time.tv_sec, (int)diff_time.tv_usec);

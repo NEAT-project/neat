@@ -14,6 +14,11 @@
             "precedence": 0,
             "score": 0
         },
+       "local_interface": {
+            "value": true,
+            "precedence": 1,
+            "score": 0
+        },
         "security": {
             "value": false,
             "precedence": 0,

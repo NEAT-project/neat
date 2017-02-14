@@ -264,7 +264,7 @@ $ socat STDIO SCTP:localhost:5000
 Hello, this is NEAT!
 ```
 
-You may find the complete source for the server [here](https://github.com/NEAT-project/neat/blob/oystedal/readthedocs/examples/minimal_server.c).
+You may find the complete source for the server [here](https://github.com/NEAT-project/neat/blob/master/examples/minimal_server.c).
 
 ## A minimal client
 
@@ -334,7 +334,7 @@ When you run the client, you should see `Hi!` show up in the output from socat.
 You can type a short message followed by pressing return, and it should show
 up in the output on the client.
 
-You may find the complete source for the client [here](https://github.com/NEAT-project/neat/blob/oystedal/readthedocs/examples/minimal_client.c).
+You may find the complete source for the client [here](https://github.com/NEAT-project/neat/blob/master/examples/minimal_client.c).
 
 ## Tying the client and server together
 
@@ -350,4 +350,4 @@ The callbacks for the updated server is as follows:
 ../examples/minimal_server2.c:16-68
 ```
 
-You may find the complete source for the updated server [here](https://github.com/NEAT-project/neat/blob/oystedal/readthedocs/examples/minimal_server2.c).
+You may find the complete source for the updated server [here](https://github.com/NEAT-project/neat/blob/master/examples/minimal_server2.c).

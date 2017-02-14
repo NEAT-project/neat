@@ -296,6 +296,9 @@ void neat_free_ctx(struct neat_ctx *nc)
     struct neat_flow *flow, *prev_flow = NULL;
     neat_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
 
+    if (!nc)
+        return;
+
     if (nc->resolver) {
         neat_resolver_release(nc->resolver);
     }
@@ -2181,8 +2184,9 @@ neat_getlpaddrs(struct neat_ctx*  ctx,
            *addrs = (struct sockaddr*)malloc(namelen);
            if (*addrs) {
               memcpy(*addrs, &name, namelen);
+              return 1;
            }
-           return 1;
+           return -1; // out of memory
         }
     }
 
@@ -2551,6 +2555,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
                     break;
                 default:
                     neat_log(ctx, NEAT_LOG_ERROR, "Socket option value type (\"%d\") not supported", type);
+                    free(sockopt);
                     continue;
                 }
                 TAILQ_INSERT_TAIL(&(candidate->sock_opts), sockopt, next);
@@ -3071,7 +3076,11 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     // Find the enabled stacks based on the properties
     // nr_of_stacks = neat_property_translate_protocols(flow->propertyAttempt, stacks);
     neat_find_enabled_stacks(flow->properties, stacks, &nr_of_stacks, NULL);
-    assert(nr_of_stacks);
+    if (!nr_of_stacks) {
+        neat_io_error(ctx, flow, NEAT_ERROR_UNABLE);
+        return NEAT_ERROR_UNABLE;
+    }
+
     assert(results);
 
     flow->resolver_results = results;
@@ -3366,6 +3375,184 @@ error:
 
     neat_io_error(ctx, flow, rc);
 }
+
+
+
+static void
+send_properties_to_pm_orig(neat_ctx *ctx, neat_flow *flow)
+{
+    int rc = NEAT_ERROR_OUT_OF_MEMORY;
+    struct ifaddrs *ifaddrs = NULL;
+    json_t *array = NULL, *endpoints = NULL, *properties = NULL, *domains = NULL, *address, *port;
+    const char *home_dir;
+    const char *socket_path;
+    char socket_path_buf[128];
+
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+    socket_path = getenv("NEAT_PM_SOCKET");
+    if (!socket_path) {
+        if ((home_dir = getenv("HOME")) == NULL) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");
+
+            goto end;
+        }
+
+        rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_pm_socket", home_dir);
+        if (rc < 0 || rc >= 128) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
+            goto end;
+        }
+
+        socket_path = socket_path_buf;
+    }
+
+    if ((array = json_array()) == NULL)
+        goto end;
+
+    if ((endpoints = json_array()) == NULL)
+        goto end;
+
+    assert(ctx);
+    assert(flow);
+
+    rc = getifaddrs(&ifaddrs);
+    if (rc < 0) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "getifaddrs: %s", strerror(errno));
+        goto end;
+    }
+
+    for (struct ifaddrs *ifaddr = ifaddrs; ifaddr != NULL; ifaddr = ifaddr->ifa_next) {
+        socklen_t addrlen;
+        char namebuf[NI_MAXHOST];
+        json_t *endpoint;
+
+        // Doesn't actually contain any address (?)
+        if (ifaddr->ifa_addr == NULL) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "ifaddr entry with no address");
+            continue;
+        }
+
+        if (ifaddr->ifa_addr->sa_family != AF_INET &&
+            ifaddr->ifa_addr->sa_family != AF_INET6)
+            continue;
+
+        addrlen = (ifaddr->ifa_addr->sa_family) == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+
+        rc = getnameinfo(ifaddr->ifa_addr, addrlen, namebuf, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+
+        if (rc != 0) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "getnameinfo: %s", gai_strerror(rc));
+            continue;
+        }
+
+        if (strncmp(namebuf, "fe80::", 6) == 0) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s is a link-local address, skipping", namebuf);
+            continue;
+        }
+
+        if (flow->user_ips != NULL) {
+            size_t index;
+            json_t *addr, *ipvalue;
+            char *ip;
+            char newIp[100];
+            uint16_t found = 0;
+            for (index = 0; index < json_array_size(flow->user_ips); index++) {
+                uint32_t i, j;
+                addr = json_array_get(flow->user_ips, index);
+                ipvalue = json_object_get(addr, "value");
+                ip = json_dumps(ipvalue, JSON_ENCODE_ANY);
+                // Remove quotes
+                for (i = 1, j = 0; i <= strlen(ip) - 2; i++, j++) {
+                    newIp[j] = ip[i];
+                }
+                newIp[j] = '\0';;
+                free (ip);
+                if (strcmp(namebuf, newIp) != 0) {
+                    neat_log(ctx, NEAT_LOG_DEBUG, "no match");
+                    continue;
+                } else {
+                    found = 1;
+                    break;
+                }
+            }
+            if (found == 0) {
+                continue;
+            }
+        }
+
+        endpoint = json_pack("{ss++si}", "value", namebuf, "@", ifaddr->ifa_name, "precedence", 2);
+
+        if (endpoint == NULL)
+            goto end;
+
+        neat_log(ctx, NEAT_LOG_DEBUG, "Added endpoint \"%s@%s\" to PM request", namebuf, ifaddr->ifa_name);
+        json_array_append(endpoints, endpoint);
+        json_decref(endpoint);
+    }
+
+    properties = json_copy(flow->properties);
+
+    json_object_set(properties, "local_endpoint", endpoints);
+
+    port = json_pack("{sisi}", "value", flow->port, "precedence", 2);
+    if (port == NULL)
+        goto end;
+
+    json_object_set(properties, "port", port);
+    json_decref(port);
+
+    if ((domains = json_array()) == NULL)
+        goto end;
+
+    char *tmp = strdup(flow->name);
+    char *ptr = NULL;
+
+    char *address_name = strtok_r((char *)tmp, ",", &ptr);
+    if (address_name == NULL) {
+        address = json_pack("{sssi}", "value", flow->name, "precedence", 2);
+        if (address == NULL) {
+            free (tmp);
+            goto end;
+        }
+        json_object_set(properties, "domain_name", address);
+        json_decref(address);
+    } else {
+        while (address_name != NULL) {
+            address = json_pack("{sssi}", "value", address_name, "precedence", 2);
+            if (address == NULL) {
+                free (tmp);
+                goto end;
+            }
+
+            json_array_append(domains, address);
+
+            json_decref(address);
+            address_name = strtok_r(NULL, ",", &ptr);
+        }
+        json_object_set(properties, "domain_name", domains);
+    }
+    free (tmp);
+    json_array_append(array, properties);
+
+    neat_json_send_once(ctx, flow, socket_path, array, on_pm_reply_pre_resolve, on_pm_error);
+
+end:
+    if (ifaddrs)
+        freeifaddrs(ifaddrs);
+    if (properties)
+        json_decref(properties);
+    if (endpoints)
+        json_decref(endpoints);
+    if (array)
+        json_decref(array);
+    if (domains)
+        json_decref(domains);
+
+    if (rc != NEAT_OK)
+        neat_io_error(ctx, flow, rc);
+}
+
 
 static void
 send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
@@ -3713,6 +3900,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
     }
 
 #ifdef USRSCTP_SUPPORT
+    memset(&addr, 0, sizeof(addr));
     addr.ssp_addr = results->lh_first->dst_addr;
 
     if (usrsctp_setsockopt(flow->socket->usrsctp_socket, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr)) < 0) {
@@ -3720,6 +3908,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
         return NEAT_ERROR_IO;
     }
 #elif defined(HAVE_NETINET_SCTP_H)
+    memset(&addr, 0, sizeof(addr));
     addr.ssp_addr = results->lh_first->dst_addr;
 
     rc = setsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr));
@@ -3763,12 +3952,6 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
             return NEAT_ERROR_OK;
     }
 
-    return NEAT_ERROR_UNABLE;
-}
-
-neat_error_code
-neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow, int rate, int seconds)
-{
     return NEAT_ERROR_UNABLE;
 }
 
@@ -3838,7 +4021,6 @@ accept_resolve_cb(struct neat_resolver_results *results,
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
-        neat_io_error(ctx, flow, code);
         return NEAT_ERROR_DNS;
     }
 

@@ -5,6 +5,8 @@ import logging
 import os
 import time
 
+import sys
+
 import pmdefaults as PM
 from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
 
@@ -61,11 +63,19 @@ class NEATPolicy(object):
         self.match.add(*dict_to_properties(match))
 
         # parse augment properties
-        properties = policy_dict.get('properties', {})
+        properties = policy_dict.get('properties', [])
+        if not isinstance(properties, list):
+            # properties should be in a list.
+            properties = [properties]
         self.properties = PropertyMultiArray()
-        self.properties.add(*dict_to_properties(properties))
+        for p in properties:
+            if isinstance(p, list):
+                self.properties.add([PropertyArray.from_dict(ps) for ps in p])
+            else:
+                self.properties.add(PropertyArray.from_dict(p))
 
-        # set UID
+
+    # set UID
         self.uid = policy_dict.get('uid')
         if self.uid is None:
             self.uid = self.__gen_uid()
@@ -158,8 +168,12 @@ class PIB(list):
 
     def load_policies(self, policy_dir=None):
         """Load all policies in policy directory."""
+
         if not policy_dir:
-            policy_dir = self.policy_dir;
+            policy_dir = self.policy_dir
+
+        if not os.path.exists(policy_dir):
+            sys.exit('PIB directory %s does not exist' % policy_dir)
 
         for filename in os.listdir(policy_dir):
             if filename.endswith(self.file_extension) and not filename.startswith(('.', '#')):

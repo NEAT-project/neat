@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 import io
+import json
 import logging
 import os
 import signal
@@ -13,6 +14,7 @@ import pmdefaults as PM
 import pmhelper
 import pmrest
 import policy
+import resthelper
 from cib import CIB
 from pib import PIB
 from policy import PropertyMultiArray
@@ -126,34 +128,46 @@ def cleanup_special_properties(r):
         r.add(p)
 
 
-
 def process_request(json_str, num_candidates=10):
     """Process JSON requests from NEAT logic"""
     logging.debug(json_str)
-
-    # list which will hold all requests
     requests = []
-    try:
-        properties_list = policy.json_to_properties(json_str)
-    except policy.InvalidPropertyError:
-        return
 
-    try:
-        for request in properties_list:
-            # we create a PropertyMultiArray first and then expand it to get a list of PropertyArrays
-            # with all permutations of requested properties
-            pma = PropertyMultiArray()
-            for p in request:
-                pma.add(p)
-            requests.extend(pma.expand())
+    #FIXME this is quick workaround to use the new style PropertyArrays
+    for req in json.loads(json_str):
+        pma = PropertyMultiArray()
+        for p, val in req.items():
+            if isinstance(val, list):
+                pma.add([policy.PropertyArray(policy.dict_to_properties({p: v})[0]) for v in val])
+            else:
+                pp = policy.dict_to_properties({p: val})[0]
+                pma.add(policy.PropertyArray(pp))
+        requests.extend(pma.expand())
 
 
-    except policy.NEATPropertyError as e:
-        print(e)
-        return
-
+    # # list which will hold all requests
+    # requests = []
+    # try:
+    #     properties_list = policy.json_to_properties(json_str)
+    # except policy.InvalidPropertyError:
+    #     logging.error("invalid request")
+    #     return
+    #
+    #
+    # try:
+    #     for request in properties_list:
+    #         # we create a PropertyMultiArray first and then expand it to get a list of PropertyArrays
+    #         # with all permutations of requested properties
+    #         pma = PropertyMultiArray()
+    #         for p in request:
+    #             pma.add(p)
+    #         requests.extend(pma.expand())
+    # except policy.NEATPropertyError as e:
+    #     print(e, "here")
+    #     return
     # local_endpoint handling
     # let's try to avoid any other special handling of properties!
+
     for r in requests:
         process_special_properties(r)
 
@@ -317,6 +331,9 @@ if __name__ == "__main__":
     logging.debug("CIB directory is %s" % PM.CIB_DIR)
 
     cib = CIB(PM.CIB_DIR)
+    for slim in resthelper.gen_cibs():
+        cib.import_json(slim)
+
     profiles = PIB(PM.PIB_DIR, file_extension='.profile')
     pib = PIB(PM.PIB_DIR, file_extension='.policy')
 

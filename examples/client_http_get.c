@@ -17,6 +17,7 @@
     client_http_get [OPTIONS] HOST
     -u : URI
     -n : number of requests/flows
+    -R : receive buffer size in byte
     -v : log level (0 .. 2)
 
 **********************************************************************/
@@ -33,14 +34,14 @@
     } while (0)
 #endif
 
-static int          result                  = 0;
-static uint32_t     config_rcv_buffer_size  = 32*1024*1024; // 32MB rcv buffer
-static uint32_t     config_max_flows        = 2000;
-static uint8_t      config_log_level        = 0;
-static char         request[512];
-static uint32_t     flows_active            = 0;
-static const char   *request_tail           = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static char         *config_property        = "\
+static int           result                  = 0;
+static uint32_t      config_rcv_buffer_size  = 32*1024*1024; // 32MB rcv buffer
+static uint32_t      config_max_flows        = 2000;
+static uint8_t       config_log_level        = 0;
+static char          request[512];
+static uint32_t      flows_active            = 0;
+static const char    *request_tail           = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
+static char          *config_property        = "\
 {\
     \"transport\": [\
         {\
@@ -57,6 +58,7 @@ static char         *config_property        = "\
         \"precedence\": 1\
     }\
 }";
+static unsigned char *buffer                 = NULL;
 
 struct stat_flow {
     uint32_t rcv_bytes;
@@ -86,7 +88,6 @@ static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
-    unsigned char* buffer = malloc(config_rcv_buffer_size);
     uint32_t bytes_read = 0;
     struct stat_flow *stat = opCB->userData;
     neat_error_code code;
@@ -162,7 +163,6 @@ on_readable(struct neat_flow_operations *opCB)
            // fwrite(buffer, sizeof(char), bytes_read, stdout);
         }
     }
-    free(buffer);
     return NEAT_OK;
 }
 
@@ -275,7 +275,7 @@ main(int argc, char *argv[])
 
     snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
 
-    while ((arg = getopt(argc, argv, "P:u:n:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:R:u:n:v:")) != -1) {
         switch(arg) {
         case 'P':
             if (read_file(optarg, &arg_property) < 0) {
@@ -286,6 +286,9 @@ main(int argc, char *argv[])
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - properties: %s\n", __func__, arg_property);
             }
+            break;
+        case 'R':
+            config_rcv_buffer_size = atoi(optarg);
             break;
         case 'u':
             snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);
@@ -316,6 +319,8 @@ main(int argc, char *argv[])
     }
 
     printf("%d flows - requesting: %s\n", num_flows, request);
+
+    buffer = malloc(config_rcv_buffer_size);
 
     if ((ctx = neat_init_ctx()) == NULL) {
         fprintf(stderr, "could not initialize context\n");
@@ -379,6 +384,9 @@ cleanup:
 
     if (arg_property) {
         free(arg_property);
+    }
+    if (buffer) {
+        free(buffer);
     }
     fprintf(stderr, "returning with %d\n", result);
     exit(result);

@@ -21,14 +21,20 @@ static const char *request_tail = "User-agent: libneat\r\nConnection: close\r\n\
 static char *config_property = "{\
     \"transport\": [\
         {\
-            \"value\": \"TCP\",\
+            \"value\": \"SCTP\",\
             \"precedence\": 1\
         }\
     ],\
     \"security\": {\
         \"value\": true,\
         \"precedence\": 2\
-    }\
+    },\
+    \"local_ips\": [\
+        { \
+            \"value\": \"127.0.0.1\", \
+            \"precedence\": 1 \
+        } \
+    ] \
 }";\
 /*
 static char *config_property = "{\
@@ -144,14 +150,19 @@ int main(int argc, char *argv[])
         goto cleanup;
     }
 
-    neat_set_property(ctx, flow, config_property);
+    if (neat_set_property(ctx, flow, config_property)) {
+        fprintf(stderr, "%s - error: neat_set_property\n", __func__);
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
 
     ops.on_connected = on_connected;
     ops.on_error = on_error;
     neat_set_operations(ctx, flow, &ops);
+    neat_log_level(ctx, NEAT_LOG_DEBUG);
 
     // wait for on_connected or on_error to be invoked
-    if (neat_open(ctx, flow, argv[1], 443, NULL, 0) == NEAT_OK)
+    if (neat_open(ctx, flow, argv[1], 23232, NULL, 0) == NEAT_OK)
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     else {
         fprintf(stderr, "Could not open flow\n");

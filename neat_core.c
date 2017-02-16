@@ -296,6 +296,9 @@ void neat_free_ctx(struct neat_ctx *nc)
     struct neat_flow *flow, *prev_flow = NULL;
     neat_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
 
+    if (!nc)
+        return;
+
     if (nc->resolver) {
         neat_resolver_release(nc->resolver);
     }
@@ -3807,7 +3810,6 @@ accept_resolve_cb(struct neat_resolver_results *results,
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
-        neat_io_error(ctx, flow, code);
         return NEAT_ERROR_DNS;
     }
 

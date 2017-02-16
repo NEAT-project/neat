@@ -23,25 +23,6 @@ static char *config_property = "{\
         {\
             \"value\": \"SCTP\",\
             \"precedence\": 1\
-        }\
-    ],\
-    \"security\": {\
-        \"value\": true,\
-        \"precedence\": 2\
-    },\
-    \"local_ips\": [\
-        { \
-            \"value\": \"127.0.0.1\", \
-            \"precedence\": 1 \
-        } \
-    ] \
-}";\
-/*
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
         },\
         {\
             \"value\": \"SCTP/UDP\",\
@@ -57,7 +38,7 @@ static char *config_property = "{\
         \"precedence\": 2\
     }\
 }";\
-*/
+
 
 static neat_error_code on_error(struct neat_flow_operations *opCB)
 {
@@ -162,7 +143,7 @@ int main(int argc, char *argv[])
     neat_log_level(ctx, NEAT_LOG_DEBUG);
 
     // wait for on_connected or on_error to be invoked
-    if (neat_open(ctx, flow, argv[1], 23232, NULL, 0) == NEAT_OK)
+    if (neat_open(ctx, flow, argv[1], 443, NULL, 0) == NEAT_OK)
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     else {
         fprintf(stderr, "Could not open flow\n");

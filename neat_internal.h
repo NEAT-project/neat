@@ -186,6 +186,7 @@ struct security_data
     neat_flow_operations_fx pushed_on_connected;
     neat_flow_operations_fx pushed_on_readable;
     neat_flow_operations_fx pushed_on_writable;
+    uint8_t state;
 };
 
 struct neat_dtls_data
@@ -193,8 +194,6 @@ struct neat_dtls_data
     void *userData;
 
     void (*dtor)(struct neat_dtls_data *);
-    neat_write_impl writefx;
-    neat_read_impl  readfx;
 };
 
 struct neat_pollable_socket

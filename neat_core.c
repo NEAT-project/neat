@@ -919,12 +919,14 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 
     neat_log(ctx, NEAT_LOG_INFO, "Connected: %s/%s", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6"));
 
-    if (!flow->operations || !flow->operations->on_connected) {
-        return;
+    if (flow->operations && flow->operations->on_connected) {
+        READYCALLBACKSTRUCT;
+        flow->operations->on_connected(flow->operations);
     }
 
-    READYCALLBACKSTRUCT;
-    flow->operations->on_connected(flow->operations);
+    if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+        neat_dtls_connect(ctx, flow);
+    }
 }
 
 static void io_writable(neat_ctx *ctx, neat_flow *flow, int stream_id, neat_error_code code)
@@ -1200,7 +1202,6 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
     ssize_t n;
     struct msghdr msghdr;
     //Not used when notifications aren't available:
-printf("io_readable\n");
 #ifdef MSG_NOTIFICATION
     int sctp_event_ret = 0;
 #endif //MSG_NOTIFICATION
@@ -1238,6 +1239,48 @@ printf("io_readable\n");
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+    if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+        socklen_t len;
+        int ret = 0;
+        struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+
+        if (resize_read_buffer(flow) != READ_OK) {
+            neat_log(ctx, NEAT_LOG_WARNING, "%s - READ_WITH_ERROR 7", __func__);
+            return READ_WITH_ERROR;
+        }
+
+        len = SSL_read(private->ssl, flow->readBuffer + flow->readBufferSize,
+                       flow->readBufferAllocation - flow->readBufferSize);
+        switch (SSL_get_error(private->ssl, len)) {
+            case SSL_ERROR_NONE:
+                neat_log(ctx, NEAT_LOG_DEBUG, "%s: DTLS read %d bytes", __func__, len);
+                flow->readBufferSize += len;
+                flow->readBufferMsgComplete = 1;
+                break;
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                /* Just try again */
+                uvpollable_cb(flow->socket->handle, NEAT_OK, UV_READABLE | UV_WRITABLE);
+                break;
+            case SSL_ERROR_ZERO_RETURN:
+                neat_log(ctx, NEAT_LOG_DEBUG, "%s: EOF received",  __func__);
+                ret = READ_WITH_ZERO;
+                flow->readBufferMsgComplete = 1;
+                break;
+            case SSL_ERROR_SYSCALL:
+            case SSL_ERROR_SSL:
+                neat_log(ctx, NEAT_LOG_DEBUG, "%s (%d)\n", ERR_error_string(ERR_get_error(), (char *)flow->readBuffer + flow->readBufferSize), SSL_get_error(private->ssl, len));
+                break;
+            default:
+                printf("Unexpected error while reading!\n");
+                break;
+        }
+        if (flow->operations->on_readable) {
+            READYCALLBACKSTRUCT;
+            flow->operations->on_readable(flow->operations);
+        }
+        return ret;
+    }
     if (!flow->operations) {
         neat_log(ctx, NEAT_LOG_DEBUG, "%s - No operations", __func__);
         return READ_WITH_ERROR;
@@ -1982,9 +2025,13 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
                     flow->firstWritePending = 1;
                     uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
                 }
-            } else if (flow->socket->stack == NEAT_STACK_SCTP) {
-                neat_dtls_connect(ctx, flow);
+            } else {
+                flow->firstWritePending = 1;
+                uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
             }
+        } else {
+            flow->firstWritePending = 1;
+            uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
         }
     } else {
         neat_log(ctx, NEAT_LOG_DEBUG, "%s - NOT first connect", __func__);
@@ -2028,6 +2075,15 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     }
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+    if (pollable_socket->flow->security_needed && neat_base_stack(pollable_socket->stack) == NEAT_STACK_SCTP) {
+        struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+        if (SSL_get_shutdown(private->ssl) & SSL_RECEIVED_SHUTDOWN) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "SSL_shutdown received: close socket");
+            flow->closefx(ctx, flow);
+            return;
+        }
+    }
 
     if ((events & UV_READABLE) && flow && flow->acceptPending) {
         if (pollable_socket->stack == NEAT_STACK_UDP ||
@@ -4323,17 +4379,20 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 
             msghdr.msg_flags = 0;
             if (flow->socket->fd != -1) {
-                if (flow->security_needed && flow->socket->stack == NEAT_STACK_SCTP) {
-                   printf("call SSL_write()\n");
+                if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
                     struct security_data *private = (struct security_data *) flow->dtls_data->userData;
                     struct bio_dgram_sctp_sndinfo sinfo;
 	                memset(&sinfo, 0, sizeof(struct bio_dgram_sctp_sndinfo));
 	                BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(struct bio_dgram_sctp_sndinfo), &sinfo);
-                socklen_t size = SSL_write(private->ssl, iov.iov_base, len);
-                printf("SSL write error: ");
-                printf("len=%d\n", size);
+                    socklen_t size = SSL_write(private->ssl, msg->buffered + msg->bufferedOffset, msg->bufferedSize);
+                    if (SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_WRITE || SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_READ) {
+                        uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
+                    } else if (len > 0) {
+                        msg->bufferedOffset += len;
+                        msg->bufferedSize -= len;
+                    }
                 } else {
-                rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+                    rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
                 }
             } else {
 #if defined(USRSCTP_SUPPORT)
@@ -4351,16 +4410,17 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 assert(false);
 #endif
             }
-
-            if (rv < 0) {
-                if (errno == EWOULDBLOCK) {
-                    return NEAT_ERROR_WOULD_BLOCK;
-                } else {
-                    return NEAT_ERROR_IO;
+            if (!flow->security_needed) {
+                if (rv < 0) {
+                    if (errno == EWOULDBLOCK) {
+                        return NEAT_ERROR_WOULD_BLOCK;
+                    } else {
+                        return NEAT_ERROR_IO;
+                    }
                 }
+                msg->bufferedOffset += rv;
+                msg->bufferedSize -= rv;
             }
-            msg->bufferedOffset += rv;
-            msg->bufferedSize -= rv;
         } while (msg->bufferedSize > 0);
         TAILQ_REMOVE(&flow->bufferedMessages, msg, message_next);
         free(msg->buffered);
@@ -4440,6 +4500,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     ssize_t rv = 0;
     size_t len;
     int atomic;
+    struct security_data *private;
 
     int stream_id            = 0;
     int has_stream_id        = 0;
@@ -4546,6 +4607,13 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         msghdr.msg_iovlen = 1;
 
         if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+            if (flow->security_needed) {
+                private = (struct security_data *) flow->dtls_data->userData;
+                struct bio_dgram_sctp_sndinfo sinfo;
+                memset(&sinfo, 0, sizeof(struct bio_dgram_sctp_sndinfo));
+                sinfo.snd_sid = stream_id;
+                BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(struct bio_dgram_sctp_sndinfo), &sinfo);
+            } else {
 #if defined(SCTP_SNDINFO)
             msghdr.msg_control = cmsgbuf;
             msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo));
@@ -4587,6 +4655,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             msghdr.msg_control = NULL;
             msghdr.msg_controllen = 0;
 #endif
+            }
         } else {
             msghdr.msg_control = NULL;
             msghdr.msg_controllen = 0;
@@ -4594,10 +4663,8 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
         msghdr.msg_flags = 0;
         if (flow->socket->fd != -1) {
-            if (flow->security_needed && flow->socket->stack == NEAT_STACK_SCTP) {
-                struct security_data *private = (struct security_data *) flow->dtls_data->userData;
-                socklen_t len = SSL_write(private->ssl, buffer, amt);
-                printf("len=%d\n", len);
+            if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+                rv = SSL_write(private->ssl, buffer, len);
             } else {
                 rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
             }
@@ -4872,7 +4939,6 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         neat_log(ctx, NEAT_LOG_ERROR, "Failed to create he socket");
         return -1;
     }
-    printf("socket %d created\n", candidate->pollable_socket->fd);
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
 
@@ -5036,12 +5102,16 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                    sizeof(int));
 #endif
 #ifdef SCTP_EXPLICIT_EOR
-        if (setsockopt(candidate->pollable_socket->fd,
-                       IPPROTO_SCTP,
-                       SCTP_EXPLICIT_EOR,
-                       &enable,
-                       sizeof(int)) == 0)
-            candidate->pollable_socket->sctp_explicit_eor = 1;
+        if (!candidate->pollable_socket->flow->security_needed) {
+            if (setsockopt(candidate->pollable_socket->fd,
+                           IPPROTO_SCTP,
+                           SCTP_EXPLICIT_EOR,
+                           &enable,
+                           sizeof(int)) == 0)
+                candidate->pollable_socket->sctp_explicit_eor = 1;
+        } else {
+            candidate->pollable_socket->sctp_explicit_eor = 0;
+        }
 #endif
 #ifndef USRSCTP_SUPPORT
         // Subscribe to events needed for callbacks
@@ -5159,7 +5229,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     uv_poll_init(candidate->ctx->loop,
                  candidate->pollable_socket->handle,
                  candidate->pollable_socket->fd); // makes fd nb as side effect
-    if (candidate->pollable_socket->flow->security_needed && candidate->pollable_socket->stack == NEAT_STACK_SCTP) {
+    if (candidate->pollable_socket->flow->security_needed && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
             neat_log(ctx, NEAT_LOG_DEBUG, "Start DTLS over SCTP");
             neat_dtls_install(ctx, candidate->pollable_socket);
     }
@@ -5399,10 +5469,36 @@ neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 #endif // SCTP_MULTISTREAMING
     }
 
-    if (shutdown(flow->socket->fd, SHUT_WR) == 0) {
+    if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+        struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+        socklen_t len = SSL_shutdown(private->ssl);
+        switch (SSL_get_error(private->ssl, len)) {
+            case SSL_ERROR_NONE:
+                neat_log(ctx, NEAT_LOG_DEBUG, "SSL shutdown finished");
+                break;
+            case SSL_ERROR_WANT_WRITE:
+            case SSL_ERROR_WANT_READ:
+                /* Just try again later */
+                uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
+                break;
+            case SSL_ERROR_SYSCALL:
+                if (SSL_get_shutdown(private->ssl) & SSL_SENT_SHUTDOWN) {
+                    SSL_shutdown(private->ssl);
+                }
+                break;
+            case SSL_ERROR_SSL:
+                break;
+            default:
+                printf("Unexpected error while shutting down!\n");
+                break;
+        }
         return NEAT_OK;
     } else {
-        return NEAT_ERROR_IO;
+        if (shutdown(flow->socket->fd, SHUT_WR) == 0) {
+            return NEAT_OK;
+        } else {
+            return NEAT_ERROR_IO;
+        }
     }
 }
 
@@ -5927,10 +6023,7 @@ neat_write(struct neat_ctx *ctx,
         }
         return filter->writefx(ctx, flow, filter, buffer, amt, optional, opt_count);
     }
-    /*
-    if (flow->security_needed && flow->socket->stack == NEAT_STACK_SCTP) {
-        return flow->dtls_data->writefx(ctx, flow, buffer, amt, optional, opt_count);
-    }*/
+
     // there were no filters. call the flow writefx
     return flow->writefx(ctx, flow, buffer, amt, optional, opt_count);
 }
@@ -6028,6 +6121,7 @@ neat_flow
 
     rv->socket->flow = rv;
     rv->socket->fd = 0;
+    rv->readBufferSize = 0;
 #if defined(USRSCTP_SUPPORT)
     rv->socket->usrsctp_socket = NULL;
     if (neat_base_stack(rv->socket->stack) == NEAT_STACK_SCTP) {

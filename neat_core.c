@@ -3049,6 +3049,8 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     struct neat_resolver_res *result;
     struct neat_he_candidates *candidates;
 
+    assert(results);
+
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
@@ -3059,8 +3061,10 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     // Find the enabled stacks based on the properties
     // nr_of_stacks = neat_property_translate_protocols(flow->propertyAttempt, stacks);
     neat_find_enabled_stacks(flow->properties, stacks, &nr_of_stacks, NULL);
-    assert(nr_of_stacks);
-    assert(results);
+    if (!nr_of_stacks) {
+        neat_io_error(ctx, flow, NEAT_ERROR_UNABLE);
+        return NEAT_ERROR_UNABLE;
+    }
 
     flow->resolver_results = results;
 

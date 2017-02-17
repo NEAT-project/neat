@@ -16,6 +16,8 @@
     -u : URI
     -n : number of requests/flows (default: 3)
     -c : number of contexts (default: 1)
+    -R : receive buffer size in byte
+    -v : log level (0 .. 4)
 
  Each new flow will be put on the next context (if more than one context is
  specified) and when reaching the end of the total number of contexts, it
@@ -119,6 +121,7 @@ main(int argc, char *argv[])
     int streams_going = 0;
     uint32_t num_ctxs = 1;
     result = EXIT_SUCCESS;
+    int config_log_level = NEAT_LOG_WARNING;
 
     memset(&ops, 0, sizeof(ops));
     memset(flows, 0, sizeof(flows));
@@ -126,7 +129,7 @@ main(int argc, char *argv[])
 
     snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
 
-    while ((arg = getopt(argc, argv, "u:n:c:")) != -1) {
+    while ((arg = getopt(argc, argv, "u:n:c:R:v:")) != -1) {
         switch(arg) {
         case 'u':
             snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);
@@ -145,8 +148,25 @@ main(int argc, char *argv[])
             }
             fprintf(stderr, "%s - option - number of contexts: %d\n", __func__, num_ctxs);
             break;
+        case 'R':
+            config_rcv_buffer_size = atoi(optarg);
+            fprintf(stderr, "%s - option - receive buffer size: %d\n",
+                    __func__, config_rcv_buffer_size);
+            break;
+        case 'v':
+            config_log_level = atoi(optarg);
+            fprintf(stderr, "%s - option - log level: %d\n",
+                    __func__, config_log_level);
+            break;
         default:
-            fprintf(stderr, "usage: client_http_get [OPTIONS] HOST\n");
+            fprintf(stderr, "usage: client_http_run_once [OPTIONS] HOST\n"
+                    " -u <path> - to send with GET\n"
+                    " -n <num>  - number of requests/flows (default: %d)\n"
+                    " -c <num>  - number of contexts (default: %d)\n"
+                    " -R <size> - receive buffer size in byte (default: %d\n"
+                    " -v <lvl>  - log level, 0 - 4 (default: %d)\n",
+                    num_flows, num_ctxs, config_rcv_buffer_size,
+                    config_log_level);
             goto cleanup;
             break;
         }
@@ -176,7 +196,7 @@ main(int argc, char *argv[])
             result = EXIT_FAILURE;
             goto cleanup;
         }
-        neat_log_level(ctx[c], NEAT_LOG_OFF);
+        neat_log_level(ctx[c], config_log_level);
 
         neat_set_property(ctx[c], flows[i], config_property);
 

@@ -18,6 +18,8 @@
     -c : number of contexts (default: 1)
     -R : receive buffer size in byte
     -v : log level (0 .. 4)
+    -t : use tcp as transport protocol
+    -s : use sctp as transport protocol
 
  Each new flow will be put on the next context (if more than one context is
  specified) and when reaching the end of the total number of contexts, it
@@ -30,7 +32,7 @@ static uint32_t config_max_flows = 500;
 static uint32_t config_max_ctxs = 50;
 static char request[512];
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static char *config_property = "{\
+static char *config_property_sctp_tcp = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
@@ -42,6 +44,26 @@ static char *config_property = "{\
         },\
         {\
             \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";\
+static char *config_property_tcp = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";\
+static char *config_property_sctp = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"SCTP/UDP\",\
             \"precedence\": 1\
         }\
     ]\
@@ -120,16 +142,18 @@ main(int argc, char *argv[])
     int backend_fds[config_max_ctxs];
     int streams_going = 0;
     uint32_t num_ctxs = 1;
-    result = EXIT_SUCCESS;
     int config_log_level = NEAT_LOG_WARNING;
+    const char *config_property;
 
+    result = EXIT_SUCCESS;
     memset(&ops, 0, sizeof(ops));
     memset(flows, 0, sizeof(flows));
     memset(ctx, 0, sizeof(ctx));
+    config_property = config_property_sctp_tcp;
 
     snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
 
-    while ((arg = getopt(argc, argv, "u:n:c:R:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "u:n:c:sR:tv:")) != -1) {
         switch(arg) {
         case 'u':
             snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);
@@ -157,6 +181,12 @@ main(int argc, char *argv[])
             config_log_level = atoi(optarg);
             fprintf(stderr, "%s - option - log level: %d\n",
                     __func__, config_log_level);
+            break;
+        case 's':
+            config_property = config_property_sctp;
+            break;
+        case 't':
+            config_property = config_property_tcp;
             break;
         default:
             fprintf(stderr, "usage: client_http_run_once [OPTIONS] HOST\n"

@@ -34,14 +34,14 @@
     } while (0)
 #endif
 
-static int          result                  = 0;
-static uint32_t     config_rcv_buffer_size  = 32*1024*1024; // 32MB rcv buffer
-static uint32_t     config_max_flows        = 2000;
-static uint8_t      config_log_level        = 0;
-static char         request[512];
-static uint32_t     flows_active            = 0;
-static const char   *request_tail           = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static char         *config_property        = "\
+static int           result                  = 0;
+static uint32_t      config_rcv_buffer_size  = 32*1024*1024; // 32MB rcv buffer
+static uint32_t      config_max_flows        = 2000;
+static uint8_t       config_log_level        = 0;
+static char          request[512];
+static uint32_t      flows_active            = 0;
+static const char    *request_tail           = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
+static char          *config_property        = "\
 {\
     \"transport\": [\
         {\
@@ -58,7 +58,7 @@ static char         *config_property        = "\
         \"precedence\": 1\
     }\
 }";
-unsigned char       *buffer                 = NULL;
+static unsigned char *buffer                 = NULL;
 
 struct stat_flow {
     uint32_t rcv_bytes;
@@ -321,6 +321,7 @@ main(int argc, char *argv[])
     printf("%d flows - requesting: %s\n", num_flows, request);
 
     buffer = malloc(config_rcv_buffer_size);
+
     if ((ctx = neat_init_ctx()) == NULL) {
         fprintf(stderr, "could not initialize context\n");
         result = EXIT_FAILURE;

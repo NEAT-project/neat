@@ -47,7 +47,7 @@ static char *config_property_sctp_tcp = "{\
             \"precedence\": 1\
         }\
     ]\
-}";\
+}";
 static char *config_property_tcp = "{\
     \"transport\": [\
         {\
@@ -55,7 +55,7 @@ static char *config_property_tcp = "{\
             \"precedence\": 1\
         }\
     ]\
-}";\
+}";
 static char *config_property_sctp = "{\
     \"transport\": [\
         {\

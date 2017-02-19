@@ -58,6 +58,7 @@ static char         *config_property        = "\
         \"precedence\": 1\
     }\
 }";
+unsigned char       *buffer                 = NULL;
 
 struct stat_flow {
     uint32_t rcv_bytes;
@@ -87,7 +88,6 @@ static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
-    unsigned char* buffer = malloc(config_rcv_buffer_size);
     uint32_t bytes_read = 0;
     struct stat_flow *stat = opCB->userData;
     neat_error_code code;
@@ -163,7 +163,6 @@ on_readable(struct neat_flow_operations *opCB)
            // fwrite(buffer, sizeof(char), bytes_read, stdout);
         }
     }
-    free(buffer);
     return NEAT_OK;
 }
 
@@ -321,6 +320,7 @@ main(int argc, char *argv[])
 
     printf("%d flows - requesting: %s\n", num_flows, request);
 
+    buffer = malloc(config_rcv_buffer_size);
     if ((ctx = neat_init_ctx()) == NULL) {
         fprintf(stderr, "could not initialize context\n");
         result = EXIT_FAILURE;
@@ -383,6 +383,9 @@ cleanup:
 
     if (arg_property) {
         free(arg_property);
+    }
+    if (buffer) {
+        free(buffer);
     }
     fprintf(stderr, "returning with %d\n", result);
     exit(result);

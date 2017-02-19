@@ -17,6 +17,7 @@
     client_http_get [OPTIONS] HOST
     -u : URI
     -n : number of requests/flows
+    -R : receive buffer size in byte
     -v : log level (0 .. 2)
 
 **********************************************************************/
@@ -275,7 +276,7 @@ main(int argc, char *argv[])
 
     snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
 
-    while ((arg = getopt(argc, argv, "P:u:n:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:R:u:n:v:")) != -1) {
         switch(arg) {
         case 'P':
             if (read_file(optarg, &arg_property) < 0) {
@@ -286,6 +287,9 @@ main(int argc, char *argv[])
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - properties: %s\n", __func__, arg_property);
             }
+            break;
+        case 'R':
+            config_rcv_buffer_size = atoi(optarg);
             break;
         case 'u':
             snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);

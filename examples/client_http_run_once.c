@@ -67,7 +67,8 @@ static char *config_property_sctp = "{\
             \"precedence\": 1\
         }\
     ]\
-}";\
+}";
+static unsigned char *buffer = NULL;
 
 static neat_error_code
 on_error(struct neat_flow_operations *opCB)
@@ -80,7 +81,6 @@ static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
-    unsigned char buffer[config_rcv_buffer_size];
     uint32_t bytes_read = 0;
     neat_error_code code;
 
@@ -209,6 +209,8 @@ main(int argc, char *argv[])
 
     printf("%d flows - requesting: %s\n", num_flows, request);
 
+    buffer = malloc(config_rcv_buffer_size);
+
     for (i = 0; i < num_ctxs; i++) {
         if ((ctx[i] = neat_init_ctx()) == NULL) {
             fprintf(stderr, "could not initialize context %d\n", i);
@@ -295,6 +297,9 @@ cleanup:
     }
     for (c = 0; c < num_ctxs; c++) {
       neat_free_ctx(ctx[c]);
+    }
+    if (buffer) {
+        free(buffer);
     }
     exit(result);
 }

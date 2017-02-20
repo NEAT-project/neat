@@ -69,12 +69,21 @@ static char *config_property_sctp = "{\
     ]\
 }";
 static unsigned char *buffer = NULL;
+static int streams_going = 0;
+
+struct user_flow {
+    struct neat_flow *flow;
+    uint32_t id;
+};
 
 static neat_error_code
 on_error(struct neat_flow_operations *opCB)
 {
+    struct user_flow *f = opCB->userData;
     fprintf(stderr, "%s\n", __func__);
-    exit(EXIT_FAILURE);
+    fprintf(stderr, "[on_error on flow %u]\n", f->id);
+    streams_going--;
+    return 0;
 }
 
 static neat_error_code
@@ -92,8 +101,9 @@ on_readable(struct neat_flow_operations *opCB)
     }
 
     if (!bytes_read) { // eof
-        int *numstreams = opCB->userData;
-        (*numstreams)--; /* one stream less */
+        struct user_flow *f = opCB->userData;
+        streams_going--; /* one stream less */
+        fprintf(stderr, "[Flow %u ended, %d to go]\n", f->id, streams_going);
         fflush(stdout);
         opCB->on_readable = NULL; // do not read more
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
@@ -131,7 +141,7 @@ int
 main(int argc, char *argv[])
 {
     struct neat_ctx *ctx[config_max_ctxs];
-    struct neat_flow *flows[config_max_flows];
+    struct user_flow flows[config_max_flows];
     struct neat_flow_operations ops[config_max_flows];
     struct pollfd fds[config_max_ctxs];
     int result = 0;
@@ -140,7 +150,6 @@ main(int argc, char *argv[])
     uint32_t i = 0;
     uint32_t c = 0;
     int backend_fds[config_max_ctxs];
-    int streams_going = 0;
     uint32_t num_ctxs = 1;
     int config_log_level = NEAT_LOG_WARNING;
     const char *config_property;
@@ -223,23 +232,24 @@ main(int argc, char *argv[])
         if (c >= num_ctxs) {
             c = 0;
         }
-        if ((flows[i] = neat_new_flow(ctx[c])) == NULL) {
+        if ((flows[i].flow = neat_new_flow(ctx[c])) == NULL) {
             fprintf(stderr, "could not initialize context\n");
             result = EXIT_FAILURE;
             goto cleanup;
         }
         neat_log_level(ctx[c], config_log_level);
 
-        neat_set_property(ctx[c], flows[i], config_property);
+        neat_set_property(ctx[c], flows[i].flow, config_property);
 
         ops[i].on_connected = on_connected;
         ops[i].on_error = on_error;
-        ops[i].userData = &streams_going;
+        flows[i].id = streams_going;
+        ops[i].userData = &flows[i];
         streams_going++;
-        neat_set_operations(ctx[c], flows[i], &(ops[i]));
+        neat_set_operations(ctx[c], flows[i].flow, &(ops[i]));
 
         // wait for on_connected or on_error to be invoked
-        if (neat_open(ctx[c], flows[i], argv[argc - 1], 80, NULL, 0) != NEAT_OK) {
+        if (neat_open(ctx[c], flows[i].flow, argv[argc - 1], 80, NULL, 0) != NEAT_OK) {
             fprintf(stderr, "Could not open flow\n");
             result = EXIT_FAILURE;
         } else {
@@ -287,12 +297,13 @@ main(int argc, char *argv[])
         }
     }
 cleanup:
+    fprintf(stderr, "Cleanup!\n");
     for (i = 0, c = 0; i < num_flows; i++, c++) {
       if (c >= num_ctxs) {
         c = 0;
       }
-      if (flows[i] != NULL) {
-        neat_close(ctx[c], flows[i]);
+      if (flows[i].flow != NULL) {
+        neat_close(ctx[c], flows[i].flow);
       }
     }
     for (c = 0; c < num_ctxs; c++) {

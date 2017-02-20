@@ -16,6 +16,10 @@
     -u : URI
     -n : number of requests/flows (default: 3)
     -c : number of contexts (default: 1)
+    -R : receive buffer size in byte
+    -v : log level (0 .. 4)
+    -t : use tcp as transport protocol
+    -s : use sctp as transport protocol
 
  Each new flow will be put on the next context (if more than one context is
  specified) and when reaching the end of the total number of contexts, it
@@ -28,7 +32,7 @@ static uint32_t config_max_flows = 500;
 static uint32_t config_max_ctxs = 50;
 static char request[512];
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static char *config_property = "{\
+static char *config_property_sctp_tcp = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
@@ -43,7 +47,28 @@ static char *config_property = "{\
             \"precedence\": 1\
         }\
     ]\
-}";\
+}";
+static char *config_property_tcp = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";
+static char *config_property_sctp = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"SCTP/UDP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";
+static unsigned char *buffer = NULL;
 
 static neat_error_code
 on_error(struct neat_flow_operations *opCB)
@@ -56,7 +81,6 @@ static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
-    unsigned char buffer[config_rcv_buffer_size];
     uint32_t bytes_read = 0;
     neat_error_code code;
 
@@ -118,15 +142,18 @@ main(int argc, char *argv[])
     int backend_fds[config_max_ctxs];
     int streams_going = 0;
     uint32_t num_ctxs = 1;
-    result = EXIT_SUCCESS;
+    int config_log_level = NEAT_LOG_WARNING;
+    const char *config_property;
 
+    result = EXIT_SUCCESS;
     memset(&ops, 0, sizeof(ops));
     memset(flows, 0, sizeof(flows));
     memset(ctx, 0, sizeof(ctx));
+    config_property = config_property_sctp_tcp;
 
     snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
 
-    while ((arg = getopt(argc, argv, "u:n:c:")) != -1) {
+    while ((arg = getopt(argc, argv, "u:n:c:sR:tv:")) != -1) {
         switch(arg) {
         case 'u':
             snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);
@@ -145,8 +172,31 @@ main(int argc, char *argv[])
             }
             fprintf(stderr, "%s - option - number of contexts: %d\n", __func__, num_ctxs);
             break;
+        case 'R':
+            config_rcv_buffer_size = atoi(optarg);
+            fprintf(stderr, "%s - option - receive buffer size: %d\n",
+                    __func__, config_rcv_buffer_size);
+            break;
+        case 'v':
+            config_log_level = atoi(optarg);
+            fprintf(stderr, "%s - option - log level: %d\n",
+                    __func__, config_log_level);
+            break;
+        case 's':
+            config_property = config_property_sctp;
+            break;
+        case 't':
+            config_property = config_property_tcp;
+            break;
         default:
-            fprintf(stderr, "usage: client_http_get [OPTIONS] HOST\n");
+            fprintf(stderr, "usage: client_http_run_once [OPTIONS] HOST\n"
+                    " -u <path> - to send with GET\n"
+                    " -n <num>  - number of requests/flows (default: %d)\n"
+                    " -c <num>  - number of contexts (default: %d)\n"
+                    " -R <size> - receive buffer size in byte (default: %d\n"
+                    " -v <lvl>  - log level, 0 - 4 (default: %d)\n",
+                    num_flows, num_ctxs, config_rcv_buffer_size,
+                    config_log_level);
             goto cleanup;
             break;
         }
@@ -158,6 +208,8 @@ main(int argc, char *argv[])
     }
 
     printf("%d flows - requesting: %s\n", num_flows, request);
+
+    buffer = malloc(config_rcv_buffer_size);
 
     for (i = 0; i < num_ctxs; i++) {
         if ((ctx[i] = neat_init_ctx()) == NULL) {
@@ -176,7 +228,7 @@ main(int argc, char *argv[])
             result = EXIT_FAILURE;
             goto cleanup;
         }
-        neat_log_level(ctx[c], NEAT_LOG_OFF);
+        neat_log_level(ctx[c], config_log_level);
 
         neat_set_property(ctx[c], flows[i], config_property);
 
@@ -245,6 +297,9 @@ cleanup:
     }
     for (c = 0; c < num_ctxs; c++) {
       neat_free_ctx(ctx[c]);
+    }
+    if (buffer) {
+        free(buffer);
     }
     exit(result);
 }

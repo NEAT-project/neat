@@ -2539,6 +2539,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
                     break;
                 default:
                     neat_log(ctx, NEAT_LOG_ERROR, "Socket option value type (\"%d\") not supported", type);
+                    free(sockopt);
                     continue;
                 }
                 TAILQ_INSERT_TAIL(&(candidate->sock_opts), sockopt, next);

@@ -15,7 +15,7 @@
 #include "neat_pvd.h"
 #include "neat_addr.h"
 
-char *
+static char *
 compute_reverse_ip(struct neat_addr *src_addr)
 {
     struct in_addr src_addr4;
@@ -24,7 +24,7 @@ compute_reverse_ip(struct neat_addr *src_addr)
     int i;
     char *out;
     uint8_t family = src_addr->family;
-    
+
     memset(reverse_ip, 0, sizeof(reverse_ip));
 
     if (family == AF_INET6) {
@@ -472,7 +472,11 @@ neat_pvd_handle_newaddr(struct neat_ctx *ctx,
     struct neat_addr *src_addr  = (struct neat_addr *) data;
     char *reverse_ip            = compute_reverse_ip(src_addr);
 
+    if (!reverse_ip)
+        return;
+
     if (strlen(reverse_ip) == 0) {
+        free(reverse_ip);
         return;
     }
 

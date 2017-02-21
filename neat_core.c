@@ -3695,6 +3695,8 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
         return NEAT_ERROR_UNABLE;
     }
 
+    memset(&addr, 0, sizeof(addr));
+
 #ifdef USRSCTP_SUPPORT
     addr.ssp_addr = results->lh_first->dst_addr;
 

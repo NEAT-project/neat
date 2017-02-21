@@ -200,7 +200,7 @@ struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *ctx)
 
 /* Get the Linux TCP_INFO and copy the relevant fields into the neat-specific
  * TCP_INFO struct. Return pointer to the struct with the copied data */
-void linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
+int linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
 {
     int tcp_info_length;
     struct tcp_info tcpi;
@@ -208,7 +208,9 @@ void linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
     neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     tcp_info_length = sizeof(struct tcp_info);
-    getsockopt(flow->socket->fd, SOL_TCP, TCP_INFO, (void *)&tcpi, (socklen_t *)&tcp_info_length );
+    if (getsockopt(flow->socket->fd, SOL_TCP, TCP_INFO, (void *)&tcpi,
+                   (socklen_t *)&tcp_info_length ))
+        return RETVAL_FAILURE; /* failed! */
 
     /* Copy relevant fields between structs */
 
@@ -224,4 +226,6 @@ void linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
     neat_tcp_info->tcpi_rcv_rtt = tcpi.tcpi_rcv_rtt;
     neat_tcp_info->tcpi_rcv_space = tcpi.tcpi_rcv_space;
     neat_tcp_info->tcpi_total_retrans = tcpi.tcpi_total_retrans;
+
+    return RETVAL_SUCCESS;
 }

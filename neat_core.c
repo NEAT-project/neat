@@ -1350,10 +1350,6 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
 
         msghdr.msg_flags = 0;
 
-#ifdef MSG_NOTIFICATION
-        msghdr.msg_flags |= MSG_NOTIFICATION;
-#endif // MSG_NOTIFICATION
-
         if ((n = recvmsg(socket->fd, &msghdr, 0)) < 0) {
 #ifdef SCTP_MULTISTREAMING
             if (multistream_buffer) {
@@ -1545,7 +1541,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
                 flow->readBufferMsgComplete = 1;
             }
 
-            if (!flow->readBufferMsgComplete) {
+            if (!flow->readBufferMsgComplete && flow->preserveMessageBoundaries) {
                 neat_log(ctx, NEAT_LOG_WARNING, "%s - READ_WITH_ERROR 12", __func__);
                 return READ_WITH_ERROR;
             }
@@ -4489,19 +4485,30 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif // SCTP_MULTISTREAMING
 
         } else {
-            if (!flow->readBufferMsgComplete) {
-                return NEAT_ERROR_WOULD_BLOCK;
-            }
-            if (flow->readBufferSize > amt) {
-                neat_log(ctx, NEAT_LOG_DEBUG, "%s: Message too big", __func__);
-                return NEAT_ERROR_MESSAGE_TOO_BIG;
+            if (flow->preserveMessageBoundaries) {
+                if (!flow->readBufferMsgComplete) {
+                    return NEAT_ERROR_WOULD_BLOCK;
+                }
+                if (flow->readBufferSize > amt) {
+                    neat_log(ctx, NEAT_LOG_DEBUG, "%s: Message too big", __func__);
+                    return NEAT_ERROR_MESSAGE_TOO_BIG;
+                }
             }
 
             assert(flow->readBuffer);
-            memcpy(buffer, flow->readBuffer, flow->readBufferSize);
-            *actualAmt = flow->readBufferSize;
-            flow->readBufferSize = 0;
-            flow->readBufferMsgComplete = 0;
+            if (flow->readBufferSize > amt) {
+                /* this can only happen if message boundaries are not preserved */
+                *actualAmt = amt;
+                memcpy(buffer, flow->readBuffer, amt);
+                /* This is very inefficient, we should also use a offset */
+                memmove(flow->readBuffer, flow->readBuffer + amt, flow->readBufferSize - amt);
+                flow->readBufferSize -= amt;
+            } else {
+                *actualAmt = flow->readBufferSize;
+                memcpy(buffer, flow->readBuffer, flow->readBufferSize);
+                flow->readBufferSize = 0;
+                flow->readBufferMsgComplete = 0;
+            }
         }
 
         goto end;

@@ -1149,7 +1149,7 @@ static int handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 }
 #endif // defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
 
-int
+static int
 resize_read_buffer(neat_flow *flow)
 {
     ssize_t spaceFree;
@@ -4493,6 +4493,10 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                     neat_log(ctx, NEAT_LOG_DEBUG, "%s: Message too big", __func__);
                     return NEAT_ERROR_MESSAGE_TOO_BIG;
                 }
+            }
+            if (flow->readBufferSize == 0) {
+                neat_log(ctx, NEAT_LOG_DEBUG, "%s nothing scheduled", __func__);
+                return NEAT_ERROR_WOULD_BLOCK;
             }
 
             assert(flow->readBuffer);

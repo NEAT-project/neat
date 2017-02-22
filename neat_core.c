@@ -296,6 +296,9 @@ void neat_free_ctx(struct neat_ctx *nc)
     struct neat_flow *flow, *prev_flow = NULL;
     neat_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
 
+    if (!nc)
+        return;
+
     if (nc->resolver) {
         neat_resolver_release(nc->resolver);
     }
@@ -2536,6 +2539,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
                     break;
                 default:
                     neat_log(ctx, NEAT_LOG_ERROR, "Socket option value type (\"%d\") not supported", type);
+                    free(sockopt);
                     continue;
                 }
                 TAILQ_INSERT_TAIL(&(candidate->sock_opts), sockopt, next);
@@ -3046,6 +3050,8 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     struct neat_resolver_res *result;
     struct neat_he_candidates *candidates;
 
+    assert(results);
+
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
@@ -3056,8 +3062,10 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     // Find the enabled stacks based on the properties
     // nr_of_stacks = neat_property_translate_protocols(flow->propertyAttempt, stacks);
     neat_find_enabled_stacks(flow->properties, stacks, &nr_of_stacks, NULL);
-    assert(nr_of_stacks);
-    assert(results);
+    if (!nr_of_stacks) {
+        neat_io_error(ctx, flow, NEAT_ERROR_UNABLE);
+        return NEAT_ERROR_UNABLE;
+    }
 
     flow->resolver_results = results;
 
@@ -3687,6 +3695,8 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
         return NEAT_ERROR_UNABLE;
     }
 
+    memset(&addr, 0, sizeof(addr));
+
 #ifdef USRSCTP_SUPPORT
     addr.ssp_addr = results->lh_first->dst_addr;
 
@@ -3738,12 +3748,6 @@ neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow, const char *
             return NEAT_ERROR_OK;
     }
 
-    return NEAT_ERROR_UNABLE;
-}
-
-neat_error_code
-neat_request_capacity(struct neat_ctx *ctx, struct neat_flow *flow, int rate, int seconds)
-{
     return NEAT_ERROR_UNABLE;
 }
 
@@ -3813,7 +3817,6 @@ accept_resolve_cb(struct neat_resolver_results *results,
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
-        neat_io_error(ctx, flow, code);
         return NEAT_ERROR_DNS;
     }
 

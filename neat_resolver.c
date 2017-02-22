@@ -639,6 +639,7 @@ neat_resolver_create_pair(struct neat_ctx *ctx,
     uv_os_fd_t socket_fd = -1;
     char if_name[IF_NAMESIZE];
 #endif
+    int rc;
 
     if (family == AF_INET) {
         server_addr4 = (struct sockaddr_in*) server_addr;
@@ -671,10 +672,12 @@ neat_resolver_create_pair(struct neat_ctx *ctx,
 
     pair->resolve_handle.data = pair;
 
-    if (uv_udp_bind(&(pair->resolve_handle),
-                (struct sockaddr*) &(pair->src_addr->u.generic.addr),
-                0)) {
-        neat_log(ctx, NEAT_LOG_ERROR, "%s - Failed to bind UDP socket", __func__);
+    rc = uv_udp_bind(&(pair->resolve_handle),
+                     (struct sockaddr*) &(pair->src_addr->u.generic.addr),
+                     0);
+    if (rc) {
+        neat_log(ctx, NEAT_LOG_ERROR, "%s - Failed to bind UDP socket: %s",
+                 __func__, uv_strerror(rc));
         return RETVAL_FAILURE;
     }
 
@@ -871,6 +874,17 @@ neat_resolve(struct neat_resolver *resolver,
     }
 
     request = calloc(sizeof(struct neat_resolver_request), 1);
+    if (!request)
+      return RETVAL_FAILURE;
+
+    is_literal = neat_resolver_helpers_check_for_literal(&(request->family),
+                                                         node);
+
+    if (is_literal < 0) {
+        free(request);
+        return RETVAL_FAILURE;
+    }
+
     request->family = family;
     request->dst_port = htons(port);
     request->resolver = resolver;
@@ -883,12 +897,6 @@ neat_resolve(struct neat_resolver *resolver,
 
     //HACK: This is just a hack for testing, will be set based on argument later!
     request->resolve_cb = handle_resolve;
-
-    is_literal = neat_resolver_helpers_check_for_literal(&(request->family),
-                                                         node);
-
-    if (is_literal < 0)
-        return RETVAL_FAILURE;
 
     //No need to care about \0, we use calloc ...
     memcpy(request->domain_name, node, strlen(node));

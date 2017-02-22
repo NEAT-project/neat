@@ -13,6 +13,7 @@ import pmdefaults as PM
 import pmhelper
 import pmrest
 import policy
+import resthelper
 from cib import CIB
 from pib import PIB
 from policy import PropertyMultiArray
@@ -317,6 +318,9 @@ if __name__ == "__main__":
     logging.debug("CIB directory is %s" % PM.CIB_DIR)
 
     cib = CIB(PM.CIB_DIR)
+    for slim in resthelper.gen_cibs():
+        cib.import_json(slim)
+
     profiles = PIB(PM.PIB_DIR, file_extension='.profile')
     pib = PIB(PM.PIB_DIR, file_extension='.policy')
 

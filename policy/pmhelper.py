@@ -4,6 +4,7 @@ import socket
 so_separator = '/'
 so_prefix = 'SO'
 
+
 def sock_prop(so_str):
     if not so_str.startswith(so_prefix + so_separator):
         return

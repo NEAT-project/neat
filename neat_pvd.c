@@ -82,7 +82,7 @@ compute_reverse_ip(struct neat_addr *src_addr)
     return out;
 }
 
-void
+static void
 add_pvd_result(struct pvds* pvds, ldns_rr_list *pvd_txt_list)
 {
     int nb_txt = ldns_rr_list_rr_count(pvd_txt_list);
@@ -111,6 +111,8 @@ add_pvd_result(struct pvds* pvds, ldns_rr_list *pvd_txt_list)
         dns_record          = ldns_rr_set_rdf(rr, NULL, 0);
         dns_record_str      = ldns_rdf2str(dns_record);
         txt_record_original = strdup(dns_record_str);
+        if (!txt_record_original)
+            return;
         txt_record          = txt_record_original;
 
         // Removing quotes if any
@@ -125,7 +127,7 @@ add_pvd_result(struct pvds* pvds, ldns_rr_list *pvd_txt_list)
             free(txt_record_original);
             // neat_log(NEAT_LOG_ERROR,
             //      "%s: can't allocate buffer");
-            continue;
+            return;
         }
         pvd_info->key   = strsep(&txt_record, "=");
         pvd_info->value = txt_record;
@@ -417,6 +419,8 @@ neat_pvd_dns_ptr_recv_cb(uv_udp_t *handle,
         dns_record      = ldns_rr_rdf(rr, 0);
         dns_record_str  = ldns_rdf2str(dns_record);
         ptr_record      = strdup(dns_record_str);
+        if (!ptr_record)
+            return;
         free(dns_record_str);
 
         ldns_pkt *pkt;
@@ -436,7 +440,7 @@ neat_pvd_dns_ptr_recv_cb(uv_udp_t *handle,
         if ((async_query_new = malloc(sizeof(struct pvd_async_query))) == NULL) {
             //neat_log(NEAT_LOG_ERROR,
             //        "%s: can't allocate buffer");
-            continue;
+            return;
         }
         LIST_INSERT_HEAD(&(async_query->pvd->queries), async_query_new, next_query);
         async_query_new->pvd = async_query->pvd;
@@ -502,7 +506,7 @@ neat_pvd_handle_newaddr(struct neat_ctx *ctx,
         if ((dns_query = malloc(sizeof(struct pvd_dns_query))) == NULL) {
             neat_log(ctx, NEAT_LOG_ERROR,
                     "%s: can't allocate buffer");
-            continue;
+            return;
         }
         dns_query->loop                 = ctx->loop;
         dns_query->src_addr             = src_addr;
@@ -525,7 +529,7 @@ neat_pvd_handle_newaddr(struct neat_ctx *ctx,
             free(dns_query);
             neat_log(ctx, NEAT_LOG_ERROR,
                     "%s: can't allocate buffer");
-            continue;
+            return;
         }
         async_query->pvd = ctx->pvd;
         LIST_INSERT_HEAD(&(ctx->pvd->queries), async_query, next_query);

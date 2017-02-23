@@ -3050,8 +3050,6 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     struct neat_resolver_res *result;
     struct neat_he_candidates *candidates;
 
-    assert(results);
-
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
@@ -3066,6 +3064,8 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
         neat_io_error(ctx, flow, NEAT_ERROR_UNABLE);
         return NEAT_ERROR_UNABLE;
     }
+
+    assert(results);
 
     flow->resolver_results = results;
 

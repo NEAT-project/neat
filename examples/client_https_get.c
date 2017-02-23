@@ -130,7 +130,11 @@ int main(int argc, char *argv[])
         goto cleanup;
     }
 
-    neat_set_property(ctx, flow, config_property);
+    if (neat_set_property(ctx, flow, config_property)) {
+        fprintf(stderr, "%s - error: neat_set_property\n", __func__);
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
 
     ops.on_connected = on_connected;
     ops.on_error = on_error;

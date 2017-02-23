@@ -2541,6 +2541,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
                     break;
                 default:
                     neat_log(ctx, NEAT_LOG_ERROR, "Socket option value type (\"%d\") not supported", type);
+                    free(sockopt);
                     continue;
                 }
                 TAILQ_INSERT_TAIL(&(candidate->sock_opts), sockopt, next);
@@ -3051,8 +3052,6 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
     struct neat_resolver_res *result;
     struct neat_he_candidates *candidates;
 
-    assert(results);
-
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (code != NEAT_RESOLVER_OK) {
@@ -3067,6 +3066,8 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
         neat_io_error(ctx, flow, NEAT_ERROR_UNABLE);
         return NEAT_ERROR_UNABLE;
     }
+
+    assert(results);
 
     flow->resolver_results = results;
 
@@ -3697,6 +3698,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
     }
 
 #ifdef USRSCTP_SUPPORT
+    memset(&addr, 0, sizeof(addr));
     addr.ssp_addr = results->lh_first->dst_addr;
 
     if (usrsctp_setsockopt(flow->socket->usrsctp_socket, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr)) < 0) {
@@ -3704,6 +3706,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
         return NEAT_ERROR_IO;
     }
 #elif defined(HAVE_NETINET_SCTP_H)
+    memset(&addr, 0, sizeof(addr));
     addr.ssp_addr = results->lh_first->dst_addr;
 
     rc = setsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr));

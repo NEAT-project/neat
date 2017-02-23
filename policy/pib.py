@@ -63,11 +63,19 @@ class NEATPolicy(object):
         self.match.add(*dict_to_properties(match))
 
         # parse augment properties
-        properties = policy_dict.get('properties', {})
+        properties = policy_dict.get('properties', [])
+        if not isinstance(properties, list):
+            # properties should be in a list.
+            properties = [properties]
         self.properties = PropertyMultiArray()
-        self.properties.add(*dict_to_properties(properties))
+        for p in properties:
+            if isinstance(p, list):
+                self.properties.add([PropertyArray.from_dict(ps) for ps in p])
+            else:
+                self.properties.add(PropertyArray.from_dict(p))
 
-        # set UID
+
+    # set UID
         self.uid = policy_dict.get('uid')
         if self.uid is None:
             self.uid = self.__gen_uid()

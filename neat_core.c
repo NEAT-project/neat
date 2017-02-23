@@ -3111,7 +3111,10 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
 
         for (unsigned int i = 0; i < nr_of_stacks; ++i) {
             // struct neat_he_candidate *tmp;
-
+            if (flow->preserveMessageBoundaries &&
+                (neat_base_stack(stacks[i]) != NEAT_STACK_SCTP && stacks[i] != NEAT_STACK_UDP && stacks[i] != NEAT_STACK_UDPLITE)) {
+                continue;
+            }
             struct neat_he_candidate *candidate = calloc(1, sizeof(*candidate));
             assert(candidate);
             candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket));
@@ -4505,11 +4508,10 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                     neat_log(ctx, NEAT_LOG_DEBUG, "%s: Message too big", __func__);
                     return NEAT_ERROR_MESSAGE_TOO_BIG;
                 }
-            }
-            if (flow->readBufferSize == 0) {
+            } /*else if (flow->readBufferSize == 0) {
                 neat_log(ctx, NEAT_LOG_DEBUG, "%s nothing scheduled", __func__);
                 return NEAT_ERROR_WOULD_BLOCK;
-            }
+            }*/
 
             assert(flow->readBuffer);
             if (flow->readBufferSize > amt) {

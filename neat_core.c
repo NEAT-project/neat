@@ -3695,9 +3695,8 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
         return NEAT_ERROR_UNABLE;
     }
 
-    memset(&addr, 0, sizeof(addr));
-
 #ifdef USRSCTP_SUPPORT
+    memset(&addr, 0, sizeof(addr));
     addr.ssp_addr = results->lh_first->dst_addr;
 
     if (usrsctp_setsockopt(flow->socket->usrsctp_socket, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr)) < 0) {
@@ -3705,6 +3704,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
         return NEAT_ERROR_IO;
     }
 #elif defined(HAVE_NETINET_SCTP_H)
+    memset(&addr, 0, sizeof(addr));
     addr.ssp_addr = results->lh_first->dst_addr;
 
     rc = setsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr));

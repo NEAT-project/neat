@@ -874,6 +874,17 @@ neat_resolve(struct neat_resolver *resolver,
     }
 
     request = calloc(sizeof(struct neat_resolver_request), 1);
+    if (!request)
+      return RETVAL_FAILURE;
+
+    is_literal = neat_resolver_helpers_check_for_literal(&(request->family),
+                                                         node);
+
+    if (is_literal < 0) {
+        free(request);
+        return RETVAL_FAILURE;
+    }
+
     request->family = family;
     request->dst_port = htons(port);
     request->resolver = resolver;
@@ -886,12 +897,6 @@ neat_resolve(struct neat_resolver *resolver,
 
     //HACK: This is just a hack for testing, will be set based on argument later!
     request->resolve_cb = handle_resolve;
-
-    is_literal = neat_resolver_helpers_check_for_literal(&(request->family),
-                                                         node);
-
-    if (is_literal < 0)
-        return RETVAL_FAILURE;
 
     //No need to care about \0, we use calloc ...
     memcpy(request->domain_name, node, strlen(node));

@@ -355,7 +355,13 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
     int isClient = !flow->isServer;
     if (flow->socket->stack == NEAT_STACK_TCP) {
         struct security_data *private = calloc (1, sizeof (struct security_data));
+        if (!private)
+            return NEAT_ERROR_OUT_OF_MEMORY;
         struct neat_iofilter *filter = insert_neat_iofilter(ctx, flow);
+        if (!filter) {
+            free(private);
+            return NEAT_ERROR_OUT_OF_MEMORY;
+        }
         filter->userData = private;
         filter->dtor = neat_security_filter_dtor;
         filter->writefx = neat_security_filter_write;

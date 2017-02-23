@@ -1,17 +1,15 @@
 import bisect
 import copy
 import hashlib
+import itertools
 import json
 import operator
-from collections import ChainMap
-
-import itertools
 import time
+from collections import ChainMap
 
 import pmdefaults as PM
 from pmdefaults import *
 from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
-from policy import dict_to_properties
 
 
 class CIBEntryError(Exception):
@@ -36,17 +34,17 @@ def load_json(filename):
 class CIBNode(object):
     cib = None
 
-    def __init__(self, node_dict):
+    def __init__(self, node_dict=None):
+
+        if node_dict is None:
+            node_dict = dict()
 
         if not isinstance(node_dict, dict):
-            raise CIBEntryError("received invalid CIB object")
+            raise CIBEntryError("invalid CIB object")
 
         self.root = node_dict.get('root', False)
         # otherwise chain matched CIBs
         self.link = node_dict.get('link', False)
-        # if self.root and not self.link:
-        #    # logging.warning("[%s] root: true implies link: true." % self.uid)
-        #    self.link = True
         self.priority = node_dict.get('priority', 0)
         # TTL for the CIB node
         self.expire = node_dict.get('expire', None)
@@ -54,25 +52,27 @@ class CIBNode(object):
         self.description = node_dict.get('description', '')
 
         # convert to PropertyMultiArray with NEATProperties
-        properties = node_dict.get('properties')
-        if properties is None:
-            raise CIBEntryError("CIB entry has no 'property' attribute")
-        elif not isinstance(properties, list):
+
+        properties = node_dict.get('properties', [])
+
+        if not isinstance(properties, list):
             # properties should be in a list. The list elements are expanded when generating the CIB rows.
             properties = [properties]
 
-        self.properties = list()
+        self.properties = PropertyMultiArray()
         for p in properties:
-            pa = PropertyMultiArray(*dict_to_properties(p))
-            self.properties.append(pa)
+            if isinstance(p, list):
+                self.properties.add([PropertyArray.from_dict(ps) for ps in p])
+            else:
+                self.properties.add(PropertyArray.from_dict(p))
 
-        self.linked = set()
         self.match = []
         # FIXME better error handling if match undefined
         for l in node_dict.get('match', []):
             # convert to NEATProperties
-            self.match.append(PropertyArray(*dict_to_properties(l)))
+            self.match.append(PropertyArray.from_dict(l))
 
+        self.linked = set()
         if self.link and not self.match:
             logging.warning('link attribute set but no match field!')
 
@@ -88,17 +88,12 @@ class CIBNode(object):
             except AttributeError:
                 logging.debug("CIB node doesn't contain attribute %s" % attr)
 
-        d['match'] = []
-        for m in self.match:
-            d['match'].append(m.dict())
+        if self.match:
+            d['match'] = []
+            for m in self.match:
+                d['match'].append(m.dict())
 
-        if len(self.properties) == 1:
-            d['properties'] = self.properties[0].dict()
-        else:
-            d['properties'] = []
-            for p in self.properties:
-                d['properties'].append(p.dict())
-
+        d['properties'] = self.properties.list()
         return d
 
     @property
@@ -130,11 +125,11 @@ class CIBNode(object):
             except KeyError:
                 pass
 
-        for k in ['cib_uids', ]:
-            try:
-                del d['properties'][k]
-            except KeyError:
-                pass
+        # for k in ['cib_uids', ]:
+        #     try:
+        #         del d['properties'][k]
+        #     except KeyError:
+        #         pass
 
         s = json.dumps(d, indent=0, sort_keys=True)
         return hashlib.md5(s.encode('utf-8')).hexdigest()
@@ -169,9 +164,8 @@ class CIBNode(object):
         return False
 
     def expand(self):
-        for pma in self.properties:
-            for p in pma.expand():
-                yield p
+        for p in self.properties.expand():
+            yield p
 
     def update_links_from_match(self):
         """
@@ -458,7 +452,7 @@ class CIB(object):
 
     def lookup(self, input_properties, candidate_num=5):
         """
-        CIB lookup logic implementation. Appends a list of connection candidates to the query object. TODO
+        CIB lookup logic implementation.
 
         """
         assert isinstance(input_properties, PropertyArray)

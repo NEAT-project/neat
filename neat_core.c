@@ -3537,7 +3537,7 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     int group = 0;
     float priority = 0.5f;
     const char *cc_algorithm = NULL;
-    json_t *multihoming = NULL, *val = NULL;
+    json_t *multihoming = NULL, *val = NULL, *transport_type;
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -3577,6 +3577,15 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
         flow->isSCTPMultihoming = 1;
     } else {
         flow->isSCTPMultihoming = 0;
+    }
+
+    if ((transport_type = json_object_get(flow->properties, "transport_type")) != NULL &&
+        (val = json_object_get(transport_type, "value")) != NULL &&
+        !strcmp(json_string_value(val), "message"))
+    {
+        flow->preserveMessageBoundaries = 1;
+    } else {
+        flow->preserveMessageBoundaries = 0;
     }
 
     flow->user_ips = json_object_get(flow->properties, "local_ips");

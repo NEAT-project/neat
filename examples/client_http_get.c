@@ -45,16 +45,20 @@ static char          *config_property        = "\
 {\
     \"transport\": [\
         {\
-            \"value\": \"SCTP\",\
+            \"value\": \"TCP\",\
             \"precedence\": 1\
         },\
         {\
-            \"value\": \"TCP\",\
+            \"value\": \"SCTP\",\
             \"precedence\": 1\
         }\
     ],\
     \"multihoming\": {\
         \"value\": true,\
+        \"precedence\": 1\
+    },\
+    \"transport_type\": {\
+        \"value\": \"message\",\
         \"precedence\": 1\
     }\
 }";
@@ -160,7 +164,7 @@ on_readable(struct neat_flow_operations *opCB)
         gettimeofday(&(stat->tv_last), NULL);
         if (config_log_level >= 1) {
             fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
-           // fwrite(buffer, sizeof(char), bytes_read, stdout);
+          //  fwrite(buffer, sizeof(char), bytes_read, stdout);
         }
     }
     return NEAT_OK;

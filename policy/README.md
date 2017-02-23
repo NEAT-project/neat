@@ -7,7 +7,7 @@
 To start the policy manager simply run:
 
 ```
-python3.5 ./neatpmd.py --cib ./cib/example --pib ./pib/example
+python3.5 ./neatpmd --cib ./example/cib/ --pib ./example/pib
 
 ```
 
@@ -68,7 +68,7 @@ For a detailed walkthrough example see the [**Policy Manager Jupyter notebook**]
 To start the policy manager run:
 
 ```
-$ ./neatpmd.py --cib ./cib/sdntest/ --pib ./pib/sdntest
+$ ./neatpmd --cib ./example/cib/ --pib ./example/pib
 
 ```
 

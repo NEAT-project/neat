@@ -1113,6 +1113,7 @@ static int handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
             break;
         case SCTP_SHUTDOWN_EVENT:
             neat_log(ctx, NEAT_LOG_DEBUG, "Got SCTP shutdown event");
+            flow->eofSeen = 1;
             return READ_WITH_ZERO;
             break;
         case SCTP_ADAPTATION_INDICATION:
@@ -1360,6 +1361,11 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
             return READ_WITH_ERROR;
         }
 
+        if (n == 0) {
+            printf("recvmsg returned with n=0\n");
+            flow->eofSeen = 1;
+        }
+        printf("%s:%d %zd bytes read\n", __func__, __LINE__, n);
 #if (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
         for (cmsg = CMSG_FIRSTHDR(&msghdr); cmsg != NULL; cmsg = CMSG_NXTHDR(&msghdr, cmsg)) {
             if (cmsg->cmsg_len == 0) {
@@ -2261,6 +2267,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->ownedByCore    = 1;
     newFlow->isServer       = 1;
     newFlow->isSCTPMultihoming = flow->isSCTPMultihoming;
+    newFlow->eofSeen        = 0;
 
     newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
     if (newFlow->operations == NULL) {
@@ -3574,6 +3581,7 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     //flow->stream_count = stream_count;
     flow->group = group;
     flow->priority = priority;
+    flow->eofSeen = 0;
     if ((multihoming = json_object_get(flow->properties, "multihoming")) != NULL &&
         (val = json_object_get(multihoming, "value")) != NULL &&
         json_typeof(val) == JSON_TRUE)
@@ -4508,10 +4516,16 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                     neat_log(ctx, NEAT_LOG_DEBUG, "%s: Message too big", __func__);
                     return NEAT_ERROR_MESSAGE_TOO_BIG;
                 }
-            } /*else if (flow->readBufferSize == 0) {
+            } else if (flow->readBufferSize == 0) {
                 neat_log(ctx, NEAT_LOG_DEBUG, "%s nothing scheduled", __func__);
-                return NEAT_ERROR_WOULD_BLOCK;
-            }*/
+                if (flow->eofSeen) {
+                    flow->eofSeen = 0;
+                    printf("eofSeen: return NEAT_OK\n");
+                    return NEAT_OK;
+                } else {
+                    return NEAT_ERROR_WOULD_BLOCK;
+                }
+            }
 
             assert(flow->readBuffer);
             if (flow->readBufferSize > amt) {

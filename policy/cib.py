@@ -1,11 +1,12 @@
 import bisect
 import copy
 import hashlib
-import itertools
 import json
 import operator
-import time
 from collections import ChainMap
+
+import itertools
+import time
 
 import pmdefaults as PM
 from pmdefaults import *
@@ -461,10 +462,9 @@ class CIB(object):
             try:
                 # FIXME better check whether all input properties are included in row - improve matching
                 # ignore optional properties in input request
-                i = PropertyArray(*(p for p in input_properties.values() if p.precedence > NEATProperty.OPTIONAL))
+                i = PropertyArray(*(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
                 if len(i & e) != len(i):
                     continue
-
             except ImmutablePropertyError:
                 continue
 

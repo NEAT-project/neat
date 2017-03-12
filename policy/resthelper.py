@@ -43,23 +43,23 @@ def gen_cibs():
         c.expire = -1
 
         pa = PropertyArray()
-        pa.add(NEATProperty(('interface', en)))
-        pa.add(NEATProperty(('local_interface', True)))
+        pa.add(NEATProperty(('interface', en), precedence=NEATProperty.IMMUTABLE))
+        pa.add(NEATProperty(('local_interface', True), precedence=NEATProperty.IMMUTABLE))
         c.properties.add(pa)
 
         addr_list = []
 
         for af, addresses in netifaces.ifaddresses(en).items():
             if af == netifaces.AF_INET:
-                af_prop = NEATProperty(('ip_version', 4))
+                af_prop = NEATProperty(('ip_version', 4), precedence=NEATProperty.IMMUTABLE)
             elif af == netifaces.AF_INET6:
-                af_prop = NEATProperty(('ip_version', 6))
+                af_prop = NEATProperty(('ip_version', 6), precedence=NEATProperty.IMMUTABLE)
             else:
                 continue
 
             for addr in addresses:
                 pa = PropertyArray()
-                pa.add(NEATProperty(('local_ip', addr.get('addr', 0))))
+                pa.add(NEATProperty(('local_ip', addr.get('addr', 0)),precedence=NEATProperty.IMMUTABLE))
                 pa.add(af_prop)
                 addr_list.append(pa)
 

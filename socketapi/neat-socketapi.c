@@ -516,6 +516,10 @@ int nsa_set_secure_identity(int sockfd, const char* pem)
       pthread_mutex_unlock(&neatSocket->ns_mutex);
       pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
+      // Security in the NEAT Core API is currently broken!
+      // It will not work here as well ...
+      assert(false);
+      
       switch(result) {
          case NEAT_OK:
             return(0);

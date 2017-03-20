@@ -74,7 +74,11 @@ void handleHTTPCommand(int sd, const unsigned int id, char* command)
               << fileName << "\"..." << endl;
          ifstream is(fileName.c_str(), ios::binary);
          if(is.good()) {
-            const char* status = "HTTP/1.0 200 OK\r\n\r\n";
+            const char* status = "HTTP/1.0 200 OK\r\n"
+                                 "X-Frame-Options: \"SAMEORIGIN\"\r\n"
+                                 "X-XSS-Protection: \"1; mode=block\"\r\n"
+                                 "X-Content-Type-Options: \"nosniff\"\r\n"
+                                 "Content-Security-Policy: \"default-src http:\"\r\n\r\n";
             result = nsa_write(sd, status, strlen(status));
 
             char str[8192];

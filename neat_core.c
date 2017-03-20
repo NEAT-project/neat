@@ -2141,9 +2141,9 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
 
 int
 neat_getlpaddrs(struct neat_ctx*  ctx,
-                    struct neat_flow* flow,
-                    struct sockaddr** addrs,
-                    const int         local)
+                struct neat_flow* flow,
+                struct sockaddr** addrs,
+                const int         local)
 {
     struct sockaddr_storage name;
     socklen_t namelen = sizeof(name);
@@ -2178,6 +2178,11 @@ neat_getlpaddrs(struct neat_ctx*  ctx,
 
     *addrs = NULL;
     return -1;
+}
+
+void neat_freelpaddrs(struct sockaddr* addrs)
+{
+    free(addrs);
 }
 
 static neat_flow *

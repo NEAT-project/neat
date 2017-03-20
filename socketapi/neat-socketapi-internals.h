@@ -129,7 +129,9 @@ int nsa_socket_internal(int domain, int type, int protocol,
 int nsa_connectx_internal(struct neat_socket* neatSocket,
                           const char*         name,
                           const uint16_t      port,
-                          neat_assoc_t*       id);
+                          neat_assoc_t*       id,
+                          struct neat_tlv*    opt,
+                          const int           optcnt);
 void nsa_close_internal(struct neat_socket* neatSocket);
 void nsa_set_socket_event_on_read(struct neat_socket* neatSocket, const bool r);
 void nsa_set_socket_event_on_write(struct neat_socket* neatSocket, const bool w);

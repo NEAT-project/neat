@@ -155,7 +155,12 @@ int nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
 
 
 /* ###### NEAT connectx() implementation ################################# */
-int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_assoc_t* id)
+int nsa_connectx(int                    sockfd,
+                 const struct sockaddr* addrs,
+                 int                    addrcnt,
+                 neat_assoc_t*          id,
+                 struct neat_tlv*       opt,
+                 const int              optcnt)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
@@ -173,7 +178,8 @@ int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_ass
          }
 
          /* ====== Connect =============================================== */
-         return(nsa_connectx_internal(neatSocket, remoteHost, atoi(remoteService), id));
+         return(nsa_connectx_internal(neatSocket, remoteHost, atoi(remoteService),
+                                      id, opt, optcnt));
       }
       else {
          errno = EINVAL;
@@ -192,14 +198,21 @@ int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_ass
 
 
 /* ###### NEAT connect() implementation ################################## */
-int nsa_connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+int nsa_connect(int                    sockfd,
+                const struct sockaddr* addr,
+                socklen_t              addrlen,
+                struct neat_tlv*       opt,
+                const int              optcnt)
 {
-   return(nsa_connectx(sockfd, addr, 1, NULL));
+   return(nsa_connectx(sockfd, addr, 1, NULL, opt, optcnt));
 }
 
 
 /* ###### NEAT listen() implementation ################################### */
-int nsa_listen(int sockfd, int backlog)
+int nsa_listen(int              sockfd,
+               int              backlog,
+               struct neat_tlv* opt,
+               const int        optcnt)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
@@ -209,7 +222,7 @@ int nsa_listen(int sockfd, int backlog)
       if(!(neatSocket->ns_flags & NSAF_LISTENING)) {
          result = neat_accept(gSocketAPIInternals->nsi_neat_context,
                               neatSocket->ns_flow, neatSocket->ns_port,
-                              NULL, 0);
+                              opt, optcnt);
       }
       if(result == NEAT_OK) {
          neatSocket->ns_listen_backlog = backlog;

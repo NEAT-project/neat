@@ -514,14 +514,16 @@ int nsa_socket_internal(int domain, int type, int protocol,
 int nsa_connectx_internal(struct neat_socket* neatSocket,
                           const char*         name,
                           const uint16_t      port,
-                          neat_assoc_t*       id)
+                          neat_assoc_t*       id,
+                          struct neat_tlv*    opt,
+                          const int           optcnt)
 {
    /* ====== Connect ===================================================== */
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
    pthread_mutex_lock(&neatSocket->ns_mutex);
    neat_error_code result = neat_open(gSocketAPIInternals->nsi_neat_context,
                                       neatSocket->ns_flow, name, port,
-                                      NULL, 0);
+                                      opt, optcnt);
    if(result == NEAT_OK) {
       if(!(neatSocket->ns_flags & NSAF_NONBLOCKING)) {
          /* Finish the main loop's waiting, in order to let it process

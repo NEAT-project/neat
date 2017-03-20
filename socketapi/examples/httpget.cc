@@ -100,7 +100,7 @@ int main(int argc, char** argv)
 
 
    // ====== Connect to remote node ==========================================
-   if(nsa_connect(sd, ainfo->ai_addr, ainfo->ai_addrlen) < 0) {
+   if(nsa_connect(sd, ainfo->ai_addr, ainfo->ai_addrlen, NULL, 0) < 0) {
       perror("nsa_connect() call failed");
       exit(1);
    }

@@ -44,6 +44,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include <neat.h>
+
 
 typedef uint32_t neat_assoc_t;
 typedef uint16_t neat_stream_t;
@@ -217,9 +219,13 @@ int nsa_close(int fd);
 int nsa_fcntl(int fd, int cmd, ...);
 int nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen);
 int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags);
-int nsa_connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen);
-int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_assoc_t* id);
-int nsa_listen(int sockfd, int backlog);
+int nsa_connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen,
+                struct neat_tlv* opt, const int optcnt);
+int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_assoc_t* id,
+                 struct neat_tlv* opt, const int optcnt);
+int nsa_listen(int sockfd, int backlog,
+               struct neat_tlv* opt,
+               const int        optcnt);
 int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen);
 int nsa_peeloff(int sockfd, neat_assoc_t id);
 int nsa_shutdown(int sockfd, int how);

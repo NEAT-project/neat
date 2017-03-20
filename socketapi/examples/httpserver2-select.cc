@@ -307,7 +307,7 @@ int main(int argc, char** argv)
 
 
    // ====== Turn socket into "listen" mode =================================
-   if(nsa_listen(sd, 10) < 0) {
+   if(nsa_listen(sd, 10, NULL, 0) < 0) {
       perror("listen() call failed");
    }
 

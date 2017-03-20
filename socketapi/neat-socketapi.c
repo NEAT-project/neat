@@ -154,6 +154,26 @@ int nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
 }
 
 
+/* ###### NEAT connectn() implementation ################################# */
+int nsa_connectn(int                 sockfd,
+                 const char*         name,
+                 const uint16_t      port,
+                 neat_assoc_t*       id,
+                 struct neat_tlv*    opt,
+                 const int           optcnt)
+{
+   GET_NEAT_SOCKET(sockfd)
+   if(neatSocket->ns_flow != NULL) {
+      return(nsa_connectx_internal(neatSocket,
+                                   name, port, id, opt, optcnt)); 
+   }
+   else {
+      errno = ENOTSUP;
+   }
+   return(-1);
+}
+
+
 /* ###### NEAT connectx() implementation ################################# */
 int nsa_connectx(int                    sockfd,
                  const struct sockaddr* addrs,
@@ -178,7 +198,8 @@ int nsa_connectx(int                    sockfd,
          }
 
          /* ====== Connect =============================================== */
-         return(nsa_connectx_internal(neatSocket, remoteHost, atoi(remoteService),
+         return(nsa_connectx_internal(neatSocket,
+                                      remoteHost, atoi(remoteService),
                                       id, opt, optcnt));
       }
       else {
@@ -191,7 +212,8 @@ int nsa_connectx(int                    sockfd,
           return(connect(neatSocket->ns_socket_sd, addrs, get_socklen(addrs)));
        }
        else {
-          return(sctp_connectx(neatSocket->ns_socket_sd, (struct sockaddr*)addrs, addrcnt, (sctp_assoc_t*)id));
+          return(sctp_connectx(neatSocket->ns_socket_sd,
+                               (struct sockaddr*)addrs, addrcnt, (sctp_assoc_t*)id));
        }
    }
 }

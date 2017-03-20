@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE rfc SYSTEM "rfc2629.dtd">
-<!-- $Id: draft-dreibholz-tsvwg-sctpsocket-sqinfo-04.xml 4340 2012-12-20 17:55:58Z dreibh $ -->
 
 <?rfc toc="yes"?>
 <?rfc compact="yes" ?>
 <?rfc subcompact="no" ?>
 <?rfc strict="no" ?>
-<?rfc symrefs="yes" ?>
+<?rfc symrefs="no" ?>
 
 <rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-00.txt">
 
@@ -501,45 +500,6 @@ int nsa_pipe(int fds[2])</artwork></figure>
 </section>
 
 </section>
-
-
-<!--<section title="Sender Queue Info (SCTP_SQINFO)">
-
-<t>This socket option obtains
-the maximum sender queue size (in bytes),
-the current total sender queue utilization (in bytes) as well as
-the current utilization per stream (in bytes).</t>
-
-<t>The following structure is used to obtain the sender queue information:
-<figure>
-<artwork>
-struct sctp_sndqueueinfo {
-  sctp_assoc_t sq_assoc_id;
-  uint32_t     sq_queue_limit;
-  uint32_t     sq_total_queued;
-  uint32_t     sq_number_of_streams;
-  uint32_t     sq_queued_on_stream[];
-};
-</artwork>
-</figure>
-
-<list style="hanging">
-<t hangText="sq_assoc_id:">
-This parameter is ignored for one-to-one style sockets. For one-to-many style sockets this parameter indicates which association the user is performing an action upon. It is an error to use SCTP_{CURRENT|ALL}_ASSOC in sq_assoc_id.</t>
-<t hangText="sq_queue_limit:">
-This field gives the maximum sender queue size in bytes.</t>
-<t hangText="sq_total_queued:">
-This field gives the current total sender queue utilization in bytes.</t>
-<t hangText="sq_number_of_streams:">
-This field gives the number of outgoing streams. That is, it will contain the number of valid sq_queued_on_stream entries.
-</t>
-<t hangText="sq_queued_on_stream:">
-This array gives the current number of bytes queued for the streams 0 to sq_number_of_streams-1.</t>
-</list></t>
-
-<t>Note, that the caller of getsockopt() MUST provide a sctp_sndqueueinfo structure which can hold at least as many sq_queued_on_stream entries as the association's number of outgoing streams. Otherwise, the getsockopt() call will fail and return an error.</t>
-
-</section>-->
 
 
 <section title="Testbed Platform">

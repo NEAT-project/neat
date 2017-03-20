@@ -55,62 +55,30 @@ static const char* properties = "{\
 
 int main(int argc, char** argv)
 {
+   // ====== Handle command-line arguments ==================================
    if(argc < 2) {
       cerr << "Usage: " << argv[0] << " [Port]" << endl;
       exit(1);
    }
+   uint16_t port = atoi(argv[1]);
 
 
-   // ====== Get remote address (resolve hostname and service if necessary) =
-   struct addrinfo* ainfo = NULL;
-   struct addrinfo  ainfohint;
-   memset((char*)&ainfohint, 0, sizeof(ainfohint));
-   // AI_PASSIVE will set address to the ANY address.
-   ainfohint.ai_flags    = AI_PASSIVE;
-   ainfohint.ai_family   = AF_UNSPEC;
-   ainfohint.ai_socktype = SOCK_STREAM;
-   ainfohint.ai_protocol = IPPROTO_TCP;
-   int error = getaddrinfo(NULL, argv[1], &ainfohint, &ainfo);
-   if(error != 0) {
-      cerr << "ERROR: getaddrinfo() failed: " << gai_strerror(error) << endl;
-      exit(1);
-   }
-
-
-   // ====== Create socket of appropriate type ==============================
-   int sd = nsa_socket(ainfo->ai_family, ainfo->ai_socktype, ainfo->ai_protocol, properties);
+   // ====== Create and bind socket =========================================
+   int sd = nsa_socket(0, 0, 0, properties);
    if(sd <= 0) {
       perror("nsa_socket() call failed");
       exit(1);
    }
-
-
-   // ====== Bind to local port =============================================
-   if(nsa_bind(sd, ainfo->ai_addr, ainfo->ai_addrlen) < 0) {
-      perror("nsa_bind() call failed");
+   if(nsa_bindn(sd, port, 0, NULL, 0) < 0) {
+      perror("nsa_bindn() call failed");
       exit(1);
    }
-
 
    // ====== Turn socket into "listen" mode =================================
-   if(nsa_listen(sd, 10, NULL, 0) < 0) {
+   if(nsa_listen(sd, 10) < 0) {
       perror("nsa_listen() call failed");
    }
-
-
-   // ====== Print information ==============================================
-   char localHost[512];
-   char localService[128];
-   error = getnameinfo(ainfo->ai_addr, ainfo->ai_addrlen,
-                       (char*)&localHost, sizeof(localHost),
-                       (char*)&localService, sizeof(localService),
-                       NI_NUMERICHOST);
-   if(error != 0) {
-      cerr << "ERROR: getnameinfo() failed: " << gai_strerror(error) << endl;
-      exit(1);
-   }
-   cout << "Waiting for requests at address "
-        << localHost << ", service " << localService << "..." << endl;
+   cout << "Waiting for requests on port " << port << " ..." << endl;
 
 
    // ====== Handle requests ================================================
@@ -128,10 +96,10 @@ int main(int argc, char** argv)
       // ====== Print information ===========================================
       char remoteHost[512];
       char remoteService[128];
-      error = getnameinfo((sockaddr*)&remoteAddress, remoteAddressLength,
-                          (char*)&remoteHost, sizeof(remoteHost),
-                          (char*)&remoteService, sizeof(remoteService),
-                          NI_NUMERICHOST);
+      int error = getnameinfo((sockaddr*)&remoteAddress, remoteAddressLength,
+                              (char*)&remoteHost, sizeof(remoteHost),
+                              (char*)&remoteService, sizeof(remoteService),
+                              NI_NUMERICHOST);
       if(error != 0) {
          cerr << "ERROR: getnameinfo() failed: " << gai_strerror(error) << endl;
          exit(1);
@@ -226,7 +194,6 @@ int main(int argc, char** argv)
 
 
    // ====== Clean up =======================================================
-   freeaddrinfo(ainfo);
    nsa_close(sd);
    nsa_cleanup();
 

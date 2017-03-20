@@ -18,9 +18,9 @@ LIST(APPEND neat_socketapi_sources
 
 # PROGRAMS LIST
 #################################################
-LIST(APPEND neat_socketapi_programs
-   t1.cc t2.cc
-)
+#LIST(APPEND neat_socketapi_programs
+#   t1.cc t2.cc
+#)
 
 
 # LIBRARIES

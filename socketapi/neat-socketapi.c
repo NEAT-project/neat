@@ -159,12 +159,59 @@ int nsa_fcntl(int fd, int cmd, ...)
 }
 
 
+/* ###### Copy bind options ############################################## */
+static int copy_options(struct neat_tlv** optionsPtr,
+                        int*              optcntPtr,
+                        struct neat_tlv*  newOptions,
+                        const int         newOptCount)
+{
+   if(*optionsPtr) {
+      free(optionsPtr);
+      *optionsPtr = NULL;
+      *optcntPtr  = 0;
+   }
+   if(newOptions) {
+      *optionsPtr = (struct neat_tlv*)malloc(newOptCount * sizeof(struct neat_tlv));
+      if(*optionsPtr == NULL) {
+         errno = ENOMEM;
+         return(-1);
+      }
+      memcpy(*optionsPtr, newOptions, newOptCount * sizeof(struct neat_tlv));
+      *optcntPtr = newOptCount;
+   }
+   return(0);
+}
+
+
+/* ###### NEAT bindn() implementation #################################### */
+int nsa_bindn(int sockfd, uint16_t port, int flags,
+              struct neat_tlv* opt, const int optcnt)
+{
+   GET_NEAT_SOCKET(sockfd)
+   if(neatSocket->ns_flow != NULL) {
+      if(copy_options(&neatSocket->ns_options, &neatSocket->ns_optcount,
+                      opt, optcnt) < 0) {
+         return(-1);
+      }
+      neatSocket->ns_port = port;
+      return(0);
+   }
+   errno = ENOTSUP;
+   return(-1);
+}
+
+
 /* ###### NEAT bindx() implementation #################################### */
-int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags)
+int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags,
+              struct neat_tlv* opt, const int optcnt)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
       if(addrcnt >= 1) {
+         if(copy_options(&neatSocket->ns_options, &neatSocket->ns_optcount,
+                        opt, optcnt) < 0) {
+            return(-1);
+         }
          neatSocket->ns_port = get_port(addrs);
          return(0);
       }
@@ -185,9 +232,10 @@ int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags)
 
 
 /* ###### NEAT bind() implementation ##################################### */
-int nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+int nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen,
+             struct neat_tlv* opt, const int optcnt)
 {
-   return(nsa_bindx(sockfd, addr, 1, 0));
+   return(nsa_bindx(sockfd, addr, 1, 0, opt, optcnt));
 }
 
 
@@ -268,10 +316,7 @@ int nsa_connect(int                    sockfd,
 
 
 /* ###### NEAT listen() implementation ################################### */
-int nsa_listen(int              sockfd,
-               int              backlog,
-               struct neat_tlv* opt,
-               const int        optcnt)
+int nsa_listen(int sockfd, int backlog)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
@@ -281,7 +326,7 @@ int nsa_listen(int              sockfd,
       if(!(neatSocket->ns_flags & NSAF_LISTENING)) {
          result = neat_accept(gSocketAPIInternals->nsi_neat_context,
                               neatSocket->ns_flow, neatSocket->ns_port,
-                              opt, optcnt);
+                              neatSocket->ns_options, neatSocket->ns_optcount);
       }
       if(result == NEAT_OK) {
          neatSocket->ns_listen_backlog = backlog;

@@ -625,6 +625,11 @@ void nsa_close_internal(struct neat_socket* neatSocket)
    ibm_free_id(gSocketAPIInternals->nsi_socket_identifier_bitmap, neatSocket->ns_descriptor);
    neatSocket->ns_descriptor = -1;
 
+   if(neatSocket->ns_options) {
+      free(neatSocket->ns_options);
+      neatSocket->ns_options  = NULL;      
+      neatSocket->ns_optcount = 0;
+   }
    nq_delete(&neatSocket->ns_notifications);
    es_delete(&neatSocket->ns_exception_signal);
    es_delete(&neatSocket->ns_write_signal);

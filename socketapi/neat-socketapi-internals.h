@@ -90,6 +90,8 @@ struct neat_socket
 
    /* ====== bind() handling ============================================= */
    uint16_t                           ns_port;
+   struct neat_tlv*                   ns_options;
+   int                                ns_optcount;
 
    /* ====== listen()/accept() handling ================================== */
    int                                ns_listen_backlog;

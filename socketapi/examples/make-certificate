@@ -1,0 +1,62 @@
+#!/bin/bash -e
+#
+# TLS configuration helper script
+# Copyright (C) 2012-2017 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: dreibh@simula.no
+#
+
+if [ $# -lt 2 ] ; then
+   echo >&2 "Usage: $0 file_name_prefix rsa|ec"
+   exit 1
+fi
+PREFIX="$1"
+TYPE="$2"
+
+KEYLEN=4096
+EKEYLEN=4096
+CURVE="c2tnb431r1"
+DAYS=1830
+HASH_PARAM="-sha512"
+
+
+# Create key
+if [ "$TYPE" = "rsa" ] ; then
+   openssl genrsa -out "$PREFIX.key" $KEYLEN
+   openssl dhparam -2 $EKEYLEN -out "$PREFIX.dhparam"
+elif [ "$TYPE" = "ec" ] ; then
+   openssl ecparam -name $CURVE -genkey -out "$PREFIX.key"
+   openssl ecparam -name $CURVE -out "$PREFIX.ecparam"
+else
+   echo >&2 "ERROR: Bad type $TYPE!"
+   exit 1
+fi
+
+
+# Create certificate signing request (CSR)
+openssl req -config $1.config -new -utf8 $HASH_PARAM -outform PEM \
+            -key "$PREFIX.key" -out "$PREFIX.csr"
+openssl req -noout -text -in "$PREFIX.csr"
+
+# Create certificate (CRT)
+openssl req -config $1.config -new -utf8 $HASH_PARAM -x509 -days $DAYS \
+            -in "$PREFIX.csr" \
+            -key "$PREFIX.key" -out "$PREFIX.crt"
+openssl x509 -noout -text -in "$PREFIX.crt"
+
+
+# All in one
+cat "$PREFIX.key" "$PREFIX.crt" "$PREFIX.dhparam" "$PREFIX.ecparam" >"$PREFIX-all-in-one.pem"

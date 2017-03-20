@@ -210,10 +210,12 @@ union neat_notification {
 extern "C" {
 #endif
 
+/* ====== Initialisation and Clean-Up ==================================== */
 void nsa_cleanup();
 int nsa_map_socket(int systemSD, int neatSD);
 int nsa_unmap_socket(int neatSD);
 
+/* ====== Connection Establishment and Teardown ========================== */
 int nsa_socket(int domain, int type, int protocol, const char* properties);
 int nsa_close(int fd);
 int nsa_fcntl(int fd, int cmd, ...);
@@ -231,15 +233,19 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen);
 int nsa_peeloff(int sockfd, neat_assoc_t id);
 int nsa_shutdown(int sockfd, int how);
 
-int nsa_open(const char* pathname, int flags, mode_t mode);
-int nsa_creat(const char* pathname, mode_t mode);
-int nsa_pipe(int fds[2]);
+/* ====== Options Handling =============================================== */
+int nsa_getsockopt(int sockfd, int level,
+                   int optname, void* optval, socklen_t* optlen);
+int nsa_setsockopt(int sockfd, int level,
+                   int optname, const void* optval, socklen_t optlen);
+int nsa_opt_info(int sockfd, neat_assoc_t id,
+                 int opt, void* arg, socklen_t* size);
 int nsa_ioctl(int fd, int request, const void* argp);
 
-int nsa_getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optlen);
-int nsa_setsockopt(int sockfd, int level, int optname, const void* optval, socklen_t optlen);
-int nsa_opt_info(int sd, neat_assoc_t id, int opt, void* arg, socklen_t* size);
+/* ====== Security ======================================================= */
+int nsa_set_secure_identity(int sockfd, const char* pem);
 
+/* ====== Input/Output Handling ========================================== */
 ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags);
 ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags,
                    const struct sockaddr* to, socklen_t tolen);
@@ -259,16 +265,23 @@ ssize_t nsa_recvv(int sockfd, void* buf, size_t len,
                   void* info, socklen_t* infolen, unsigned int* infotype,
                   int* msg_flags);
 
+/* ====== Poll and Select ================================================ */
+int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout);
 int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
                struct timeval* timeout);
-int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout);
 
+/* ====== Address Handling =============================================== */
 int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen);
 int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen);
-int nsa_getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
-void nsa_freepaddrs(struct sockaddr* addrs);
 int nsa_getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
 void nsa_freeladdrs(struct sockaddr* addrs);
+int nsa_getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
+void nsa_freepaddrs(struct sockaddr* addrs);
+
+/* ====== Miscellaneous ================================================== */
+int nsa_open(const char* pathname, int flags, mode_t mode);
+int nsa_creat(const char* pathname, mode_t mode);
+int nsa_pipe(int fds[2]);
 
 #ifdef __cplusplus
 }

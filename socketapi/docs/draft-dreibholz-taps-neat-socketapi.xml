@@ -228,7 +228,7 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 </section>
 
 
-<section title="Input/Output">
+<section title="Input/Output Handling">
 
 <section title="nsa_send()">
  <t>...</t>

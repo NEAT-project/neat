@@ -2,7 +2,7 @@ txtfiles := $(patsubst %.xml,%.txt,$(wildcard draft-*.xml))
 htmlfiles := $(patsubst %.xml,%.html,$(wildcard draft-*.xml))
 
 
-all:   $(txtfiles) $(htmlfiles)
+all:   $(htmlfiles) $(txtfiles)
 
 
 references:

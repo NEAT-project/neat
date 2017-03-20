@@ -50,6 +50,7 @@ NEAT Socket API
 
 
 <section title="Introduction">
+   <t>The NEAT project <xref target="NEAT-Website" /> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network “services” offered to applications – such as reliability, low-delay communication or security – to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion, without applications having to be rewritten. This architectural change will make the Internet truly “enhanceable”, by allowing applications to seamlessly and more easily take advantage of new network features as they evolve.</t>
 <t>This document describes the NEAT Socket API.</t>
 
 
@@ -90,15 +91,14 @@ int nsa_map_socket(int systemSD, int neatSD)
 <section title="nsa_unmap_socket()">
 <t>nsa_unmap_socket() is used to unmap a system socket descriptor from the NEAT socket descriptor space.</t>
 <t>Function Prototype:</t>
-<figure><artwork>
-int nsa_unmap_socket(int neatSD)
-</artwork></figure>
-<t>Arguments:</t>
-<t>
+ <figure><artwork>
+int nsa_unmap_socket(int neatSD)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
    <list style="hanging">
       <t hangText="neatSD:">NEAT socket descriptor.</t>   
    </list>
-</t>
+ </t>
 </section>
 
 </section>
@@ -107,18 +107,36 @@ int nsa_unmap_socket(int neatSD)
 <section title="Connection Establishment and Teardown">
    
 <section title="nsa_socket()">
- <t>...</t>
+ <t>nsa_socket() creates a NEAT socket. The NEAT socket can either be a wrapper around the NEAT Core API (if properties are specified) or a wrapper around a system socket (if no properties are specified).</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_socket(int domain, int type, int protocol,
                const char* properties)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="domain:">Domain for system socket (e.g. AF_INET).</t>   
+      <t hangText="type:">Type for system socket (SOCK_SEQPACKET).</t>   
+      <t hangText="protocol:">Protocol for system socket (IPPROTO_SCTP).</t>   
+      <t hangText="domain:">Properties for NEAT Core socket.</t>
+   </list>
+ </t>
+ <t>Return Value:</t>
+ <t>nsa_socket() returns the NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
 </section>
 
 <section title="nsa_close()">
- <t>...</t>
+ <t>nsa_close() closes a given NEAT socket.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_close(int fd)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+   </list>
+ </t>
+ <t>nsa_close() returns the NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
 </section>
 
 <section title="nsa_fcntl()">
@@ -560,6 +578,7 @@ This array gives the current number of bytes queued for the streams 0 to sq_numb
 <references title='Informative References'>
  <?rfc include="ComNets2013-Core" ?>
 
+ <?rfc include="NEAT-Website" ?>
  <?rfc include="NorNet-Website" ?>
 </references>
 

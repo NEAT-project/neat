@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+<!-- $Id: draft-dreibholz-tsvwg-sctpsocket-sqinfo-04.xml 4340 2012-12-20 17:55:58Z dreibh $ -->
+
+<?rfc toc="yes"?>
+<?rfc compact="yes" ?>
+<?rfc subcompact="no" ?>
+<?rfc strict="no" ?>
+<?rfc symrefs="yes" ?>
+
+<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-00.txt">
+
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+
+
+<front>
+
+<title abbrev="NEAT Socket API">
+NEAT Socket API
+</title>
+
+<!-- ************** THOMAS DREIBHOLZ *************** -->
+<author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz">
+<organization abbrev="Simula Research Laboratory">Simula Research Laboratory, Network Systems Group</organization>
+<address>
+<postal>
+   <street>Martin Linges vei 17</street>
+   <city>1364 Fornebu</city>
+   <region>Akershus</region>
+   <country>Norway</country>
+</postal>
+<phone>+47-6782-8200</phone>
+<facsimile>+47-6782-8201</facsimile>
+<email>dreibh@simula.no</email>
+<uri>http://www.iem.uni-due.de/~dreibh/</uri>
+</address>
+</author>
+
+<date day="30" month="March" year="2017" />
+<keyword>Internet-Draft</keyword>
+
+<abstract>
+<t>This document describes the NEAT Socket API.</t>
+</abstract>
+
+
+</front>
+
+<middle>
+
+
+<section title="Introduction">
+<t>...</t>
+
+
+<section title="Conventions">
+<t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in <xref target="RFC2119"/>.</t>
+</section>
+</section>
+
+
+<section title="Initialisation and Clean-Up">
+
+<section title="nsa_cleanup()">
+<t>nsa_cleanup() is used to free all resources allocated by NEAT. Note, that the NEAT Socket API is automatically initialized when creating a NEAT socket.</t>
+<t>Function Prototype:</t>
+<t>
+void nsa_cleanup()
+</t>
+</section>
+
+
+<section title="nsa_map_socket()">
+<t>nsa_map_socket() is used to map a system socket descriptor into the NEAT socket descriptor space. This is useful for using NEAT functions with non-NEAT sockets. Mapped socket descriptors can be unmapped with nsa_unmap_socket().</t>
+<t>Function Prototype:</t>
+<t>
+int nsa_map_socket(int systemSD, int neatSD)
+</t>
+<t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="systemSD:">System socket descriptor.</t>
+      <t hangText="neatSD:">Desired NEAT socket descriptor; -1 for automatic allocation.</t>   
+   </list>
+   </t>
+<t>Return Value:</t>
+<t>nsa_map_socket() returns the new NEAT socket descriptor, or -1 in case of error. The error code will be set in the errno variable.</t>
+</section>
+
+<section title="nsa_unmap_socket()">
+<t>nsa_unmap_socket() is used to unmap a system socket descriptor from the NEAT socket descriptor space.</t>
+<t>Function Prototype:</t>
+<t>int nsa_unmap_socket(int neatSD)</t>
+<t>Arguments:</t>
+<t>
+   <list style="hanging">
+      <t hangText="neatSD:">NEAT socket descriptor.</t>   
+   </list>
+</t>
+</section>
+
+</section>
+
+
+<!--
+<section title="Connection Establishment and Teardown">
+int nsa_socket(int domain, int type, int protocol, const char* properties);
+int nsa_close(int fd);
+int nsa_fcntl(int fd, int cmd, ...);
+int nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen);
+int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags);
+int nsa_connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen);
+int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt, neat_assoc_t* id);
+int nsa_listen(int sockfd, int backlog);
+int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen);
+int nsa_peeloff(int sockfd, neat_assoc_t id);
+int nsa_shutdown(int sockfd, int how);
+</section>
+
+
+<section title="Options Handling">
+int nsa_ioctl(int fd, int request, const void* argp);
+
+int nsa_getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optlen);
+int nsa_setsockopt(int sockfd, int level, int optname, const void* optval, socklen_t optlen);
+int nsa_opt_info(int sd, neat_assoc_t id, int opt, void* arg, socklen_t* size);
+</section>
+
+
+<section title="Input/Output">
+ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags);
+ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags,
+                   const struct sockaddr* to, socklen_t tolen);
+ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags);
+ssize_t nsa_read(int fd, void* buf, size_t len);
+ssize_t nsa_write(int fd, const void* buf, size_t len);
+ssize_t nsa_sendv(int sockfd, const void* buf, size_t len,
+                  struct sockaddr* to, int addrcnt,
+                  void* info, socklen_t infolen, unsigned int infotype,
+                  int flags);
+ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags);
+ssize_t nsa_recvfrom(int sockfd, void* buf, size_t len, int flags,
+                     struct sockaddr* from, socklen_t* fromlen);
+ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags);
+ssize_t nsa_recvv(int sockfd, void* buf, size_t len,
+                  struct sockaddr* from, socklen_t* fromlen,
+                  void* info, socklen_t* infolen, unsigned int* infotype,
+                  int* msg_flags);
+</section>
+
+                  
+<section title="Poll and Select">
+int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
+               struct timeval* timeout);
+int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout);
+</section>
+
+
+<section title="Address Handling">
+int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen);
+int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen);
+int nsa_getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
+void nsa_freepaddrs(struct sockaddr* addrs);
+int nsa_getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
+void nsa_freeladdrs(struct sockaddr* addrs);
+</section>
+
+
+<section title="Miscellaneous">
+int nsa_open(const char* pathname, int flags, mode_t mode);
+int nsa_creat(const char* pathname, mode_t mode);
+int nsa_pipe(int fds[2]);
+</section>-->
+
+
+<!--<section title="Sender Queue Info (SCTP_SQINFO)">
+
+<t>This socket option obtains
+the maximum sender queue size (in bytes),
+the current total sender queue utilization (in bytes) as well as
+the current utilization per stream (in bytes).</t>
+
+<t>The following structure is used to obtain the sender queue information:
+<figure>
+<artwork>
+struct sctp_sndqueueinfo {
+  sctp_assoc_t sq_assoc_id;
+  uint32_t     sq_queue_limit;
+  uint32_t     sq_total_queued;
+  uint32_t     sq_number_of_streams;
+  uint32_t     sq_queued_on_stream[];
+};
+</artwork>
+</figure>
+
+<list style="hanging">
+<t hangText="sq_assoc_id:">
+This parameter is ignored for one-to-one style sockets. For one-to-many style sockets this parameter indicates which association the user is performing an action upon. It is an error to use SCTP_{CURRENT|ALL}_ASSOC in sq_assoc_id.</t>
+<t hangText="sq_queue_limit:">
+This field gives the maximum sender queue size in bytes.</t>
+<t hangText="sq_total_queued:">
+This field gives the current total sender queue utilization in bytes.</t>
+<t hangText="sq_number_of_streams:">
+This field gives the number of outgoing streams. That is, it will contain the number of valid sq_queued_on_stream entries.
+</t>
+<t hangText="sq_queued_on_stream:">
+This array gives the current number of bytes queued for the streams 0 to sq_number_of_streams-1.</t>
+</list></t>
+
+<t>Note, that the caller of getsockopt() MUST provide a sctp_sndqueueinfo structure which can hold at least as many sq_queued_on_stream entries as the association's number of outgoing streams. Otherwise, the getsockopt() call will fail and return an error.</t>
+
+</section>-->
+
+
+<section title="Testbed Platform">
+<t>A large-scale and realistic Internet testbed platform with support for the multi-homing feature of the underlying SCTP and MPTCP protocols is NorNet. A description of NorNet is provided in <xref target="ComNets2013-Core" />, some further information can be found on the project website <xref target="NorNet-Website" />.</t>
+</section>
+
+
+<section title="Security Considerations">
+<t>Security considerations for the SCTP sockets API are described in <xref target="RFC6458" />.</t>
+</section>
+
+
+<section title="IANA Considerations">
+<t>This document does not require IANA actions.</t>
+</section>
+
+<section title="Acknowledgments">
+<t>
+   The authors would like to thank
+   (ADD NAMES HERE)
+   for their support.
+</t>
+</section>
+
+
+</middle>
+
+
+<back>
+
+<references title='Normative References'>
+ <?rfc include="reference.RFC.2119" ?>
+ <?rfc include="reference.RFC.6458" ?>
+</references>
+
+<references title='Informative References'>
+ <?rfc include="ComNets2013-Core" ?>
+
+ <?rfc include="NorNet-Website" ?>
+</references>
+
+</back>
+
+
+</rfc>

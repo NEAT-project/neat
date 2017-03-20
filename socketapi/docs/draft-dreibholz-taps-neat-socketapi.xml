@@ -110,104 +110,86 @@ int nsa_unmap_socket(int neatSD)
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_socket(int domain, int type, int protocol, const char* properties)
- </artwork></figure>
+int nsa_socket(int domain, int type, int protocol,
+               const char* properties)</artwork></figure>
 </section>
 
 <section title="nsa_close()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_close(int fd)
- </artwork></figure>
+int nsa_close(int fd)</artwork></figure>
 </section>
 
 <section title="nsa_fcntl()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_fcntl(int fd, int cmd, ...)
- </artwork></figure>
+int nsa_fcntl(int fd, int cmd, ...)</artwork></figure>
 </section>
 
 <section title="nsa_bind()">
 <t>...</t>
 <t>Function Prototype:</t>
  <figure><artwork>
-nt nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
- </artwork></figure>
+int nsa_bind(int sockfd,
+             const struct sockaddr* addr, socklen_t addrlen)</artwork></figure>
 </section>
 
 <section title="nsa_bindx()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags)
- </artwork></figure>
+int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt,
+              int flags)</artwork></figure>
 </section>
 
 <section title="nsa_connect()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
- </artwork></figure>
+int nsa_connect(int sockfd,
+                const struct sockaddr* addr, socklen_t addrlen)</artwork></figure>
 </section>
 
 <section title="nsa_connectx()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_connectx(int sockfd, const struct sockaddr* addrs, int addrcnt,
-                 neat_assoc_t* id)
- </artwork></figure>
+int nsa_connectx(int sockfd,
+                 const struct sockaddr* addrs, int addrcnt,
+                 neat_assoc_t* id)</artwork></figure>
 </section>
 
 <section title="nsa_listen()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_listen(int sockfd, int backlog)
- </artwork></figure>
+int nsa_listen(int sockfd, int backlog)</artwork></figure>
 </section>
 
 <section title="nsa_accept()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
- </artwork></figure>
+int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)</artwork></figure>
 </section>
 
 <section title="nsa_shutdown()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_shutdown(int sockfd, int how)
- </artwork></figure>
+int nsa_shutdown(int sockfd, int how)</artwork></figure>
 </section>
 
 <section title="nsa_peeloff()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_peeloff(int sockfd, neat_assoc_t id)
- </artwork></figure>
+int nsa_peeloff(int sockfd, neat_assoc_t id)</artwork></figure>
 </section>
 
 </section>
-
-<!--
-<section title="">
-
-</section>
-
-<section title="">
-<t>...</t>
-<t>Function Prototype:</t>
-<t>
-</t>
--->
 
 
 <section title="Options Handling">
@@ -217,8 +199,7 @@ int nsa_peeloff(int sockfd, neat_assoc_t id)
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_getsockopt(int sockfd, int level, int optname,
-                   void* optval, socklen_t* optlen)
- </artwork></figure>
+                   void* optval, socklen_t* optlen)</artwork></figure>
 </section>
 
 <section title="nsa_setsockopt()">
@@ -226,8 +207,7 @@ int nsa_getsockopt(int sockfd, int level, int optname,
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_setsockopt(int sockfd, int level, int optname,
-                   const void* optval, socklen_t optlen)
- </artwork></figure>
+                   const void* optval, socklen_t optlen)</artwork></figure>
 </section>
 
 <section title="nsa_opt_info()">
@@ -235,16 +215,14 @@ int nsa_setsockopt(int sockfd, int level, int optname,
  <t>Function Prototype:</t>
   <figure><artwork>
 int nsa_opt_info(int sd, neat_assoc_t id, int opt, void* arg,
-                 socklen_t* size)
- </artwork></figure>
+                 socklen_t* size)</artwork></figure>
 </section>
 
 <section title="nsa_ioctl()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_ioctl(int fd, int request, const void* argp)
- </artwork></figure>
+int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 </section>
 
 </section>
@@ -256,59 +234,54 @@ int nsa_ioctl(int fd, int request, const void* argp)
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags)
- </artwork></figure>
+ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags)</artwork></figure>
 </section>
 
 <section title="nsa_sendto()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags,
-                   const struct sockaddr* to, socklen_t tolen)
- </artwork></figure>
+ssize_t nsa_sendto(int sockfd, const void* buf, size_t len,
+                   int flags,
+                   const struct sockaddr* to, socklen_t tolen)</artwork></figure>
 </section>
 
 <section title="nsa_sendmsg()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
- </artwork></figure>
+ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)</artwork></figure>
 </section>
 
 <section title="nsa_read()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_read(int fd, void* buf, size_t len)
- </artwork></figure>
+ssize_t nsa_read(int fd, void* buf, size_t len)</artwork></figure>
 </section>
 
 <section title="nsa_write()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_write(int fd, const void* buf, size_t len)
- </artwork></figure>
+ssize_t nsa_write(int fd, const void* buf, size_t len)</artwork></figure>
 </section>
 
 <section title="nsa_sendv()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_sendv(int sockfd, const void* buf, size_t len, struct sockaddr* to,
-                  int addrcnt, void* info, socklen_t infolen, unsigned int infotype,
-                  int flags)
- </artwork></figure>
+ssize_t nsa_sendv(int sockfd, const void* buf, size_t len,
+                  struct sockaddr* to, int addrcnt,
+                  void* info, socklen_t infolen,
+                  unsigned int infotype, int flags)</artwork></figure>
 </section>
 
 <section title="nsa_recv()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags)
- </artwork></figure>
+ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags)</artwork></figure>
 </section>
 
 <section title="nsa_recvfrom()">
@@ -316,16 +289,14 @@ ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags)
  <t>Function Prototype:</t>
  <figure><artwork>
 ssize_t nsa_recvfrom(int sockfd, void* buf, size_t len, int flags,
-                     struct sockaddr* from, socklen_t* fromlen)
- </artwork></figure>
+                     struct sockaddr* from, socklen_t* fromlen)</artwork></figure>
 </section>
 
 <section title="nsa_recvmsg()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
- </artwork></figure>
+ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)</artwork></figure>
 </section>
 
 <section title="nsa_recvv()">
@@ -334,37 +305,164 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
  <figure><artwork>
 ssize_t nsa_recvv(int sockfd, void* buf, size_t len,
                   struct sockaddr* from, socklen_t* fromlen,
-                  void* info, socklen_t* infolen, unsigned int* infotype,
-                  int* msg_flags)
-</artwork></figure>
+                  void* info, socklen_t* infolen,
+                  unsigned int* infotype, int* msg_flags)</artwork></figure>
 </section>
 
 </section>
 
 
-<!--                  
 <section title="Poll and Select">
-int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
-               struct timeval* timeout);
-int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout);
+
+<section title="nsa_poll()">
+ <t>...</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)</artwork></figure>
+</section>
+
+<section title="nsa_select()">
+ <t>nsa_select() is a wrapper around the select() call, using NEAT socket descriptors instead. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_poll() instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_select(int n,
+               fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
+               struct timeval* timeout)</artwork></figure>
+ <t>See the select() documentation for details.</t>
+</section>
+
 </section>
 
 
 <section title="Address Handling">
-int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen);
-int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen);
-int nsa_getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
-void nsa_freepaddrs(struct sockaddr* addrs);
-int nsa_getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
-void nsa_freeladdrs(struct sockaddr* addrs);
+
+<section title="nsa_getsockname()">
+ <t>nsa_getsockname() obtains the first local address of a socket. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_getladdrs() instead to support multi-homed transport protocols!</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_getsockname(int sockfd,
+                    struct sockaddr* name, socklen_t* namelen)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="name:">Storage space for the address.</t>
+      <t hangText="namelen:">Pointer to variable with the storage space's size.</t>
+   </list>
+ </t>
+ <t>Return Value:</t>
+ <t>nsa_getsockname() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
+</section>
+
+<section title="nsa_getpeername()">
+ <t>nsa_getpeername() obtains the first remote address of a connected socket. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_getpaddrs() instead to support multi-homed transport protocols!</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_getpeername(int sockfd,
+                    struct sockaddr* name, socklen_t* namelen)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="name:">Storage space for the address.</t>
+      <t hangText="namelen:">Pointer to variable with the storage space's size.</t>
+   </list>
+ </t>
+ <t>Return Value:</t>
+ <t>nsa_getpeername() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
+</section>
+
+<section title="nsa_getladdrs()">
+ <t>nsa_getladdrs() obtains the local addresses of a socket. The storage space for the addresses will be automatically allocated and needs to be freed by nsa_freeladdrs().</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_getladdrs(int sockfd, neat_assoc_t id,
+                  struct sockaddr** addrs)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="id:">Association identifier (0 in case of 1:1-style sockets).</t>
+      <t hangText="addrs:">Pointer to variable to store pointer to addresses to.</t>
+   </list>
+ </t>
+ <t>nsa_getladdrs() returns the number of addresses stored into a newly allocated space. The pointer to this space is stored into the variable provided by "addrs". In case of error, -1 is returned, and the error code will be set in the errno variable.</t>
+</section>
+
+<section title="nsa_freeladdrs()">
+ <t>nsa_freeladdrs() frees addresses obtained by nsa_getladdrs().</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+void nsa_freeladdrs(struct sockaddr* addrs)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="addrs:">Pointer to addresses to be freed.</t>
+   </list>
+ </t>
+</section>
+
+<section title="nsa_getpaddrs()">
+ <t>nsa_getpaddrs() obtains the remote addresses of a connected socket. The storage space for the addresses will be automatically allocated and needs to be freed by nsa_freepaddrs().</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_getpaddrs(int sockfd, neat_assoc_t id,
+                  struct sockaddr** addrs)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="id:">Association identifier (0 in case of 1:1-style sockets).</t>
+      <t hangText="addrs:">Pointer to variable to store pointer to addresses to.</t>
+   </list>
+ </t>
+ <t>nsa_getpaddrs() returns the number of addresses stored into a newly allocated space. The pointer to this space is stored into the variable provided by "addrs". In case of error, -1 is returned, and the error code will be set in the errno variable.</t>
+</section>
+
+
+<section title="nsa_freepaddrs()">
+ <t>nsa_freepaddrs() frees addresses obtained by nsa_getpaddrs().</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+void nsa_freepaddrs(struct sockaddr* addrs)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="addrs:">Pointer to addresses to be freed.</t>
+   </list>
+ </t>
+</section>
+
 </section>
 
 
 <section title="Miscellaneous">
-int nsa_open(const char* pathname, int flags, mode_t mode);
-int nsa_creat(const char* pathname, mode_t mode);
-int nsa_pipe(int fds[2]);
-</section>-->
+   
+<section title="nsa_open()">
+ <t>nsa_open() is a wrapper around the open() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_open(const char* pathname, int flags, mode_t mode)</artwork></figure>
+ <t>See the open() documentation for details.</t>
+</section>
+
+<section title="nsa_creat()">
+ <t>nsa_creat() is a wrapper around the creat() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_creat(const char* pathname, mode_t mode)</artwork></figure>
+ <t>See the creat() documentation for details.</t>
+</section>
+
+<section title="nsa_pipe()">
+ <t>nsa_pipe() is a wrapper around the pipe() call, returning NEAT socket descriptors instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_pipe(int fds[2])</artwork></figure>
+ <t>See the pipe() documentation for details.</t>
+</section>
+
+</section>
 
 
 <!--<section title="Sender Queue Info (SCTP_SQINFO)">

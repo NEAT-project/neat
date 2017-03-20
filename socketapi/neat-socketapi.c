@@ -565,7 +565,7 @@ int nsa_getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs)
 /* ###### NEAT nsa_freeladdrs() implementation ########################### */
 void nsa_freeladdrs(struct sockaddr* addrs)
 {
-   free(addrs);
+   neat_freelpaddrs(addrs);
 }
 
 
@@ -579,7 +579,7 @@ int nsa_getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs)
 /* ###### NEAT nsa_freepaddrs() implementation ########################### */
 void nsa_freepaddrs(struct sockaddr* addrs)
 {
-   free(addrs);
+   neat_freelpaddrs(addrs);
 }
 
 

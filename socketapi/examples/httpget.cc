@@ -59,7 +59,7 @@ int main(int argc, char** argv)
       exit(1);
    }
 
-
+#if 0   
    // ====== Get remote address (resolve hostname and service if necessary) ==
    struct addrinfo* ainfo = NULL;
    struct addrinfo  ainfohint;
@@ -105,7 +105,18 @@ int main(int argc, char** argv)
       exit(1);
    }
    freeaddrinfo(ainfo);
+#endif
 
+   // ====== Connect to remote node ==========================================
+   int sd = nsa_socket(0, 0, 0, properties);
+   if(sd <= 0) {
+      perror("nsa_socket() call failed");
+      exit(1);
+   }
+   if(nsa_connectn(sd, argv[1], atoi(argv[2]), NULL, NULL, 0) < 0) {
+      perror("nsa_connect() call failed");
+      exit(1);
+   }
 
    // ====== Request webpage =================================================
    cout << "Connected! Sending HTTP GET..." << endl;

@@ -13,7 +13,5 @@ setup(name='neatpmd',
       author_email='zdravko@bozakov.de',
       url='https://github.com/NEAT-project/neat/tree/master/policy/',
       scripts=['neatpmd'],
-      py_modules=['policy', 'cib', 'pib', 'pmdefaults', 'pmhelper', 'pmrest'],
-     )
-
-
+      py_modules=['policy', 'cib', 'pib', 'pmdefaults', 'pmhelper', 'resthelper', 'pmrest'],
+      )

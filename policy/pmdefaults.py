@@ -24,9 +24,20 @@ CLIENT_UID = str(uuid.uuid3(uuid.NAMESPACE_OID, str(uuid.getnode())))
 # CIB expiration time in seconds
 CIB_DEFAULT_TIMEOUT = 10 * 60
 
-PIB_SOCK = os.environ['HOME'] + '/.neat/neat_pib_socket'
-CIB_SOCK = os.environ['HOME'] + '/.neat/neat_cib_socket'
-DOMAIN_SOCK = os.environ['HOME'] + '/.neat/neat_pm_socket'
+SOCK_DIR = os.path.join(os.environ['HOME'], '.neat', '')
+PIB_SOCK_NAME = 'neat_pib_socket'
+CIB_SOCK_NAME = 'neat_cib_socket'
+DOMAIN_SOCK_NAME = 'neat_pm_socket'
+
+
+def update_sock_files():
+    global PIB_SOCK, CIB_SOCK, DOMAIN_SOCK
+    PIB_SOCK = os.path.join(SOCK_DIR, PIB_SOCK_NAME)
+    CIB_SOCK = os.path.join(SOCK_DIR, CIB_SOCK_NAME)
+    DOMAIN_SOCK = os.path.join(SOCK_DIR, DOMAIN_SOCK_NAME)
+
+
+update_sock_files()
 
 PIB_DIR = 'examples/pib/'
 CIB_DIR = 'examples/cib/'

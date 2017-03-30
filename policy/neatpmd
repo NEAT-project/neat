@@ -27,7 +27,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=sys.stdout.encoding,
 parser = argparse.ArgumentParser(description='NEAT Policy Manager')
 parser.add_argument('--cib', type=str, default=None, help='specify directory in which to look for CIB files')
 parser.add_argument('--pib', type=str, default=None, help='specify directory in which to look for PIB files')
-parser.add_argument('--sock', type=str, default=None, help='set Unix domain socket path')
+parser.add_argument('--sock', type=str, default=None, help='set path for Unix domain sockets')
 parser.add_argument('--controller', type=str, default=None, help='set URL of controller REST API')
 parser.add_argument('--rest-ip', type=str, default=None, help='set local management IP:PORT for external REST calls')
 parser.add_argument('--debug', type=bool, default=None, help='enable debugging')
@@ -40,7 +40,8 @@ if args.cib:
 if args.pib:
     PM.PIB_DIR = args.pib
 if args.sock:
-    PM.DOMAIN_SOCK = args.sock
+    PM.SOCK_DIR = args.sock
+    PM.update_sock_files()
 if args.controller:
     PM.CONTROLLER_REST = args.controller
 if args.rest_ip:

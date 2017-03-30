@@ -11,7 +11,7 @@ python3.5 ./neatpmd --cib ./example/cib/ --pib ./example/pib
 
 ```
 
-in the `neat/policy` directory. The `--cib` and `--pib` options specify the respective locations of the CIB and the PIB.
+in the `neat/policy` directory. The `--cib` and `--pib` options specify the respective locations of the CIB and the PIB repositories.
 
 ## NEAT properties
 NEAT properties are essentially `key|value` tuples describing attributes used by the components of the NEAT Policy Manager. See documentation [here](doc/NEAT Properties.md)
@@ -74,7 +74,7 @@ $ ./neatpmd --cib ./example/cib/ --pib ./example/pib
 
 in the `neat/policy` directory. The `--cib` and `--pib` options specify the respective locations of the CIB and the PIB. By default the PM will create a Unix domain socket located at `~/.neat/neat_pm_socket`, where it will listen for JSON strings containing application requests, and it will output the list of generated candidates.
 
-We can test `neatpmd.py` using the `socat` utility:
+We can test `neatpmd` using the `socat` utility:
 
 ```
 $ JSON='{"transport": {"value": "TCP"}, "MTU": {"value": [1500, Infinity]}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10:54:1.23"}}'
@@ -92,5 +92,17 @@ The PM will output a JSON string containing the list of connection candidates (t
 
 ```
 [{"MTU": {"value": {"end": 9000.0, "start": 1500.0}}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10:54:1.23"}, "transport": {"value": "TCP"}}, {"MTU": {"value": {"end": 1500.0, "start": 300.0}}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10:54:2.2"}, "transport": {"value": "UDP"}}]
+```
+
+## Requirements
+
+The Policy Manager requires Python version 3.5 or higher. The following Python external modules are used: `netifaces`, `aiohttp` (optional for REST API).
+
+On Debian  like systems these modules can be installed using:
+
+```
+$ apt install python3-pip
+$ pip3 install netifaces
+$ pip3 install aiohttp
 ```
 

@@ -5,10 +5,12 @@
 # Required-Stop:     $local_fs $network $named $time $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Description:       NEAT\\\ Policy\\\ Manager
+# Description:       NEAT Policy Manager
 ### END INIT INFO
 
-SCRIPT=/usr/local/bin/neatpmd
+CIBDIR="/var/run/neat/cib"
+SOCKDIR="/var/run/neat/"
+SCRIPT="/usr/local/bin/neatpmd --cib=$CIBDIR --pib=/etc/neat/pib --sock=$SOCKDIR"
 RUNAS=root
 NAME=neatpm
 

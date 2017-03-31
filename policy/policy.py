@@ -65,7 +65,11 @@ def dict_to_properties(property_dict):
             for p in attr:
                 properties.extend(dict_to_properties({key: p}))
         else:
-            val = attr.get('value', None)
+            try:
+                val = attr.get('value', None)
+            except AttributeError as e:
+                logging.error('Property dictionary item invalid')
+                continue
             try:
                 neat_property = NEATProperty((key, val),
                                              precedence=attr.get('precedence', NEATProperty.OPTIONAL),

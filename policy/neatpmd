@@ -345,7 +345,9 @@ if __name__ == "__main__":
     os.chmod(PM.PIB_SOCK, 0o777)
     os.chmod(PM.CIB_SOCK, 0o777)
 
-    print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))
+    print('Accepting PM requests on {} ...'.format(server.sockets[0].getsockname()))
+    print('Accepting PIB updates on {} ...'.format(pib_server.sockets[0].getsockname()))
+    print('Accepting CIB updates on {} ...'.format(cib_server.sockets[0].getsockname()))
     try:
         loop.run_forever()
     except KeyboardInterrupt:

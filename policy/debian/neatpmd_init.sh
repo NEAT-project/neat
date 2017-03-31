@@ -9,10 +9,12 @@
 ### END INIT INFO
 
 CIBDIR="/var/run/neat/cib"
-SOCKDIR="/var/run/neat/"
+SOCKDIR="/var/run/neat"
 SCRIPT="/usr/local/bin/neatpmd --cib=$CIBDIR --pib=/etc/neat/pib --sock=$SOCKDIR"
 RUNAS=root
 NAME=neatpm
+
+export NEAT_PM_SOCKET=$SOCKDIR/neat_pm_socket
 
 PIDFILE=/var/run/$NAME.pid
 LOGFILE=/var/log/$NAME.log

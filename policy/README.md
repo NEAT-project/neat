@@ -72,19 +72,21 @@ $ ./neatpmd --cib ./example/cib/ --pib ./example/pib
 
 ```
 
-in the `neat/policy` directory. The `--cib` and `--pib` options specify the respective locations of the CIB and the PIB. By default the PM will create a Unix domain socket located at `~/.neat/neat_pm_socket`, where it will listen for JSON strings containing application requests, and it will output the list of generated candidates.
+in the `neat/policy` directory. The `--cib` and `--pib` options specify the respective locations of the CIB and the PIB. By default the PM will create a Unix domain socket located at `~/.neat/neat_pm_socket`, where it will listen for JSON strings containing application requests, and it will output the list of generated candidates. The directory for the domain socket may be overridden using the `--sock` option.
 
 We can test `neatpmd` using the `socat` utility:
 
 ```
+$ NEAT_PM_SOCKET=~/.neat/neat_pm_socket
 $ JSON='{"transport": {"value": "TCP"}, "MTU": {"value": [1500, Infinity]}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10:54:1.23"}}'
-$ echo $JSON | socat -d -d STDIO UNIX-CONNECT:$HOME/.neat/neat_pm_socket
+$ echo $JSON | socat -d -d STDIO UNIX-CONNECT:$NEAT_PM_SOCKET
 ``` 
 
 or to read from a file:
 
 ``` 
-$ cat request.json | socat -d -d STDIO UNIX-CONNECT:$HOME/.neat/neat_pm_socket
+$ NEAT_PM_SOCKET=~/.neat/neat_pm_socket
+$ cat request.json | socat -d -d STDIO UNIX-CONNECT:$NEAT_PM_SOCKET
 ``` 
 
 

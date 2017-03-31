@@ -58,6 +58,7 @@ try:
     os.makedirs(os.path.dirname(PM.DOMAIN_SOCK), exist_ok=True)
     os.makedirs(os.path.dirname(PM.PIB_SOCK), exist_ok=True)
     os.makedirs(os.path.dirname(PM.CIB_SOCK), exist_ok=True)
+
 except OSError as e:
     print(e)
     raise SystemExit()
@@ -357,6 +358,10 @@ if __name__ == "__main__":
     # try to start the PM REST interface
     pmrest.init_rest_server(loop, profiles, cib, pib, rest_port=PM.REST_PORT)
 
+    os.chmod(PM.DOMAIN_SOCK, 0o777)
+    os.chmod(PM.PIB_SOCK, 0o777)
+    os.chmod(PM.CIB_SOCK, 0o777)
+    
     print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))
     try:
         loop.run_forever()

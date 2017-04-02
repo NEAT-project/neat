@@ -1745,7 +1745,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
 
     assert(he_res);
 
-    socket_path = getenv("NEAT_PM_SOCKET");
+    socket_path = getenv("NEAT_CIB_SOCKET");
     if (!socket_path) {
         if ((home_dir = getenv("HOME")) == NULL) {
             neat_log(ctx, NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");

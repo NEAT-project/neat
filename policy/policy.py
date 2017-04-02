@@ -65,7 +65,11 @@ def dict_to_properties(property_dict):
             for p in attr:
                 properties.extend(dict_to_properties({key: p}))
         else:
-            val = attr.get('value', None)
+            try:
+                val = attr.get('value', None)
+            except AttributeError as e:
+                raise NEATPropertyError('Property dictionary item invalid') from e
+
             try:
                 neat_property = NEATProperty((key, val),
                                              precedence=attr.get('precedence', NEATProperty.OPTIONAL),
@@ -284,7 +288,6 @@ class NEATProperty(object):
 
         self.precedence = precedence
         self.score = score
-
 
         if banned:
             self.banned = [PropertyValue(b) for b in banned]
@@ -583,9 +586,9 @@ class PropertyMultiArray(list):
         pma_list = json.loads(j)
         pma = PropertyMultiArray()
         for l in pma_list:
-            if isinstance(l,dict):
+            if isinstance(l, dict):
                 pa = [PropertyArray.from_dict(l)]
-            elif isinstance(l,list):
+            elif isinstance(l, list):
                 pa = [PropertyArray.from_dict(pa) for pa in l]
             else:
                 pa = []

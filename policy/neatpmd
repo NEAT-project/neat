@@ -132,11 +132,18 @@ def cleanup_special_properties(r):
 
 def process_request(json_str, num_candidates=10):
     """Process JSON requests from NEAT logic"""
-    logging.debug(json_str)
     requests = []
 
-    #FIXME this is quick workaround to use the new style PropertyArrays
-    for req in json.loads(json_str):
+    try:
+        reqs = json.loads(json_str)
+    except json.decoder.JSONDecodeError as e:
+        logging.error('Request invalid')
+        return
+
+    logging.debug(json_str)
+
+    # FIXME this is quick workaround to use the new style PropertyArrays
+    for req in reqs:
         pma = PropertyMultiArray()
         for p, val in req.items():
             if isinstance(val, list):
@@ -146,36 +153,12 @@ def process_request(json_str, num_candidates=10):
                 pma.add(policy.PropertyArray(pp))
         requests.extend(pma.expand())
 
-
-    # # list which will hold all requests
-    # requests = []
-    # try:
-    #     properties_list = policy.json_to_properties(json_str)
-    # except policy.InvalidPropertyError:
-    #     logging.error("invalid request")
-    #     return
-    #
-    #
-    # try:
-    #     for request in properties_list:
-    #         # we create a PropertyMultiArray first and then expand it to get a list of PropertyArrays
-    #         # with all permutations of requested properties
-    #         pma = PropertyMultiArray()
-    #         for p in request:
-    #             pma.add(p)
-    #         requests.extend(pma.expand())
-    # except policy.NEATPropertyError as e:
-    #     print(e, "here")
-    #     return
     # local_endpoint handling
     # let's try to avoid any other special handling of properties!
-
     for r in requests:
         process_special_properties(r)
 
     print('Received %d NEAT requests' % len(requests))
-    # for i, request in enumerate(requests):
-    #    print("%d: " % i, request)
 
     candidates = []
 
@@ -361,8 +344,10 @@ if __name__ == "__main__":
     os.chmod(PM.DOMAIN_SOCK, 0o777)
     os.chmod(PM.PIB_SOCK, 0o777)
     os.chmod(PM.CIB_SOCK, 0o777)
-    
-    print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))
+
+    print('Accepting PM requests on {} ...'.format(server.sockets[0].getsockname()))
+    print('Accepting PIB updates on {} ...'.format(pib_server.sockets[0].getsockname()))
+    print('Accepting CIB updates on {} ...'.format(cib_server.sockets[0].getsockname()))
     try:
         loop.run_forever()
     except KeyboardInterrupt:

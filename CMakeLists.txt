@@ -211,6 +211,11 @@ ELSE()
         MESSAGE(STATUS "OPENSSL found: " ${OPENSSL_LIB})
         MESSAGE(STATUS "OPENSSL Crypto found: " ${OPENSSL_CRYPTO_LIB})
         ADD_DEFINITIONS(-DNEAT_USETLS)
+
+        IF (OPENSSL_VERSION VERSION_GREATER "1.1.0")
+            MESSAGE(FATAL_ERROR "openssl >= 1.1.0 found ...")
+        ENDIF()
+
     ENDIF()
 ENDIF()
 

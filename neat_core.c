@@ -1803,7 +1803,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
 
     assert(he_res);
 
-    socket_path = getenv("NEAT_CIB_SOCKET");
+    socket_path = getenv("NEAT_PM_SOCKET");
     if (!socket_path) {
         if ((home_dir = getenv("HOME")) == NULL) {
             neat_log(ctx, NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");
@@ -4329,6 +4329,22 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
     }
     TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
         do {
+#ifdef NEAT_SCTP_DTLS
+                if ((flow->socket->fd != -1) && flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+                    struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+                    struct bio_dgram_sctp_sndinfo sinfo;
+                    memset(&sinfo, 0, sizeof(struct bio_dgram_sctp_sndinfo));
+                    BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(struct bio_dgram_sctp_sndinfo), &sinfo);
+                    socklen_t size = SSL_write(private->ssl, msg->buffered + msg->bufferedOffset, msg->bufferedSize);
+                    if (SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_WRITE || SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_READ) {
+                        uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
+                    } else if (size > 0) {
+                        msg->bufferedOffset += size;
+                        msg->bufferedSize -= size;
+                    }
+                }
+#endif
+        if (!flow->security_needed || !(neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP)) {
             iov.iov_base = msg->buffered + msg->bufferedOffset;
             if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) &&
                 (flow->socket->sctp_explicit_eor) &&
@@ -4386,6 +4402,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 
             msghdr.msg_flags = 0;
             if (flow->socket->fd != -1) {
+/*
 #ifdef NEAT_SCTP_DTLS
                 if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
                     struct security_data *private = (struct security_data *) flow->dtls_data->userData;
@@ -4395,17 +4412,17 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                     socklen_t size = SSL_write(private->ssl, msg->buffered + msg->bufferedOffset, msg->bufferedSize);
                     if (SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_WRITE || SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_READ) {
                         uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
-                    } else if (len > 0) {
-                        msg->bufferedOffset += len;
-                        msg->bufferedSize -= len;
+                    } else if (size > 0) {
+                        msg->bufferedOffset += size;
+                        msg->bufferedSize -= size;
                     }
                 } else {
-#else
+#else*/
                     rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
-#endif
+/*#endif
 #ifdef NEAT_SCTP_DTLS
                 }
-#endif
+#endif*/
             } else {
 #if defined(USRSCTP_SUPPORT)
                 if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
@@ -4432,6 +4449,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 }
                 msg->bufferedOffset += rv;
                 msg->bufferedSize -= rv;
+            }
             }
         } while (msg->bufferedSize > 0);
         TAILQ_REMOVE(&flow->bufferedMessages, msg, message_next);

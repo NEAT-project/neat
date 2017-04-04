@@ -6,8 +6,9 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
+#ifdef NEAT_SCTP_DTLS
 #include <netinet/sctp.h>
-
+#endif
 #include "neat.h"
 #include "neat_internal.h"
 #include "neat_security.h"
@@ -585,6 +586,7 @@ neat_dtls_connect(neat_ctx *ctx, neat_flow *flow)
   /*  BIO_dgram_sctp_notification_cb(private->dtlsBIO, &handle_notifications, (void*) private->ssl);*/
 
     SSL_set_connect_state(private->ssl);
+
     private->state = DTLS_CONNECTING;
     SSL_do_handshake(private->ssl);
 

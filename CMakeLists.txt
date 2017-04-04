@@ -221,7 +221,7 @@ ELSE()
             CHECK_TYPE_SIZE("struct bio_dgram_sctp_sndinfo" OPENSSL_DTLS)
             IF (HAVE_OPENSSL_DTLS)
                 MESSAGE("DTLS for SCTP supported")
-                ADD_DEFINITIONS(-DNEAT_USEDTLS)
+                ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
             ENDIF()
         ENDIF()
 

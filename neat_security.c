@@ -13,7 +13,7 @@
 #include "neat_internal.h"
 #include "neat_security.h"
 
-#ifdef NEAT_USETLS
+#if defined(NEAT_USETLS) || defined(NEAT_SCTP_DTLS)
 typedef unsigned int bool;
 #define true 1
 #define false 0

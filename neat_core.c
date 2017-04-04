@@ -924,9 +924,11 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
         flow->operations->on_connected(flow->operations);
     }
 
+#ifdef NEAT_SCTP_DTLS
     if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
         neat_dtls_connect(ctx, flow);
     }
+#endif
 }
 
 static void io_writable(neat_ctx *ctx, neat_flow *flow, int stream_id, neat_error_code code)
@@ -1239,6 +1241,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+#ifdef NEAT_SCTP_DTLS
     if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
         socklen_t len;
         int ret = 0;
@@ -1281,6 +1284,8 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
         }
         return ret;
     }
+#endif
+
     if (!flow->operations) {
         neat_log(ctx, NEAT_LOG_DEBUG, "%s - No operations", __func__);
         return READ_WITH_ERROR;
@@ -2076,6 +2081,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+#ifdef NEAT_SCTP_DTLS
     if (pollable_socket->flow->security_needed && neat_base_stack(pollable_socket->stack) == NEAT_STACK_SCTP) {
         struct security_data *private = (struct security_data *) flow->dtls_data->userData;
         if (SSL_get_shutdown(private->ssl) & SSL_RECEIVED_SHUTDOWN) {
@@ -2084,6 +2090,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
             return;
         }
     }
+#endif
 
     if ((events & UV_READABLE) && flow && flow->acceptPending) {
         if (pollable_socket->stack == NEAT_STACK_UDP ||
@@ -4379,6 +4386,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 
             msghdr.msg_flags = 0;
             if (flow->socket->fd != -1) {
+#ifdef NEAT_SCTP_DTLS
                 if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
                     struct security_data *private = (struct security_data *) flow->dtls_data->userData;
                     struct bio_dgram_sctp_sndinfo sinfo;
@@ -4392,8 +4400,12 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                         msg->bufferedSize -= len;
                     }
                 } else {
+#else
                     rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+#endif
+#ifdef NEAT_SCTP_DTLS
                 }
+#endif
             } else {
 #if defined(USRSCTP_SUPPORT)
                 if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
@@ -4500,7 +4512,9 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     ssize_t rv = 0;
     size_t len;
     int atomic;
+#ifdef NEAT_SCTP_DTLS
     struct security_data *private;
+#endif
 
     int stream_id            = 0;
     int has_stream_id        = 0;
@@ -4517,11 +4531,12 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     // int has_dest_addr     = 0;
     // const char *dest_addr = "";
 
-#if defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
+#if !defined(NEAT_SCTP_DTLS) && (defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV))
     struct cmsghdr *cmsg;
 #endif
     struct msghdr msghdr;
     struct iovec iov;
+#if !defined(NEAT_SCTP_DTLS)
 #if defined(SCTP_SNDINFO)
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
     struct sctp_sndinfo *sndinfo = NULL;
@@ -4530,6 +4545,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
     struct sctp_sndrcvinfo *sndrcvinfo;
     memset(&cmsgbuf, 0, sizeof(cmsgbuf));
+#endif
 #endif
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -4607,6 +4623,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         msghdr.msg_iovlen = 1;
 
         if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+#ifdef NEAT_SCTP_DTLS
             if (flow->security_needed) {
                 private = (struct security_data *) flow->dtls_data->userData;
                 struct bio_dgram_sctp_sndinfo sinfo;
@@ -4614,6 +4631,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                 sinfo.snd_sid = stream_id;
                 BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(struct bio_dgram_sctp_sndinfo), &sinfo);
             } else {
+#else
 #if defined(SCTP_SNDINFO)
             msghdr.msg_control = cmsgbuf;
             msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo));
@@ -4655,7 +4673,10 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             msghdr.msg_control = NULL;
             msghdr.msg_controllen = 0;
 #endif
+#endif
+#ifdef NEAT_SCTP_DTLS
             }
+#endif
         } else {
             msghdr.msg_control = NULL;
             msghdr.msg_controllen = 0;
@@ -4663,11 +4684,15 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
         msghdr.msg_flags = 0;
         if (flow->socket->fd != -1) {
+#ifdef NEAT_SCTP_DTLS
             if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
                 rv = SSL_write(private->ssl, buffer, len);
             } else {
                 rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
             }
+#else
+            rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+#endif
         } else {
 #if defined(USRSCTP_SUPPORT)
             neat_log(ctx, NEAT_LOG_INFO, "%s - send %zd bytes on flow %p and socket %p", __func__, len, (void *)flow, (void *)flow->socket->usrsctp_socket);
@@ -5110,7 +5135,18 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                            sizeof(int)) == 0)
                 candidate->pollable_socket->sctp_explicit_eor = 1;
         } else {
-            candidate->pollable_socket->sctp_explicit_eor = 0;
+#ifndef NEAT_SCTP_DTLS
+            if (setsockopt(candidate->pollable_socket->fd,
+                           IPPROTO_SCTP,
+                           SCTP_EXPLICIT_EOR,
+                           &enable,
+                           sizeof(int)) == 0)
+                candidate->pollable_socket->sctp_explicit_eor = 1;
+            else
+                candidate->pollable_socket->sctp_explicit_eor = 0;
+#else
+                candidate->pollable_socket->sctp_explicit_eor = 0;
+#endif
         }
 #endif
 #ifndef USRSCTP_SUPPORT
@@ -5229,11 +5265,13 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     uv_poll_init(candidate->ctx->loop,
                  candidate->pollable_socket->handle,
                  candidate->pollable_socket->fd); // makes fd nb as side effect
+
+#ifdef NEAT_SCTP_DTLS
     if (candidate->pollable_socket->flow->security_needed && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
             neat_log(ctx, NEAT_LOG_DEBUG, "Start DTLS over SCTP");
             neat_dtls_install(ctx, candidate->pollable_socket);
     }
-
+#endif
 
     retval = connect(candidate->pollable_socket->fd,
                      (struct sockaddr *) &(candidate->pollable_socket->dst_sockaddr),
@@ -5469,6 +5507,7 @@ neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 #endif // SCTP_MULTISTREAMING
     }
 
+#ifdef NEAT_SCTP_DTLS
     if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
         struct security_data *private = (struct security_data *) flow->dtls_data->userData;
         socklen_t len = SSL_shutdown(private->ssl);
@@ -5494,12 +5533,15 @@ neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         }
         return NEAT_OK;
     } else {
+#endif
         if (shutdown(flow->socket->fd, SHUT_WR) == 0) {
             return NEAT_OK;
         } else {
             return NEAT_ERROR_IO;
         }
+#ifdef NEAT_SCTP_DTLS
     }
+#endif
 }
 
 #if defined(USRSCTP_SUPPORT)

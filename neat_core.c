@@ -4402,27 +4402,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 
             msghdr.msg_flags = 0;
             if (flow->socket->fd != -1) {
-/*
-#ifdef NEAT_SCTP_DTLS
-                if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-                    struct security_data *private = (struct security_data *) flow->dtls_data->userData;
-                    struct bio_dgram_sctp_sndinfo sinfo;
-                    memset(&sinfo, 0, sizeof(struct bio_dgram_sctp_sndinfo));
-                    BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(struct bio_dgram_sctp_sndinfo), &sinfo);
-                    socklen_t size = SSL_write(private->ssl, msg->buffered + msg->bufferedOffset, msg->bufferedSize);
-                    if (SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_WRITE || SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_READ) {
-                        uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
-                    } else if (size > 0) {
-                        msg->bufferedOffset += size;
-                        msg->bufferedSize -= size;
-                    }
-                } else {
-#else*/
-                    rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
-/*#endif
-#ifdef NEAT_SCTP_DTLS
-                }
-#endif*/
+                rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
             } else {
 #if defined(USRSCTP_SUPPORT)
                 if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {

@@ -528,7 +528,7 @@ neat_pvd_handle_newaddr(struct neat_ctx *ctx,
             free(reverse_ip);
             free(pvd_result);
             neat_log(ctx, NEAT_LOG_ERROR, "%s - Could not create DNS packet", __func__);
-            continue;
+            return;
         }
 
         struct pvd_async_query *async_query;

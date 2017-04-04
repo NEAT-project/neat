@@ -50,6 +50,7 @@ add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
 
 INCLUDE(CheckIncludeFile)
 INCLUDE(CheckStructHasMember)
+INCLUDE(CheckTypeSize)
 SET(CMAKE_MACOSX_RPATH 1)
 
 # SOURCES + HEADERS
@@ -211,9 +212,14 @@ ELSE()
         MESSAGE(STATUS "OPENSSL found: " ${OPENSSL_LIB})
         MESSAGE(STATUS "OPENSSL Crypto found: " ${OPENSSL_CRYPTO_LIB})
         ADD_DEFINITIONS(-DNEAT_USETLS)
+        SET(CMAKE_EXTRA_INCLUDE_FILES "openssl/ssl.h")
 
         IF ((OPENSSL_VERSION VERSION_EQUAL "1.1.0") OR (OPENSSL_VERSION VERSION_GREATER "1.1.0"))
-            MESSAGE(FATAL_ERROR "openssl >= 1.1.0 found ...")
+            CHECK_TYPE_SIZE("struct bio_dgram_sctp_sndinfo" OPENSSL_DTLS)
+            IF (HAVE_OPENSSL_DTLS)
+                MESSAGE("DTLS for SCTP supported")
+                ADD_DEFINITIONS(-DNEAT_USEDTLS)
+            ENDIF()
         ENDIF()
 
     ENDIF()

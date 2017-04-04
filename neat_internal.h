@@ -167,7 +167,7 @@ struct neat_iofilter
 
 #define CIPHER_BUFFER_SIZE 8192
 
-#ifdef NEAT_SCTP_DTLS
+#if defined(NEAT_SCTP_DTLS) || defined(NEAT_USETLS)
 struct security_data
 {
     SSL_CTX *ctx;

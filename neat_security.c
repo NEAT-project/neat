@@ -414,7 +414,7 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
     return NEAT_ERROR_SECURITY;
 }
 
-
+#ifdef NEAT_SCTP_DTLS
 static void
 neat_dtls_dtor(struct neat_dtls_data *dtls)
 {
@@ -601,6 +601,7 @@ neat_dtls_connect(neat_ctx *ctx, neat_flow *flow)
     uvpollable_cb(flow->socket->handle, NEAT_OK, UV_READABLE);
     return NEAT_OK;
 }
+#endif
 
 void
 neat_security_init(neat_ctx *ctx)

@@ -5514,7 +5514,7 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
 
     if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP && candidate->pollable_socket->nr_local_addr > 0) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
-        char *address_name, *ptr;
+        char *address_name, *ptr = NULL;
         char *tmp = strdup(candidate->pollable_socket->src_address);
 
         address_name = strtok_r((char *)tmp, ",", &ptr);

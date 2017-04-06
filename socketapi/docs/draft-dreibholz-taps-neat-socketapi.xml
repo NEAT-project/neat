@@ -122,6 +122,7 @@ int nsa_socket(int domain, int type, int protocol,
  </t>
  <t>Return Value:</t>
  <t>nsa_socket() returns the NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the socket() documentation for details.</t>
 </section>
 
 <section title="nsa_close()">
@@ -135,40 +136,97 @@ int nsa_close(int fd)</artwork></figure>
       <t hangText="sockfd:">NEAT socket descriptor.</t>
    </list>
  </t>
- <t>nsa_close() returns the NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>nsa_close() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the close() documentation for details.</t>
 </section>
 
 <section title="nsa_fcntl()">
- <t>...</t>
+ <t>nsa_fcntl() manipulates a given NEAT socket.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_fcntl(int fd, int cmd, ...)</artwork></figure>
+int nsa_fcntl(int sockfd, int cmd, ...)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="cmd:">Command.</t>
+      <t hangText="...:">Command-specific arguments.</t>
+   </list>
+ </t>
+ <t>nsa_fcntl() returns a command-specific value.</t>
+ <t>For NEAT sockets, the following command is specified:</t>
+ <t>
+ <list style="hanging">
+    <t hangText="F_GETFL:">Obtain value of the socket descriptor status flags. For NEAT sockets, the flag O_NONBLOCK specifies whether the socket is non-blocking. By default, it is blocking (i.e. O_NONBLOCK is not set).</t>
+    <t hangText="F_SETFL:">Set value of the socket descriptor status flags. For NEAT sockets, the flag O_NONBLOCK specifies whether the socket is non-blocking. By default, it is blocking (i.e. O_NONBLOCK is not set). F_SETFL can then be used to change the blocking mode.</t>
+ </list>
+ </t>
+ <t>See the fcntl() documentation for details.</t>
 </section>
 
 <section title="nsa_bind()">
-<t>...</t>
+<t>nsa_bind() binds a given NEAT socket to a given address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_bindn() instead. Note further, that nsa_bind() also supports a single address (i.e. no multi-homing). nsa_bindx() SHOULD be used instead to support of multi-homing.</t>
 <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_bind(int sockfd,
              const struct sockaddr* addr, socklen_t addrlen,
              struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="addr:">Address to bind to.</t>
+      <t hangText="addrlen:">Length of the address structure "addr".</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+      <t hangText="...:">Command-specific arguments.</t>
+   </list>
+ </t>
+ <t>nsa_bind() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the bind() documentation for details.</t>
 </section>
 
 <section title="nsa_bindx()">
- <t>...</t>
+ <t>nsa_bindx() binds a given NEAT socket to a given set of addresses. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_bindn() instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt,
               int flags,
               struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="addrs:">Addresses to bind to.</t>
+      <t hangText="addrcnt:">Number of addresses in "addr".</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+      <t hangText="...:">Command-specific arguments.</t>
+   </list>
+ </t>
+ <t>nsa_bindx() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>Also see the sctp_bindx() documentation for details.</t>
 </section>
 
 <section title="nsa_bindn()">
- <t>...</t>
+ <t>nsa_bindn() binds a given NEAT socket to a given port. NEAT takes care of handling local addresses.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_bindn(int sockfd, uint16_t port, int flags,
               struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="port:">Port number to bind to.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+      <t hangText="...:">Command-specific arguments.</t>
+   </list>
+ </t>
+ <t>nsa_bindn() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
 </section>
 
 <section title="nsa_connect()">
@@ -178,6 +236,7 @@ int nsa_bindn(int sockfd, uint16_t port, int flags,
 int nsa_connect(int sockfd,
                 const struct sockaddr* addr, socklen_t addrlen,
                  struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>See the connect() documentation for details.</t>
 </section>
 
 <section title="nsa_connectx()">
@@ -188,13 +247,15 @@ int nsa_connectx(int sockfd,
                  const struct sockaddr* addrs, int addrcnt,
                  neat_assoc_t* id,
                  struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Also see the sctp_connectx() documentation for details.</t>
 </section>
 
 <section title="nsa_connectn()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_connectn(int sockfd, const char* name, const uint16_t port, neat_assoc_t* id,
+int nsa_connectn(int sockfd, const char* name, const uint16_t port,
+                 neat_assoc_t* id,
                  struct neat_tlv* opt, const int optcnt)</artwork></figure>
 </section>
 
@@ -203,6 +264,7 @@ int nsa_connectn(int sockfd, const char* name, const uint16_t port, neat_assoc_t
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_listen(int sockfd, int backlog)</artwork></figure>
+ <t>See the listen() documentation for details.</t>
 </section>
 
 <section title="nsa_accept()">
@@ -210,6 +272,7 @@ int nsa_listen(int sockfd, int backlog)</artwork></figure>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)</artwork></figure>
+ <t>See the accept() documentation for details.</t>
 </section>
 
 <section title="nsa_shutdown()">
@@ -217,14 +280,17 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)</artwork><
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_shutdown(int sockfd, int how)</artwork></figure>
+ <t>See the shutdown() documentation for details.</t>
 </section>
 
+<!--
 <section title="nsa_peeloff()">
  <t>...</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_peeloff(int sockfd, neat_assoc_t id)</artwork></figure>
 </section>
+-->
 
 </section>
 

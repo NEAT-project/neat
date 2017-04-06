@@ -476,7 +476,7 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)</artwork></
  <t>nsa_sendv() sends data over a given connected NEAT socket. The data and control information is provided by iovec and info structures. On NEAT sockets, a provided destination address is ignored.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_sendv(int sockfd, const struct iovec* iov, int iovcnt,
+ssize_t nsa_sendv(int sockfd, struct iovec* iov, int iovcnt,
                   struct sockaddr* to, int tocnt,
                   void* info, socklen_t infolen,
                   unsigned int infotype, int flags)</artwork></figure>
@@ -574,7 +574,7 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)</artwork></figure
  <t>nsa_recvv() reads data from a given connected NEAT socket. The data and control information buffers are provided by iovec and info structures.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_recvv(int sockfd, const struct iovec* iov, int iovlen,
+ssize_t nsa_recvv(int sockfd, struct iovec* iov, int iovcnt,
                   struct sockaddr* from, socklen_t* fromlen,
                   void* info, socklen_t* infolen,
                   unsigned int* infotype, int* msg_flags)</artwork></figure>

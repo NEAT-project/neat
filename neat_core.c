@@ -3163,8 +3163,10 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             //         goto skip;
             // }
             candidate->if_name                      = strdup(iface);
-            if (!candidate->if_name)
+            if (!candidate->if_name) {
+                free(candidate);
                 return NEAT_ERROR_OUT_OF_MEMORY;
+            }
             candidate->if_idx                       = result->if_idx;
             candidate->priority = prio++;
 
@@ -3172,12 +3174,14 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             candidate->pollable_socket->src_address = strdup(src_buffer);
             if (!candidate->pollable_socket->src_address) {
                 free(candidate->if_name);
+                free(candidate);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
             if (!candidate->pollable_socket->dst_address) {
                 free(candidate->if_name);
                 free(candidate->pollable_socket->src_address);
+                free(candidate);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
             candidate->pollable_socket->port        = flow->port;

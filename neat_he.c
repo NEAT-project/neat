@@ -10,17 +10,17 @@
 #include "neat.h"
 #include "neat_he.h"
 #include "neat_internal.h"
-#include "neat_property_helpers.h"
 
 
-static void he_print_results(struct neat_resolver_results *results)
+static void
+he_print_results(struct neat_resolver_results *results)
 {
     struct neat_resolver_res *result;
     char addr_name_src[INET6_ADDRSTRLEN], addr_name_dst[INET6_ADDRSTRLEN];
     char serv_name_src[6], serv_name_dst[6];
     char family[16];
 
-    neat_log(NEAT_LOG_INFO, "Happy-Eyeballs results:");
+    //neat_log(NEAT_LOG_INFO, "Happy-Eyeballs results:");
 
     LIST_FOREACH(result, results, next_res) {
         switch (result->ai_family) {
@@ -45,33 +45,37 @@ static void he_print_results(struct neat_resolver_results *results)
                     serv_name_dst, sizeof(serv_name_dst),
                     NI_NUMERICHOST | NI_NUMERICSERV);
 
-        neat_log(NEAT_LOG_INFO, "\t%s - %s:%s -> %s:%s", family,
-            addr_name_src, serv_name_src, addr_name_dst, serv_name_dst);
+        //neat_log(NEAT_LOG_INFO, "\t%s - %s:%s -> %s:%s", family,
+        //    addr_name_src, serv_name_src, addr_name_dst, serv_name_dst);
     }
 }
 
 
-static void free_handle_cb(uv_handle_t *handle)
+static void
+free_handle_cb(uv_handle_t *handle)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     free(handle);
 }
 
-
-static void on_he_connect_req(uv_timer_t *handle)
+static void
+on_he_connect_req(uv_timer_t *handle)
 {
-   struct neat_he_candidate *candidate       = (struct neat_he_candidate *) (handle->data);
-   struct neat_he_candidates *candidate_list = candidate->pollable_socket->flow->candidate_list;
-   uint8_t *heConnectAttemptCount            = &(candidate->pollable_socket->flow->heConnectAttemptCount);
+    struct neat_he_candidate *candidate       = (struct neat_he_candidate *) (handle->data);
+    struct neat_he_candidates *candidate_list = candidate->pollable_socket->flow->candidate_list;
+    uint8_t *heConnectAttemptCount            = &(candidate->pollable_socket->flow->heConnectAttemptCount);
 
-   uv_timer_stop(candidate->prio_timer);
-   uv_close((uv_handle_t *) candidate->prio_timer, free_handle_cb);
+    struct neat_ctx *ctx = candidate->ctx;
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    uv_timer_stop(candidate->prio_timer);
+    candidate->prio_timer->data = candidate;
+    uv_close((uv_handle_t *) candidate->prio_timer, free_handle_cb);
+    candidate->prio_timer = NULL;
 
-   int ret = candidate->pollable_socket->flow->connectfx(candidate,
+    int ret = candidate->pollable_socket->flow->connectfx(candidate,
                    candidate->callback_fx);
-   if ((ret == -1) || (ret == -2)) {
+    if ((ret == -1) || (ret == -2)) {
 
-        neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
+        neat_log(ctx, NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
         if (ret == -2) {
             uv_close((uv_handle_t *)(candidate->pollable_socket->handle), free_handle_cb);
             candidate->pollable_socket->handle = NULL;
@@ -79,10 +83,10 @@ static void on_he_connect_req(uv_timer_t *handle)
             free(candidate->pollable_socket->handle);
             candidate->pollable_socket->handle = NULL;
         }
-        // neat_log(NEAT_LOG_DEBUG, "%s:Release candidate", __func__ );
+        // neat_log(ctx, NEAT_LOG_DEBUG, "%s:Release candidate", __func__ );
         (*heConnectAttemptCount)--;
 
-        neat_log(NEAT_LOG_DEBUG, "he_conn_attempt: %d", *heConnectAttemptCount);
+        neat_log(ctx, NEAT_LOG_DEBUG, "he_conn_attempt: %d", *heConnectAttemptCount);
 
         if (*heConnectAttemptCount == 0) {
             neat_io_error(candidate->pollable_socket->flow->ctx,
@@ -90,19 +94,20 @@ static void on_he_connect_req(uv_timer_t *handle)
                           NEAT_ERROR_IO);
         } else {
             TAILQ_REMOVE(candidate_list, candidate, next);
-            neat_free_candidate(candidate);
+            neat_free_candidate(ctx, candidate);
         }
-   } else {
+    } else {
 
-       neat_log(NEAT_LOG_DEBUG,
-                "%s: Connect successful for fd %d, ret = %d",
-                __func__,
-                candidate->pollable_socket->fd, ret);
-   }
+        neat_log(ctx, NEAT_LOG_DEBUG,
+            "%s: Connect successful for fd %d, ret = %d",
+            __func__,
+            candidate->pollable_socket->fd, ret);
+    }
 }
 
 
-static void delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
+static void
+delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 {
     candidate->prio_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
     assert(candidate->prio_timer != NULL);
@@ -112,7 +117,7 @@ static void delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_
     candidate->prio_timer->data = (void *) candidate;
 
 #if 0
-    neat_log(NEAT_LOG_DEBUG,
+    neat_log(ctx, NEAT_LOG_DEBUG,
              "%s: Priority = %d, Delay = %d ms",
              __func__,
              candidate->priority,
@@ -124,8 +129,8 @@ static void delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_
 static void
 on_delayed_he_open(uv_timer_t *handle)
 {
-    neat_log(NEAT_LOG_DEBUG, "%s - sctp multistream HE timer fired", __func__);
     struct neat_flow *flow       = (struct neat_flow *) (handle->data);
+    neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s - sctp multistream HE timer fired", __func__);
     uv_timer_stop(flow->multistream_timer);
     uv_close((uv_handle_t *) flow->multistream_timer, free_handle_cb);
 
@@ -144,6 +149,8 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     struct neat_he_candidate *candidate;
     struct neat_he_candidate *next_candidate;
     uint8_t multistream_probe = 0;
+
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
 #ifdef SCTP_MULTISTREAMING
     struct neat_pollable_socket *multistream_socket = NULL;
@@ -185,7 +192,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             break;
         };
 
-        neat_log(NEAT_LOG_DEBUG, "HE Candidate %2d: %8s [%2d] %8s/%s <saddr %s> <dstaddr %s> port %5d priority %d",
+        neat_log(ctx, NEAT_LOG_DEBUG, "HE Candidate %2d: %8s [%2d] %8s/%s <saddr %s> <dstaddr %s> port %5d priority %d",
                  i++,
                  candidate->if_name,
                  candidate->if_idx,
@@ -198,7 +205,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
 
 #if 0
         char *str = json_dumps(candidate->properties, JSON_INDENT(2));
-        neat_log(NEAT_LOG_DEBUG, "Properties:\n%s", str);
+        neat_log(ctx, NEAT_LOG_DEBUG, "Properties:\n%s", str);
 
         free(str);
 #endif
@@ -213,7 +220,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
 #ifdef SCTP_MULTISTREAMING
         // check if there is already a piggyback assoc
         if ((multistream_socket = neat_find_multistream_socket(ctx, flow)) != NULL) {
-            neat_log(NEAT_LOG_DEBUG, "%s - using piggyback assoc", __func__);
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - using piggyback assoc", __func__);
             // we have a piggyback assoc...
 
             LIST_INSERT_HEAD(&multistream_socket->sctp_multistream_flows, flow, multistream_next_flow);
@@ -232,7 +239,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             while (candidate) {
                 next_candidate = TAILQ_NEXT(candidate, next);
                 TAILQ_REMOVE(candidate_list, candidate, next);
-                neat_free_candidate(candidate);
+                neat_free_candidate(ctx, candidate);
                 candidate = next_candidate;
             }
 
@@ -243,7 +250,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
 
         // if there is no piggyback assoc, wait if we didnt already : We reschedule the *complete* he-process!
         } else if (flow->multistream_check == 0 && neat_wait_for_multistream_socket(ctx, flow)) {
-            neat_log(NEAT_LOG_DEBUG, "%s - waiting for another assoc", __func__);
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - waiting for another assoc", __func__);
             flow->multistream_check = 1;
 
             flow->multistream_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
@@ -264,11 +271,11 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
     flow->hefirstConnect = 1;
     flow->heConnectAttemptCount = 0;
 
-    neat_log(NEAT_LOG_DEBUG, "HE will now commence");
+    neat_log(ctx, NEAT_LOG_DEBUG, "HE will now commence");
     while (candidate) {
 
 #if 0
-        neat_log(NEAT_LOG_DEBUG, "HE Candidate: %8s [%2d] <saddr %s> <dstaddr %s> port %5d priority %d",
+        neat_log(ctx, NEAT_LOG_DEBUG, "HE Candidate: %8s [%2d] <saddr %s> <dstaddr %s> port %5d priority %d",
                  candidate->if_name,
                  candidate->if_idx,
                  candidate->pollable_socket->src_address,
@@ -310,7 +317,7 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
             int ret = candidate->pollable_socket->flow->connectfx(candidate, callback_fx);
             if ((ret == -1) || (ret == -2)) {
 
-                neat_log(NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
+                neat_log(ctx, NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
                 if (ret == -2) {
                     uv_close((uv_handle_t *)(candidate->pollable_socket->handle), free_handle_cb);
                     candidate->pollable_socket->handle = NULL;
@@ -318,14 +325,14 @@ neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidat
                     free(candidate->pollable_socket->handle);
                     candidate->pollable_socket->handle = NULL;
                 }
-                neat_log(NEAT_LOG_DEBUG, "%s:Release candidate", __func__ );
+                neat_log(ctx, NEAT_LOG_DEBUG, "%s:Release candidate", __func__ );
                 next_candidate = TAILQ_NEXT(candidate, next);
                 TAILQ_REMOVE(candidate_list, candidate, next);
-                neat_free_candidate(candidate);
+                neat_free_candidate(ctx, candidate);
                 candidate = next_candidate;
             } else {
 
-                neat_log(NEAT_LOG_DEBUG, "%s: Connect successful for fd %d, ret = %d", __func__, candidate->pollable_socket->fd, ret);
+                neat_log(ctx, NEAT_LOG_DEBUG, "%s: Connect successful for fd %d, ret = %d", __func__, candidate->pollable_socket->fd, ret);
                 candidate->pollable_socket->flow->heConnectAttemptCount++;
                 candidate = TAILQ_NEXT(candidate, next);
 

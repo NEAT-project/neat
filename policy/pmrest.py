@@ -1,7 +1,8 @@
 import asyncio
 import json
 import logging
-import uuid
+import random
+from contextlib import suppress
 
 import pmdefaults as PM
 
@@ -10,10 +11,8 @@ try:
     from aiohttp import web
 except ImportError as e:
     web = None
-    logging.warning("aiohttp in required to start the REST interface, but it is not installed")
 
-# REST port
-port = None
+    logging.warning("aiohttp in required to start the REST interface, but it is not installed")
 
 profiles = None
 cib = None
@@ -21,39 +20,50 @@ pib = None
 
 server = None
 
-
-async def send_hello(client, controller):
-    host_uid = str(uuid.uuid3(uuid.NAMESPACE_OID, str(uuid.getnode())))
-    host_info = {'client-uid': host_uid,
-                 'client-rest-port': PM.REST_PORT,
-                 'client-type': 'neat',
-                 'manager-address': controller}
-    hello_msg = json.dumps({"input": host_info})
-
-    try:
-        async with client.post(controller, data=hello_msg) as resp:
-            assert resp.status == 200
-            return await resp.text()
-    except (ValueError, aiohttp.errors.ClientOSError) as e:
-        print(e)
+app = None
+loop = None
 
 
-async def controller_announce(loop):
+def gen_hello_msg():
+    host_info = {'host-uid': PM.CLIENT_UID,
+                 'management-address': PM.REST_IP,
+                 'rest-port': PM.REST_PORT,
+                 'client-type': 'neat'}
+    x = json.dumps({"input": host_info})
+    return x
+
+
+async def controller_announce():
     """
     Register NEAT client with a remote controller
+    and send hello message every PM.CONTROLLER_ANNOUNCE seconds
 
     """
     if not PM.CONTROLLER_REST:
         return
 
-    # send hello message every PM.CONTROLLER_ANNOUNCE seconds
-    # TODO randomize
     while True:
-        print("Notifying controller at %s" % PM.CONTROLLER_REST)
-        async with aiohttp.ClientSession(loop=loop) as client:
-            html = await send_hello(client, PM.CONTROLLER_REST)
+        sleep_time = min(random.expovariate(1 / PM.CONTROLLER_ANNOUNCE), PM.CONTROLLER_ANNOUNCE * 3)
 
-        await asyncio.sleep(PM.CONTROLLER_ANNOUNCE)
+        print("Notifying controller at %s (repeat in %1.0fs)" % (PM.CONTROLLER_REST, sleep_time))
+
+        conn = aiohttp.TCPConnector(local_addr=(PM.REST_IP, 0))
+        auth = aiohttp.BasicAuth(PM.CONTROLLER_USER, PM.CONTROLLER_PASS)
+
+        async with aiohttp.ClientSession(connector=conn, auth=auth) as session:
+            try:
+                async with session.post(PM.CONTROLLER_REST, data=gen_hello_msg(),
+                                        headers={'content-type': 'application/json'}) as resp:
+                    logging.debug(
+                        'announce addr: %s:%s' % resp.connection._protocol.transport.get_extra_info('sockname'))
+                    assert resp.status == 200
+                    html = await resp.text()
+                    #logging.debug(html)
+
+            except (ValueError, aiohttp.errors.ClientOSError) as e:
+                print(e)
+
+        await asyncio.sleep(sleep_time)
 
 
 async def handle_pib(request):
@@ -139,44 +149,65 @@ async def handle_rest(request):
 
 
 def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=None):
-    """ Register REST server
+    """ Initialize and register REST server
 
-    curl  -H 'Content-Type: application/json' -X PUT -d'["adfd",123]'ocalhost:45888/cib/23423
+    curl  -H 'Content-Type: application/json' -X PUT -d'["abc",123]' localhost:45888/c3b/23423
     """
     if web is None:
         logging.info("REST server not available because the aiohttp module is not installed.")
         return
 
-    global pib, cib, port, server
+    global pib, cib, port, server, loop, app
+
+    loop = asyncio_loop
 
     profiles = profiles_ref
     cib = cib_ref
     pib = pib_ref
 
     if rest_port:
-        port = rest_port
+        PM.REST_PORT = rest_port
 
     pmrest = web.Application()
+    app = pmrest
+
     pmrest.router.add_get('/', handle_rest)
     pmrest.router.add_get('/pib', handle_pib)
     pmrest.router.add_get('/pib/{uid}', handle_pib)
 
     pmrest.router.add_get('/cib', handle_cib)
-    pmrest.router.add_get('/cib/rows', handle_cib_rows)
     pmrest.router.add_get('/cib/{uid}', handle_cib)
+    pmrest.router.add_get('/cib/rows', handle_cib_rows)
 
     pmrest.router.add_put('/cib/{uid}', handle_cib_put)
     pmrest.router.add_put('/pib/{uid}', handle_pib_put)
 
     handler = pmrest.make_handler()
 
-    f = asyncio_loop.create_server(handler, PM.LOCAL_IP, port)
-    print("Initializing REST server on port %d" % port)
+    f = asyncio_loop.create_server(handler, PM.REST_IP, PM.REST_PORT)
+    print("Initializing REST server on %s:%d" % (PM.REST_IP, PM.REST_PORT))
+    try:
+        server = asyncio_loop.run_until_complete(f)
+    except OSError as e:
+        print(e)
+        return
 
-    server = asyncio_loop.run_until_complete(controller_announce(asyncio_loop))
-
-    server = asyncio_loop.run_until_complete(f)
+    asyncio.ensure_future(controller_announce())
 
 
 def close():
+    # cancel all running tasks:
+    pending = asyncio.Task.all_tasks()
+    for task in pending:
+        task.cancel()
+        # Now we should await task to execute it's cancellation.
+        # Cancelled task raises asyncio.CancelledError that we can suppress:
+        with suppress(asyncio.CancelledError):
+            loop.run_until_complete(task)
+
+    # TODO implement http://aiohttp.readthedocs.io/en/stable/web.html#graceful-shutdown
     server.close()
+    loop.run_until_complete(server.wait_closed())
+
+    loop.run_until_complete(app.shutdown())
+    loop.run_until_complete(app.cleanup())

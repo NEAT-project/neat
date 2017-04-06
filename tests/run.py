@@ -18,7 +18,7 @@ tests_general.append([0, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 212.2
 tests_general.append([0, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 2a02:c6a0:4015:10::100'])
 tests_general.append([1, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 not.resolvable.neat'])
 tests_general.append([1, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 buildbot.nplab.de'])
-#tests_general.append([0, 0, workdir + 'client_http_run_once -u /cgi-bin/he bsd10.nplab.de'])
+tests_general.append([0, 0, workdir + 'client_http_get -n 2 -u /files/4M bsd10.nplab.de'])
 #tests_general.append([0, 0, 'python3.5 ../../policy/pmtests.py'])
 
 # USRSCTP specific tests
@@ -56,7 +56,7 @@ for test in tests:
     print("\n\n############################### TEST")
     print("Runnning: " + test[2])
     try:
-        result = subprocess.call(prefix + test[2], shell=True, timeout=40)
+        result = subprocess.call(prefix + test[2], shell=True, timeout=70)
         if result != test[0]:
             print("Test failed: program returned with error")
             test[1] = 2

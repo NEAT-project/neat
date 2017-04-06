@@ -1,0 +1,26 @@
+{
+    "transport": [
+        {
+            "value": "SCTP",
+            "precedence": 1
+        },
+        {
+            "value": "TCP",
+            "precedence": 1
+        }
+    ],
+    "multihoming": {
+        "value": true,
+        "precedence": 1
+    },
+    "local_ips": [
+        {
+            "value": "10.0.2.15",
+            "precedence": 1
+        },
+        {
+            "value": "192.168.56.2",
+            "precedence": 1
+        }
+    ]
+}

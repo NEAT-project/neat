@@ -1,0 +1,11 @@
+{
+    "uid":"mptcp_so",
+    "priority": 100,
+    "replace_matched": false,
+    "match": {
+        "transport": {"value": "MPTCP"}
+    },
+    "properties": {
+        "SO/SOL_SOCKET/SO_MPTCP_ENABLED": {"value": true, "precedence": 2}
+    }
+}

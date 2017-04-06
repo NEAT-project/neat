@@ -18,7 +18,7 @@ static neat_error_code
 on_readable(struct neat_flow_operations *ops)
 {
     uint32_t bytes_read = 0;
-    char buffer[32];
+    unsigned char buffer[32];
 
     if (neat_read(ops->ctx, ops->flow, buffer, 31, &bytes_read, NULL, 0) == NEAT_OK) {
         buffer[bytes_read] = 0;
@@ -36,7 +36,8 @@ on_readable(struct neat_flow_operations *ops)
 static neat_error_code
 on_writable(struct neat_flow_operations *ops)
 {
-    neat_write(ops->ctx, ops->flow, "Hello, this is NEAT!", 20, NULL, 0);
+    const unsigned char message[] = "Hello, this is NEAT!";
+    neat_write(ops->ctx, ops->flow, message, 20, NULL, 0);
 
     ops->on_writable = NULL;
     ops->on_readable = NULL;

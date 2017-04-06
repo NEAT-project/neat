@@ -9,7 +9,8 @@
 #include "neat_addr.h"
 
 //Debug function for printing the current addresses seen by a context
-static void neat_addr_print_src_addrs(struct neat_ctx *nc)
+static void
+neat_addr_print_src_addrs(struct neat_ctx *nc)
 {
     struct neat_addr *nsrc_addr = NULL;
     char addr_str[INET6_ADDRSTRLEN];
@@ -19,20 +20,18 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
     struct pvd_info* pvd_info;
     struct pvd_result* pvd_result;
 
-    neat_log(NEAT_LOG_INFO, "Available src-addresses:");
+    neat_log(nc, NEAT_LOG_INFO, "Available src-addresses:");
     for (nsrc_addr = nc->src_addrs.lh_first; nsrc_addr != NULL;
             nsrc_addr = nsrc_addr->next_addr.le_next) {
 
         if (nsrc_addr->family == AF_INET) {
             src_addr4 = &(nsrc_addr->u.v4.addr4);
-            inet_ntop(AF_INET, &(src_addr4->sin_addr), addr_str,
-                    INET_ADDRSTRLEN);
-            neat_log(NEAT_LOG_INFO, "\tIPv4: %s/%u", addr_str, nsrc_addr->prefix_length);
+            inet_ntop(AF_INET, &(src_addr4->sin_addr), addr_str, INET_ADDRSTRLEN);
+            neat_log(nc, NEAT_LOG_INFO, "\tIPv4: %s/%u", addr_str, nsrc_addr->prefix_length);
         } else {
             src_addr6 = &(nsrc_addr->u.v6.addr6);
-            inet_ntop(AF_INET6, &(src_addr6->sin6_addr), addr_str,
-                    INET6_ADDRSTRLEN);
-            neat_log(NEAT_LOG_INFO, "\tIPv6: %s/%u pref %u valid %u", addr_str,
+            inet_ntop(AF_INET6, &(src_addr6->sin6_addr), addr_str, INET6_ADDRSTRLEN);
+            neat_log(nc, NEAT_LOG_INFO, "\tIPv6: %s/%u pref %u valid %u", addr_str,
                     nsrc_addr->prefix_length, nsrc_addr->u.v6.ifa_pref,
                     nsrc_addr->u.v6.ifa_valid);
         }
@@ -45,9 +44,9 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
                 continue;
             }
             LIST_FOREACH(pvd, &(pvd_result->pvds), next_pvd) {
-                neat_log(NEAT_LOG_INFO, "\t\tPVD:");
+                neat_log(nc, NEAT_LOG_INFO, "\t\tPVD:");
                 LIST_FOREACH(pvd_info, &(pvd->infos), next_info) {
-                    neat_log(NEAT_LOG_INFO, "\t\t\t%s => %s", pvd_info->key, pvd_info->value);
+                    neat_log(nc, NEAT_LOG_INFO, "\t\t\t%s => %s", pvd_info->key, pvd_info->value);
                 }
             }
         }
@@ -55,14 +54,15 @@ static void neat_addr_print_src_addrs(struct neat_ctx *nc)
 }
 
 //Utility function for comparing two v6 addresses
-uint8_t neat_addr_cmp_ip6_addr(struct in6_addr *aAddr,
-                               struct in6_addr *aAddr2)
+uint8_t
+neat_addr_cmp_ip6_addr(struct in6_addr *aAddr, struct in6_addr *aAddr2)
 {
     return (memcmp(aAddr, aAddr2, sizeof(struct in6_addr)) == 0);
 }
 
 //Add/remove/update a source address based on information received from OS
-neat_error_code neat_addr_update_src_list(struct neat_ctx *nc,
+neat_error_code
+neat_addr_update_src_list(struct neat_ctx *nc,
         struct sockaddr_storage *src_addr, uint32_t if_idx,
         uint8_t newaddr, uint8_t pref_length, uint32_t ifa_pref, uint32_t ifa_valid)
 {
@@ -128,7 +128,7 @@ neat_error_code neat_addr_update_src_list(struct neat_ctx *nc,
     nsrc_addr = (struct neat_addr*) calloc(sizeof(struct neat_addr), 1);
 
     if (nsrc_addr == NULL) {
-        neat_log(NEAT_LOG_ERROR, "%s: Could not allocate memory for %s", __func__, addr_str);
+        neat_log(nc, NEAT_LOG_ERROR, "%s: Could not allocate memory for %s", __func__, addr_str);
         //TODO: Trigger a refresh of available addresses
         return NEAT_ERROR_OUT_OF_MEMORY;
     }
@@ -151,7 +151,8 @@ neat_error_code neat_addr_update_src_list(struct neat_ctx *nc,
     return NEAT_ERROR_OK;
 }
 
-void neat_addr_lifetime_timeout_cb(uv_timer_t *handle)
+void
+neat_addr_lifetime_timeout_cb(uv_timer_t *handle)
 {
     struct neat_ctx *nc;
     struct neat_addr *addr;
@@ -186,7 +187,8 @@ void neat_addr_lifetime_timeout_cb(uv_timer_t *handle)
     //neat_addr_print_src_addrs(nc);
 }
 
-void neat_addr_free_src_list(struct neat_ctx *nc)
+void
+neat_addr_free_src_list(struct neat_ctx *nc)
 {
     struct neat_addr *nsrc_addr = NULL;
     struct neat_addr *nsrc_addr_itr = nc->src_addrs.lh_first;
@@ -216,9 +218,7 @@ void neat_addr_free_src_list(struct neat_ctx *nc)
  * IN THE SOFTWARE.
  */
 
-
-
-uint8_t
+int
 sockaddr_storage_cmp(struct sockaddr_storage *a, struct sockaddr_storage *b)
 {
     struct sockaddr_in  *a_in   = (struct sockaddr_in *)    a;
@@ -245,5 +245,4 @@ sockaddr_storage_cmp(struct sockaddr_storage *a, struct sockaddr_storage *b)
     return 0;
 
     #undef CMP
-
 }

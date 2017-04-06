@@ -10,7 +10,8 @@
 #include "neat_addr.h"
 #include "neat_resolver.h"
 
-static void neat_resolver_reset_mark(struct neat_resolver *resolver)
+static void
+neat_resolver_reset_mark(struct neat_resolver *resolver)
 {
     struct neat_resolver_server *server = resolver->server_list.lh_first;
 
@@ -20,7 +21,8 @@ static void neat_resolver_reset_mark(struct neat_resolver *resolver)
     }
 }
 
-static void neat_resolver_delete_servers(struct neat_resolver *resolver)
+static void
+neat_resolver_delete_servers(struct neat_resolver *resolver)
 {
     struct neat_resolver_server *server = resolver->server_list.lh_first;
     struct neat_resolver_server *server_to_delete;
@@ -48,12 +50,12 @@ static void neat_resolver_delete_servers(struct neat_resolver *resolver)
         LIST_REMOVE(server_to_delete, next_server);
         free(server_to_delete);
 
-        neat_log(NEAT_LOG_INFO, "Deleted address %s from DNS list", dst_addr_buf);
+        //neat_log(NEAT_LOG_INFO, "Deleted address %s from DNS list", dst_addr_buf);
     }
 }
 
-static void neat_resolver_resolv_check_addr(struct neat_resolver *resolver,
-                                            struct sockaddr_storage *dst_addr)
+static void
+neat_resolver_resolv_check_addr(struct neat_resolver *resolver, struct sockaddr_storage *dst_addr)
 {
     struct neat_resolver_server *server;
     struct sockaddr_in *dst_addr4, *server_addr4;
@@ -81,7 +83,7 @@ static void neat_resolver_resolv_check_addr(struct neat_resolver *resolver,
         }
 
         if (addr_equal) {
-            neat_log(NEAT_LOG_INFO, "Addr %s found in resolver list", dst_addr_buf);
+            // neat_log(NEAT_LOG_INFO, "Addr %s found in resolver list", dst_addr_buf);
             server->mark = NEAT_RESOLVER_SERVER_ACTIVE;
             return;
         }
@@ -89,7 +91,7 @@ static void neat_resolver_resolv_check_addr(struct neat_resolver *resolver,
 
     //TODO: Decide how to handle this error!
     if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {
-        neat_log(NEAT_LOG_ERROR, "Failed to allocate memory for DNS server");
+        // neat_log(NEAT_LOG_ERROR, "Failed to allocate memory for DNS server");
         return;
     }
 
@@ -105,10 +107,11 @@ static void neat_resolver_resolv_check_addr(struct neat_resolver *resolver,
         inet_ntop(AF_INET6, &(dst_addr6->sin6_addr), dst_addr_buf, INET6_ADDRSTRLEN);
     }
 
-    neat_log(NEAT_LOG_INFO, "Added %s to resolver list", dst_addr_buf);
+    //neat_log(NEAT_LOG_INFO, "Added %s to resolver list", dst_addr_buf);
 }
 
-void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
+void
+neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
         const char *filename, int events, int status)
 {
     struct neat_resolver *resolver = handle->data;
@@ -127,13 +130,13 @@ void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
 
     memset(resolv_path, 0, resolv_path_len);
     if (uv_fs_event_getpath(handle, resolv_path, &resolv_path_len)) {
-        neat_log(NEAT_LOG_WARNING, "Could not store resolv.conf path in buffer");
+        //neat_log(NEAT_LOG_WARNING, "Could not store resolv.conf path in buffer");
         return;
     }
 
     //TODO: Read filename dynamically
     if (!(resolv_ptr = fopen(resolv_path, "r"))) {
-        neat_log(NEAT_LOG_WARNING, "Failed to open resolv-file");
+        //neat_log(NEAT_LOG_WARNING, "Failed to open resolv-file");
         return;
     }
 
@@ -143,7 +146,7 @@ void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
     while ((resolv_line = fgets(nameserver_str, sizeof(nameserver_str),
                                 resolv_ptr))) {
         if (ferror(resolv_ptr)) {
-            neat_log(NEAT_LOG_ERROR, "Failed to read line from resolv-file");
+            //neat_log(NEAT_LOG_ERROR, "Failed to read line from resolv-file");
             //Reason for break and not return is that we might have got SOME
             //useful information from resolv.conf
             break;
@@ -184,7 +187,7 @@ void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
             neat_resolver_resolv_check_addr(resolver, &server_addr);
             continue;
         } else {
-            neat_log(NEAT_LOG_ERROR, "Could not parse server %s", token);
+            //neat_log(NEAT_LOG_ERROR, "Could not parse server %s", token);
         }
     }
 
@@ -193,7 +196,8 @@ void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
     fclose(resolv_ptr);
 }
 
-uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver)
+uint8_t
+neat_resolver_add_initial_servers(struct neat_resolver *resolver)
 {
     struct neat_resolver_server *server;
     struct sockaddr_storage server_addr;
@@ -212,7 +216,7 @@ uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver)
         inet_pton(AF_INET, INET_DNS_SERVERS[i], &(addr4->sin_addr));
 
         if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {
-            neat_log(NEAT_LOG_ERROR, "Failed to allocate memory for DNS server");
+            //neat_log(NEAT_LOG_ERROR, "Failed to allocate memory for DNS server");
             return 0;
         }
 
@@ -230,7 +234,7 @@ uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver)
         inet_pton(AF_INET, INET6_DNS_SERVERS[i], &(addr6->sin6_addr));
 
         if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {
-            neat_log(NEAT_LOG_ERROR, "Failed to allocate memory for DNS server");
+            //neat_log(NEAT_LOG_ERROR, "Failed to allocate memory for DNS server");
             return 0;
         }
 

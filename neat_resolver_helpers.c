@@ -41,7 +41,7 @@ neat_resolver_helpers_check_for_literal(uint8_t *family,
     int32_t v4_literal = 0, v6_literal = 0;
 
     if (*family != AF_UNSPEC && *family != AF_INET && *family != AF_INET6) {
-        neat_log(NEAT_LOG_ERROR, "%s - Unsupported address family", __func__);
+      // neat_log(NEAT_LOG_ERROR, "%s - Unsupported address family", __func__);
         return -1;
     }
 
@@ -73,7 +73,7 @@ neat_resolver_helpers_check_for_literal(uint8_t *family,
     //mistake and must be notifed
     if ((*family == AF_INET && v6_literal) ||
         (*family == AF_INET6 && v4_literal)) {
-        neat_log(NEAT_LOG_ERROR, "%s - Mismatch between family and literal", __func__);
+      // neat_log(NEAT_LOG_ERROR, "%s - Mismatch between family and literal", __func__);
         return -1;
     }
 

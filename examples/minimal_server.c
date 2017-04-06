@@ -19,7 +19,8 @@ on_readable(struct neat_flow_operations *opCB)
 static neat_error_code
 on_writable(struct neat_flow_operations *ops)
 {
-    neat_write(ops->ctx, ops->flow, "Hello, this is NEAT!", 20, NULL, 0);
+    const unsigned char message[] = "Hello, this is NEAT!";
+    neat_write(ops->ctx, ops->flow, message, 20, NULL, 0);
     return NEAT_OK;
 }
 

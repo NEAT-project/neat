@@ -107,27 +107,6 @@ print_usage()
 }
 
 /*
-    print human readable file sizes - helper function
-*/
-static char
-*filesize_human(double bytes, char *buffer, size_t buffersize)
-{
-    uint8_t i = 0;
-    const char* units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
-
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
-
-    while (bytes > 1000) {
-        bytes /= 1000;
-        i++;
-    }
-    snprintf(buffer, buffersize, "%.*f %s", i, bytes, units[i]);
-    return buffer;
-}
-
-/*
     error handler
 */
 static neat_error_code
@@ -465,16 +444,6 @@ main(int argc, char *argv[])
         }
     }
 
-    if (config_log_level == 0) {
-        neat_log_level(NEAT_LOG_ERROR);
-    } else if (config_log_level == 1){
-        neat_log_level(NEAT_LOG_WARNING);
-    } else if (config_log_level == 2){
-        neat_log_level(NEAT_LOG_INFO);
-    }else {
-        neat_log_level(NEAT_LOG_DEBUG);
-    }
-
     if (optind == argc) {
         config_active = 0;
         if (config_log_level >= 1) {
@@ -495,6 +464,14 @@ main(int argc, char *argv[])
         fprintf(stderr, "%s - neat_init_ctx failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
+    }
+
+    if (config_log_level == 0) {
+        neat_log_level(ctx, NEAT_LOG_ERROR);
+    } else if (config_log_level == 1){
+        neat_log_level(ctx, NEAT_LOG_WARNING);
+    } else {
+        neat_log_level(ctx, NEAT_LOG_DEBUG);
     }
 
     if (config_active) {

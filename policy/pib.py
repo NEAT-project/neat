@@ -5,9 +5,10 @@ import logging
 import os
 import time
 
-from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
-from pmdefaults import STYLE
+import sys
 
+import pmdefaults as PM
+from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
 
 PIB_EXTENSIONS = ('.policy', '.profile', '.pib')
 
@@ -36,8 +37,14 @@ def load_policy_json(filename):
 class NEATPolicy(object):
     """NEAT policy representation"""
 
-    def __init__(self, policy_dict, policy_file=None):
+    def __init__(self, policy_dict=None, uid=None):
         # set default values
+
+        if policy_dict is None:
+            policy_dict = dict()
+
+        if uid is not None:
+            policy_dict['uid'] = uid
 
         # TODO do we need to handle unknown attributes?
         for k, v in policy_dict.items():
@@ -56,11 +63,19 @@ class NEATPolicy(object):
         self.match.add(*dict_to_properties(match))
 
         # parse augment properties
-        properties = policy_dict.get('properties', {})
+        properties = policy_dict.get('properties', [])
+        if not isinstance(properties, list):
+            # properties should be in a list.
+            properties = [properties]
         self.properties = PropertyMultiArray()
-        self.properties.add(*dict_to_properties(properties))
+        for p in properties:
+            if isinstance(p, list):
+                self.properties.add([PropertyArray.from_dict(ps) for ps in p])
+            else:
+                self.properties.add(PropertyArray.from_dict(p))
 
-        # set UID
+
+    # set UID
         self.uid = policy_dict.get('uid')
         if self.uid is None:
             self.uid = self.__gen_uid()
@@ -128,7 +143,7 @@ class NEATPolicy(object):
             properties.add(*p)
 
     def __str__(self):
-        return '%3s. %-8s %s  ⟶  %s' % (self.priority, self.uid, self.match, self.properties)
+        return '%3s. %-8s %s  %s  %s' % (self.priority, self.uid, self.match, PM.CHARS.RIGHT_ARROW, self.properties)
 
     def __repr__(self):
         return repr({a: getattr(self, a) for a in ['uid', 'match', 'properties', 'priority']})
@@ -153,8 +168,12 @@ class PIB(list):
 
     def load_policies(self, policy_dir=None):
         """Load all policies in policy directory."""
+
         if not policy_dir:
-            policy_dir = self.policy_dir;
+            policy_dir = self.policy_dir
+
+        if not os.path.exists(policy_dir):
+            sys.exit('PIB directory %s does not exist' % policy_dir)
 
         for filename in os.listdir(policy_dir):
             if filename.endswith(self.file_extension) and not filename.startswith(('.', '#')):
@@ -300,7 +319,8 @@ class PIB(list):
                             try:
                                 new_candidate = candidate + policy_properties
                             except ImmutablePropertyError:
-                                logging.info(' ' * 4 + policy_info + STYLE.BOLD_START + ' *REJECTED*' + STYLE.FORMAT_END)
+                                logging.info(
+                                    ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *REJECTED*' + PM.STYLES.FORMAT_END)
                                 return []
                             # TODO copy policies from candidate and policy_properties for debugging
                             #  if hasattr(new_candidate, 'policies'):
@@ -325,4 +345,5 @@ if __name__ == "__main__":
     pib.dump()
 
     import code
+
     code.interact(local=locals(), banner='PIB loaded:')

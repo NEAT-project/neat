@@ -1,5 +1,4 @@
 #include <neat.h>
-#include <neat_internal.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -21,7 +20,6 @@
 
 static uint32_t config_buffer_size_max = 1400;
 static uint16_t config_log_level = 1;
-static char config_property[] = "NEAT_PROPERTY_UDP_REQUIRED";
 static uint32_t config_drop_randomly= 0;
 static uint32_t config_drop_rate= 80;
 static uint32_t config_port=6969;
@@ -166,8 +164,8 @@ void
 freefileinfo( struct fileinfo *fi)
 {
     if (fclose(fi->stream) != -1) {
-            fprintf(stderr, "%s - failed to close file\n", __func__);
-            perror("closing file");
+        fprintf(stderr, "%s - failed to close file\n", __func__);
+        perror("closing file");
     }
     free(fi->filename);
     free(fi);
@@ -306,7 +304,6 @@ print_usage()
     }
 
     printf("peer [OPTIONS]\n");
-    printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size_max);
     printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
     printf("\t- h \thost\n");
@@ -676,6 +673,7 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct peer *pf = NULL;
+    uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -694,7 +692,7 @@ on_connected(struct neat_flow_operations *opCB)
     neat_set_ecn(opCB->ctx, opCB->flow, 0x00);
 
     pf = opCB->userData;
-    uv_timer_init(opCB->ctx->loop, pf->timer);
+    uv_timer_init(loop, pf->timer);
     pf->timer->data = opCB;
 
     if ((pf->buffer = malloc(config_buffer_size_max)) == NULL) {
@@ -725,8 +723,7 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    struct peer *pf = NULL;
-    pf = opCB->userData;
+    struct peer *pf = opCB->userData;
 
     opCB->on_readable = NULL;
     opCB->on_writable = NULL;
@@ -745,7 +742,6 @@ int
 main(int argc, char *argv[])
 {
     int arg, result;
-    char *arg_property = config_property;
     char *target_addr = NULL;
     static struct neat_ctx *ctx = NULL;
     static struct neat_flow *flow = NULL;
@@ -757,12 +753,6 @@ main(int argc, char *argv[])
 
     while ((arg = getopt(argc, argv, "P:S:v:h:p:f:D:")) != -1) {
         switch(arg) {
-        case 'P':
-            arg_property = optarg;
-            if (config_log_level >= 1) {
-                printf("option - properties: %s\n", arg_property);
-            }
-            break;
         case 'S':
             config_buffer_size_max = atoi(optarg);
             if (config_log_level >= 1) {

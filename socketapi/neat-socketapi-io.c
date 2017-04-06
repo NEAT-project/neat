@@ -253,7 +253,7 @@ ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags)
       NULL, 0,
       &iov, 1,
       NULL, 0,
-      flags
+      0
    };
    return(nsa_sendmsg(sockfd, &msg, flags));
 }
@@ -265,23 +265,29 @@ ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags,
 {
    struct iovec  iov = { (char*)buf, len };
    struct msghdr msg = {
-      (void*)to,
-      tolen,
+      (void*)to, tolen,
       &iov, 1,
       NULL, 0,
-      flags
+      0
    };
    return(nsa_sendmsg(sockfd, &msg, flags));
 }
 
 
 /* ###### NEAT sendv() implementation #################################### */
-ssize_t nsa_sendv(int sockfd, const struct iovec* iov, int iovcnt,
+ssize_t nsa_sendv(int sockfd, struct iovec* iov, int iovcnt,
                   struct sockaddr* to, int tocnt,
                   void* info, socklen_t infolen, unsigned int infotype,
                   int flags)
 {
-   abort();   // FIXME!
+   struct msghdr msg = {
+      (void*)to,
+      (tocnt > 0) ? get_socklen(to) : 0,   /* FIXME! There may be multiple addresses! */
+      iov, iovcnt,
+      NULL, 0,
+      0
+   };
+   return(nsa_sendmsg(sockfd, &msg, flags));
 }
 
 
@@ -307,7 +313,7 @@ ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags)
       NULL, 0,
       &iov, 1,
       NULL, 0,
-      flags
+      0
    };
    return(nsa_recvmsg(sockfd, &msg, flags));
 }
@@ -319,10 +325,10 @@ ssize_t nsa_recvfrom(int sockfd,  void* buf, size_t len, int flags,
 {
    struct iovec  iov = { (char*)buf, len };
    struct msghdr msg = {
-      (void*)from, *fromlen,
+      (void*)from, (fromlen != NULL) ? *fromlen : 0,
       &iov, 1,
       NULL, 0,
-      flags
+      0
    };
    const int result = nsa_recvmsg(sockfd, &msg, flags);
    if(fromlen) {
@@ -333,10 +339,23 @@ ssize_t nsa_recvfrom(int sockfd,  void* buf, size_t len, int flags,
 
 
 /* ###### NEAT recvv() implementation #################################### */
-ssize_t nsa_recvv(int sockfd, const struct iovec* iov, int iovlen,
+ssize_t nsa_recvv(int sockfd, struct iovec* iov, int iovcnt,
                   struct sockaddr* from, socklen_t* fromlen,
                   void* info, socklen_t* infolen, unsigned int* infotype,
                   int* msg_flags)
 {
-   abort();   // FIXME!
+   struct msghdr msg = {
+      (void*)from, (fromlen != NULL) ? *fromlen : 0,
+      iov, iovcnt,
+      NULL, 0,
+      (msg_flags != NULL) ? *msg_flags : 0
+   };
+   const int result = nsa_recvmsg(sockfd, &msg, 0);
+   if(fromlen) {
+      *fromlen = msg.msg_namelen;
+   }
+   if(msg_flags) {
+      *msg_flags = msg.msg_flags;
+   }
+   return(result);
 }

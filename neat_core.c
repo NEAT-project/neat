@@ -5738,7 +5738,7 @@ handle_connect(struct socket *sock, void *arg, int flags)
     he_res->remote_ip = strdup(candidate->pollable_socket->dst_address);
     if (!he_res->remote_ip) {
         free(he_res->interface);
-        free(re_res);
+        free(he_res);
         return;
     }
     he_res->remote_port = candidate->pollable_socket->port;

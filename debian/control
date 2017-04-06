@@ -10,6 +10,7 @@ Build-Depends: cmake,
                libmnl-dev,
                libsctp-dev,
                libssl-dev,
+               libusrsctp-dev,
                libuv1-dev (>= 1.0.2) | libuv-dev
 Standards-Version: 3.9.8
 Vcs-Browser: https://github.com/NEAT-project/neat

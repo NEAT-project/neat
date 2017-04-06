@@ -35,7 +35,7 @@ NEAT Socket API
 </address>
 </author>
 
-<date day="30" month="March" year="2017" />
+<date day="12" month="April" year="2017" />
 <keyword>Internet-Draft</keyword>
 
 <abstract>
@@ -179,7 +179,6 @@ int nsa_bind(int sockfd,
       <t hangText="addrlen:">Length of the address structure "addr".</t>
       <t hangText="opt:">NEAT options (NULL, if there are none).</t>
       <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
-      <t hangText="...:">Command-specific arguments.</t>
    </list>
  </t>
  <t>nsa_bind() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
@@ -202,7 +201,6 @@ int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt,
       <t hangText="flags:">Optional flags (0, if there are none).</t>
       <t hangText="opt:">NEAT options (NULL, if there are none).</t>
       <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
-      <t hangText="...:">Command-specific arguments.</t>
    </list>
  </t>
  <t>nsa_bindx() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
@@ -223,47 +221,89 @@ int nsa_bindn(int sockfd, uint16_t port, int flags,
       <t hangText="flags:">Optional flags (0, if there are none).</t>
       <t hangText="opt:">NEAT options (NULL, if there are none).</t>
       <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
-      <t hangText="...:">Command-specific arguments.</t>
    </list>
  </t>
  <t>nsa_bindn() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
 </section>
 
 <section title="nsa_connect()">
- <t>...</t>
+<t>nsa_connect() connects a given NEAT socket to a given remote address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_connectn() instead. Note further, that nsa_connect() also supports a single address (i.e. no multi-homing). nsa_connectx() SHOULD be used instead to support of multi-homing.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_connect(int sockfd,
                 const struct sockaddr* addr, socklen_t addrlen,
-                 struct neat_tlv* opt, const int optcnt)</artwork></figure>
+                struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="addr:">Address to connect to.</t>
+      <t hangText="addrlen:">Length of the address structure "addr".</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+   </list>
+ </t>
+ <t>nsa_connect() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
  <t>See the connect() documentation for details.</t>
 </section>
 
 <section title="nsa_connectx()">
- <t>...</t>
+ <t>nsa_connectx() connects a given NEAT socket to a given set of remote addresses. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_connectn() instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_connectx(int sockfd,
                  const struct sockaddr* addrs, int addrcnt,
                  neat_assoc_t* id,
                  struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="addrs:">Addresses to connect to.</t>
+      <t hangText="addrcnt:">Number of addresses in "addr".</t>
+      <t hangText="id">Pointer to store association ID to (not used yet, use NULL!).</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+   </list>
+ </t>
+ <t>nsa_connectx() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
  <t>Also see the sctp_connectx() documentation for details.</t>
 </section>
 
 <section title="nsa_connectn()">
- <t>...</t>
+ <t>nsa_connectn() connects a given NEAT socket to a given set of remote name and port. The remote name is resolved by NEAT to corresponding remote addresses.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_connectn(int sockfd, const char* name, const uint16_t port,
                  neat_assoc_t* id,
                  struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="name:">Remote name to connect to.</t>
+      <t hangText="port:">Remote port number to connect to.</t>
+      <t hangText="id">Pointer to store association ID to (not used yet, use NULL!).</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+   </list>
+ </t>
+ <t>nsa_connectn() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
 </section>
 
 <section title="nsa_listen()">
- <t>...</t>
+ <t>nsa_listen() marks a given NEAT socket as listening sockets, i.e. accepting incoming connections.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_listen(int sockfd, int backlog)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="backlog:">Defines the maximum length to which the queue of pending connections for "sockfd" may grow.</t>
+   </list>
+ </t>
+ <t>nsa_listen() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
  <t>See the listen() documentation for details.</t>
 </section>
 

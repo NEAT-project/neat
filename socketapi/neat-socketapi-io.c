@@ -276,8 +276,8 @@ ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags,
 
 
 /* ###### NEAT sendv() implementation #################################### */
-ssize_t nsa_sendv(int sockfd, const void* buf, size_t len,
-                  struct sockaddr* to, int addrcnt,
+ssize_t nsa_sendv(int sockfd, const struct iovec* iov, int iovcnt,
+                  struct sockaddr* to, int tocnt,
                   void* info, socklen_t infolen, unsigned int infotype,
                   int flags)
 {
@@ -333,7 +333,7 @@ ssize_t nsa_recvfrom(int sockfd,  void* buf, size_t len, int flags,
 
 
 /* ###### NEAT recvv() implementation #################################### */
-ssize_t nsa_recvv(int sockfd, void* buf, size_t len,
+ssize_t nsa_recvv(int sockfd, const struct iovec* iov, int iovlen,
                   struct sockaddr* from, socklen_t* fromlen,
                   void* info, socklen_t* infolen, unsigned int* infotype,
                   int* msg_flags)

@@ -397,28 +397,105 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 
 
 <section title="Input/Output Handling">
+   
+<section title="nsa_write()">
+ <t>nsa_write() sends data over a given connected NEAT socket. For NEAT sockets, nsa_write() is equal to nsa_send() with "flags" set to 0.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_write(int fd, const void* buf, size_t len)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Data to send.</t>
+      <t hangText="len:">Length of data to send.</t>
+   </list>
+ </t>
+ <t>nsa_write() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the write() documentation for details.</t>
+</section>
 
 <section title="nsa_send()">
- <t>...</t>
+ <t>nsa_send() sends data over a given connected NEAT socket.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Data to send.</t>
+      <t hangText="len:">Length of data to send.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+   </list>
+ </t>
+ <t>nsa_send() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the send() documentation for details.</t>
 </section>
 
 <section title="nsa_sendto()">
- <t>...</t>
+ <t>nsa_sendto() is a wrapper around the sendto() call, using NEAT socket descriptors instead. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_send() instead. On NEAT sockets, a provided destination address is ignored.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 ssize_t nsa_sendto(int sockfd, const void* buf, size_t len,
                    int flags,
                    const struct sockaddr* to, socklen_t tolen)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Data to send.</t>
+      <t hangText="len:">Length of data to send.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+      <t hangText="to:">Address to send data to (ignored for NEAT sockets).</t>
+      <t hangText="tolen:">Length of address to send data to (ignored for NEAT sockets).</t>
+   </list>
+ </t>
+ <t>nsa_sendto() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the send() documentation for details.</t>
 </section>
 
 <section title="nsa_sendmsg()">
- <t>...</t>
+ <t>nsa_sendmsg() sends data over a given connected NEAT socket. The data and control information is provided by a msghdr structure. On NEAT sockets, a provided destination address is ignored.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="msg:">Data to send and corresponding control information as msghdr structure.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+   </list>
+ </t>
+ <t>nsa_sendmsg() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the sendmsg() documentation for details.</t>
+</section>
+
+<section title="nsa_sendv()">
+ <t>nsa_sendv() sends data over a given connected NEAT socket. The data and control information is provided by iovec and info structures. On NEAT sockets, a provided destination address is ignored.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_sendv(int sockfd, const struct iovec* iov, int iovcnt,
+                  struct sockaddr* to, int tocnt,
+                  void* info, socklen_t infolen,
+                  unsigned int infotype, int flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="iov:">Data to send provided as iovec structures.</t>
+      <t hangText="iovcnt:">Number of provided iovec structures.</t>
+      <t hangText="to:">Address(es) to send data to (ignored for NEAT sockets).</t>
+      <t hangText="tocnt:">Number of of addresses to send data to (ignored for NEAT sockets).</t>
+      <t hangText="info:">Control information.</t>
+      <t hangText="infolen:">Length of control information.</t>
+      <t hangText="infotype:">Type of control information.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+   </list>
+ </t>
+ <t>nsa_sendmsg() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the sctp_sendv() documentation for details.</t>
 </section>
 
 <section title="nsa_read()">
@@ -426,23 +503,6 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)</artwork></
  <t>Function Prototype:</t>
  <figure><artwork>
 ssize_t nsa_read(int fd, void* buf, size_t len)</artwork></figure>
-</section>
-
-<section title="nsa_write()">
- <t>...</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_write(int fd, const void* buf, size_t len)</artwork></figure>
-</section>
-
-<section title="nsa_sendv()">
- <t>...</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_sendv(int sockfd, const void* buf, size_t len,
-                  struct sockaddr* to, int addrcnt,
-                  void* info, socklen_t infolen,
-                  unsigned int infotype, int flags)</artwork></figure>
 </section>
 
 <section title="nsa_recv()">
@@ -483,10 +543,20 @@ ssize_t nsa_recvv(int sockfd, void* buf, size_t len,
 <section title="Poll and Select">
 
 <section title="nsa_poll()">
- <t>...</t>
+ <t>nsa_poll() waits for activity (input/output/error/...) on a set of given NEAT sockets.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="ufds:">NEAT socket descriptor and requested activity for each NEAT socket.</t>
+      <t hangText="nfds:">Number of sockets given by "ufds".</t>
+      <t hangText="timeout:">Timeout in milliseconds.</t>
+   </list>
+ </t>
+ <t>nsa_poll() returns the number of NEAT sockets with activity in case of success, 0 in case of timeout, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the poll() documentation for details.</t>
 </section>
 
 <section title="nsa_select()">
@@ -520,6 +590,7 @@ int nsa_getsockname(int sockfd,
  </t>
  <t>Return Value:</t>
  <t>nsa_getsockname() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>Also see the getsockname() documentation for details.</t>
 </section>
 
 <section title="nsa_getpeername()">
@@ -538,6 +609,7 @@ int nsa_getpeername(int sockfd,
  </t>
  <t>Return Value:</t>
  <t>nsa_getpeername() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>Also see the getpeername() documentation for details.</t>
 </section>
 
 <section title="nsa_getladdrs()">

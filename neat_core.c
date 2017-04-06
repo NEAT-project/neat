@@ -3150,8 +3150,10 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             if (!candidate)
                 return NEAT_ERROR_OUT_OF_MEMORY;
             candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket));
-            if (!candidate->pollable_socket)
+            if (!candidate->pollable_socket) {
+                free(candidate);
                 return NEAT_ERROR_OUT_OF_MEMORY;
+            }
 
 
             // This ensures we use only one address from each address family for

@@ -243,7 +243,6 @@ int nsa_setsockopt(int sockfd, int level,
                    int optname, const void* optval, socklen_t optlen);
 int nsa_opt_info(int sockfd, neat_assoc_t id,
                  int opt, void* arg, socklen_t* size);
-int nsa_ioctl(int fd, int request, const void* argp);
 
 /* ====== Security ======================================================= */
 int nsa_set_secure_identity(int sockfd, const char* pem);
@@ -286,6 +285,7 @@ void nsa_freepaddrs(struct sockaddr* addrs);
 int nsa_open(const char* pathname, int flags, mode_t mode);
 int nsa_creat(const char* pathname, mode_t mode);
 int nsa_pipe(int fds[2]);
+int nsa_ioctl(int fd, int request, const void* argp);
 
 #ifdef __cplusplus
 }

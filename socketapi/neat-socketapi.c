@@ -519,7 +519,7 @@ int nsa_setsockopt(int sockfd, int level,
 }
 
 
-/* ###### NEAT ioctl() implementation #################################### */
+/* ###### NEAT opt_info() implementation ################################# */
 int nsa_opt_info(int sockfd, neat_assoc_t id, int opt, void* arg, socklen_t* size)
 {
    GET_NEAT_SOCKET(sockfd)
@@ -529,20 +529,6 @@ int nsa_opt_info(int sockfd, neat_assoc_t id, int opt, void* arg, socklen_t* siz
    }
    else {
       return(sctp_opt_info(neatSocket->ns_socket_sd, id, opt, arg, size));
-   }
-}
-
-
-/* ###### NEAT ioctl() implementation #################################### */
-int nsa_ioctl(int fd, int request, const void* argp)
-{
-   GET_NEAT_SOCKET(fd)
-   if(neatSocket->ns_flow != NULL) {
-      errno = EOPNOTSUPP;
-      return(-1);
-   }
-   else {
-      return(ioctl(neatSocket->ns_socket_sd, fd, request, argp));
    }
 }
 
@@ -693,6 +679,20 @@ int nsa_creat(const char* pathname, mode_t mode)
       close(fd);
    }
    return(-1);
+}
+
+
+/* ###### NEAT ioctl() implementation #################################### */
+int nsa_ioctl(int fd, int request, const void* argp)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(ioctl(neatSocket->ns_socket_sd, fd, request, argp));
+   }
 }
 
 

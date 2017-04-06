@@ -3234,8 +3234,10 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             }
             free(candidate->pollable_socket->dst_address);
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
-            if (!candidate->pollable_socket->dst_address)
+            if (!candidate->pollable_socket->dst_address) {
+                free(candidate);
                 return NEAT_ERROR_OUT_OF_MEMORY;
+            }
             candidate->pollable_socket->dst_len     = result->dst_addr_len;
 
             memcpy(&candidate->pollable_socket->dst_sockaddr, &result->dst_addr, result->dst_addr_len);

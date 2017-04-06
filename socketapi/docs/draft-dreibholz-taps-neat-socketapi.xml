@@ -308,19 +308,36 @@ int nsa_listen(int sockfd, int backlog)</artwork></figure>
 </section>
 
 <section title="nsa_accept()">
- <t>...</t>
+ <t>nsa_accept() extracts the first connection request in the queue of pending connections for a listening NEAT socket, creates a new connected socket, and returns a new NEAT socket descriptor referring to that socket. </t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="addr:">Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</t>
+      <t hangText="addrlen:">Pointer to variable with size of the storage in "addr" (or NULL, if address is not needed).</t>
+   </list>
+ </t>
+ <t>nsa_accept() returns the new NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable. In case of success, the peer's primary address is stored in "addr", if there is sufficient space. The variable pointer to by "addrlen" will then contain the actual address size.</t>
  <t>See the accept() documentation for details.</t>
 </section>
 
 <section title="nsa_shutdown()">
- <t>...</t>
+ <t>nsa_shutdown() shuts down the connection of a given NEAT socket.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_shutdown(int sockfd, int how)</artwork></figure>
- <t>See the shutdown() documentation for details.</t>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="how:">Not used for NEAT sockets (set to SHUT_RDWR).</t>
+   </list>
+ </t>
+ <t>nsa_shutdown() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>Also see the shutdown() documentation for details.</t>
 </section>
 
 <!--
@@ -343,6 +360,8 @@ int nsa_peeloff(int sockfd, neat_assoc_t id)</artwork></figure>
  <figure><artwork>
 int nsa_getsockopt(int sockfd, int level, int optname,
                    void* optval, socklen_t* optlen)</artwork></figure>
+ <t>nsa_getsockopt() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>Also see the getsockopt() documentation for details.</t>
 </section>
 
 <section title="nsa_setsockopt()">
@@ -351,6 +370,8 @@ int nsa_getsockopt(int sockfd, int level, int optname,
  <figure><artwork>
 int nsa_setsockopt(int sockfd, int level, int optname,
                    const void* optval, socklen_t optlen)</artwork></figure>
+ <t>nsa_setsockopt() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>Also see the setsockopt() documentation for details.</t>
 </section>
 
 <section title="nsa_opt_info()">
@@ -359,6 +380,8 @@ int nsa_setsockopt(int sockfd, int level, int optname,
   <figure><artwork>
 int nsa_opt_info(int sd, neat_assoc_t id, int opt, void* arg,
                  socklen_t* size)</artwork></figure>
+ <t>nsa_opt_info() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>Also see the sctp_opt_info() documentation for details.</t>
 </section>
 
 <section title="nsa_ioctl()">
@@ -366,6 +389,8 @@ int nsa_opt_info(int sd, neat_assoc_t id, int opt, void* arg,
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
+ <t>nsa_ioctl() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>Also see the ioctl() documentation for details.</t>
 </section>
 
 </section>

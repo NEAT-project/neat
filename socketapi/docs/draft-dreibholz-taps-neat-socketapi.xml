@@ -204,7 +204,7 @@ int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt,
    </list>
  </t>
  <t>nsa_bindx() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>Also see the sctp_bindx() documentation for details.</t>
+ <t>See the sctp_bindx() documentation for details.</t>
 </section>
 
 <section title="nsa_bindn()">
@@ -267,7 +267,7 @@ int nsa_connectx(int sockfd,
    </list>
  </t>
  <t>nsa_connectx() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>Also see the sctp_connectx() documentation for details.</t>
+ <t>See the sctp_connectx() documentation for details.</t>
 </section>
 
 <section title="nsa_connectn()">
@@ -337,7 +337,7 @@ int nsa_shutdown(int sockfd, int how)</artwork></figure>
    </list>
  </t>
  <t>nsa_shutdown() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>Also see the shutdown() documentation for details.</t>
+ <t>See the shutdown() documentation for details.</t>
 </section>
 
 <!--
@@ -355,42 +355,76 @@ int nsa_peeloff(int sockfd, neat_assoc_t id)</artwork></figure>
 <section title="Options Handling">
 
 <section title="nsa_getsockopt()">
- <t>...</t>
+ <t>nsa_getsockopt() gets a socket option of a given NEAT socket.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_getsockopt(int sockfd, int level, int optname,
                    void* optval, socklen_t* optlen)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="level:">Option level.</t>
+      <t hangText="optname:">Option number.</t>
+      <t hangText="optval:">Buffer to store option value to.</t>
+      <t hangText="optlen:">Pointer to variable with length of the buffer in "optval".</t>
+   </list>
+ </t>
  <t>nsa_getsockopt() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>Also see the getsockopt() documentation for details.</t>
+ <t>See the getsockopt() documentation for details.</t>
 </section>
 
 <section title="nsa_setsockopt()">
- <t>...</t>
+ <t>nsa_getsockopt() sets a socket option of a given NEAT socket.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_setsockopt(int sockfd, int level, int optname,
                    const void* optval, socklen_t optlen)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="level:">Option level.</t>
+      <t hangText="optname:">Option number.</t>
+      <t hangText="optval:">Buffer with option value to set.</t>
+      <t hangText="optlen:">Length of buffer with option value.</t>
+   </list>
+ </t>
  <t>nsa_setsockopt() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>Also see the setsockopt() documentation for details.</t>
+ <t>See the setsockopt() documentation for details.</t>
 </section>
 
 <section title="nsa_opt_info()">
- <t>...</t>
+ <t>nsa_opt_info() gets a socket option of a given NEAT socket.</t>
  <t>Function Prototype:</t>
   <figure><artwork>
-int nsa_opt_info(int sd, neat_assoc_t id, int opt, void* arg,
-                 socklen_t* size)</artwork></figure>
+int nsa_opt_info(int sockfd, neat_assoc_t id,
+                 int opt, void* arg, socklen_t* size)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="id:">Association identifier (0 in case of 1:1-style sockets).</t>
+      <t hangText="opt:">Option number.</t>
+      <t hangText="arg:">Buffer to store option value to.</t>
+      <t hangText="size:">Pointer to variable with length of the buffer in "arg".</t>
+   </list>
+ </t>
  <t>nsa_opt_info() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>Also see the sctp_opt_info() documentation for details.</t>
+ <t>See the sctp_opt_info() documentation for details.</t>
 </section>
 
-<section title="nsa_ioctl()">
- <t>...</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
- <t>nsa_ioctl() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>Also see the ioctl() documentation for details.</t>
+</section>
+
+
+<section title="Security">
+
+<section title="nsa_set_secure_identity()">
+<t>TBD.</t>
+</section>
+
+<section title="...">
+<t>TBD.</t>
 </section>
 
 </section>
@@ -649,7 +683,7 @@ int nsa_getsockname(int sockfd,
  </t>
  <t>Return Value:</t>
  <t>nsa_getsockname() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>Also see the getsockname() documentation for details.</t>
+ <t>See the getsockname() documentation for details.</t>
 </section>
 
 <section title="nsa_getpeername()">
@@ -668,7 +702,7 @@ int nsa_getpeername(int sockfd,
  </t>
  <t>Return Value:</t>
  <t>nsa_getpeername() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>Also see the getpeername() documentation for details.</t>
+ <t>See the getpeername() documentation for details.</t>
 </section>
 
 <section title="nsa_getladdrs()">
@@ -761,11 +795,19 @@ int nsa_pipe(int fds[2])</artwork></figure>
  <t>See the pipe() documentation for details.</t>
 </section>
 
+<section title="nsa_ioctl()">
+ <t>nsa_ioctl() is a wrapper around the ioctl() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
+ <t>See the ioctl() documentation for details.</t>
+</section>
+
 </section>
 
 
 <section title="Testbed Platform">
-<t>A large-scale and realistic Internet testbed platform with support for the multi-homing feature of the underlying SCTP and MPTCP protocols is NorNet. A description of NorNet is provided in <xref target="ComNets2013-Core" />, some further information can be found on the project website <xref target="NorNet-Website" />.</t>
+<t>A large-scale and realistic Internet testbed platform with support for the multi-homing feature of the underlying SCTP and MPTCP protocols is NorNet. A description of NorNet is provided in <xref target="LinuxCon2016" />, <xref target="ComNets2013-Core" />, some further information can be found on the project website <xref target="NorNet-Website" />.</t>
 </section>
 
 
@@ -798,6 +840,7 @@ int nsa_pipe(int fds[2])</artwork></figure>
 </references>
 
 <references title='Informative References'>
+ <?rfc include="LinuxCon2016" ?>
  <?rfc include="ComNets2013-Core" ?>
 
  <?rfc include="NEAT-Website" ?>

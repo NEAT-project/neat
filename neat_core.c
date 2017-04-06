@@ -633,9 +633,9 @@ free_cb(uv_handle_t *handle)
 static int neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     struct neat_pollable_socket *s;
+    struct neat_pollable_socket *stemp;
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
-
 
 #if defined(USRSCTP_SUPPORT)
     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
@@ -644,8 +644,9 @@ static int neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
     }
 #endif
 
-    TAILQ_FOREACH(s, &(flow->listen_sockets), next) {
+    TAILQ_FOREACH_SAFE(s, &(flow->listen_sockets), next, stemp) {
         neat_close_via_kernel_2(ctx, s->fd);
+        free(s);
     }
 
     neat_close_via_kernel(flow->ctx, flow);
@@ -4611,7 +4612,13 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
         msghdr.msg_flags = 0;
         if (flow->socket->fd != -1) {
-            rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+            rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr,
+#ifndef MSG_NOSIGNAL
+                         0
+#else
+                         MSG_NOSIGNAL
+#endif
+                         );
         } else {
 #if defined(USRSCTP_SUPPORT)
             neat_log(ctx, NEAT_LOG_INFO, "%s - send %zd bytes on flow %p and socket %p", __func__, len, (void *)flow, (void *)flow->socket->usrsctp_socket);

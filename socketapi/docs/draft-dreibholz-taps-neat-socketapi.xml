@@ -406,7 +406,7 @@ ssize_t nsa_write(int fd, const void* buf, size_t len)</artwork></figure>
  <t>Arguments:</t>
  <t>
    <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="fd:">NEAT socket descriptor.</t>
       <t hangText="buf:">Data to send.</t>
       <t hangText="len:">Length of data to send.</t>
    </list>
@@ -499,42 +499,101 @@ ssize_t nsa_sendv(int sockfd, const struct iovec* iov, int iovcnt,
 </section>
 
 <section title="nsa_read()">
- <t>...</t>
+ <t>nsa_read() reads data from a given connected NEAT socket. For NEAT sockets, nsa_read() is equal to nsa_recv() with "flags" set to 0.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 ssize_t nsa_read(int fd, void* buf, size_t len)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="fd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Buffer to store read data to.</t>
+      <t hangText="len:">Length of the storage buffer.</t>
+   </list>
+ </t>
+ <t>nsa_read() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the read() documentation for details.</t>
 </section>
 
 <section title="nsa_recv()">
- <t>...</t>
+ <t>nsa_recv() reads data from a given connected NEAT socket.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Buffer to store read data to.</t>
+      <t hangText="len:">Length of the storage buffer.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+  </list>
+ </t>
+ <t>nsa_recv() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the recv() documentation for details.</t>
 </section>
 
 <section title="nsa_recvfrom()">
- <t>...</t>
+ <t>nsa_recvfrom() reads data from a given connected NEAT socket. The peer's sending address of the data (if possible and useful for underlying transport protocol) is obtained as well. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_recv() instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 ssize_t nsa_recvfrom(int sockfd, void* buf, size_t len, int flags,
                      struct sockaddr* from, socklen_t* fromlen)</artwork></figure>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Buffer to store read data to.</t>
+      <t hangText="len:">Length of the storage buffer.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+      <t hangText="from:">Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</t>
+      <t hangText="fromlen:">Pointer to variable with size of the storage in "from" (or NULL, if address is not needed).</t>
+  </list>
+ </t>
+ <t>nsa_recvfrom() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable. In case of success, the peer's sending address (if possible and useful for underlying transport protocol) may be stored in "from", if there is sufficient space. The variable pointer to by "fromlen" will then contain the actual address size.</t>
+ <t>See the recvfrom() documentation for details.</t>
 </section>
 
 <section title="nsa_recvmsg()">
- <t>...</t>
+ <t>nsa_recvmsg() reads data from a given connected NEAT socket. The data and control information buffers are provided by a msghdr structure.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="msg:">Data to send and corresponding control information as msghdr structure.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+   </list>
+ </t>
+ <t>nsa_recvmsg() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the recvmsg() documentation for details.</t>
 </section>
 
 <section title="nsa_recvv()">
- <t>...</t>
+ <t>nsa_recvv() reads data from a given connected NEAT socket. The data and control information buffers are provided by iovec and info structures.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_recvv(int sockfd, void* buf, size_t len,
+ssize_t nsa_recvv(int sockfd, const struct iovec* iov, int iovlen,
                   struct sockaddr* from, socklen_t* fromlen,
                   void* info, socklen_t* infolen,
                   unsigned int* infotype, int* msg_flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="iov:">Data to send provided as iovec structures.</t>
+      <t hangText="iovcnt:">Number of provided iovec structures.</t>
+      <t hangText="from:">Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</t>
+      <t hangText="fromlen:">Pointer to variable with size of the storage in "from" (or NULL, if address is not needed).</t>
+      <t hangText="info:">Pointer to storage space for control information.</t>
+      <t hangText="infolen:">Pointer to variable with length of control information.</t>
+      <t hangText="infotype:">Pointer to variable for storing the control information type to.</t>
+      <t hangText="flags:">Pointer to variable with optional flags.</t>
+   </list>
+ </t>
+ <t>nsa_recvv() returns the number of sent received in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the sctp_recvv() documentation for details.</t>
 </section>
 
 </section>

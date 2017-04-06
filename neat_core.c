@@ -3164,6 +3164,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             // }
             candidate->if_name                      = strdup(iface);
             if (!candidate->if_name) {
+                free(candidate->pollable_socket);
                 free(candidate);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
@@ -3174,13 +3175,15 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             candidate->pollable_socket->src_address = strdup(src_buffer);
             if (!candidate->pollable_socket->src_address) {
                 free(candidate->if_name);
+                free(candidate->pollable_socket);
                 free(candidate);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
             if (!candidate->pollable_socket->dst_address) {
-                free(candidate->if_name);
                 free(candidate->pollable_socket->src_address);
+                free(candidate->if_name);
+                free(candidate->pollable_socket);
                 free(candidate);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
@@ -3219,12 +3222,12 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     }
                 }
                 if (!srcfound) {
+                    json_decref(candidate->properties);
                     free(candidate->pollable_socket->dst_address);
                     free(candidate->pollable_socket->src_address);
-                    free(candidate->pollable_socket);
                     free(candidate->if_name);
-                    json_decref(candidate->properties);
-                    free (candidate);
+                    free(candidate->pollable_socket);
+                    free(candidate);
                     continue;
                 }
             } else {
@@ -3241,6 +3244,9 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             free(candidate->pollable_socket->dst_address);
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
             if (!candidate->pollable_socket->dst_address) {
+                free(candidate->pollable_socket->src_address);
+                free(candidate->if_name);
+                free(candidate->pollable_socket);
                 free(candidate);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }

@@ -14,8 +14,8 @@
 
 <front>
 
-<title abbrev="NEAT Socket API">
-NEAT Socket API
+<title abbrev="NEAT Sockets API">
+NEAT Sockets API
 </title>
 
 <!-- ************** THOMAS DREIBHOLZ *************** -->
@@ -39,7 +39,7 @@ NEAT Socket API
 <keyword>Internet-Draft</keyword>
 
 <abstract>
-<t>This document describes the NEAT Socket API.</t>
+<t>This document describes the NEAT Sockets API.</t>
 </abstract>
 
 
@@ -50,7 +50,7 @@ NEAT Socket API
 
 <section title="Introduction">
    <t>The NEAT project <xref target="NEAT-D1.1" />, <xref target="I-D.ietf-taps-transports-usage" />, <xref target="I-D.gjessing-taps-minset" />, <xref target="NEAT-Website" /> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network “services” offered to applications – such as reliability, low-delay communication or security – to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion, without applications having to be rewritten. This architectural change will make the Internet truly “enhanceable”, by allowing applications to seamlessly and more easily take advantage of new network features as they evolve.</t>
-   <t>This document describes the NEAT Socket API on top of the callback-based NEAT Core API <xref target="NEAT-D1.1" />,  <xref  target="NEAT-D1.2" />,  <xref target="NEAT-D2.1" />,  <xref target="NEAT-D2.2" />. It provides a BSD Sockets API programming API that is intended to simplify using NEAT in network applications.</t>
+   <t>This document describes the NEAT Sockets API on top of the callback-based NEAT Core API <xref target="NEAT-D1.1" />,  <xref  target="NEAT-D1.2" />,  <xref target="NEAT-D2.1" />,  <xref target="NEAT-D2.2" />. It provides a BSD Sockets-like API that is intended to simplify using NEAT in network applications.</t>
 
 
 <section title="Conventions">
@@ -62,7 +62,7 @@ NEAT Socket API
 <section title="Initialisation and Clean-Up">
 
 <section title="nsa_cleanup()">
-<t>nsa_cleanup() is used to free all resources allocated by NEAT. Note, that the NEAT Socket API is automatically initialized when creating a NEAT socket.</t>
+<t>nsa_cleanup() is used to free all resources allocated by NEAT. Note, that the NEAT Sockets API is automatically initialized when creating a NEAT socket.</t>
 <t>Function Prototype:</t>
 <figure><artwork>
 void nsa_cleanup()

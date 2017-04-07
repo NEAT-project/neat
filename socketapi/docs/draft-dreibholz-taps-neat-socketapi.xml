@@ -806,6 +806,18 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 </section>
 
 
+<section title="Code Examples">
+ <t>
+ Running code examples can be found in the NEAT Git repository:
+ <list style="hanging">
+    <t>URL: <eref target="https://github.com/NEAT-project/neat">https://github.com/NEAT-project/neat</eref></t>
+    <t>Branch: <eref target="https://github.com/NEAT-project/neat/tree/dreibh/neat-socketapi">dreibh/neat-socketapi</eref></t>
+    <t>Directory: <eref target="https://github.com/NEAT-project/neat/tree/dreibh/neat-socketapi/socketapi/examples">socketapi/examples/</eref></t>
+ </list>
+ </t>
+ </section>
+
+
 <section title="Testbed Platform">
 <t>A large-scale and realistic Internet testbed platform with support for the multi-homing feature of the underlying SCTP and MPTCP protocols is NorNet. A description of NorNet is provided in <xref target="LinuxCon2016" />, <xref target="ComNets2013-Core" />, some further information can be found on the project website <xref target="NorNet-Website" />.</t>
 </section>

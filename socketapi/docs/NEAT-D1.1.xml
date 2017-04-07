@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
+<reference anchor="NEAT-D1.1" target="https://www.neat-project.org/wp-content/uploads/2016/02/D1.1.pdf">
+	<front>
+		<title>NEAT Architecture</title>
+		<author initials="G." surname="Fairhurst" fullname="Gorry&#160;Fairhurst" />
+		<author initials="T." surname="Jones" fullname="Tom&#160;Jones" />
+		<author initials="Z." surname="Bozakov" fullname="Zdravko&#160;Bozakov" />
+		<author initials="A." surname="Brunström" fullname="Anna&#160;Brunström" />
+		<author initials="D." surname="Damjanović" fullname="Dragana&#160;Damjanović" />
+		<author initials="K.&#160;R.&#160;E.&#160;T." surname="Eckert" fullname="Kristian Riktor Evensen Toerless&#160;Eckert" />
+		<author initials="K." surname="Grinnemo" fullname="Karl-Johan&#160;Grinnemo" />
+		<author initials="A.&#160;F." surname="Hansen" fullname="Audun Fosselie&#160;Hansen" />
+		<author initials="N." surname="Khademi" fullname="Naeem&#160;Khademi" />
+		<author initials="S." surname="Mangiante" fullname="Simone&#160;Mangiante" />
+		<author initials="P." surname="McManus" fullname="Patrick&#160;McManus" />
+		<author initials="G." surname="Papastergiou" fullname="Giorgos&#160;Papastergiou" />
+		<author initials="D." surname="Ros" fullname="David&#160;Ros" />
+		<author initials="M." surname="Tüxen" fullname="Michael&#160;Tüxen" />
+		<author initials="E." surname="Vyncke" fullname="Eric&#160;Vyncke" />
+		<author initials="M." surname="Welzl" fullname="Michael&#160;Welzl" />
+		<date day="1" month="December" year="2015" />
+	</front>
+	<seriesInfo name="" value="Number D1.1" />
+	<format type="PDF" octets="580813" target="https://www.neat-project.org/wp-content/uploads/2016/02/D1.1.pdf" />
+</reference>
+

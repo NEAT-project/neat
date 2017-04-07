@@ -31,7 +31,7 @@ NEAT Socket API
 <phone>+47-6782-8200</phone>
 <facsimile>+47-6782-8201</facsimile>
 <email>dreibh@simula.no</email>
-<uri>http://www.iem.uni-due.de/~dreibh/</uri>
+<uri>https://simula.no/people/dreibh</uri>
 </address>
 </author>
 
@@ -49,8 +49,8 @@ NEAT Socket API
 
 
 <section title="Introduction">
-   <t>The NEAT project <xref target="NEAT-Website" /> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network “services” offered to applications – such as reliability, low-delay communication or security – to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion, without applications having to be rewritten. This architectural change will make the Internet truly “enhanceable”, by allowing applications to seamlessly and more easily take advantage of new network features as they evolve.</t>
-<t>This document describes the NEAT Socket API.</t>
+   <t>The NEAT project <xref target="NEAT-D1.1" />, <xref target="NEAT-Website" /> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network “services” offered to applications – such as reliability, low-delay communication or security – to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion, without applications having to be rewritten. This architectural change will make the Internet truly “enhanceable”, by allowing applications to seamlessly and more easily take advantage of new network features as they evolve.</t>
+   <t>This document describes the NEAT Socket API on top of the callback-based NEAT Core API <xref target="NEAT-D1.1" />,  <xref  target="NEAT-D1.2" />,  <xref target="NEAT-D2.1" />,  <xref target="NEAT-D2.2" />. It provides a BSD Sockets API programming API that is intended to simplify using NEAT in network applications.</t>
 
 
 <section title="Conventions">
@@ -845,6 +845,12 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 
  <?rfc include="NEAT-Website" ?>
  <?rfc include="NorNet-Website" ?>
+ 
+ <?rfc include="NEAT-D1.1" ?>
+ <?rfc include="NEAT-D1.2" ?>
+ <?rfc include="NEAT-D2.1" ?>
+ <?rfc include="NEAT-D2.2" ?>
+ 
 </references>
 
 </back>

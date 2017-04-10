@@ -106,7 +106,7 @@ int nsa_unmap_socket(int neatSD)</artwork></figure>
 <section title="Connection Establishment and Teardown">
    
 <section title="nsa_socket()">
- <t>nsa_socket() creates a NEAT socket. The NEAT socket can either be a wrapper around the NEAT Core API (if properties are specified) or be a wrapper around a system socket (if no properties are specified).</t>
+ <t>nsa_socket() creates a new NEAT socket. The NEAT socket can either be a wrapper around the NEAT Core API (if properties are specified) or be a wrapper around a system socket (if no properties are specified).</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_socket(int domain, int type, int protocol,
@@ -117,7 +117,7 @@ int nsa_socket(int domain, int type, int protocol,
       <t hangText="domain:">Domain for system socket (e.g. AF_INET).</t>   
       <t hangText="type:">Type for system socket (SOCK_SEQPACKET).</t>   
       <t hangText="protocol:">Protocol for system socket (IPPROTO_SCTP).</t>   
-      <t hangText="domain:">Properties for NEAT Core socket.</t>
+      <t hangText="properties:">Properties for NEAT Core socket.</t>
    </list>
  </t>
  <t>Return Value:</t>
@@ -129,7 +129,7 @@ int nsa_socket(int domain, int type, int protocol,
  <t>nsa_close() closes a given NEAT socket.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_close(int fd)</artwork></figure>
+int nsa_close(int sockfd)</artwork></figure>
  <t>Arguments:</t>
    <t>
    <list style="hanging">
@@ -154,7 +154,7 @@ int nsa_fcntl(int sockfd, int cmd, ...)</artwork></figure>
    </list>
  </t>
  <t>nsa_fcntl() returns a command-specific value.</t>
- <t>For NEAT sockets, the following command is specified:</t>
+ <t>For NEAT sockets, the following commands are specified:</t>
  <t>
  <list style="hanging">
     <t hangText="F_GETFL:">Obtain value of the socket descriptor status flags. For NEAT sockets, the flag O_NONBLOCK specifies whether the socket is non-blocking. By default, it is blocking (i.e. O_NONBLOCK is not set).</t>
@@ -165,7 +165,7 @@ int nsa_fcntl(int sockfd, int cmd, ...)</artwork></figure>
 </section>
 
 <section title="nsa_bind()">
-<t>nsa_bind() binds a given NEAT socket to a given address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_bindn() instead. Note further, that nsa_bind() also supports a single address (i.e. no multi-homing). nsa_bindx() SHOULD be used instead to support of multi-homing.</t>
+<t>nsa_bind() binds a given NEAT socket to a given address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_bindn() instead. Note further, that nsa_bind() also supports a single address only (i.e. no multi-homing). nsa_bindx() SHOULD be used instead to support multi-homing.</t>
 <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_bind(int sockfd,
@@ -227,7 +227,7 @@ int nsa_bindn(int sockfd, uint16_t port, int flags,
 </section>
 
 <section title="nsa_connect()">
-<t>nsa_connect() connects a given NEAT socket to a given remote address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_connectn() instead. Note further, that nsa_connect() also supports a single address (i.e. no multi-homing). nsa_connectx() SHOULD be used instead to support of multi-homing.</t>
+<t>nsa_connect() connects a given NEAT socket to a given remote address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_connectn() instead. Note further, that nsa_connect() also supports a single address only (i.e. no multi-homing). nsa_connectx() SHOULD be used instead to support multi-homing.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_connect(int sockfd,
@@ -271,7 +271,7 @@ int nsa_connectx(int sockfd,
 </section>
 
 <section title="nsa_connectn()">
- <t>nsa_connectn() connects a given NEAT socket to a given set of remote name and port. The remote name is resolved by NEAT to corresponding remote addresses.</t>
+ <t>nsa_connectn() connects a given NEAT socket to a given remote name and port. The remote name is resolved by NEAT to corresponding remote addresses.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_connectn(int sockfd, const char* name, const uint16_t port,
@@ -292,7 +292,7 @@ int nsa_connectn(int sockfd, const char* name, const uint16_t port,
 </section>
 
 <section title="nsa_listen()">
- <t>nsa_listen() marks a given NEAT socket as listening sockets, i.e. accepting incoming connections.</t>
+ <t>nsa_listen() marks a given NEAT socket as listening socket, i.e. accepting incoming connections.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_listen(int sockfd, int backlog)</artwork></figure>

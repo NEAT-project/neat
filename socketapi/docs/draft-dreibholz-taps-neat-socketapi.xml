@@ -35,7 +35,7 @@ NEAT Sockets API
 </address>
 </author>
 
-<date day="12" month="April" year="2017" />
+<date day="11" month="April" year="2017" />
 <keyword>Internet-Draft</keyword>
 
 <abstract>
@@ -71,7 +71,7 @@ void nsa_cleanup()
 
 
 <section title="nsa_map_socket()">
-<t>nsa_map_socket() is used to map a system socket descriptor into the NEAT socket descriptor space. This is useful for using NEAT functions with non-NEAT sockets. Mapped socket descriptors can be unmapped with nsa_unmap_socket().</t>
+<t>nsa_map_socket() is used to map a system socket descriptor into the NEAT socket descriptor space. This is useful for using NEAT API functions as wrapper to calls on non-NEAT sockets. Mapped socket descriptors can be unmapped by using nsa_unmap_socket().</t>
 <t>Function Prototype:</t>
 <figure><artwork>
 int nsa_map_socket(int systemSD, int neatSD)
@@ -106,7 +106,7 @@ int nsa_unmap_socket(int neatSD)</artwork></figure>
 <section title="Connection Establishment and Teardown">
    
 <section title="nsa_socket()">
- <t>nsa_socket() creates a NEAT socket. The NEAT socket can either be a wrapper around the NEAT Core API (if properties are specified) or a wrapper around a system socket (if no properties are specified).</t>
+ <t>nsa_socket() creates a NEAT socket. The NEAT socket can either be a wrapper around the NEAT Core API (if properties are specified) or be a wrapper around a system socket (if no properties are specified).</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_socket(int domain, int type, int protocol,

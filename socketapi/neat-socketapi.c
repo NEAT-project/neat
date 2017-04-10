@@ -100,9 +100,9 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
 
 
 /* ###### NEAT close() implementation #################################### */
-int nsa_close(int fd)
+int nsa_close(int sockfd)
 {
-   GET_NEAT_SOCKET(fd)
+   GET_NEAT_SOCKET(sockfd)
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
    if(neatSocket->ns_flow != NULL) {
       pthread_mutex_lock(&neatSocket->ns_mutex);
@@ -123,9 +123,9 @@ int nsa_close(int fd)
 
 
 /* ###### NEAT close() implementation #################################### */
-int nsa_fcntl(int fd, int cmd, ...)
+int nsa_fcntl(int sockfd, int cmd, ...)
 {
-   GET_NEAT_SOCKET(fd)
+   GET_NEAT_SOCKET(sockfd)
 
    va_list va;
    unsigned long int arg;

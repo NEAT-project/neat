@@ -217,8 +217,8 @@ int nsa_unmap_socket(int neatSD);
 
 /* ====== Connection Establishment and Teardown ========================== */
 int nsa_socket(int domain, int type, int protocol, const char* properties);
-int nsa_close(int fd);
-int nsa_fcntl(int fd, int cmd, ...);
+int nsa_close(int sockfd);
+int nsa_fcntl(int sockfd, int cmd, ...);
 int nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen,
              struct neat_tlv* opt, const int optcnt);
 int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags,

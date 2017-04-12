@@ -14,16 +14,24 @@ static char *caBundle;
 void tls_init_trust_list(SSL_CTX *ctx)
 {
     BIO *bio;
-    X509 *cert;
+    X509 *cert = NULL;
 
     bio = BIO_new(BIO_s_mem());
     BIO_puts(bio, caBundle);
+
     do {
+        // Free previously read cert
+        if (cert) {
+            X509_free(cert);
+        }
+
+        // Read next certificate
         cert = PEM_read_bio_X509(bio, NULL, 0, NULL);
         if (cert) {
             X509_STORE_add_cert(SSL_CTX_get_cert_store(ctx), cert);
         }
     } while (cert);
+
     BIO_free(bio);
 }
 

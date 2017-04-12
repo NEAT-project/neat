@@ -154,6 +154,7 @@ NEAT_EXTERN neat_error_code neat_shutdown(struct neat_ctx *ctx, struct neat_flow
 NEAT_EXTERN neat_error_code neat_close(struct neat_ctx *ctx, struct neat_flow *flow);
 NEAT_EXTERN neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow);
 NEAT_EXTERN int neat_getlpaddrs(struct neat_ctx *ctx, struct neat_flow *flow, struct sockaddr** addrs, const int local);
+NEAT_EXTERN void neat_freelpaddrs(struct sockaddr* addrs);
 NEAT_EXTERN neat_error_code neat_change_timeout(struct neat_ctx *ctx, struct neat_flow *flow,
                                     unsigned int seconds);
 NEAT_EXTERN neat_error_code neat_set_primary_dest(struct neat_ctx *ctx, struct neat_flow *flow,

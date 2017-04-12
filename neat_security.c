@@ -395,6 +395,8 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
             // authenticate the server.. todo an option to skip
             X509_VERIFY_PARAM *param = SSL_get0_param(private->ssl);
             X509_VERIFY_PARAM_set1_host(param, flow->name, 0);
+            // support Server Name Indication (SNI)
+            SSL_set_tlsext_host_name(private->ssl, flow->name);
         }
 
         private->inputBIO = BIO_new(BIO_s_mem());

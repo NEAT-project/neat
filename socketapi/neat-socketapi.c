@@ -93,7 +93,7 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
       pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
    }
    else {
-      errno = EUNATCH;
+      errno = ENXIO;
    }
    return(result);
 }

@@ -46,7 +46,10 @@
 #include <netdb.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
+#undef HAVE_NETINET_SCTP_H
+#if defined(HAVE_NETINET_SCTP_H)
 #include <netinet/sctp.h>
+#endif
 
 
 /* ###### Map system socket into NEAT socket descriptor space ############ */
@@ -225,7 +228,12 @@ int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags,
           return(bind(neatSocket->ns_socket_sd, addrs, get_socklen(addrs)));
        }
        else {
+#if defined(HAVE_NETINET_SCTP_H)
           return(sctp_bindx(neatSocket->ns_socket_sd, (struct sockaddr*)addrs, addrcnt, flags));
+#else
+          errno = EOPNOTSUPP;
+          return(-1);
+#endif
        }
    }
 }
@@ -297,8 +305,13 @@ int nsa_connectx(int                    sockfd,
           return(connect(neatSocket->ns_socket_sd, addrs, get_socklen(addrs)));
        }
        else {
+#if defined(HAVE_NETINET_SCTP_H)
           return(sctp_connectx(neatSocket->ns_socket_sd,
                                (struct sockaddr*)addrs, addrcnt, (sctp_assoc_t*)id));
+#else
+          errno = EOPNOTSUPP;
+          return(-1);
+#endif
        }
    }
 }
@@ -484,7 +497,12 @@ int nsa_peeloff(int sockfd, neat_assoc_t id)
       return(0);
    }
    else {
+#if defined(HAVE_NETINET_SCTP_H)
       return(sctp_peeloff(neatSocket->ns_socket_sd, id));
+#else
+      errno = EOPNOTSUPP;
+      return(-1);
+#endif
    }
 }
 
@@ -528,7 +546,12 @@ int nsa_opt_info(int sockfd, neat_assoc_t id, int opt, void* arg, socklen_t* siz
       return(-1);
    }
    else {
+#if defined(HAVE_NETINET_SCTP_H)
       return(sctp_opt_info(neatSocket->ns_socket_sd, id, opt, arg, size));
+#else
+      errno = EOPNOTSUPP;
+      return(-1);
+#endif
    }
 }
 
@@ -580,8 +603,13 @@ static int nsa_getlpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs, 
       return(result);
    }
    else {
+#if defined(HAVE_NETINET_SCTP_H)
       return((local) ? sctp_getladdrs(sockfd, id, addrs) :
                        sctp_getpaddrs(sockfd, id, addrs));
+#else
+      errno = EOPNOTSUPP;
+      return(-1);
+#endif
    }
 }
 

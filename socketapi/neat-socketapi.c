@@ -46,7 +46,6 @@
 #include <netdb.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
-#undef HAVE_NETINET_SCTP_H
 #if defined(HAVE_NETINET_SCTP_H)
 #include <netinet/sctp.h>
 #endif

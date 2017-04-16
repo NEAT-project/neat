@@ -172,6 +172,9 @@ void ServiceThread::run()
       result = nsa_write(SocketDesc, status, strlen(status));
    }
 
+   if(result < 0) {
+      cerr << "INFO: nsa_write() failed: " << strerror(errno) << endl;
+   }
 
    // ====== Shutdown connection ============================================
    nsa_shutdown(SocketDesc, SHUT_RDWR);

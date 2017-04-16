@@ -540,7 +540,7 @@ int nsa_set_secure_identity(int sockfd, const char* pem)
    if(neatSocket->ns_flow != NULL) {
       pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
       pthread_mutex_lock(&neatSocket->ns_mutex);
-      const neat_error_code result =
+/*      const neat_error_code result = */
          neat_secure_identity(gSocketAPIInternals->nsi_neat_context,
                               neatSocket->ns_flow,
                               pem);
@@ -550,13 +550,13 @@ int nsa_set_secure_identity(int sockfd, const char* pem)
       // Security in the NEAT Core API is currently broken!
       // It will not work here as well ...
       assert(false);
-      
+/*      
       switch(result) {
          case NEAT_OK:
             return(0);
           break;
       }
-
+*/
       errno = ENOENT;   /* Unexpected error from NEAT Core */
       return(-1);      
    }

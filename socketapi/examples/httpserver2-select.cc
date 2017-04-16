@@ -106,6 +106,10 @@ void handleHTTPCommand(int sd, const unsigned int id, char* command)
       const char* status = "HTTP/1.0 400 Bad Request\r\n\r\n400 Bad Request\r\n";
       result = nsa_write(sd, status, strlen(status));
    }
+
+   if(result < 0) {
+      cerr << "INFO: nsa_write() failed: " << strerror(errno) << endl;
+   }
 }
 
 

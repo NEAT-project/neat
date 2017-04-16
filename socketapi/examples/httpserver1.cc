@@ -184,6 +184,9 @@ int main(int argc, char** argv)
          const char* status = "HTTP/1.0 400 Bad Request\r\n\r\n400 Bad Request\r\n";
          result = nsa_write(newSD, status, strlen(status));
       }
+      if(result < 0) {
+         cerr << "INFO: nsa_write() failed: " << strerror(errno) << endl;
+   }
       cout << "Command completed." << endl;
 
 
@@ -191,7 +194,6 @@ int main(int argc, char** argv)
       nsa_shutdown(newSD, SHUT_RDWR);
       nsa_close(newSD);
    }
-
 
    // ====== Clean up =======================================================
    nsa_close(sd);

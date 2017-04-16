@@ -47,7 +47,7 @@ TARGET_LINK_LIBRARIES (neat-socketapi ${neat_socketapi_libs} "${CMAKE_THREAD_LIB
 MESSAGE(STATUS "Install directory: ${CMAKE_INSTALL_PREFIX}")
 
 INSTALL(TARGETS neat-socketapi neat-socketapi-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
-INSTALL(FILES ${neat_socketapi_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/neat)
+INSTALL(FILES ${neat_socketapi_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
 # BUILD EACH PROGRAM

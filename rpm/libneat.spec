@@ -1,5 +1,5 @@
 Name: libneat
-Version: 0.0.1~td136
+Version: 0.0.1~td139
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -126,9 +126,9 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat-socketapi.so*
 
 %files devel
-/usr/include/neat/neat.h
-/usr/include/neat/neat_linux.h
-/usr/include/neat/neat_queue.h
+/usr/include/neat.h
+/usr/include/neat_linux.h
+/usr/include/neat_queue.h
 /usr/lib/libneat-static.a
 /usr/lib/libneat[^\-]*so
 
@@ -148,7 +148,7 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat/tneat
 
 %files socketapi-devel
-/usr/include/neat/neat-socketapi.h
+/usr/include/neat-socketapi.h
 /usr/lib/libneat-socketapi-static.a
 /usr/lib/libneat-socketapi*.so
 

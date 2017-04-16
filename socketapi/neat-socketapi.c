@@ -166,7 +166,7 @@ static int copy_options(struct neat_tlv** optionsPtr,
                         const int         newOptCount)
 {
    if(*optionsPtr) {
-      free(optionsPtr);
+      free(*optionsPtr);
       *optionsPtr = NULL;
       *optcntPtr  = 0;
    }

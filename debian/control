@@ -38,6 +38,7 @@ Description: NEAT Core API
 Package: libneat-dev
 Architecture: any
 Depends: libneat0 (= ${binary:Version}),
+         libuv-dev,
          ${misc:Depends},
          ${shlibs:Depends}
 Description: NEAT Core API Development Files
@@ -113,7 +114,8 @@ Description: NEAT Sockets API
 
 Package: libneat-socketapi-dev
 Architecture: any
-Depends: libneat-socketapi0 (= ${binary:Version}),
+Depends: libneat-dev (= ${binary:Version}),
+         libneat-socketapi0 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
 Description: NEAT Sockets API Development Files

@@ -11,7 +11,7 @@ Build-Depends: cmake,
                libsctp-dev,
                libssl-dev,
                libusrsctp-dev,
-               libuv1-dev (>= 1.0.2) | libuv-dev
+               libuv1-dev (>= 1.0.2)
 Standards-Version: 3.9.8
 Vcs-Browser: https://github.com/NEAT-project/neat
 Vcs-Git: https://github.com/NEAT-project/neat.git
@@ -38,7 +38,7 @@ Description: NEAT Core API
 Package: libneat-dev
 Architecture: any
 Depends: libneat0 (= ${binary:Version}),
-         libuv-dev,
+         libuv1-dev (>= 1.0.2),
          ${misc:Depends},
          ${shlibs:Depends}
 Description: NEAT Core API Development Files

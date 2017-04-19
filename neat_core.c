@@ -5380,7 +5380,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         neat_sctp_init_events(fd);
 #endif
 
-#if defined(SCTP_MULTISTREAMING)
+#if defined(SCTP_MULTISTREAMING) && !defined(USRSCTP_SUPPORT)
 #if defined(SCTP_ADAPTATION_LAYER) && defined(SCTP_FRAGMENT_INTERLEAVE) && defined(SCTP_ENABLE_STREAM_RESET)
 
         struct sctp_assoc_value assoc_value;
@@ -5439,7 +5439,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
             return -1;
         }
 
-#endif // defined(SCTP_MULTISTREAMING)
+#endif // defined(SCTP_MULTISTREAMING) && !defined(USRSCTP_SUPPORT)
 #endif // defined(SCTP_ADAPTATION_LAYER) && defined(SCTP_FRAGMENT_INTERLEAVE) && defined(SCTP_ENABLE_STREAM_RESET)
 
 #if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)

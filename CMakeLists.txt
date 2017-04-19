@@ -210,10 +210,7 @@ ELSE()
         MESSAGE(WARNING "openssl >= 1.0.2 required for TLS")
     ELSE()
         CHECK_INCLUDE_FILE(openssl/ssl.h HAVE_SYS_OPENSSL_H)
-        FIND_LIBRARY(OPENSSL_LIB ssl)
-        FIND_LIBRARY(OPENSSL_CRYPTO_LIB crypto)
-        MESSAGE("OPENSSL found: " ${OPENSSL_LIB})
-        MESSAGE("OPENSSL Crypto found: " ${OPENSSL_CRYPTO_LIB})
+        MESSAGE(STATUS "OPENSSL Crypto found: " ${OPENSSL_LIBRARIES})
         ADD_DEFINITIONS(-DNEAT_USETLS)
         SET(CMAKE_EXTRA_INCLUDE_FILES "openssl/ssl.h")
 
@@ -296,8 +293,8 @@ LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}
     ${JANSSON_LIB}
-    ${OPENSSL_LIB}
-    ${OPENSSL_CRYPTO_LIB}
+    ${OPENSSL_SSL_LIBRARY}
+    ${OPENSSL_CRYPTO_LIBRARY}
     )
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")

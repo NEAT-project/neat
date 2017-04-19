@@ -14,16 +14,24 @@ static char *caBundle;
 void tls_init_trust_list(SSL_CTX *ctx)
 {
     BIO *bio;
-    X509 *cert;
+    X509 *cert = NULL;
 
     bio = BIO_new(BIO_s_mem());
     BIO_puts(bio, caBundle);
+
     do {
+        // Free previously read cert
+        if (cert) {
+            X509_free(cert);
+        }
+
+        // Read next certificate
         cert = PEM_read_bio_X509(bio, NULL, 0, NULL);
         if (cert) {
             X509_STORE_add_cert(SSL_CTX_get_cert_store(ctx), cert);
         }
     } while (cert);
+
     BIO_free(bio);
 }
 
@@ -4070,8 +4078,7 @@ TxgKqpAd60Ae36EeRJIQmvKN4dFLRp7oRUKX6kWZ8+xm1QL68qZKJKrezrnK+T+Tb/mjuuqlPpmt\n\
 /f97mfVl7vBZKGfXkJWkE4SphMHozs51k2MavDzq1WQfLSoSOcbDWjLtR5EWDrw4wVDej8oqkDQc\n\
 7kGUnF4ZLvhFSZl0kbAEb+MEWrGrKqv+x9CWttrhSmQGbmBNvUJO/3jaJMobtNeWOWyu8Q6qp31I\n\
 iyBMz2TWuJdGsE7RKlY6oJO9r4Ak4Ap+58rVyuiFVdw2KuGUaJPHZnJED4AhMmwlxyOAgwrr\n\
------END CERTIFICATE-----\n\
-";
+-----END CERTIFICATE-----\n";
 
 #endif
 

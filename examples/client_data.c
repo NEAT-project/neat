@@ -1,7 +1,7 @@
 #include <neat.h>
-#include <neat_internal.h>
 #include "util.h"
 
+#include <jansson.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -105,7 +105,7 @@ on_error(struct neat_flow_operations *opCB)
 }
 
 static void
-print_neat_stats(neat_ctx *mgr)
+print_neat_stats(struct neat_ctx *mgr)
 {
     neat_error_code error;
 
@@ -241,7 +241,7 @@ on_writable(struct neat_flow_operations *opCB)
     if  (config_snd_count>=config_snd_bytes) {
       neat_close(ctx, flow);
     }
-    
+
     //ops.on_all_written = on_all_written;
     //neat_set_operations(ctx, flow, &ops);
     return NEAT_OK;
@@ -259,7 +259,7 @@ on_all_written(struct neat_flow_operations *opCB)
     ops.on_writable = on_writable;
     ops.on_all_written = NULL;
     neat_set_operations(ctx, flow, &ops);
-    
+
     // data sent completely - continue reading from stdin
     //uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
     return NEAT_OK;
@@ -269,6 +269,8 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     int rc;
+    uv_loop_t *loop;
+
 
     /*
     if (config_log_level >= 1) {
@@ -277,10 +279,10 @@ on_connected(struct neat_flow_operations *opCB)
     */
 
     last_stream = 0;
-
-    uv_tty_init(ctx->loop, &tty, 0, 1);
+    loop = neat_get_event_loop(opCB->ctx);
+    uv_tty_init(loop, &tty, 0, 1);
     //ZDRuv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
-    
+
     ops.on_writable = on_writable;
 
     //ops.on_readable = on_readable;
@@ -306,7 +308,7 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    fprintf(stderr, "%s - flow closed OK! - %s\n", __func__, opCB->flow->name);
+    fprintf(stderr, "%s - flow closed OK!\n", __func__);
 
     // cleanup
     ops.on_close = NULL;
@@ -527,8 +529,8 @@ main(int argc, char *argv[])
     json_t *props;
     json_t *new_prop = json_object();
     json_error_t error;
-    json_object_set(new_prop, "value", json_integer(config_snd_bytes));    
-    json_object_set(new_prop, "precedence", json_integer(2));    
+    json_object_set(new_prop, "value", json_integer(config_snd_bytes));
+    json_object_set(new_prop, "precedence", json_integer(2));
 
     props = json_loads(config_property, 0, &error);
     json_object_set(props, "flow_size_bytes", new_prop);

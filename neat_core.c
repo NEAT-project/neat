@@ -993,13 +993,13 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
             // follow D1.2
             neat_log(ctx, NEAT_LOG_DEBUG, "%s - state : SCTP_COMM_LOST", __func__);
             neat_notify_aborted(flow);
-            //break;
+            break;
 
             // Fallthrough:
         case SCTP_COMM_UP: // Fallthrough:
             neat_log(ctx, NEAT_LOG_DEBUG, "%s - state : SCTP_COMM_UP", __func__);
             // TODO: Allocate send buffers here instead?
-            //break;
+            break;
 
         case SCTP_RESTART:
             neat_log(ctx, NEAT_LOG_DEBUG, "%s - state : SCTP_RESTART", __func__);

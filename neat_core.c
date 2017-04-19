@@ -869,10 +869,14 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
     unsigned int statuslen;
     int rc;
     struct sctp_status status;
+#endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
+#if defined(IPPROTO_SCTP) && defined(SCTP_INTERLEAVING_SUPPORTED) && !defined(USRSCTP_SUPPORT)
     int value;
     unsigned int valuelen;
-#endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
+#endif // #if defined(IPPROTO_SCTP) && defined(SCTP_INTERLEAVING_SUPPORTED) && !defined(USRSCTP_SUPPORT)
     char proto[16];
+
+
 
     switch (flow->socket->stack) {
         case NEAT_STACK_UDP:
@@ -895,7 +899,9 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             }
             // number of outbound streams == number of inbound streams
             neat_log(ctx, NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->socket->sctp_streams_available);
+#endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
 
+#if defined(IPPROTO_SCTP) && defined(SCTP_INTERLEAVING_SUPPORTED) && !defined(USRSCTP_SUPPORT)
             valuelen = sizeof(value);
             rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED, &value, &valuelen);
             if (rc < 0) {
@@ -903,9 +909,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
             } else {
                 neat_log(ctx, NEAT_LOG_WARNING, "I-DATA support: %d", value == 2 ? "enable" : "disabled");
             }
-            // number of outbound streams == number of inbound streams
-            neat_log(ctx, NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->socket->sctp_streams_available);
-#endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
+#endif // defined(IPPROTO_SCTP) && defined(SCTP_INTERLEAVING_SUPPORTED) && !defined(USRSCTP_SUPPORT)
             break;
         case NEAT_STACK_UDPLITE:
             snprintf(proto, 16, "UDPLite");

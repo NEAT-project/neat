@@ -15,14 +15,24 @@
     client_http_run_once [OPTIONS] HOST
     -u : URI
     -n : number of requests/flows (default: 3)
+    -c : number of contexts (default: 1)
+    -R : receive buffer size in byte
+    -v : log level (0 .. 4)
+    -t : use tcp as transport protocol
+    -s : use sctp as transport protocol
+
+ Each new flow will be put on the next context (if more than one context is
+ specified) and when reaching the end of the total number of contexts, it
+ starts over on the context on index 0 again.
 
 **********************************************************************/
 
 static uint32_t config_rcv_buffer_size = 65536;
-static uint32_t config_max_flows = 50;
+static uint32_t config_max_flows = 500;
+static uint32_t config_max_ctxs = 50;
 static char request[512];
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static char *config_property = "{\
+static char *config_property_sctp_tcp = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
@@ -37,20 +47,49 @@ static char *config_property = "{\
             \"precedence\": 1\
         }\
     ]\
-}";\
+}";
+static char *config_property_tcp = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";
+static char *config_property_sctp = "{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"SCTP/UDP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";
+static unsigned char *buffer = NULL;
+static int streams_going = 0;
+
+struct user_flow {
+    struct neat_flow *flow;
+    uint32_t id;
+};
 
 static neat_error_code
 on_error(struct neat_flow_operations *opCB)
 {
+    struct user_flow *f = opCB->userData;
     fprintf(stderr, "%s\n", __func__);
-    exit(EXIT_FAILURE);
+    fprintf(stderr, "[on_error on flow %u]\n", f->id);
+    streams_going--;
+    return 0;
 }
 
 static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     // data is available to read
-    unsigned char buffer[config_rcv_buffer_size];
     uint32_t bytes_read = 0;
     neat_error_code code;
 
@@ -62,8 +101,9 @@ on_readable(struct neat_flow_operations *opCB)
     }
 
     if (!bytes_read) { // eof
-        int *numstreams = opCB->userData;
-        (*numstreams)--; /* one stream less */
+        struct user_flow *f = opCB->userData;
+        streams_going--; /* one stream less */
+        fprintf(stderr, "[Flow %u ended, %d to go]\n", f->id, streams_going);
         fflush(stdout);
         opCB->on_readable = NULL; // do not read more
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
@@ -100,23 +140,29 @@ on_connected(struct neat_flow_operations *opCB)
 int
 main(int argc, char *argv[])
 {
-    struct neat_ctx *ctx = NULL;
-    struct neat_flow *flows[config_max_flows];
+    struct neat_ctx *ctx[config_max_ctxs];
+    struct user_flow flows[config_max_flows];
     struct neat_flow_operations ops[config_max_flows];
+    struct pollfd fds[config_max_ctxs];
     int result = 0;
     int arg = 0;
     uint32_t num_flows = 3;
     uint32_t i = 0;
-    int backend_fd;
-    int streams_going = 0;
-    result = EXIT_SUCCESS;
+    uint32_t c = 0;
+    int backend_fds[config_max_ctxs];
+    uint32_t num_ctxs = 1;
+    int config_log_level = NEAT_LOG_WARNING;
+    const char *config_property;
 
+    result = EXIT_SUCCESS;
     memset(&ops, 0, sizeof(ops));
     memset(flows, 0, sizeof(flows));
+    memset(ctx, 0, sizeof(ctx));
+    config_property = config_property_sctp_tcp;
 
     snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
 
-    while ((arg = getopt(argc, argv, "u:n:")) != -1) {
+    while ((arg = getopt(argc, argv, "u:n:c:sR:tv:")) != -1) {
         switch(arg) {
         case 'u':
             snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);
@@ -128,8 +174,38 @@ main(int argc, char *argv[])
             }
             fprintf(stderr, "%s - option - number of flows: %d\n", __func__, num_flows);
             break;
+        case 'c':
+            num_ctxs = strtoul (optarg, NULL, 0);
+            if (num_ctxs > config_max_ctxs) {
+                num_ctxs = config_max_ctxs;
+            }
+            fprintf(stderr, "%s - option - number of contexts: %d\n", __func__, num_ctxs);
+            break;
+        case 'R':
+            config_rcv_buffer_size = atoi(optarg);
+            fprintf(stderr, "%s - option - receive buffer size: %d\n",
+                    __func__, config_rcv_buffer_size);
+            break;
+        case 'v':
+            config_log_level = atoi(optarg);
+            fprintf(stderr, "%s - option - log level: %d\n",
+                    __func__, config_log_level);
+            break;
+        case 's':
+            config_property = config_property_sctp;
+            break;
+        case 't':
+            config_property = config_property_tcp;
+            break;
         default:
-            fprintf(stderr, "usage: client_http_get [OPTIONS] HOST\n");
+            fprintf(stderr, "usage: client_http_run_once [OPTIONS] HOST\n"
+                    " -u <path> - to send with GET\n"
+                    " -n <num>  - number of requests/flows (default: %d)\n"
+                    " -c <num>  - number of contexts (default: %d)\n"
+                    " -R <size> - receive buffer size in byte (default: %d\n"
+                    " -v <lvl>  - log level, 0 - 4 (default: %d)\n",
+                    num_flows, num_ctxs, config_rcv_buffer_size,
+                    config_log_level);
             goto cleanup;
             break;
         }
@@ -142,30 +218,38 @@ main(int argc, char *argv[])
 
     printf("%d flows - requesting: %s\n", num_flows, request);
 
-    if ((ctx = neat_init_ctx()) == NULL) {
-        fprintf(stderr, "could not initialize context\n");
-        result = EXIT_FAILURE;
-        goto cleanup;
+    buffer = malloc(config_rcv_buffer_size);
+
+    for (i = 0; i < num_ctxs; i++) {
+        if ((ctx[i] = neat_init_ctx()) == NULL) {
+            fprintf(stderr, "could not initialize context %d\n", i);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
     }
 
-
-    for (i = 0; i < num_flows; i++) {
-        if ((flows[i] = neat_new_flow(ctx)) == NULL) {
+    for (i = 0, c = 0; i < num_flows; i++, c++) {
+        if (c >= num_ctxs) {
+            c = 0;
+        }
+        if ((flows[i].flow = neat_new_flow(ctx[c])) == NULL) {
             fprintf(stderr, "could not initialize context\n");
             result = EXIT_FAILURE;
             goto cleanup;
         }
+        neat_log_level(ctx[c], config_log_level);
 
-        neat_set_property(ctx, flows[i], config_property);
+        neat_set_property(ctx[c], flows[i].flow, config_property);
 
         ops[i].on_connected = on_connected;
         ops[i].on_error = on_error;
-        ops[i].userData = &streams_going;
+        flows[i].id = streams_going;
+        ops[i].userData = &flows[i];
         streams_going++;
-        neat_set_operations(ctx, flows[i], &(ops[i]));
+        neat_set_operations(ctx[c], flows[i].flow, &(ops[i]));
 
         // wait for on_connected or on_error to be invoked
-        if (neat_open(ctx, flows[i], argv[argc - 1], 80, NULL, 0) != NEAT_OK) {
+        if (neat_open(ctx[c], flows[i].flow, argv[argc - 1], 80, NULL, 0) != NEAT_OK) {
             fprintf(stderr, "Could not open flow\n");
             result = EXIT_FAILURE;
         } else {
@@ -173,43 +257,60 @@ main(int argc, char *argv[])
         }
     }
 
-    /* Get the underlying single file descriptor from libuv. Wait on this
-       descriptor to become readable to know when to ask NEAT to run another
+    /* Get the underlying single file descriptors from libuv. Wait on these
+       descriptors to become readable to know when to ask NEAT to run another
        loop ONCE on everything that it might have to work on. */
 
-    backend_fd = neat_get_backend_fd(ctx);
-
-    /* kick off the event loop first */
-    neat_start_event_loop(ctx, NEAT_RUN_ONCE);
+    for (c=0; c<num_ctxs; c++) {
+        backend_fds[c] = neat_get_backend_fd(ctx[c]);
+        /* kick off the event loop first for each context */
+        neat_start_event_loop(ctx[c], NEAT_RUN_ONCE);
+    }
 
     while (streams_going) {
-        struct pollfd fds[1] = {
-            {
-                .fd = backend_fd,
-                .events = POLLERR | POLLIN | POLLHUP,
-                .revents = 0,
+        int timeout = 9999;
+
+        fprintf(stderr, "[%d flows to go]\n", streams_going);
+        for (c=0; c<num_ctxs; c++) {
+            int t;
+            fds[c].fd = backend_fds[c];
+            fds[c].events = POLLERR | POLLIN | POLLHUP;
+            fds[c].revents = 0;
+
+            t = neat_get_backend_timeout(ctx[c]);
+            if (t < timeout) {
+                timeout = t;
             }
-        };
-        int rc = poll(fds, 1, neat_get_backend_timeout(ctx));
+        }
+        /* use the shortest timeout from all contexts used */
+        int rc = poll(fds, num_ctxs, timeout);
 
         if (rc > 0) {
-            /* there's stuff to do */
-            neat_start_event_loop(ctx, NEAT_RUN_NOWAIT);
+            /* there's stuff to do on one or more contexts, do them all */
+            ;
         }
         else {
-            fprintf(stderr, "Waiting on %d streams...\n", streams_going);
-            neat_start_event_loop(ctx, NEAT_RUN_NOWAIT);
+            fprintf(stderr, "Waiting...\n");
         }
-
+        for (c=0; c<num_ctxs; c++) {
+            neat_start_event_loop(ctx[c], NEAT_RUN_NOWAIT);
+        }
     }
 cleanup:
-    if (ctx != NULL) {
-        for (i = 0; i < num_flows; i++) {
-            if (flows[i] != NULL) {
-                neat_close(ctx, flows[i]);
-            }
-        }
-        neat_free_ctx(ctx);
+    fprintf(stderr, "Cleanup!\n");
+    for (i = 0, c = 0; i < num_flows; i++, c++) {
+      if (c >= num_ctxs) {
+        c = 0;
+      }
+      if (flows[i].flow != NULL) {
+        neat_close(ctx[c], flows[i].flow);
+      }
+    }
+    for (c = 0; c < num_ctxs; c++) {
+      neat_free_ctx(ctx[c]);
+    }
+    if (buffer) {
+        free(buffer);
     }
     exit(result);
 }

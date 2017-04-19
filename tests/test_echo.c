@@ -55,15 +55,15 @@ test_protocol(int protocol, int socktype)
 
     buffer[4] = 0;
 
-    if (strcmp(buffer, "TEST") != 0) {
-        fprintf(stderr, "Expected \"TEST\", received: \"%s\"\n", buffer);
-        return -1;
-    }
 
     close(sock);
 
     freeaddrinfo(info);
 
+    if (strcmp(buffer, "TEST") != 0) {
+        fprintf(stderr, "Expected \"TEST\", received: \"%s\"\n", buffer);
+        return -1;
+    }
     return 0;
 }
 

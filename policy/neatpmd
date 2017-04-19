@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 import io
+import json
 import logging
 import os
 import signal
@@ -10,12 +11,13 @@ from copy import deepcopy
 from operator import attrgetter
 
 import pmdefaults as PM
+import pmhelper
 import pmrest
 import policy
+import resthelper
 from cib import CIB
 from pib import PIB
 from policy import PropertyMultiArray
-
 
 # make sure output works on terminals without UTF support
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=sys.stdout.encoding,
@@ -25,7 +27,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=sys.stdout.encoding,
 parser = argparse.ArgumentParser(description='NEAT Policy Manager')
 parser.add_argument('--cib', type=str, default=None, help='specify directory in which to look for CIB files')
 parser.add_argument('--pib', type=str, default=None, help='specify directory in which to look for PIB files')
-parser.add_argument('--sock', type=str, default=None, help='set Unix domain socket path')
+parser.add_argument('--sock', type=str, default=None, help='set path for Unix domain sockets')
 parser.add_argument('--controller', type=str, default=None, help='set URL of controller REST API')
 parser.add_argument('--rest-ip', type=str, default=None, help='set local management IP:PORT for external REST calls')
 parser.add_argument('--debug', type=bool, default=None, help='enable debugging')
@@ -38,7 +40,8 @@ if args.cib:
 if args.pib:
     PM.PIB_DIR = args.pib
 if args.sock:
-    PM.DOMAIN_SOCK = args.sock
+    PM.SOCK_DIR = args.sock
+    PM.update_sock_files()
 if args.controller:
     PM.CONTROLLER_REST = args.controller
 if args.rest_ip:
@@ -55,6 +58,7 @@ try:
     os.makedirs(os.path.dirname(PM.DOMAIN_SOCK), exist_ok=True)
     os.makedirs(os.path.dirname(PM.PIB_SOCK), exist_ok=True)
     os.makedirs(os.path.dirname(PM.CIB_SOCK), exist_ok=True)
+
 except OSError as e:
     print(e)
     raise SystemExit()
@@ -107,31 +111,47 @@ def cleanup_special_properties(r):
     if 'uid' in r:
         del r['uid']
 
+    old_properties = []
+    new_properties = policy.PropertyArray()
+    # convert socket options
+    for key, prop in r.items():
+        so_key = pmhelper.sock_prop(prop.key)
+        if so_key == -1:
+            old_properties.append(key)
+        elif so_key:
+            prop.key = so_key
+            new_properties.add(prop)
+            old_properties.append(key)
+
+    for k in old_properties:
+        del r[k]
+
+    for p in new_properties.values():
+        r.add(p)
+
 
 def process_request(json_str, num_candidates=10):
     """Process JSON requests from NEAT logic"""
+    requests = []
+
+    try:
+        reqs = json.loads(json_str)
+    except json.decoder.JSONDecodeError as e:
+        logging.error('Request invalid')
+        return
+
     logging.debug(json_str)
 
-    # list which will hold all requests
-    requests = []
-    try:
-        properties_list = policy.json_to_properties(json_str)
-    except policy.InvalidPropertyError:
-        return
-
-    try:
-        for request in properties_list:
-            # we create a PropertyMultiArray first and then expand it to get a list of PropertyArrays
-            # with all permutations of requested properties
-            pma = PropertyMultiArray()
-            for p in request:
-                pma.add(p)
-            requests.extend(pma.expand())
-
-
-    except policy.NEATPropertyError as e:
-        print(e)
-        return
+    # FIXME this is quick workaround to use the new style PropertyArrays
+    for req in reqs:
+        pma = PropertyMultiArray()
+        for p, val in req.items():
+            if isinstance(val, list):
+                pma.add([policy.PropertyArray(policy.dict_to_properties({p: v})[0]) for v in val])
+            else:
+                pp = policy.dict_to_properties({p: val})[0]
+                pma.add(policy.PropertyArray(pp))
+        requests.extend(pma.expand())
 
     # local_endpoint handling
     # let's try to avoid any other special handling of properties!
@@ -139,8 +159,6 @@ def process_request(json_str, num_candidates=10):
         process_special_properties(r)
 
     print('Received %d NEAT requests' % len(requests))
-    # for i, request in enumerate(requests):
-    #    print("%d: " % i, request)
 
     candidates = []
 
@@ -298,6 +316,9 @@ if __name__ == "__main__":
     logging.debug("CIB directory is %s" % PM.CIB_DIR)
 
     cib = CIB(PM.CIB_DIR)
+    for slim in resthelper.gen_cibs():
+        cib.import_json(slim)
+
     profiles = PIB(PM.PIB_DIR, file_extension='.profile')
     pib = PIB(PM.PIB_DIR, file_extension='.policy')
 
@@ -320,7 +341,13 @@ if __name__ == "__main__":
     # try to start the PM REST interface
     pmrest.init_rest_server(loop, profiles, cib, pib, rest_port=PM.REST_PORT)
 
-    print('Waiting for PM requests on {} ...'.format(server.sockets[0].getsockname()))
+    os.chmod(PM.DOMAIN_SOCK, 0o777)
+    os.chmod(PM.PIB_SOCK, 0o777)
+    os.chmod(PM.CIB_SOCK, 0o777)
+
+    print('Accepting PM requests on {} ...'.format(server.sockets[0].getsockname()))
+    print('Accepting PIB updates on {} ...'.format(pib_server.sockets[0].getsockname()))
+    print('Accepting CIB updates on {} ...'.format(cib_server.sockets[0].getsockname()))
     try:
         loop.run_forever()
     except KeyboardInterrupt:

@@ -218,9 +218,7 @@ neat_addr_free_src_list(struct neat_ctx *nc)
  * IN THE SOFTWARE.
  */
 
-
-
-uint8_t
+int
 sockaddr_storage_cmp(struct sockaddr_storage *a, struct sockaddr_storage *b)
 {
     struct sockaddr_in  *a_in   = (struct sockaddr_in *)    a;
@@ -247,5 +245,4 @@ sockaddr_storage_cmp(struct sockaddr_storage *a, struct sockaddr_storage *b)
     return 0;
 
     #undef CMP
-
 }

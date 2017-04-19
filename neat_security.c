@@ -355,7 +355,13 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
     int isClient = !flow->isServer;
     if (flow->socket->stack == NEAT_STACK_TCP) {
         struct security_data *private = calloc (1, sizeof (struct security_data));
+        if (!private)
+            return NEAT_ERROR_OUT_OF_MEMORY;
         struct neat_iofilter *filter = insert_neat_iofilter(ctx, flow);
+        if (!filter) {
+            free(private);
+            return NEAT_ERROR_OUT_OF_MEMORY;
+        }
         filter->userData = private;
         filter->dtor = neat_security_filter_dtor;
         filter->writefx = neat_security_filter_write;
@@ -389,6 +395,8 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
             // authenticate the server.. todo an option to skip
             X509_VERIFY_PARAM *param = SSL_get0_param(private->ssl);
             X509_VERIFY_PARAM_set1_host(param, flow->name, 0);
+            // support Server Name Indication (SNI)
+            SSL_set_tlsext_host_name(private->ssl, flow->name);
         }
 
         private->inputBIO = BIO_new(BIO_s_mem());

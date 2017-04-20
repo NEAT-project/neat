@@ -559,6 +559,8 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
     private->ssl = SSL_new(private->ctx);
     X509_VERIFY_PARAM *param = SSL_get0_param(private->ssl);
     X509_VERIFY_PARAM_set1_host(param, sock->flow->name, 0);
+    // support Server Name Indication (SNI)
+    SSL_set_tlsext_host_name(private->ssl, sock->flow->name);
 
     private->dtlsBIO = BIO_new_dgram_sctp(sock->fd, BIO_CLOSE);
     BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &(sock->dst_sockaddr));

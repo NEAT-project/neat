@@ -41,18 +41,16 @@ static char *config_property = "\
         {\
             \"value\": \"SCTP\",\
             \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
         }\
     ],\
     \"security\": {\
         \"value\": true,\
         \"precedence\": 2\
-    },\
-    \"local_ips\": [\
-        {\
-            \"value\": \"127.0.0.1\", \
-            \"precedence\": 1 \
-        }\
-    ]\
+    }\
 }";
 
 static uint32_t flows_active = 0;

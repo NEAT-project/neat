@@ -3208,16 +3208,16 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 char *ip;
                 char newIp[100];
                 int srcfound = false;
+                uint32_t j, k;
                 for (index = 0; index < json_array_size(flow->user_ips); index++) {
-                    uint32_t i, j;
                     addr = json_array_get(flow->user_ips, index);
                     ipvalue = json_object_get(addr, "value");
                     ip = json_dumps(ipvalue, JSON_ENCODE_ANY);
                     // Remove quotes
-                    for (i = 1, j = 0; i <= strlen(ip) - 2; i++, j++) {
-                        newIp[j] = ip[i];
+                    for (j = 1, k = 0; j <= strlen(ip) - 2; j++, k++) {
+                        newIp[k] = ip[j];
                     }
-                    newIp[j] = '\0';;
+                    newIp[k] = '\0';;
                     free (ip);
                     if (strcmp(src_buffer, newIp) != 0) {
                         neat_log(flow->ctx, NEAT_LOG_DEBUG, "no match");

@@ -12,15 +12,15 @@
 /*
     default values
 */
-static uint32_t config_rcv_buffer_size      = 10000;
-static uint32_t config_snd_buffer_size      = 100;
-static uint32_t config_message_count        = 0;
-static uint32_t config_runtime_max          = 3;
+static uint32_t config_rcv_buffer_size      = 100000;
+static uint32_t config_snd_buffer_size      = 100000;
+static uint32_t config_message_count        = 1;
+static uint32_t config_runtime_max          = 10;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_active               = 0;
 static uint16_t config_port                 = 8080;
 static uint16_t config_log_level            = 1;
-static uint16_t config_num_flows            = 3;
+static uint16_t config_num_flows            = 6;
 static uint16_t config_max_flows            = 100;
 static uint32_t config_delay                = 0;
 static uint32_t config_loss                 = 0;
@@ -48,6 +48,10 @@ static char *config_property = "{\
 }";\
 
 static uint32_t flows_active = 0;
+static uint32_t flows_connected = 0;
+enum payload_type {PAYLOAD_DATA = 1, PAYLOAD_RESET, PAYLOAD_BULK};
+static uint32_t global_rcv_calls = 0;
+static uint32_t global_delay = 0;
 
 /*
     macro - tvp-uvp=vvp
@@ -66,6 +70,8 @@ static uint32_t flows_active = 0;
 #endif
 
 struct tneat_payload {
+    uint8_t         id;
+    uint8_t         type;
     struct timeval  tv;
     uint32_t        delay;
     uint32_t        loss; // plr * 1000
@@ -142,22 +148,30 @@ on_all_written(struct neat_flow_operations *opCB)
 
     // runtime- or message-limit reached
     if ((config_runtime_max > 0 && time_elapsed >= config_runtime_max) ||
-        (config_message_count > 0 && tnf->snd.calls >= config_message_count)) {
+        (config_message_count > 0 && tnf->snd.calls >= config_message_count && tnf->payload.type != PAYLOAD_BULK)) {
 
-        // print statistics
-        printf("neat_write finished - statistics\n");
-        printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
-        printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
-        printf("\tduration\t: %.2fs\n", time_elapsed);
-        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+        if (tnf->payload.id == 0) {
+            tnf->done++;
+        } else {
+            tnf->done = 2;
+        }
 
-        tnf->done = 1;
-        uv_close((uv_handle_t*)&(tnf->send_timer), NULL);
+        if (tnf->done == 2) {
+            // print statistics
+            printf("neat_write finished - statistics - %d\n", tnf->payload.type);
+            printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
+            printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
+            printf("\tduration\t: %.2fs\n", time_elapsed);
+            if (time_elapsed > 0.0) {
+                printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+            }
+
+            uv_close((uv_handle_t*)&(tnf->send_timer), NULL);
+        }
     }
 
     if (tnf->send_interval && !tnf->done) {
         uv_timer_again(&(tnf->send_timer));
-
     } else {
         opCB->on_writable = on_writable;
     }
@@ -204,6 +218,12 @@ on_writable(struct neat_flow_operations *opCB)
         exit(EXIT_FAILURE);
     }
 
+
+    if (tnf->done) {
+        fprintf(stderr, "sending reset\n");
+        tnf->payload.type = PAYLOAD_RESET;
+    }
+
     tnf->payload.tv     = tnf->snd.tv_last;
     tnf->payload.loss   = config_loss;
     tnf->payload.delay  = config_delay;
@@ -215,11 +235,16 @@ on_writable(struct neat_flow_operations *opCB)
 
     code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size, NULL, 0);
 
-    if (tnf->done) {
+    if (tnf->done == 2) {
+        if (config_log_level >= 2) {
+            printf("neat_write - done!\n");
+        }
+        fprintf(stderr, "sending reset\n");
         opCB->on_writable = NULL;
         opCB->on_all_written = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
         neat_shutdown(opCB->ctx, opCB->flow);
+
         return NEAT_OK;
     }
 
@@ -280,6 +305,29 @@ on_readable(struct neat_flow_operations *opCB)
         tnf->rcv.delay_sum += (int) app_delay;
         tnf->payload.delay = payload->delay;
         tnf->payload.loss = payload->loss;
+
+        fprintf(stderr, "id: %d - payload: %d\n", payload->id, payload->type);
+
+        if (payload->type == PAYLOAD_DATA) {
+            global_delay += (uint32_t) app_delay;
+            global_rcv_calls++;
+        } else if (payload->type == PAYLOAD_RESET) {
+            fprintf(stderr, "GOT RESET!!!\n");
+            printf("\tavg-delay\t: %.2f ms\n",  (double) global_delay / global_rcv_calls);
+            timersub(&(tnf->rcv.tv_last), (struct timeval*) &(tnf->rcv.tv_first), &diff_time);
+            time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+            if (time_elapsed > 0.0) {
+                filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human));
+            } else {
+                sprintf(buffer_filesize_human, "0.0");
+            }
+            logfile = fopen("global_delay.txt", "a+");
+            fprintf(logfile, "%u, %.2f, %d, %d\n", global_rcv_calls, (double) global_delay / global_rcv_calls, tnf->payload.loss, tnf->payload.delay);
+            fclose(logfile);
+
+            global_delay = 0;
+            global_rcv_calls = 0;
+        }
         //fprintf(stderr, "%s - app_delay %f\n", __func__, app_delay);
         //fprintf(stderr, "%s - app_delay s:%d - usec:%d\n", __func__, (int)diff_time.tv_sec, (int)diff_time.tv_usec);
 
@@ -300,8 +348,14 @@ on_readable(struct neat_flow_operations *opCB)
             timersub(&(tnf->rcv.tv_last), (struct timeval*) &(tnf->rcv.tv_first), &diff_time);
             time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
-            logfile = fopen("msbench.txt", "w+");
-            fprintf(logfile, "%u, %u, %.2f, %.2f, %s, %.2f, %d, %d\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)), (double) tnf->rcv.delay_sum / tnf->rcv.calls, tnf->payload.loss, tnf->payload.delay);
+            if (time_elapsed > 0.0) {
+                filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human));
+            } else {
+                sprintf(buffer_filesize_human, "0.0");
+            }
+
+            logfile = fopen("msbench.txt", "a+");
+            fprintf(logfile, "%u, %u, %.2f, %.2f, %s, %.2f, %d, %d\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, buffer_filesize_human, (double) tnf->rcv.delay_sum / tnf->rcv.calls, tnf->payload.loss, tnf->payload.delay);
             fclose(logfile);
 
             if (config_log_level >= 1) {
@@ -309,8 +363,8 @@ on_readable(struct neat_flow_operations *opCB)
                 printf("\tbytes\t\t: %u\n",         tnf->rcv.bytes);
                 printf("\trcv-calls\t: %u\n",       tnf->rcv.calls);
                 printf("\tduration\t: %.2f s\n",    time_elapsed);
-                printf("\tbandwidth\t: %s/s\n",     filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
                 printf("\tavg-delay\t: %.2f ms\n",  (double) tnf->rcv.delay_sum / tnf->rcv.calls);
+                printf("\tbandwidth\t: %s/s\n", buffer_filesize_human);
             }
         }
 
@@ -325,7 +379,7 @@ timer_cb_writable(uv_timer_t *handle) {
     struct neat_flow_operations *opCB = (struct neat_flow_operations*) handle->data;
 
     if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
+        fprintf(stderr, "%s() - timer finished\n", __func__);
     }
 
     opCB->on_writable = on_writable;
@@ -367,6 +421,7 @@ on_connected(struct neat_flow_operations *opCB)
     opCB->on_readable = on_readable;
     if (config_active) {
         tnf->send_interval = 100;
+        tnf->payload.id = flows_connected;
 
         if (tnf->send_interval) {
             uv_loop = neat_get_event_loop(opCB->ctx);
@@ -374,10 +429,18 @@ on_connected(struct neat_flow_operations *opCB)
             tnf->send_timer.data = opCB;
             tnf->ops = opCB;
             //int uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat)
-            uv_timer_start(&(tnf->send_timer), timer_cb_writable, 0, tnf->send_interval);
+            if (flows_connected == 0) {
+                tnf->payload.type = PAYLOAD_BULK;
+                uv_timer_start(&(tnf->send_timer), timer_cb_writable, 0, tnf->send_interval);
+            } else {
+                tnf->payload.type = PAYLOAD_DATA;
+                uv_timer_start(&(tnf->send_timer), timer_cb_writable, 1000 * flows_connected, 0);
+            }
         } else {
             opCB->on_writable = on_writable;
         }
+
+        flows_connected++;
     }
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
@@ -532,11 +595,11 @@ main(int argc, char *argv[])
 
     if (config_log_level == 0) {
         neat_log_level(ctx, NEAT_LOG_ERROR);
-    } else if (config_log_level == 1){
+    } else if (config_log_level == 1) {
         neat_log_level(ctx, NEAT_LOG_WARNING);
-    } else if (config_log_level == 2){
+    } else if (config_log_level == 2) {
         neat_log_level(ctx, NEAT_LOG_INFO);
-    }else {
+    } else {
         neat_log_level(ctx, NEAT_LOG_DEBUG);
     }
 
@@ -565,14 +628,11 @@ main(int argc, char *argv[])
             if (neat_open(ctx, flows[i], argv[optind], config_port, NULL, 0) != NEAT_OK) {
                 fprintf(stderr, "Could not open flow\n");
                 exit(EXIT_FAILURE);
-            } else {
-                fprintf(stderr, "Opened flow %d\n", i);
-                flows_active++;
             }
+
+            flows_active++;
         }
-
     } else {
-
         // new neat flow
         if ((flows[0] = neat_new_flow(ctx)) == NULL) {
             fprintf(stderr, "%s - neat_new_flow failed\n", __func__);

@@ -108,8 +108,8 @@ print_usage()
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime_max);
     printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
-    printf("\t- c \tpath to server certificate (%s)\n", server_cert);
-    printf("\t- k \tpath to server key (%s)\n", server_key);
+    printf("\t- c \tpath to server certificate (%s)\n", cert_file);
+    printf("\t- k \tpath to server key (%s)\n", key_file);
 }
 
 /*
@@ -541,13 +541,13 @@ main(int argc, char *argv[])
             goto cleanup;
         }
 
-        if (cert_file && neat_secure_identity(ctx, flow, cert_file, NEAT_CERT_PEM)) {
+        if (cert_file && neat_secure_identity(ctx, flows[0], cert_file, NEAT_CERT_PEM)) {
             fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
         }
 
-        if (key_file && neat_secure_identity(ctx, flow, key_file, NEAT_KEY_PEM)) {
+        if (key_file && neat_secure_identity(ctx, flows[0], key_file, NEAT_KEY_PEM)) {
             fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;

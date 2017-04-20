@@ -546,7 +546,7 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
     private->state = DTLS_CLOSED;
     sock->flow->firstWritePending = 0;
 
-    int isClient = !flow->isServer;
+    int isClient = !(sock->flow->isServer);
     OpenSSL_add_ssl_algorithms();
     SSL_load_error_strings();
 
@@ -558,17 +558,17 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
         private->ctx = SSL_CTX_new(DTLS_server_method());
         SSL_CTX_set_ecdh_auto(private->ctx, 1);
 
-        if (!flow->cert_pem) {
+        if (!(sock->flow->cert_pem)) {
             neat_log(ctx, NEAT_LOG_ERROR, "Server certificate file not set via neat_secure_identity()");
             return NEAT_ERROR_SECURITY;
         }
-        if (!flow->key_pem) {
+        if (!(sock->flow->key_pem)) {
             neat_log(ctx, NEAT_LOG_ERROR, "Server key file not set via neat_secure_identity()");
             return NEAT_ERROR_SECURITY;
         }
 
-        if ((SSL_CTX_use_certificate_chain_file(private->ctx, flow->cert_pem) < 0) ||
-                (SSL_CTX_use_PrivateKey_file(private->ctx, flow->key_pem, SSL_FILETYPE_PEM) < 0 )) {
+        if ((SSL_CTX_use_certificate_chain_file(private->ctx, sock->flow->cert_pem) < 0) ||
+                (SSL_CTX_use_PrivateKey_file(private->ctx, sock->flow->key_pem, SSL_FILETYPE_PEM) < 0 )) {
             neat_log(ctx, NEAT_LOG_ERROR, "unable to use cert or private key");
             return NEAT_ERROR_SECURITY;
         }
@@ -612,7 +612,11 @@ neat_dtls_connect(neat_ctx *ctx, neat_flow *flow)
     SSL_load_error_strings();
   /*  BIO_dgram_sctp_notification_cb(private->dtlsBIO, &handle_notifications, (void*) private->ssl);*/
 
-    SSL_set_connect_state(private->ssl);
+    if (flow->isServer) {
+        SSL_set_accept_state(private->ssl);
+    } else {
+        SSL_set_connect_state(private->ssl);
+    }
 
     private->state = DTLS_CONNECTING;
     SSL_do_handshake(private->ssl);

@@ -2327,7 +2327,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         }
     }
 
-    if (flow->ke_pem) {
+    if (flow->key_pem) {
         newFlow->key_pem = strdup(flow->key_pem);
         if (newFlow->key_pem == NULL) {
             neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
@@ -2416,6 +2416,11 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             newFlow->acceptPending = 0;
         }
 #else
+#ifdef NEAT_SCTP_DTLS
+        if (newFlow->security_needed) {
+            neat_dtls_install(ctx, listen_socket);
+        }
+#endif
         neat_log(ctx, NEAT_LOG_DEBUG, "Creating new SCTP socket");
         newFlow->socket->fd = newFlow->acceptfx(ctx, newFlow, listen_socket->fd);
         if (newFlow->socket->fd == -1) {

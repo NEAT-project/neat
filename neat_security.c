@@ -546,21 +546,44 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
     private->state = DTLS_CLOSED;
     sock->flow->firstWritePending = 0;
 
+    int isClient = !flow->isServer;
     OpenSSL_add_ssl_algorithms();
     SSL_load_error_strings();
-    private->ctx = SSL_CTX_new(DTLS_client_method());
 
-    SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
-    tls_init_trust_list(private->ctx);
+    if (isClient) {
+        private->ctx = SSL_CTX_new(DTLS_client_method());
+        SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
+        tls_init_trust_list(private->ctx);
+    } else {
+        private->ctx = SSL_CTX_new(DTLS_server_method());
+        SSL_CTX_set_ecdh_auto(private->ctx, 1);
+
+        if (!flow->cert_pem) {
+            neat_log(ctx, NEAT_LOG_ERROR, "Server certificate file not set via neat_secure_identity()");
+            return NEAT_ERROR_SECURITY;
+        }
+        if (!flow->key_pem) {
+            neat_log(ctx, NEAT_LOG_ERROR, "Server key file not set via neat_secure_identity()");
+            return NEAT_ERROR_SECURITY;
+        }
+
+        if ((SSL_CTX_use_certificate_chain_file(private->ctx, flow->cert_pem) < 0) ||
+                (SSL_CTX_use_PrivateKey_file(private->ctx, flow->key_pem, SSL_FILETYPE_PEM) < 0 )) {
+            neat_log(ctx, NEAT_LOG_ERROR, "unable to use cert or private key");
+            return NEAT_ERROR_SECURITY;
+        }
+    }
 
     SSL_CTX_set_options(private->ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
     SSL_CTX_set_cipher_list(private->ctx, "DEFAULT:-RC4");
 
     private->ssl = SSL_new(private->ctx);
-    X509_VERIFY_PARAM *param = SSL_get0_param(private->ssl);
-    X509_VERIFY_PARAM_set1_host(param, sock->flow->name, 0);
-    // support Server Name Indication (SNI)
-    SSL_set_tlsext_host_name(private->ssl, sock->flow->name);
+    if (isClient) {
+        X509_VERIFY_PARAM *param = SSL_get0_param(private->ssl);
+        X509_VERIFY_PARAM_set1_host(param, sock->flow->name, 0);
+        // support Server Name Indication (SNI)
+        SSL_set_tlsext_host_name(private->ssl, sock->flow->name);
+    }
 
     private->dtlsBIO = BIO_new_dgram_sctp(sock->fd, BIO_CLOSE);
     BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &(sock->dst_sockaddr));
@@ -649,9 +672,21 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
 
 #endif
 
-neat_error_code neat_secure_identity(neat_ctx *ctx, neat_flow *flow, const char *filename)
+neat_error_code neat_secure_identity(neat_ctx *ctx, neat_flow *flow, const char *filename, int pemType)
 {
-    free(flow->server_pem);
-    flow->server_pem = strdup(filename);
+    switch (pemType) {
+    case NEAT_CERT_PEM:
+        free(flow->cert_pem);
+        flow->cert_pem = strdup(filename);
+        break;
+    case NEAT_KEY_PEM:
+        free(flow->key_pem);
+        flow->key_pem = strdup(filename);
+        break;
+    case NEAT_CERT_KEY_PEM:
+        free(flow->server_pem);
+        flow->server_pem = strdup(filename);
+        break;
+    }
     return NEAT_OK;
 }

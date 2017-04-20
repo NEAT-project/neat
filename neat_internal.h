@@ -256,6 +256,8 @@ struct neat_flow
     struct neat_flow_operations *operations; // see ownedByCore flag
     const char *name;
     char *server_pem;
+    char *cert_pem;
+    char *key_pem;
     uint16_t port;
     uint8_t qos;
     uint8_t ecn;

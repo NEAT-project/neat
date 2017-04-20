@@ -566,6 +566,8 @@ synchronous_free(neat_flow *flow)
 
     free((char *)flow->name);
     free((char *)flow->server_pem);
+    free((char *)flow->cert_pem);
+    free((char *)flow->key_pem);
     if (flow->cc_algorithm) {
         free((char*)flow->cc_algorithm);
     }
@@ -2312,6 +2314,22 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     if (flow->server_pem) {
         newFlow->server_pem = strdup(flow->server_pem);
         if (newFlow->server_pem == NULL) {
+            neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+            return NULL;
+        }
+    }
+
+    if (flow->cert_pem) {
+        newFlow->cert_pem = strdup(flow->cert_pem);
+        if (newFlow->cert_pem == NULL) {
+            neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
+            return NULL;
+        }
+    }
+
+    if (flow->ke_pem) {
+        newFlow->key_pem = strdup(flow->key_pem);
+        if (newFlow->key_pem == NULL) {
             neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
             return NULL;
         }

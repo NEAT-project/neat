@@ -54,6 +54,8 @@ static char *config_property = "\
 }";
 
 static uint32_t flows_active = 0;
+static char *cert_file = NULL;
+static char *key_file = NULL;
 
 /*
     macro - tvp-uvp=vvp
@@ -106,6 +108,8 @@ print_usage()
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime_max);
     printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
+    printf("\t- c \tpath to server certificate (%s)\n", server_cert);
+    printf("\t- k \tpath to server key (%s)\n", server_key);
 }
 
 /*
@@ -439,6 +443,18 @@ main(int argc, char *argv[])
                 printf("option - log level: %d\n", config_log_level);
             }
             break;
+        case 'c':
+            cert_file = optarg;
+            if (config_log_level >= 1) {
+                printf("option - server certificate file: %s\n", cert_file);
+            }
+            break;
+        case 'k':
+            key_file = optarg;
+            if (config_log_level >= 1) {
+                printf("option - server key file: %s\n", key_file);
+            }
+            break;
         default:
             print_usage();
             goto cleanup;
@@ -521,6 +537,18 @@ main(int argc, char *argv[])
 
         if (neat_set_operations(ctx, flows[0], &(ops[0]))) {
             fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
+
+        if (cert_file && neat_secure_identity(ctx, flow, cert_file, NEAT_CERT_PEM)) {
+            fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
+
+        if (key_file && neat_secure_identity(ctx, flow, key_file, NEAT_KEY_PEM)) {
+            fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
         }

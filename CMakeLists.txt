@@ -261,11 +261,11 @@ ENDIF()
 
 # COMPILER FLAGS
 #################################################
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
 ENDIF()
 
 # LIBRARIES

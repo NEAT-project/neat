@@ -2007,7 +2007,11 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     } else {
         neat_log(ctx, NEAT_LOG_DEBUG, "%s - NOT first connect", __func__);
 
-        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
+        if (status == 0) {
+            send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
+        } else {
+           send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false); 
+        }
 
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);

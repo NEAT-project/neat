@@ -68,6 +68,10 @@ char
     while (bytes > 1000) {
         bytes /= 1000;
         i++;
+
+        if (i > 8) {
+            fprintf(stderr, "%s - YB should be enough - something went wrong\n", __func__);
+        }
     }
     snprintf(buffer, buffersize, "%.*f %s", i, bytes, units[i]);
     return buffer;

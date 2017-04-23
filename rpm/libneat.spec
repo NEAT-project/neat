@@ -1,5 +1,5 @@
 Name: libneat
-Version: 0.0.1~td140
+Version: 0.0.1~td143
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -110,7 +110,7 @@ Requires: %{name} = %{version}-%{release}
 %setup -q
 
 %build
-%cmake -DCMAKE_INSTALL_PREFIX=/usr .
+%cmake -DCMAKE_INSTALL_PREFIX=/usr -DUSRSCTP_SUPPORT=0 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1 .
 make %{?_smp_mflags}
 
 %install

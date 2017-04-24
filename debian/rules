@@ -3,7 +3,11 @@
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
-	dh $@ --parallel --with=sphinxdoc
+	dh $@ --buildsystem=cmake --parallel
+	# --with=sphinxdoc
+
+override_dh_auto_configure:
+	dh_auto_configure -- -DUSRSCTP_SUPPORT=1 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1
 
 override_dh_auto_build:
 
@@ -12,4 +16,4 @@ override_dh_auto_build:
 	# Exotic experimental package with further exotic dependencies -> Skipping documentation at the moment ...
 	mkdir -p docs/_build/html
 
-	dh_auto_build
+	dh_auto_build --parallel

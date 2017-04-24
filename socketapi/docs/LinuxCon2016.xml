@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
+<reference anchor="LinuxCon2016" target="https://simula.no/file/linuxcon2016-presentationpdf/download">
+	<front>
+		<title>NorNet – Building an Inter-Continental Internet Testbed based on Open Source Software</title>
+		<author initials="T." surname="Dreibholz" fullname="Thomas&#160;Dreibholz" />
+		<date day="5" month="October" year="2016" />
+	</front>
+	<seriesInfo name="" value="Proceedings of the LinuxCon Europe" />
+	<format type="PDF" octets="9816526" target="https://simula.no/file/linuxcon2016-presentationpdf/download" />
+</reference>
+

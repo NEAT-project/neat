@@ -1,0 +1,873 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+
+<?rfc toc="yes"?>
+<?rfc compact="yes" ?>
+<?rfc subcompact="no" ?>
+<?rfc strict="no" ?>
+<?rfc symrefs="no" ?>
+
+<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-00.txt">
+
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+
+
+<front>
+
+<title abbrev="NEAT Sockets API">
+NEAT Sockets API
+</title>
+
+<!-- ************** THOMAS DREIBHOLZ *************** -->
+<author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz">
+<organization abbrev="Simula Research Laboratory">Simula Research Laboratory, Network Systems Group</organization>
+<address>
+<postal>
+   <street>Martin Linges vei 17</street>
+   <city>1364 Fornebu</city>
+   <region>Akershus</region>
+   <country>Norway</country>
+</postal>
+<phone>+47-6782-8200</phone>
+<facsimile>+47-6782-8201</facsimile>
+<email>dreibh@simula.no</email>
+<uri>https://simula.no/people/dreibh</uri>
+</address>
+</author>
+
+<date day="11" month="April" year="2017" />
+<keyword>Internet-Draft</keyword>
+
+<abstract>
+<t>This document describes the NEAT Sockets API.</t>
+</abstract>
+
+
+</front>
+
+<middle>
+
+
+<section title="Introduction">
+   <t>The NEAT project <xref target="NEAT-D1.1" />, <xref target="I-D.ietf-taps-transports-usage" />, <xref target="I-D.gjessing-taps-minset" />, <xref target="NEAT-Website" /> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network “services” offered to applications – such as reliability, low-delay communication or security – to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion, without applications having to be rewritten. This architectural change will make the Internet truly “enhanceable”, by allowing applications to seamlessly and more easily take advantage of new network features as they evolve.</t>
+   <t>This document describes the NEAT Sockets API on top of the callback-based NEAT Core API <xref target="NEAT-D1.1" />,  <xref  target="NEAT-D1.2" />,  <xref target="NEAT-D2.1" />,  <xref target="NEAT-D2.2" />. It provides a BSD Sockets-like API that is intended to simplify using NEAT in network applications.</t>
+
+
+<section title="Conventions">
+<t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in <xref target="RFC2119"/>.</t>
+</section>
+</section>
+
+
+<section title="Initialisation and Clean-Up">
+
+<section title="nsa_cleanup()">
+<t>nsa_cleanup() is used to free all resources allocated by NEAT. Note, that the NEAT Sockets API is automatically initialized when creating a NEAT socket.</t>
+<t>Function Prototype:</t>
+<figure><artwork>
+void nsa_cleanup()
+</artwork></figure>
+</section>
+
+
+<section title="nsa_map_socket()">
+<t>nsa_map_socket() is used to map a system socket descriptor into the NEAT socket descriptor space. This is useful for using NEAT API functions as wrapper to calls on non-NEAT sockets. Mapped socket descriptors can be unmapped by using nsa_unmap_socket().</t>
+<t>Function Prototype:</t>
+<figure><artwork>
+int nsa_map_socket(int systemSD, int neatSD)
+</artwork></figure>
+<t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="systemSD:">System socket descriptor.</t>
+      <t hangText="neatSD:">Desired NEAT socket descriptor; -1 for automatic allocation.</t>   
+   </list>
+   </t>
+<t>Return Value:</t>
+<t>nsa_map_socket() returns the new NEAT socket descriptor, or -1 in case of error. The error code will be set in the errno variable.</t>
+</section>
+
+<section title="nsa_unmap_socket()">
+<t>nsa_unmap_socket() is used to unmap a system socket descriptor from the NEAT socket descriptor space.</t>
+<t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_unmap_socket(int neatSD)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="neatSD:">NEAT socket descriptor.</t>   
+   </list>
+ </t>
+</section>
+
+</section>
+
+
+<section title="Connection Establishment and Teardown">
+   
+<section title="nsa_socket()">
+ <t>nsa_socket() creates a new NEAT socket. The NEAT socket can either be a wrapper around the NEAT Core API (if properties are specified) or be a wrapper around a system socket (if no properties are specified).</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_socket(int domain, int type, int protocol,
+               const char* properties)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="domain:">Domain for system socket (e.g. AF_INET).</t>   
+      <t hangText="type:">Type for system socket (SOCK_SEQPACKET).</t>   
+      <t hangText="protocol:">Protocol for system socket (IPPROTO_SCTP).</t>   
+      <t hangText="properties:">Properties for NEAT Core socket.</t>
+   </list>
+ </t>
+ <t>Return Value:</t>
+ <t>nsa_socket() returns the NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the socket() documentation for details.</t>
+</section>
+
+<section title="nsa_close()">
+ <t>nsa_close() closes a given NEAT socket.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_close(int sockfd)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+   </list>
+ </t>
+ <t>nsa_close() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the close() documentation for details.</t>
+</section>
+
+<section title="nsa_fcntl()">
+ <t>nsa_fcntl() manipulates a given NEAT socket.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_fcntl(int sockfd, int cmd, ...)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="cmd:">Command.</t>
+      <t hangText="...:">Command-specific arguments.</t>
+   </list>
+ </t>
+ <t>nsa_fcntl() returns a command-specific value.</t>
+ <t>For NEAT sockets, the following commands are specified:</t>
+ <t>
+ <list style="hanging">
+    <t hangText="F_GETFL:">Obtain value of the socket descriptor status flags. For NEAT sockets, the flag O_NONBLOCK specifies whether the socket is non-blocking. By default, it is blocking (i.e. O_NONBLOCK is not set).</t>
+    <t hangText="F_SETFL:">Set value of the socket descriptor status flags. For NEAT sockets, the flag O_NONBLOCK specifies whether the socket is non-blocking. By default, it is blocking (i.e. O_NONBLOCK is not set). F_SETFL can then be used to change the blocking mode.</t>
+ </list>
+ </t>
+ <t>See the fcntl() documentation for details.</t>
+</section>
+
+<section title="nsa_bind()">
+<t>nsa_bind() binds a given NEAT socket to a given address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_bindn() instead. Note further, that nsa_bind() also supports a single address only (i.e. no multi-homing). nsa_bindx() SHOULD be used instead to support multi-homing.</t>
+<t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_bind(int sockfd,
+             const struct sockaddr* addr, socklen_t addrlen,
+             struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="addr:">Address to bind to.</t>
+      <t hangText="addrlen:">Length of the address structure "addr".</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+   </list>
+ </t>
+ <t>nsa_bind() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the bind() documentation for details.</t>
+</section>
+
+<section title="nsa_bindx()">
+ <t>nsa_bindx() binds a given NEAT socket to a given set of addresses. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_bindn() instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt,
+              int flags,
+              struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="addrs:">Addresses to bind to.</t>
+      <t hangText="addrcnt:">Number of addresses in "addr".</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+   </list>
+ </t>
+ <t>nsa_bindx() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the sctp_bindx() documentation for details.</t>
+</section>
+
+<section title="nsa_bindn()">
+ <t>nsa_bindn() binds a given NEAT socket to a given port. NEAT takes care of handling local addresses.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_bindn(int sockfd, uint16_t port, int flags,
+              struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="port:">Port number to bind to.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+   </list>
+ </t>
+ <t>nsa_bindn() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+</section>
+
+<section title="nsa_connect()">
+<t>nsa_connect() connects a given NEAT socket to a given remote address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_connectn() instead. Note further, that nsa_connect() also supports a single address only (i.e. no multi-homing). nsa_connectx() SHOULD be used instead to support multi-homing.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_connect(int sockfd,
+                const struct sockaddr* addr, socklen_t addrlen,
+                struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="addr:">Address to connect to.</t>
+      <t hangText="addrlen:">Length of the address structure "addr".</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+   </list>
+ </t>
+ <t>nsa_connect() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the connect() documentation for details.</t>
+</section>
+
+<section title="nsa_connectx()">
+ <t>nsa_connectx() connects a given NEAT socket to a given set of remote addresses. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_connectn() instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_connectx(int sockfd,
+                 const struct sockaddr* addrs, int addrcnt,
+                 neat_assoc_t* id,
+                 struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="addrs:">Addresses to connect to.</t>
+      <t hangText="addrcnt:">Number of addresses in "addr".</t>
+      <t hangText="id">Pointer to store association ID to (not used yet, use NULL!).</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+   </list>
+ </t>
+ <t>nsa_connectx() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the sctp_connectx() documentation for details.</t>
+</section>
+
+<section title="nsa_connectn()">
+ <t>nsa_connectn() connects a given NEAT socket to a given remote name and port. The remote name is resolved by NEAT to corresponding remote addresses.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_connectn(int sockfd, const char* name, const uint16_t port,
+                 neat_assoc_t* id,
+                 struct neat_tlv* opt, const int optcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="name:">Remote name to connect to.</t>
+      <t hangText="port:">Remote port number to connect to.</t>
+      <t hangText="id">Pointer to store association ID to (not used yet, use NULL!).</t>
+      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
+      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
+   </list>
+ </t>
+ <t>nsa_connectn() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+</section>
+
+<section title="nsa_listen()">
+ <t>nsa_listen() marks a given NEAT socket as listening socket, i.e. accepting incoming connections.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_listen(int sockfd, int backlog)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="backlog:">Defines the maximum length to which the queue of pending connections for "sockfd" may grow.</t>
+   </list>
+ </t>
+ <t>nsa_listen() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the listen() documentation for details.</t>
+</section>
+
+<section title="nsa_accept()">
+ <t>nsa_accept() extracts the first connection request in the queue of pending connections for a listening NEAT socket, creates a new connected socket, and returns a new NEAT socket descriptor referring to that socket. </t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="addr:">Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</t>
+      <t hangText="addrlen:">Pointer to variable with size of the storage in "addr" (or NULL, if address is not needed).</t>
+   </list>
+ </t>
+ <t>nsa_accept() returns the new NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable. In case of success, the peer's primary address is stored in "addr", if there is sufficient space. The variable pointer to by "addrlen" will then contain the actual address size.</t>
+ <t>See the accept() documentation for details.</t>
+</section>
+
+<section title="nsa_shutdown()">
+ <t>nsa_shutdown() shuts down the connection of a given NEAT socket.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_shutdown(int sockfd, int how)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="how:">Not used for NEAT sockets (set to SHUT_RDWR).</t>
+   </list>
+ </t>
+ <t>nsa_shutdown() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the shutdown() documentation for details.</t>
+</section>
+
+<!--
+<section title="nsa_peeloff()">
+ <t>...</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_peeloff(int sockfd, neat_assoc_t id)</artwork></figure>
+</section>
+-->
+
+</section>
+
+
+<section title="Options Handling">
+
+<section title="nsa_getsockopt()">
+ <t>nsa_getsockopt() gets a socket option of a given NEAT socket.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_getsockopt(int sockfd, int level, int optname,
+                   void* optval, socklen_t* optlen)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="level:">Option level.</t>
+      <t hangText="optname:">Option number.</t>
+      <t hangText="optval:">Buffer to store option value to.</t>
+      <t hangText="optlen:">Pointer to variable with length of the buffer in "optval".</t>
+   </list>
+ </t>
+ <t>nsa_getsockopt() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the getsockopt() documentation for details.</t>
+</section>
+
+<section title="nsa_setsockopt()">
+ <t>nsa_getsockopt() sets a socket option of a given NEAT socket.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_setsockopt(int sockfd, int level, int optname,
+                   const void* optval, socklen_t optlen)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="level:">Option level.</t>
+      <t hangText="optname:">Option number.</t>
+      <t hangText="optval:">Buffer with option value to set.</t>
+      <t hangText="optlen:">Length of buffer with option value.</t>
+   </list>
+ </t>
+ <t>nsa_setsockopt() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the setsockopt() documentation for details.</t>
+</section>
+
+<section title="nsa_opt_info()">
+ <t>nsa_opt_info() gets a socket option of a given NEAT socket.</t>
+ <t>Function Prototype:</t>
+  <figure><artwork>
+int nsa_opt_info(int sockfd, neat_assoc_t id,
+                 int opt, void* arg, socklen_t* size)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="id:">Association identifier (0 in case of 1:1-style sockets).</t>
+      <t hangText="opt:">Option number.</t>
+      <t hangText="arg:">Buffer to store option value to.</t>
+      <t hangText="size:">Pointer to variable with length of the buffer in "arg".</t>
+   </list>
+ </t>
+ <t>nsa_opt_info() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the sctp_opt_info() documentation for details.</t>
+</section>
+
+</section>
+
+
+<section title="Security">
+
+<section title="nsa_set_secure_identity()">
+<t>TBD.</t>
+</section>
+
+<section title="...">
+<t>TBD.</t>
+</section>
+
+</section>
+
+
+<section title="Input/Output Handling">
+   
+<section title="nsa_write()">
+ <t>nsa_write() sends data over a given connected NEAT socket. For NEAT sockets, nsa_write() is equal to nsa_send() with "flags" set to 0.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_write(int fd, const void* buf, size_t len)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="fd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Data to send.</t>
+      <t hangText="len:">Length of data to send.</t>
+   </list>
+ </t>
+ <t>nsa_write() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the write() documentation for details.</t>
+</section>
+
+<section title="nsa_send()">
+ <t>nsa_send() sends data over a given connected NEAT socket.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Data to send.</t>
+      <t hangText="len:">Length of data to send.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+   </list>
+ </t>
+ <t>nsa_send() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the send() documentation for details.</t>
+</section>
+
+<section title="nsa_sendto()">
+ <t>nsa_sendto() is a wrapper around the sendto() call, using NEAT socket descriptors instead. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_send() instead. On NEAT sockets, a provided destination address is ignored.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_sendto(int sockfd, const void* buf, size_t len,
+                   int flags,
+                   const struct sockaddr* to, socklen_t tolen)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Data to send.</t>
+      <t hangText="len:">Length of data to send.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+      <t hangText="to:">Address to send data to (ignored for NEAT sockets).</t>
+      <t hangText="tolen:">Length of address to send data to (ignored for NEAT sockets).</t>
+   </list>
+ </t>
+ <t>nsa_sendto() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the send() documentation for details.</t>
+</section>
+
+<section title="nsa_sendmsg()">
+ <t>nsa_sendmsg() sends data over a given connected NEAT socket. The data and control information is provided by a msghdr structure. On NEAT sockets, a provided destination address is ignored.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="msg:">Data to send and corresponding control information as msghdr structure.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+   </list>
+ </t>
+ <t>nsa_sendmsg() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the sendmsg() documentation for details.</t>
+</section>
+
+<section title="nsa_sendv()">
+ <t>nsa_sendv() sends data over a given connected NEAT socket. The data and control information is provided by iovec and info structures. On NEAT sockets, a provided destination address is ignored.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_sendv(int sockfd, struct iovec* iov, int iovcnt,
+                  struct sockaddr* to, int tocnt,
+                  void* info, socklen_t infolen,
+                  unsigned int infotype, int flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="iov:">Data to send provided as iovec structures.</t>
+      <t hangText="iovcnt:">Number of provided iovec structures.</t>
+      <t hangText="to:">Address(es) to send data to (ignored for NEAT sockets).</t>
+      <t hangText="tocnt:">Number of of addresses to send data to (ignored for NEAT sockets).</t>
+      <t hangText="info:">Control information.</t>
+      <t hangText="infolen:">Length of control information.</t>
+      <t hangText="infotype:">Type of control information.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+   </list>
+ </t>
+ <t>nsa_sendmsg() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the sctp_sendv() documentation for details.</t>
+</section>
+
+<section title="nsa_read()">
+ <t>nsa_read() reads data from a given connected NEAT socket. For NEAT sockets, nsa_read() is equal to nsa_recv() with "flags" set to 0.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_read(int fd, void* buf, size_t len)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="fd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Buffer to store read data to.</t>
+      <t hangText="len:">Length of the storage buffer.</t>
+   </list>
+ </t>
+ <t>nsa_read() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the read() documentation for details.</t>
+</section>
+
+<section title="nsa_recv()">
+ <t>nsa_recv() reads data from a given connected NEAT socket.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Buffer to store read data to.</t>
+      <t hangText="len:">Length of the storage buffer.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+  </list>
+ </t>
+ <t>nsa_recv() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the recv() documentation for details.</t>
+</section>
+
+<section title="nsa_recvfrom()">
+ <t>nsa_recvfrom() reads data from a given connected NEAT socket. The peer's sending address of the data (if possible and useful for underlying transport protocol) is obtained as well. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_recv() instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_recvfrom(int sockfd, void* buf, size_t len, int flags,
+                     struct sockaddr* from, socklen_t* fromlen)</artwork></figure>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="buf:">Buffer to store read data to.</t>
+      <t hangText="len:">Length of the storage buffer.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+      <t hangText="from:">Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</t>
+      <t hangText="fromlen:">Pointer to variable with size of the storage in "from" (or NULL, if address is not needed).</t>
+  </list>
+ </t>
+ <t>nsa_recvfrom() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable. In case of success, the peer's sending address (if possible and useful for underlying transport protocol) may be stored in "from", if there is sufficient space. The variable pointer to by "fromlen" will then contain the actual address size.</t>
+ <t>See the recvfrom() documentation for details.</t>
+</section>
+
+<section title="nsa_recvmsg()">
+ <t>nsa_recvmsg() reads data from a given connected NEAT socket. The data and control information buffers are provided by a msghdr structure.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="msg:">Data to send and corresponding control information as msghdr structure.</t>
+      <t hangText="flags:">Optional flags (0, if there are none).</t>
+   </list>
+ </t>
+ <t>nsa_recvmsg() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the recvmsg() documentation for details.</t>
+</section>
+
+<section title="nsa_recvv()">
+ <t>nsa_recvv() reads data from a given connected NEAT socket. The data and control information buffers are provided by iovec and info structures.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_recvv(int sockfd, struct iovec* iov, int iovcnt,
+                  struct sockaddr* from, socklen_t* fromlen,
+                  void* info, socklen_t* infolen,
+                  unsigned int* infotype, int* msg_flags)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="iov:">Data to send provided as iovec structures.</t>
+      <t hangText="iovcnt:">Number of provided iovec structures.</t>
+      <t hangText="from:">Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</t>
+      <t hangText="fromlen:">Pointer to variable with size of the storage in "from" (or NULL, if address is not needed).</t>
+      <t hangText="info:">Pointer to storage space for control information.</t>
+      <t hangText="infolen:">Pointer to variable with length of control information.</t>
+      <t hangText="infotype:">Pointer to variable for storing the control information type to.</t>
+      <t hangText="flags:">Pointer to variable with optional flags.</t>
+   </list>
+ </t>
+ <t>nsa_recvv() returns the number of sent received in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the sctp_recvv() documentation for details.</t>
+</section>
+
+</section>
+
+
+<section title="Poll and Select">
+
+<section title="nsa_poll()">
+ <t>nsa_poll() waits for activity (input/output/error/...) on a set of given NEAT sockets.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="ufds:">NEAT socket descriptor and requested activity for each NEAT socket.</t>
+      <t hangText="nfds:">Number of sockets given by "ufds".</t>
+      <t hangText="timeout:">Timeout in milliseconds.</t>
+   </list>
+ </t>
+ <t>nsa_poll() returns the number of NEAT sockets with activity in case of success, 0 in case of timeout, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the poll() documentation for details.</t>
+</section>
+
+<section title="nsa_select()">
+ <t>nsa_select() is a wrapper around the select() call, using NEAT socket descriptors instead. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_poll() instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_select(int n,
+               fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
+               struct timeval* timeout)</artwork></figure>
+ <t>See the select() documentation for details.</t>
+</section>
+
+</section>
+
+
+<section title="Address Handling">
+
+<section title="nsa_getsockname()">
+ <t>nsa_getsockname() obtains the first local address of a socket. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_getladdrs() instead to support multi-homed transport protocols!</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_getsockname(int sockfd,
+                    struct sockaddr* name, socklen_t* namelen)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="name:">Storage space for the address.</t>
+      <t hangText="namelen:">Pointer to variable with the storage space's size.</t>
+   </list>
+ </t>
+ <t>Return Value:</t>
+ <t>nsa_getsockname() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the getsockname() documentation for details.</t>
+</section>
+
+<section title="nsa_getpeername()">
+ <t>nsa_getpeername() obtains the first remote address of a connected socket. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_getpaddrs() instead to support multi-homed transport protocols!</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_getpeername(int sockfd,
+                    struct sockaddr* name, socklen_t* namelen)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="name:">Storage space for the address.</t>
+      <t hangText="namelen:">Pointer to variable with the storage space's size.</t>
+   </list>
+ </t>
+ <t>Return Value:</t>
+ <t>nsa_getpeername() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the getpeername() documentation for details.</t>
+</section>
+
+<section title="nsa_getladdrs()">
+ <t>nsa_getladdrs() obtains the local addresses of a socket. The storage space for the addresses will be automatically allocated and needs to be freed by nsa_freeladdrs().</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_getladdrs(int sockfd, neat_assoc_t id,
+                  struct sockaddr** addrs)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="id:">Association identifier (0 in case of 1:1-style sockets).</t>
+      <t hangText="addrs:">Pointer to variable to store pointer to addresses to.</t>
+   </list>
+ </t>
+ <t>nsa_getladdrs() returns the number of addresses stored into a newly allocated space. The pointer to this space is stored into the variable provided by "addrs". In case of error, -1 is returned, and the error code will be set in the errno variable.</t>
+</section>
+
+<section title="nsa_freeladdrs()">
+ <t>nsa_freeladdrs() frees addresses obtained by nsa_getladdrs().</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+void nsa_freeladdrs(struct sockaddr* addrs)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="addrs:">Pointer to addresses to be freed.</t>
+   </list>
+ </t>
+</section>
+
+<section title="nsa_getpaddrs()">
+ <t>nsa_getpaddrs() obtains the remote addresses of a connected socket. The storage space for the addresses will be automatically allocated and needs to be freed by nsa_freepaddrs().</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_getpaddrs(int sockfd, neat_assoc_t id,
+                  struct sockaddr** addrs)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="id:">Association identifier (0 in case of 1:1-style sockets).</t>
+      <t hangText="addrs:">Pointer to variable to store pointer to addresses to.</t>
+   </list>
+ </t>
+ <t>nsa_getpaddrs() returns the number of addresses stored into a newly allocated space. The pointer to this space is stored into the variable provided by "addrs". In case of error, -1 is returned, and the error code will be set in the errno variable.</t>
+</section>
+
+
+<section title="nsa_freepaddrs()">
+ <t>nsa_freepaddrs() frees addresses obtained by nsa_getpaddrs().</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+void nsa_freepaddrs(struct sockaddr* addrs)</artwork></figure>
+ <t>Arguments:</t>
+   <t>
+   <list style="hanging">
+      <t hangText="addrs:">Pointer to addresses to be freed.</t>
+   </list>
+ </t>
+</section>
+
+</section>
+
+
+<section title="Miscellaneous">
+   
+<section title="nsa_open()">
+ <t>nsa_open() is a wrapper around the open() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_open(const char* pathname, int flags, mode_t mode)</artwork></figure>
+ <t>See the open() documentation for details.</t>
+</section>
+
+<section title="nsa_creat()">
+ <t>nsa_creat() is a wrapper around the creat() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_creat(const char* pathname, mode_t mode)</artwork></figure>
+ <t>See the creat() documentation for details.</t>
+</section>
+
+<section title="nsa_pipe()">
+ <t>nsa_pipe() is a wrapper around the pipe() call, returning NEAT socket descriptors instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_pipe(int fds[2])</artwork></figure>
+ <t>See the pipe() documentation for details.</t>
+</section>
+
+<section title="nsa_ioctl()">
+ <t>nsa_ioctl() is a wrapper around the ioctl() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
+ <t>See the ioctl() documentation for details.</t>
+</section>
+
+</section>
+
+
+<section title="Code Examples">
+ <t>
+ Running code examples can be found in the NEAT Git repository:
+ <list style="hanging">
+    <t>URL: <eref target="https://github.com/NEAT-project/neat">https://github.com/NEAT-project/neat</eref></t>
+    <t>Branch: <eref target="https://github.com/NEAT-project/neat/tree/dreibh/neat-socketapi">dreibh/neat-socketapi</eref></t>
+    <t>Directory: <eref target="https://github.com/NEAT-project/neat/tree/dreibh/neat-socketapi/socketapi/examples">socketapi/examples/</eref></t>
+ </list>
+ </t>
+ </section>
+
+
+<section title="Testbed Platform">
+<t>A large-scale and realistic Internet testbed platform with support for the multi-homing feature of the underlying SCTP and MPTCP protocols is NorNet. A description of NorNet is provided in <xref target="LinuxCon2016" />, <xref target="ComNets2013-Core" />, some further information can be found on the project website <xref target="NorNet-Website" />.</t>
+</section>
+
+
+<section title="Security Considerations">
+<t>Security considerations for the SCTP sockets API are described in <xref target="RFC6458" />.</t>
+</section>
+
+
+<section title="IANA Considerations">
+<t>This document does not require IANA actions.</t>
+</section>
+
+<section title="Acknowledgments">
+<t>
+   The authors would like to thank
+   (ADD NAMES HERE)
+   for their support.
+</t>
+</section>
+
+
+</middle>
+
+
+<back>
+
+<references title='Normative References'>
+ <?rfc include="reference.RFC.2119" ?>
+ <?rfc include="reference.RFC.6458" ?>
+ <?rfc include="reference.I-D.gjessing-taps-minset" ?>
+ <?rfc include="reference.I-D.ietf-taps-transports-usage" ?>
+</references>
+
+<references title='Informative References'>
+ <?rfc include="LinuxCon2016" ?>
+ <?rfc include="ComNets2013-Core" ?>
+
+ <?rfc include="NEAT-Website" ?>
+ <?rfc include="NorNet-Website" ?>
+ 
+ <?rfc include="NEAT-D1.1" ?>
+ <?rfc include="NEAT-D1.2" ?>
+ <?rfc include="NEAT-D2.1" ?>
+ <?rfc include="NEAT-D2.2" ?>
+ 
+</references>
+
+</back>
+
+
+</rfc>

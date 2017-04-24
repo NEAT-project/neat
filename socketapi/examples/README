@@ -1,0 +1,31 @@
+NEAT Socket API Example Programs
+================================
+
+httpget: simple HTTP/1.1 GET
+----------------------------
+ 
+ Example: httpget www.nntb.no 80 /
+
+
+httpserver1: simple HTTP server, just handling one connection at a time
+-----------------------------------------------------------------------
+
+The API uses 1:1 style in blocking mode.
+
+ Example: httpserver1 8080
+
+
+httpserver2-select: improved HTTP server, handling multiple connections
+-----------------------------------------------------------------------
+
+The API uses 1:1 style in non-blocking mode with select().
+
+ Example: httpserver2-select 8080
+
+
+httpserver2-threads: improved HTTP server, handling multiple connections
+------------------------------------------------------------------------
+
+The API uses 1:1 style in blocking mode with threads.
+
+ Example: httpserver2-threads 8080

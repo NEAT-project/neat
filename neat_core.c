@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include <uv.h>
 #include <errno.h>
 #include <ifaddrs.h>
@@ -4953,7 +4954,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
     if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
-        char *address_name, *ptr;
+        char *address_name, *ptr = NULL;
         char *tmp = strdup(candidate->pollable_socket->src_address);
         if (!tmp) {
             return -1;
@@ -4970,6 +4971,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #endif
                 local_addr_ptr += sizeof(struct sockaddr_in6);
             } else {
+                s4->sin_addr.s_addr = 0;
                 if (inet_pton(AF_INET, address_name, &s4->sin_addr)) {
                     s4->sin_family = AF_INET;
 #ifdef HAVE_SIN_LEN
@@ -5688,7 +5690,7 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
 
     if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP && candidate->pollable_socket->nr_local_addr > 0) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
-        char *address_name, *ptr;
+        char *address_name, *ptr = NULL;
         char *tmp = strdup(candidate->pollable_socket->src_address);
 
         if (!tmp)

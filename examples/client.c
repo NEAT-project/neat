@@ -100,7 +100,7 @@ on_error(struct neat_flow_operations *opCB)
 }
 
 static void
-print_neat_stats(struct neat_ctx *ctx)
+print_neat_stats()
 {
     neat_error_code error;
 
@@ -194,8 +194,8 @@ on_readable(struct neat_flow_operations *opCB)
     } else {
         fprintf(stderr, "%s - nothing more to read\n", __func__);
         ops.on_readable = NULL;
-        neat_set_operations(ctx, flow, &ops);
-        neat_close(ctx, flow);
+        neat_set_operations(opCB->ctx, opCB->flow, &ops);
+        neat_close(opCB->ctx, opCB->flow);
     }
 
     return NEAT_OK;
@@ -224,7 +224,7 @@ on_writable(struct neat_flow_operations *opCB)
     }
 
     if (config_json_stats){
-       print_neat_stats(ctx);
+       print_neat_stats();
     }
 
     if (config_log_level >= 1) {
@@ -233,7 +233,7 @@ on_writable(struct neat_flow_operations *opCB)
 
     // stop writing
     ops.on_writable = NULL;
-    neat_set_operations(ctx, flow, &ops);
+    neat_set_operations(opCB->ctx, opCB->flow, &ops);
     return NEAT_OK;
 }
 
@@ -268,10 +268,10 @@ on_connected(struct neat_flow_operations *opCB)
     uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
 
     ops.on_readable = on_readable;
-    neat_set_operations(ctx, flow, &ops);
+    neat_set_operations(opCB->ctx, opCB->flow, &ops);
 
     if (config_primary_dest_addr != NULL) {
-        rc = neat_set_primary_dest(ctx, flow, config_primary_dest_addr);
+        rc = neat_set_primary_dest(opCB->ctx, opCB->flow, config_primary_dest_addr);
         if (rc) {
             fprintf(stderr, "Failed to set primary dest. addr.: %u\n", rc);
         } else {
@@ -282,7 +282,7 @@ on_connected(struct neat_flow_operations *opCB)
     }
 
     if (config_timeout)
-        neat_change_timeout(ctx, flow, config_timeout);
+        neat_change_timeout(opCB->ctx, opCB->flow, config_timeout);
 
     return NEAT_OK;
 }
@@ -300,7 +300,7 @@ on_close(struct neat_flow_operations *opCB)
     if (!uv_is_closing((uv_handle_t*) &tty)) {
         uv_close((uv_handle_t*) &tty, NULL);
     }
-    neat_set_operations(ctx, flow, &ops);
+    neat_set_operations(opCB->ctx, opCB->flow, &ops);
 
     neat_stop_event_loop(opCB->ctx);
 

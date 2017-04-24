@@ -113,22 +113,22 @@ random_loss()
 }
 
 struct fileinfo *
-openfile(const char *filename, const char *mode)
+openfile(const char *fname, const char *mode)
 {
-    struct fileinfo *fi;
+    struct fileinfo *finfo;
     struct stat st;
     uint8_t write = 0;
 
-    fi = calloc(1, sizeof(struct fileinfo));
+    finfo = calloc(1, sizeof(struct fileinfo));
 
-    if (fi == NULL) {
+    if (finfo == NULL) {
         fprintf(stderr, "%s - could not calloc fileinfo struct\n", __func__);
         return NULL;
     }
 
-    if(strstr(filename, "\\") != NULL || strstr(filename, "/") != NULL) {
+    if(strstr(fname, "\\") != NULL || strstr(fname, "/") != NULL) {
         fprintf(stderr, "%s - banned characters in file path '\\' or '/'\n", __func__);
-        free(fi);
+        free(finfo);
         return NULL;
     }
 
@@ -136,39 +136,39 @@ openfile(const char *filename, const char *mode)
         write = 1;
     }
 
-    if (stat(filename, &st) == -1) {
+    if (stat(fname, &st) == -1) {
         if(write == 0) {
             fprintf(stderr, "%s - file not found\n", __func__);
-            free(fi);
+            free(finfo);
             return NULL;
         }
     }
 
-    fi->size = st.st_size;
-    fi->segments = (fi->size+SEGMENT_SIZE-1)/SEGMENT_SIZE; /* round up */
-    fi->filename = strdup(filename);
+    finfo->size = st.st_size;
+    finfo->segments = (finfo->size+SEGMENT_SIZE-1)/SEGMENT_SIZE; /* round up */
+    finfo->filename = strdup(fname);
 
-    fi->stream = fopen(filename, mode);
+    finfo->stream = fopen(fname, mode);
 
-    if (fi->stream == NULL) {
-        free(fi->filename);
-        free(fi);
+    if (finfo->stream == NULL) {
+        free(finfo->filename);
+        free(finfo);
         fprintf(stderr, "%s - file not found\n", __func__);
         return NULL;
     }
 
-    return fi;
+    return finfo;
 }
 
 void
-freefileinfo( struct fileinfo *fi)
+freefileinfo(struct fileinfo *finfo)
 {
-    if (fclose(fi->stream) != -1) {
+    if (fclose(finfo->stream) != -1) {
         fprintf(stderr, "%s - failed to close file\n", __func__);
         perror("closing file");
     }
-    free(fi->filename);
-    free(fi);
+    free(finfo->filename);
+    free(finfo);
 }
 
 int
@@ -323,8 +323,6 @@ on_error(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
     explode();
-
-    exit(EXIT_FAILURE);
 }
 
 static neat_error_code
@@ -510,17 +508,17 @@ on_all_written(struct neat_flow_operations *opCB)
 
         if (!pf->master) {
             /* time to save and file then shut down*/
-            struct fileinfo *fi;
+            struct fileinfo *finfo;
 
-            fi = openfile(pf->file_name,"w");
-            if (fi == NULL) {
+            finfo = openfile(pf->file_name,"w");
+            if (finfo == NULL) {
                 fprintf(stderr, "%s:%d could not open file %s\n",
                     __func__, __LINE__, pf->file_name);
             }
 
-            fwrite(pf->file_buffer, sizeof(char), pf->file_buffer_size, fi->stream);
-            fclose(fi->stream);
-            freefileinfo(fi);
+            fwrite(pf->file_buffer, sizeof(char), pf->file_buffer_size, finfo->stream);
+            fclose(finfo->stream);
+            freefileinfo(finfo);
         }
         neat_close(opCB->ctx, opCB->flow);
         return NEAT_OK;

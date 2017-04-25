@@ -34,7 +34,8 @@
     struct neat_event_cbs* event_cbs; \
     uint8_t src_addr_cnt
 
-#define NEAT_MAX_NUM_PROTO 4
+#define NEAT_MAX_NUM_PROTO  4
+#define MAX_LOCAL_ADDR      64
 
 struct neat_event_cb;
 struct neat_addr;
@@ -187,7 +188,7 @@ struct neat_pollable_socket
     struct sockaddr_storage src_sockaddr;
     socklen_t               src_len;
 
-   #define MAX_LOCAL_ADDR             64
+
    struct sockaddr_storage local_addr[MAX_LOCAL_ADDR];
    unsigned int nr_local_addr;
 

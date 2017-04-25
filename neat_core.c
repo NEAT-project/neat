@@ -88,6 +88,8 @@ static void neat_free_flow(struct neat_flow *flow);
 static neat_flow * do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket);
 neat_flow * neat_find_flow(neat_ctx *, struct sockaddr_storage *, struct sockaddr_storage *);
 
+static void io_all_written(neat_ctx *ctx, neat_flow *flow, uint16_t stream_id);
+
 #define TAG_STRING(tag) [tag] = #tag
 const char *neat_tag_name[NEAT_TAG_LAST] = {
     TAG_STRING(NEAT_TAG_STREAM_ID),
@@ -933,23 +935,38 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
     flow->operations->on_connected(flow->operations);
 }
 
-static void io_writable(neat_ctx *ctx, neat_flow *flow, int stream_id, neat_error_code code)
+static void
+io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 {
+    // for callback struct
+    uint32_t stream_id = 0;
+
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+    // we have buffered data, send to socket
     if (flow->isDraining) {
-        neat_write_flush(ctx, flow);
+        code = neat_write_flush(ctx, flow);
+        if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
+            neat_log(ctx, NEAT_LOG_ERROR, "error : %d", code);
+            neat_io_error(ctx, flow, code);
+            return;
+        }
+    // no buffered datat, notifiy application about writable flow
+    } else if (flow->operations && flow->operations->on_writable) {
+        READYCALLBACKSTRUCT;
+        flow->operations->on_writable(flow->operations);
     }
-    if (!flow->operations || !flow->operations->on_writable || flow->isDraining) {
-        return;
+
+    if (!flow->isDraining) {
+        io_all_written(ctx, flow, 0);
     }
-    READYCALLBACKSTRUCT;
-    flow->operations->on_writable(flow->operations);
+
 }
 
 // Translate SCTP cause codes (RFC4960 sect.3.3.10)
 // into NEAT error codes
-static neat_error_code sctp_to_neat_code(uint16_t sctp_code)
+static neat_error_code
+sctp_to_neat_code(uint16_t sctp_code)
 {
     neat_error_code outcode;
 
@@ -1591,7 +1608,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
 }
 
 static void
-io_all_written(neat_ctx *ctx, neat_flow *flow, int stream_id)
+io_all_written(neat_ctx *ctx, neat_flow *flow, uint16_t stream_id)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     stream_id = NEAT_INVALID_STREAM;
@@ -2134,30 +2151,18 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         }
 #endif
 
-        // newly created flow, trigger "on_connected" callback
+        // newly created flow
         if ((events & UV_WRITABLE) && flow->firstWritePending) {
             flow->firstWritePending = 0;
             io_connected(ctx, flow, NEAT_OK);
         }
 
-        // socket is writable and flow has outstanding data so send, drain buffer before calling "on_writable"
-        if ((events & UV_WRITABLE) && flow->isDraining) {
-            neat_error_code code = neat_write_flush(ctx, flow);
-            if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
-                neat_io_error(ctx, flow, code);
-                return;
-            }
-            if (!flow->isDraining) {
-                io_all_written(ctx, flow, 0);
-            }
-        }
-
-        // socket is writable, trigger "on_writable"
+        // socket is writable
         if (events & UV_WRITABLE) {
-            io_writable(ctx, flow, 0, NEAT_OK); // TODO: Remove stream param
+            io_writable(ctx, flow, NEAT_OK);
         }
 
-        // socket is readable, trigger "on_readable"
+        // socket is readable
         if (events & UV_READABLE) {
             io_readable(ctx, flow, pollable_socket, NEAT_OK);
         }
@@ -4339,6 +4344,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
     if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         return NEAT_OK;
     }
+
     TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
         do {
             iov.iov_base = msg->buffered + msg->bufferedOffset;
@@ -4371,7 +4377,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 if ((flow->socket->sctp_explicit_eor) && (len == msg->bufferedSize)) {
                     sndinfo->snd_flags |= SCTP_EOR;
                 }
-#endif
+#endif // defined(SCTP_EOR)
 #elif defined (SCTP_SNDRCV)
                 msghdr.msg_control = cmsgbuf;
                 msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
@@ -4386,11 +4392,11 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 if ((flow->isSCTPExplicitEOR) && (len == msg->bufferedSize)) {
                     sndrcvinfo->sinfo_flags |= SCTP_EOR;
                 }
-#endif
-#else
+#endif // defined(SCTP_EOR)
+#else // defined(SCTP_SNDINFO)
                 msghdr.msg_control = NULL;
                 msghdr.msg_controllen = 0;
-#endif
+#endif // defined(SCTP_SNDINFO)
             } else {
                 msghdr.msg_control = NULL;
                 msghdr.msg_controllen = 0;
@@ -4426,6 +4432,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
             msg->bufferedOffset += rv;
             msg->bufferedSize -= rv;
         } while (msg->bufferedSize > 0);
+
         TAILQ_REMOVE(&flow->bufferedMessages, msg, message_next);
         free(msg->buffered);
         free(msg);
@@ -4504,6 +4511,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     ssize_t rv = 0;
     size_t len;
     int atomic;
+    neat_error_code code = NEAT_OK;
 
     int stream_id            = 0;
     int has_stream_id        = 0;
@@ -4547,15 +4555,15 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if (has_stream_id && stream_id < 0) {
-        neat_log(ctx, NEAT_LOG_DEBUG, "Invalid stream id: Must be 0 or greater");
+        neat_log(ctx, NEAT_LOG_DEBUG, "%s - invalid stream id: Must be 0 or greater", __func__);
         return NEAT_ERROR_BAD_ARGUMENT;
     } else if (has_stream_id && flow->socket->sctp_streams_available == 1 && stream_id != 0) {
-        neat_log(ctx, NEAT_LOG_DEBUG, "Tried to specify stream id when only a single stream is in use. Ignoring.");
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - tried to specify stream id when only a single stream is in use - ignoring", __func__);
         stream_id = 0;
     } else if (has_stream_id && flow->socket->stack != NEAT_STACK_SCTP) {
         // For now, warn about this. Maybe we emulate multistreaming over TCP in
         // the future?
-        neat_log(ctx, NEAT_LOG_DEBUG, "Tried to specify stream id when using a protocol which does not support multistreaming. Ignoring.");
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - tried to specify stream id when using a protocol which does not support multistreaming - ignoring", __func__);
         stream_id = 0;
     }
 
@@ -4587,12 +4595,10 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         break;
     }
     if (atomic && flow->socket->write_size > 0 && amt > flow->socket->write_size) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "%s - message size exceeds limit - aborting transmission", __func__);
         return NEAT_ERROR_MESSAGE_TOO_BIG;
     }
-    neat_error_code code = neat_write_flush(ctx, flow);
-    if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
-        return code;
-    }
+
     if (TAILQ_EMPTY(&flow->bufferedMessages) && code == NEAT_OK && amt > 0) {
         iov.iov_base = (void *)buffer;
         if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) &&
@@ -5919,7 +5925,7 @@ handle_connect(struct socket *sock, void *arg, int flags)
                 io_connected(flow->ctx, flow, NEAT_OK);
             }
             if ((usrsctp_get_events(sock) & SCTP_EVENT_WRITE) && flow->operations->on_writable) {
-                io_writable(flow->ctx, flow, 0, NEAT_OK);
+                io_writable(flow->ctx, flow, NEAT_OK);
             }
         } else {
             neat_log(candidate->ctx, NEAT_LOG_DEBUG, "%s - NOT first connect", __func__);
@@ -5970,21 +5976,10 @@ handle_upcall(struct socket *sock, void *arg, int flags)
             return;
         }
 
-        if (events & SCTP_EVENT_WRITE && flow->isDraining) {
-            neat_error_code code = neat_write_flush(ctx, flow);
-            if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
-                neat_io_error(ctx, flow, code);
-                return;
-            }
-            if (!flow->isDraining) {
-                io_all_written(ctx, flow, 0);
-            }
-        }
-
         if (events & SCTP_EVENT_WRITE && flow->operations->on_writable) {
             if (flow->firstWritePending)
                 flow->firstWritePending = 0;
-            io_writable(ctx, flow, 0, NEAT_OK);
+            io_writable(ctx, flow, NEAT_OK);
         }
 
         if (events & SCTP_EVENT_READ && flow->operations->on_readable) {
@@ -5997,7 +5992,7 @@ handle_upcall(struct socket *sock, void *arg, int flags)
         }
         events = usrsctp_get_events(sock);
         if (events & SCTP_EVENT_WRITE && flow->operations->on_writable)
-            io_writable(ctx, flow, 0, NEAT_OK);
+            io_writable(ctx, flow, NEAT_OK);
     }
 }
 

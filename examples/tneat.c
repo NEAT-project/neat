@@ -26,7 +26,7 @@
     default values
 */
 static uint32_t config_rcv_buffer_size      = 1024;
-static uint32_t config_snd_buffer_size      = 1024;
+static uint32_t config_snd_buffer_size      = 102400;
 static uint32_t config_message_count        = 10;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_active               = 0;
@@ -76,7 +76,6 @@ struct tneat_flow_direction {
 };
 
 struct tneat_flow {
-    uint8_t done;
     struct tneat_flow_direction rcv;
     struct tneat_flow_direction snd;
 };
@@ -110,8 +109,8 @@ print_usage()
 static neat_error_code
 on_error(struct neat_flow_operations *opCB)
 {
-
     fprintf(stderr, "%s()\n", __func__);
+    exit(EXIT_FAILURE);
     return NEAT_OK;
 }
 
@@ -142,12 +141,17 @@ on_all_written(struct neat_flow_operations *opCB)
         printf("\tduration\t: %.2fs\n", time_elapsed);
         printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
 
-        tnf->done = 1;
+        opCB->on_writable = NULL;
+        opCB->on_all_written = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
+
+        neat_shutdown(opCB->ctx, opCB->flow);
+    } else {
+        opCB->on_writable = on_writable;
+        opCB->on_all_written = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
     }
 
-    opCB->on_writable = on_writable;
-    opCB->on_all_written = NULL;
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
 }
 
@@ -193,14 +197,6 @@ on_writable(struct neat_flow_operations *opCB)
     }
 
     code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size, NULL, 0);
-
-    if (tnf->done) {
-        opCB->on_writable = NULL;
-        opCB->on_all_written = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_shutdown(opCB->ctx, opCB->flow);
-        return NEAT_OK;
-    }
 
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: code %d\n", __func__, (int)code);
@@ -315,7 +311,6 @@ on_connected(struct neat_flow_operations *opCB)
     }
 
     // reset stats
-    tnf->done      = 0;
     tnf->snd.calls = 0;
     tnf->snd.bytes = 0;
     tnf->rcv.calls = 0;

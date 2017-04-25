@@ -2011,7 +2011,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         if (status == 0) {
             send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
         } else {
-           send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false); 
+           send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
         }
 
         uv_poll_stop(handle);
@@ -2219,7 +2219,8 @@ neat_getlpaddrs(struct neat_ctx*  ctx,
     return -1;
 }
 
-void neat_freelpaddrs(struct sockaddr* addrs)
+void
+neat_freelpaddrs(struct sockaddr* addrs)
 {
     free(addrs);
 }
@@ -2230,14 +2231,10 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     const char *proto = NULL;
     int rc;
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
-#if defined(IPPROTO_SCTP)
-#if defined(SCTP_RECVRCVINFO) && !defined(USRSCTP_SUPPORT)
     int optval;
-#endif
 #ifdef SCTP_STATUS
     unsigned int optlen;
     struct sctp_status status;
-#endif
 #endif
 
     neat_flow *newFlow = neat_new_flow(ctx);
@@ -2326,6 +2323,14 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->operations->flow           = flow;
     newFlow->operations->userData       = flow->operations->userData;
 
+#if defined(SO_NOSIGPIPE)
+    optval = 1;
+    rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval));
+    if (rc < 0) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_NOSIGPIPE) failed");
+    }
+#endif //  defined(SO_NOSIGPIPE)
+
     switch (newFlow->socket->stack) {
     case NEAT_STACK_SCTP_UDP:
     case NEAT_STACK_SCTP:
@@ -2360,16 +2365,14 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 #if defined(SCTP_RECVRCVINFO)
         // Enable anciliarry data when receiving data from SCTP
         optval = 1;
-        optlen = sizeof(optval);
-        rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &optval, optlen);
+        rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &optval, sizeof(optval));
         if (rc < 0)
             neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
 #endif // defined(SCTP_RECVRCVINFO)
 #if defined(SCTP_RECVNXTINFO)
         // Enable anciliarry data when receiving data from SCTP
         optval = 1;
-        optlen = sizeof(optval);
-        rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &optval, optlen);
+        rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &optval, sizeof(optval));
         if (rc < 0)
             neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
 #endif // defined(SCTP_RECVNXTINFO)
@@ -2383,10 +2386,10 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             neat_free_flow(newFlow);
             return NULL;
         } else {
-            int enable = 1;
 
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+            optval = 1;
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 
             bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
             connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
@@ -2412,10 +2415,8 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             neat_free_flow(newFlow);
             return NULL;
         } else {
-            int enable = 1;
-
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 
             bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
             connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
@@ -2462,6 +2463,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             }
 
             newFlow->acceptPending = 0;
+
             // xxx patrick?
             if ((false) &&
                 (newFlow->socket->stack == NEAT_STACK_TCP)) {
@@ -4934,8 +4936,20 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         neat_log(ctx, NEAT_LOG_ERROR, "Failed to create he socket");
         return -1;
     }
-    setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
-    setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+
+    if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_REUSEADDR) failed");
+    }
+
+    if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_REUSEPORT) failed");
+    }
+
+#if defined(SO_NOSIGPIPE)
+    if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable)) < 0) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_NOSIGPIPE) failed");
+    }
+#endif //defined(SO_NOSIGPIPE)
 
     TAILQ_FOREACH(sockopt_ptr, &(candidate->sock_opts), next) {
         switch (sockopt_ptr->type) {
@@ -5049,18 +5063,19 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
     switch (candidate->pollable_socket->stack) {
     case NEAT_STACK_TCP:
-        setsockopt(candidate->pollable_socket->fd,
-                   IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable) < 0)) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(TCP_NODELAY) failed");
+        }
 
 #if defined(__FreeBSD__) && defined(FLOW_GROUPS)
         group = candidate->pollable_socket->flow->group;
-        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 8192 /* Group ID */, &group, sizeof(int)) != 0) {
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 8192 /* Group ID */, &group, sizeof(group)) != 0) {
             neat_log(ctx, NEAT_LOG_DEBUG, "Unable to set flow group: %s", strerror(errno));
         }
 
         // Map the priority range to some integer range
         prio = candidate->pollable_socket->flow->priority * 255;
-        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 4096 /* Priority */, &prio, sizeof(int)) != 0) {
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 4096 /* Priority */, &prio, sizeof(prio)) != 0) {
             neat_log(ctx, NEAT_LOG_DEBUG, "Unable to set flow priority: %s", strerror(errno));
         }
 #endif

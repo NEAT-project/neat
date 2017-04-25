@@ -584,7 +584,8 @@ synchronous_free(neat_flow *flow)
     json_decref(flow->properties);
 
     free_iofilters(flow->iofilters);
-    free_dtlsdata(flow->dtls_data);
+   // free_dtlsdata(flow->dtls_data);
+    free_dtlsdata(flow->socket->dtls_data);
     free(flow->readBuffer);
 
     if (!flow->socket->multistream
@@ -1248,7 +1249,8 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
     if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
         socklen_t len;
         int ret = 0;
-        struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+      //  struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+        struct security_data *private = (struct security_data *) flow->socket->dtls_data->userData;
 
         if (resize_read_buffer(flow) != READ_OK) {
             neat_log(ctx, NEAT_LOG_WARNING, "%s - READ_WITH_ERROR 7", __func__);
@@ -1274,7 +1276,12 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
                 flow->readBufferMsgComplete = 1;
                 break;
             case SSL_ERROR_SYSCALL:
+            printf("SSL_ERROR_SYSCALL\n");
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s (%d)\n", ERR_error_string(ERR_get_error(), (char *)flow->readBuffer + flow->readBufferSize), SSL_get_error(private->ssl, len));
+                neat_abort(ctx, flow);
+                return READ_WITH_ERROR;
             case SSL_ERROR_SSL:
+            printf("SSL_ERROR_SSL\n");
                 neat_log(ctx, NEAT_LOG_DEBUG, "%s (%d)\n", ERR_error_string(ERR_get_error(), (char *)flow->readBuffer + flow->readBufferSize), SSL_get_error(private->ssl, len));
                 neat_abort(ctx, flow);
                 return READ_WITH_ERROR;
@@ -2016,6 +2023,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->socket->write_limit           = candidate->pollable_socket->write_limit;
         flow->socket->read_size             = candidate->pollable_socket->read_size;
         flow->socket->sctp_explicit_eor     = candidate->pollable_socket->sctp_explicit_eor;
+        flow->socket->dtls_data             = candidate->pollable_socket->dtls_data;
+        copy_dtls_data(flow->socket, candidate->pollable_socket);
 
 #ifdef SCTP_MULTISTREAMING
         flow->socket->sctp_notification_wait= candidate->pollable_socket->sctp_notification_wait;
@@ -2105,11 +2114,13 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
 #if 0
 #ifdef NEAT_SCTP_DTLS
     if (pollable_socket->flow->security_needed && neat_base_stack(pollable_socket->stack) == NEAT_STACK_SCTP) {
-        struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+       // struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+       struct security_data *private = (struct security_data *) pollable_socket->dtls_data->userData;
         if (private->state == DTLS_CONNECTED && (SSL_get_shutdown(private->ssl) & SSL_RECEIVED_SHUTDOWN)) {
             neat_log(ctx, NEAT_LOG_DEBUG, "SSL_shutdown received: close socket");
             flow->closefx(ctx, flow);
-            free_dtlsdata(flow->dtls_data);
+           // free_dtlsdata(flow->dtls_data);
+            free_dtlsdata(pollable_socket->dtls_data);
             return;
         }
     }
@@ -2405,7 +2416,8 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->operations->flow           = flow;
     newFlow->operations->userData       = flow->operations->userData;
     printf("copy DTLS data\n");
-    copy_dtls_data(newFlow, flow);
+    //copy_dtls_data(newFlow, flow);
+    copy_dtls_data(newFlow->socket, listen_socket);
 
 
     switch (newFlow->socket->stack) {
@@ -2437,7 +2449,8 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             newFlow->socket->handle->data = newFlow->socket;
 #ifdef NEAT_SCTP_DTLS
             if (newFlow->security_needed) {
-                struct security_data *private = (struct security_data *) newFlow->dtls_data->userData;
+               // struct security_data *private = (struct security_data *) newFlow->dtls_data->userData;
+                struct security_data *private = (struct security_data *) newFlow->socket->dtls_data->userData;
                 private->ssl = SSL_new(private->ctx);
                 printf("get new BIO\n");
                 private->dtlsBIO = BIO_new_dgram_sctp(newFlow->socket->fd, BIO_CLOSE);
@@ -4461,7 +4474,8 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
         do {
 #ifdef NEAT_SCTP_DTLS
                 if ((flow->socket->fd != -1) && flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-                    struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+                   // struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+                    struct security_data *private = (struct security_data *) flow->socket->dtls_data->userData;
                     struct bio_dgram_sctp_sndinfo sinfo;
                     memset(&sinfo, 0, sizeof(struct bio_dgram_sctp_sndinfo));
                     BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(struct bio_dgram_sctp_sndinfo), &sinfo);
@@ -4752,7 +4766,8 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
 #ifdef NEAT_SCTP_DTLS
             if (flow->security_needed) {
-                private = (struct security_data *) flow->dtls_data->userData;
+               // private = (struct security_data *) flow->dtls_data->userData;
+                private = (struct security_data *) flow->socket->dtls_data->userData;
                 struct bio_dgram_sctp_sndinfo sinfo;
                 memset(&sinfo, 0, sizeof(struct bio_dgram_sctp_sndinfo));
                 sinfo.snd_sid = stream_id;
@@ -5661,7 +5676,8 @@ neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 
 #ifdef NEAT_SCTP_DTLS
     if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-        struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+       // struct security_data *private = (struct security_data *) flow->dtls_data->userData;
+        struct security_data *private = (struct security_data *) flow->socket->dtls_data->userData;
         socklen_t len = SSL_shutdown(private->ssl);
         switch (SSL_get_error(private->ssl, len)) {
             case SSL_ERROR_NONE:
@@ -5669,7 +5685,8 @@ neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
                 if (SSL_get_shutdown(private->ssl) & SSL_RECEIVED_SHUTDOWN) {
                     neat_log(ctx, NEAT_LOG_DEBUG, "SSL_shutdown received: close socket");
                     flow->closefx(ctx, flow);
-                    free_dtlsdata(flow->dtls_data);
+                   // free_dtlsdata(flow->dtls_data);
+                    free_dtlsdata(flow->socket->dtls_data);
                     private->state = DTLS_CLOSED;
                     return NEAT_OK;
                 }

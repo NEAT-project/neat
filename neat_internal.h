@@ -243,6 +243,8 @@ struct neat_pollable_socket
 
     struct neat_pollable_socket *listen_socket;
 
+	struct neat_dtls_data *dtls_data;
+
     uv_poll_t *handle;
 
     TAILQ_ENTRY(neat_pollable_socket) next;
@@ -266,7 +268,7 @@ struct neat_flow
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
     struct neat_iofilter *iofilters;
-    struct neat_dtls_data *dtls_data;
+ //   struct neat_dtls_data *dtls_data;
 
     uint32_t group;
     float priority;
@@ -628,7 +630,8 @@ void            neat_security_close(neat_ctx *ctx);
 void uvpollable_cb(uv_poll_t *handle, int status, int events);
 neat_error_code neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock);
 neat_error_code neat_dtls_connect(neat_ctx *ctx, neat_flow *flow);
-neat_error_code copy_dtls_data(neat_flow *new, neat_flow *old);
+//neat_error_code copy_dtls_data(neat_flow *new, neat_flow *old);
+neat_error_code copy_dtls_data(struct neat_pollable_socket *new, struct neat_pollable_socket *old);
 
 neat_error_code neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
 

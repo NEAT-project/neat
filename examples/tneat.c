@@ -173,11 +173,6 @@ on_writable(struct neat_flow_operations *opCB)
         gettimeofday(&(tnf->snd.tv_first), NULL);
     }
 
-    // set callbacks
-    opCB->on_writable = NULL;
-    opCB->on_all_written = on_all_written;
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
-
     // increase stats
     tnf->snd.calls++;
     tnf->snd.bytes += config_snd_buffer_size;
@@ -202,6 +197,11 @@ on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s - neat_write error: code %d\n", __func__, (int)code);
         return on_error(opCB);
     }
+
+    // set callbacks
+    opCB->on_writable = NULL;
+    opCB->on_all_written = on_all_written;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     return NEAT_OK;
 }
@@ -275,7 +275,7 @@ on_readable(struct neat_flow_operations *opCB)
             }
         }
 
-        neat_shutdown(opCB->ctx, opCB->flow);
+        neat_close(opCB->ctx, opCB->flow);
     }
 
     return NEAT_OK;

@@ -958,7 +958,12 @@ io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
     }
 
     if (!flow->isDraining) {
-        io_all_written(ctx, flow, 0);
+        if (flow->isClosing) {
+            // neat_shutdown has been called while flow was draining, run shutdown procedure
+            neat_shutdown(ctx, flow);
+        } else {
+            io_all_written(ctx, flow, 0);
+        }
     }
 
 }
@@ -6135,6 +6140,12 @@ neat_error_code
 neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    flow->isClosing = 1;
+
+    if (flow->isDraining) {
+        return NEAT_OK;
+    }
+
 #if defined(USRSCTP_SUPPORT)
     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
         return neat_shutdown_via_usrsctp(ctx, flow);
@@ -6315,7 +6326,8 @@ void neat_notify_aborted(neat_flow *flow)
 }
 
 // Notify application a connection has closed
-void neat_notify_close(neat_flow *flow)
+void
+neat_notify_close(neat_flow *flow)
 {
     const int stream_id = NEAT_INVALID_STREAM;
     //READYCALLBACKSTRUCT expects this:

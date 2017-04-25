@@ -219,6 +219,7 @@ struct neat_pollable_socket
 struct neat_flow
 {
     // Main socket used for communication, not listening
+    uint8_t state;
     struct neat_pollable_socket *socket;
     TAILQ_HEAD(neat_listen_socket_head, neat_pollable_socket) listen_sockets;
     struct neat_flow_operations *operations; // see ownedByCore flag
@@ -227,7 +228,6 @@ struct neat_flow
     uint16_t port;
     uint8_t qos;
     uint8_t ecn;
-    //uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
@@ -274,6 +274,7 @@ struct neat_flow
     unsigned int isServer               : 1; // i.e. created via accept()
     unsigned int isSCTPMultihoming      : 1;
     unsigned int isSCTPIdata            : 1;
+    unsigned int isClosing              : 1;
 
     unsigned int streams_requested;
 

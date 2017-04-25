@@ -518,7 +518,9 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
     struct security_data *private;
     private = (struct security_data *) opCB->flow->dtls_data->userData;
 
-    if (!(SSL_in_connect_init(private->ssl) && private->state == DTLS_CONNECTING)) {
+    if (private->state == DTLS_CONNECTING &&
+        ((!opCB->flow->isServer && !SSL_in_connect_init(private->ssl)) ||
+        ((opCB->flow->isServer && !SSL_in_accept_init(private->ssl))))) {
         neat_log(opCB->ctx, NEAT_LOG_DEBUG, "%s: SSL connection established", __func__);
         private->state = DTLS_CONNECTED;
         opCB->flow->socket->handle->data = opCB->flow->socket;
@@ -527,7 +529,7 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
         opCB->flow->operations->on_writable = private->pushed_on_writable;
         opCB->flow->operations->on_connected = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB->flow->operations);
-        uvpollable_cb(opCB->flow->socket->handle, NEAT_OK, UV_WRITABLE);
+        uvpollable_cb(opCB->flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
     }
 
     return NEAT_OK;
@@ -566,6 +568,9 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
             neat_log(ctx, NEAT_LOG_ERROR, "Server key file not set via neat_secure_identity()");
             return NEAT_ERROR_SECURITY;
         }
+        int pid = getpid();
+	    if( !SSL_CTX_set_session_id_context(private->ctx, (void*)&pid, sizeof pid) )
+		    perror("SSL_CTX_set_session_id_context");
 
         if ((SSL_CTX_use_certificate_chain_file(private->ctx, sock->flow->cert_pem) < 0) ||
                 (SSL_CTX_use_PrivateKey_file(private->ctx, sock->flow->key_pem, SSL_FILETYPE_PEM) < 0 )) {
@@ -577,17 +582,17 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
     SSL_CTX_set_options(private->ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
     SSL_CTX_set_cipher_list(private->ctx, "DEFAULT:-RC4");
 
-    private->ssl = SSL_new(private->ctx);
     if (isClient) {
+        private->ssl = SSL_new(private->ctx);
         X509_VERIFY_PARAM *param = SSL_get0_param(private->ssl);
         X509_VERIFY_PARAM_set1_host(param, sock->flow->name, 0);
         // support Server Name Indication (SNI)
         SSL_set_tlsext_host_name(private->ssl, sock->flow->name);
+        private->dtlsBIO = BIO_new_dgram_sctp(sock->fd, BIO_CLOSE);
+        SSL_set_bio(private->ssl, private->dtlsBIO, private->dtlsBIO);
+    } else {
+        BIO_new_dgram_sctp(sock->fd, BIO_NOCLOSE);
     }
-
-    private->dtlsBIO = BIO_new_dgram_sctp(sock->fd, BIO_CLOSE);
-    BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &(sock->dst_sockaddr));
-    SSL_set_bio(private->ssl, private->dtlsBIO, private->dtlsBIO);
 
     dtls->userData = private;
     sock->flow->dtls_data = dtls;
@@ -617,7 +622,7 @@ neat_dtls_connect(neat_ctx *ctx, neat_flow *flow)
     } else {
         SSL_set_connect_state(private->ssl);
     }
-
+printf("private->ssl=%p\n", (void *)private->ssl);
     private->state = DTLS_CONNECTING;
     SSL_do_handshake(private->ssl);
 
@@ -629,9 +634,27 @@ neat_dtls_connect(neat_ctx *ctx, neat_flow *flow)
 
     flow->socket->handle->data = flow->socket;
 
-    uvpollable_cb(flow->socket->handle, NEAT_OK, UV_READABLE);
+    uvpollable_cb(flow->socket->handle, NEAT_OK, UV_READABLE | UV_WRITABLE);
     return NEAT_OK;
 }
+
+neat_error_code
+copy_dtls_data(neat_flow *newFlow, neat_flow *flow)
+{
+    struct security_data *private = calloc (1, sizeof (struct security_data));
+    struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
+    dtls->dtor = neat_dtls_dtor;
+    private->inputBIO = NULL;
+    private->outputBIO = NULL;
+    struct security_data *server = (struct security_data *) flow->dtls_data->userData;
+    private->ctx = calloc(1, sizeof(server->ctx));
+    private->ctx = server->ctx;
+    SSL_CTX_up_ref(server->ctx);
+    dtls->userData = private;
+    newFlow->dtls_data = dtls;
+    return NEAT_OK;
+}
+
 #endif
 
 void

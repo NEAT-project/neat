@@ -25,8 +25,8 @@
 /*
     default values
 */
-static uint32_t config_rcv_buffer_size      = 1024;
-static uint32_t config_snd_buffer_size      = 1024;
+static uint32_t config_rcv_buffer_size      = 10240;
+static uint32_t config_snd_buffer_size      = 10240;
 static uint32_t config_message_count        = 10;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_active               = 0;
@@ -52,6 +52,19 @@ static char *config_property = "\
         \"precedence\": 2\
     }\
 }";
+/*static char *config_property = "\
+{\
+    \"transport\": [\
+        {\
+            \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"TCP\",\
+            \"precedence\": 1\
+        }\
+    ]\
+}";*/
 
 static uint32_t flows_active = 0;
 static char *cert_file = NULL;
@@ -265,13 +278,15 @@ printf("tneat: on_readable\n");
             printf("connection closed\n");
         }
 
-        opCB->on_readable = NULL;
-        opCB->on_writable = NULL;
-        opCB->on_all_written = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-
-        if (!config_active) {
+        if (config_active) {
+            on_close(opCB);
+        } else {
             // we are server
+            opCB->on_readable = NULL;
+            opCB->on_writable = NULL;
+            opCB->on_all_written = NULL;
+            neat_set_operations(opCB->ctx, opCB->flow, opCB);
+
             // print statistics
             timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
             time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
@@ -285,9 +300,8 @@ printf("tneat: on_readable\n");
                 printf("\tduration\t: %.2fs\n", time_elapsed);
                 printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
             }
+            neat_shutdown(opCB->ctx, opCB->flow);
         }
-
-        neat_shutdown(opCB->ctx, opCB->flow);
     }
 
     return NEAT_OK;
@@ -394,7 +408,7 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:c:k:")) != -1) {
         switch(arg) {
         case 'l':
             config_snd_buffer_size = atoi(optarg);

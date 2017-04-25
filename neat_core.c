@@ -2323,6 +2323,14 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->operations->flow           = flow;
     newFlow->operations->userData       = flow->operations->userData;
 
+#if defined(SO_NOSIGPIPE)
+    optval = 1;
+    rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval));
+    if (rc < 0) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_NOSIGPIPE) failed");
+    }
+#endif //  defined(SO_NOSIGPIPE)
+
     switch (newFlow->socket->stack) {
     case NEAT_STACK_SCTP_UDP:
     case NEAT_STACK_SCTP:
@@ -2369,13 +2377,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
 #endif // defined(SCTP_RECVNXTINFO)
 #endif
-#if defined(SO_NOSIGPIPE) && defined(IPPROTO_SCTP)
-        optval = 1;
-        rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SO_NOSIGPIPE, &optval, sizeof(optval));
-        if (rc < 0) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_NOSIGPIPE) failed");
-        }
-#endif //  defined(SO_NOSIGPIPE) && defined(IPPROTO_SCTP)
         break;
     case NEAT_STACK_UDP:
         neat_log(ctx, NEAT_LOG_DEBUG, "Creating new UDP socket");
@@ -2462,16 +2463,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             }
 
             newFlow->acceptPending = 0;
-
-#if defined(SO_NOSIGPIPE)
-            if (newFlow->socket->stack == NEAT_STACK_TCP) {
-                optval = 1;
-                rc = setsockopt(newFlow->socket->fd, IPPROTO_TCP, SO_NOSIGPIPE, &optval, sizeof(optval));
-                if (rc < 0) {
-                    neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_NOSIGPIPE) failed");
-                }
-            }
-#endif // defined(SO_NOSIGPIPE)
 
             // xxx patrick?
             if ((false) &&
@@ -4945,8 +4936,11 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         neat_log(ctx, NEAT_LOG_ERROR, "Failed to create he socket");
         return -1;
     }
-    setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
-    setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+    setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
+    setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable));
+#if defined(SO_NOSIGPIPE)
+    setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable));
+#endif //defined(SO_NOSIGPIPE)
 
     TAILQ_FOREACH(sockopt_ptr, &(candidate->sock_opts), next) {
         switch (sockopt_ptr->type) {

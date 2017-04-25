@@ -562,10 +562,14 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 
         if (!(sock->flow->cert_pem)) {
             neat_log(ctx, NEAT_LOG_ERROR, "Server certificate file not set via neat_secure_identity()");
+            free (dtls);
+            free (private);
             return NEAT_ERROR_SECURITY;
         }
         if (!(sock->flow->key_pem)) {
             neat_log(ctx, NEAT_LOG_ERROR, "Server key file not set via neat_secure_identity()");
+            free (dtls);
+            free (private);
             return NEAT_ERROR_SECURITY;
         }
         int pid = getpid();

@@ -2369,13 +2369,13 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
 #endif // defined(SCTP_RECVNXTINFO)
 #endif
-#if defined(SO_NOSIGPIPE)
+#if defined(SO_NOSIGPIPE) && defined(IPPROTO_SCTP)
         optval = 1;
         rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SO_NOSIGPIPE, &optval, sizeof(optval));
         if (rc < 0) {
             neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_NOSIGPIPE) failed");
         }
-#endif // defined(SO_NOSIGPIPE)
+#endif //  defined(SO_NOSIGPIPE) && defined(IPPROTO_SCTP)
         break;
     case NEAT_STACK_UDP:
         neat_log(ctx, NEAT_LOG_DEBUG, "Creating new UDP socket");

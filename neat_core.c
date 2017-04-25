@@ -2023,8 +2023,11 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         flow->socket->write_limit           = candidate->pollable_socket->write_limit;
         flow->socket->read_size             = candidate->pollable_socket->read_size;
         flow->socket->sctp_explicit_eor     = candidate->pollable_socket->sctp_explicit_eor;
-        flow->socket->dtls_data             = candidate->pollable_socket->dtls_data;
-        copy_dtls_data(flow->socket, candidate->pollable_socket);
+#ifdef NEAT_SCTP_DTLS
+        if (flow->security_needed && flow->socket->stack == NEAT_STACK_SCTP) {
+            copy_dtls_data(flow->socket, candidate->pollable_socket);
+        }
+#endif
 
 #ifdef SCTP_MULTISTREAMING
         flow->socket->sctp_notification_wait= candidate->pollable_socket->sctp_notification_wait;
@@ -2415,9 +2418,13 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->operations->ctx            = ctx;
     newFlow->operations->flow           = flow;
     newFlow->operations->userData       = flow->operations->userData;
-    printf("copy DTLS data\n");
-    //copy_dtls_data(newFlow, flow);
-    copy_dtls_data(newFlow->socket, listen_socket);
+
+#ifdef NEAT_SCTP_DTLS
+        if (flow->security_needed && newFlow->socket->stack == NEAT_STACK_SCTP) {
+            printf("copy DTLS data\n");
+            copy_dtls_data(newFlow->socket, listen_socket);
+        }
+#endif
 
 
     switch (newFlow->socket->stack) {

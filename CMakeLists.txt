@@ -293,10 +293,8 @@ LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}
     ${JANSSON_LIB}
-    #${OPENSSL_SSL_LIBRARY}
-    /usr/home/ruengeler/install/lib/libssl.so
-    #${OPENSSL_CRYPTO_LIBRARY}
-    /usr/home/ruengeler/install/lib/libcrypto.so
+    ${OPENSSL_SSL_LIBRARY}
+    ${OPENSSL_CRYPTO_LIBRARY}
     )
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")

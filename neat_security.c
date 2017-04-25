@@ -516,7 +516,6 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
     neat_log(opCB->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     struct security_data *private;
- //   private = (struct security_data *) opCB->flow->dtls_data->userData;
     private = (struct security_data *) opCB->flow->socket->dtls_data->userData;
 
     if (private->state == DTLS_CONNECTING &&
@@ -576,6 +575,8 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
         if ((SSL_CTX_use_certificate_chain_file(private->ctx, sock->flow->cert_pem) < 0) ||
                 (SSL_CTX_use_PrivateKey_file(private->ctx, sock->flow->key_pem, SSL_FILETYPE_PEM) < 0 )) {
             neat_log(ctx, NEAT_LOG_ERROR, "unable to use cert or private key");
+            free (dtls);
+            free (private);
             return NEAT_ERROR_SECURITY;
         }
     }
@@ -604,7 +605,6 @@ neat_dtls_connect(neat_ctx *ctx, neat_flow *flow)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-  //  struct security_data *private = (struct security_data *) flow->dtls_data->userData;
     struct security_data *private = (struct security_data *) flow->socket->dtls_data->userData;
 
     if (private->state != DTLS_CLOSED) {
@@ -623,7 +623,7 @@ neat_dtls_connect(neat_ctx *ctx, neat_flow *flow)
     } else {
         SSL_set_connect_state(private->ssl);
     }
-printf("private->ssl=%p\n", (void *)private->ssl);
+
     private->state = DTLS_CONNECTING;
     SSL_do_handshake(private->ssl);
 
@@ -639,23 +639,6 @@ printf("private->ssl=%p\n", (void *)private->ssl);
     return NEAT_OK;
 }
 
-/*neat_error_code
-copy_dtls_data(neat_flow *newFlow, neat_flow *flow)
-{
-    struct security_data *private = calloc (1, sizeof (struct security_data));
-    struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
-    dtls->dtor = neat_dtls_dtor;
-    private->inputBIO = NULL;
-    private->outputBIO = NULL;
-    struct security_data *server = (struct security_data *) flow->dtls_data->userData;
-    private->ctx = calloc(1, sizeof(server->ctx));
-    private->ctx = server->ctx;
-    SSL_CTX_up_ref(server->ctx);
-    dtls->userData = private;
-    newFlow->socket->dtls_data = dtls;
-    return NEAT_OK;
-}
-*/
 neat_error_code
 copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_socket *socket)
 {
@@ -665,7 +648,6 @@ copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_sock
     private->inputBIO = NULL;
     private->outputBIO = NULL;
     struct security_data *server = (struct security_data *) socket->dtls_data->userData;
-    private->ctx = calloc(1, sizeof(server->ctx));
     private->ctx = server->ctx;
     SSL_CTX_up_ref(server->ctx);
     private->ssl = server->ssl;

@@ -275,6 +275,7 @@ struct neat_flow
     unsigned int isSCTPMultihoming      : 1;
     unsigned int isSCTPIdata            : 1;
     unsigned int isClosing              : 1;
+    unsigned int notifyDrainPending     : 1;
 
     unsigned int streams_requested;
 

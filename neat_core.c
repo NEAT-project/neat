@@ -961,6 +961,7 @@ io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
             // neat_shutdown has been called while flow was draining, run shutdown procedure
             neat_shutdown(ctx, flow);
         } else {
+            // outgoing flow buffer is empty
             io_all_written(ctx, flow, 0);
         }
     }
@@ -1616,9 +1617,12 @@ io_all_written(neat_ctx *ctx, neat_flow *flow, uint16_t stream_id)
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     stream_id = NEAT_INVALID_STREAM;
 
-    if (!flow->operations || !flow->operations->on_all_written) {
+    if (!flow->operations || !flow->operations->on_all_written || !flow->notifyDrainPending) {
         return;
     }
+
+    flow->notifyDrainPending = 0;
+
     neat_error_code code = NEAT_OK;
     READYCALLBACKSTRUCT;
     flow->operations->on_all_written(flow->operations);
@@ -6084,6 +6088,8 @@ neat_write(struct neat_ctx *ctx,
 #ifdef SCTP_MULTISTREAMING
     assert(flow->multistream_reset_out == false);
 #endif
+
+    flow->notifyDrainPending = 1;
 
     for (struct neat_iofilter *filter = flow->iofilters; filter; filter = filter->next) {
         // find the first filter and call it

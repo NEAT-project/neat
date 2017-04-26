@@ -136,19 +136,18 @@ on_all_written(struct neat_flow_operations *opCB)
 
         // print statistics
         printf("neat_write finished - statistics\n");
-        printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
-        printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
+        printf("\tbytes\t\t: %u\n",     tnf->snd.bytes);
+        printf("\tsnd-calls\t: %u\n",   tnf->snd.calls);
         printf("\tduration\t: %.2fs\n", time_elapsed);
-        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes / time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
 
-        opCB->on_writable = NULL;
-        opCB->on_all_written = NULL;
+        opCB->on_writable       = NULL;
+        opCB->on_all_written    = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
-
         neat_shutdown(opCB->ctx, opCB->flow);
     } else {
-        opCB->on_writable = on_writable;
-        opCB->on_all_written = NULL;
+        opCB->on_writable       = on_writable;
+        opCB->on_all_written    = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
     }
 
@@ -199,8 +198,8 @@ on_writable(struct neat_flow_operations *opCB)
     }
 
     // set callbacks
-    opCB->on_writable = NULL;
-    opCB->on_all_written = on_all_written;
+    opCB->on_writable       = NULL;
+    opCB->on_all_written    = on_all_written;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     return NEAT_OK;
@@ -253,9 +252,9 @@ on_readable(struct neat_flow_operations *opCB)
             printf("connection closed\n");
         }
 
-        opCB->on_readable = NULL;
-        opCB->on_writable = NULL;
-        opCB->on_all_written = NULL;
+        opCB->on_readable       = NULL;
+        opCB->on_writable       = NULL;
+        opCB->on_all_written    = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
         if (!config_active) {
@@ -317,9 +316,9 @@ on_connected(struct neat_flow_operations *opCB)
     tnf->rcv.bytes = 0;
 
     // set callbacks
-    opCB->on_readable = on_readable;
+    opCB->on_readable       = on_readable;
     if (config_active) {
-        opCB->on_writable = on_writable;
+        opCB->on_writable   = on_writable;
     }
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
@@ -332,10 +331,11 @@ on_close(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = opCB->userData;
 
     // cleanup
-    opCB->on_close = NULL;
-    opCB->on_readable = NULL;
-    opCB->on_writable = NULL;
-    opCB->on_error = NULL;
+    opCB->on_close      = NULL;
+    opCB->on_readable   = NULL;
+    opCB->on_writable   = NULL;
+    opCB->on_error      = NULL;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     if (tnf->snd.buffer) {
         free(tnf->snd.buffer);
@@ -348,8 +348,6 @@ on_close(struct neat_flow_operations *opCB)
     if (tnf) {
         free(tnf);
     }
-
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     fprintf(stderr, "%s - flow closed OK!\n", __func__);
 

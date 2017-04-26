@@ -964,7 +964,6 @@ io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
             io_all_written(ctx, flow, 0);
         }
     }
-
 }
 
 // Translate SCTP cause codes (RFC4960 sect.3.3.10)
@@ -5980,6 +5979,7 @@ handle_upcall(struct socket *sock, void *arg, int flags)
             return;
         }
 
+        // remove "on_writable" callback check
         if (events & SCTP_EVENT_WRITE && flow->operations->on_writable) {
             if (flow->firstWritePending)
                 flow->firstWritePending = 0;

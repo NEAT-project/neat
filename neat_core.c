@@ -938,9 +938,7 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 static void
 io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 {
-    // for callback struct
-    uint32_t stream_id = 0;
-
+    const uint16_t stream_id = NEAT_INVALID_STREAM;
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     // we have buffered data, send to socket
@@ -957,6 +955,7 @@ io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
         flow->operations->on_writable(flow->operations);
     }
 
+    // flow is not draining (anymore)
     if (!flow->isDraining) {
         if (flow->isClosing) {
             // neat_shutdown has been called while flow was draining, run shutdown procedure
@@ -5995,6 +5994,8 @@ handle_upcall(struct socket *sock, void *arg, int flags)
             if (code == READ_WITH_ZERO && flow->operations && flow->operations->on_readable)
                 flow->operations->on_readable(flow->operations);
         }
+
+        // xxx why two times?
         events = usrsctp_get_events(sock);
         if (events & SCTP_EVENT_WRITE && flow->operations->on_writable)
             io_writable(ctx, flow, NEAT_OK);

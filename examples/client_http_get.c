@@ -240,6 +240,8 @@ on_close(struct neat_flow_operations *opCB)
     opCB->on_error = NULL;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
+    free(opCB->userData);
+
     // stop event loop if all flows are closed
     flows_active--;
     if (config_log_level >= 1) {

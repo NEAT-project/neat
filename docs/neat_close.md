@@ -2,6 +2,15 @@
 
 Close this flow and free all associated data.
 
+This is the *last call*:
+* all flow related data (e.g. `userData`) should be freed in advance
+* no flow related *callbacks* are fired
+* all data in the *receive buffer* gets discarded
+* all data in the *send buffer* will be transmitted
+* initiates a *graceful connection shutdown*
+
+**This function must always the be called to free ressources**
+
 ### Syntax
 
 ```c

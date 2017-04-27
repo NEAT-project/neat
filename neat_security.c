@@ -597,6 +597,8 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
         private->dtlsBIO = BIO_new_dgram_sctp(sock->fd, BIO_CLOSE);
         if (private->dtlsBIO == NULL) {
             neat_log(ctx, NEAT_LOG_ERROR, "BIO could not be created. Is AUTH enabled?");
+            free (dtls);
+            free (private);
             return NEAT_ERROR_SECURITY;
         }
         SSL_set_bio(private->ssl, private->dtlsBIO, private->dtlsBIO);

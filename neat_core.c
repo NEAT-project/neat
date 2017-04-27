@@ -5619,6 +5619,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
     return fd;
 }
 
+#ifdef NEAT_SCTP_DTLS
 static neat_error_code
 neat_dtls_shutdown(struct neat_flow_operations *opCB)
 {
@@ -5653,6 +5654,7 @@ neat_dtls_shutdown(struct neat_flow_operations *opCB)
     }
     return NEAT_OK;
 }
+#endif
 
 static int
 neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)

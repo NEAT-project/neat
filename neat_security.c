@@ -359,7 +359,7 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
             tls_init_trust_list(private->ctx);
         } else {
             private->ctx = SSL_CTX_new(server_method());
-            SSL_CTX_set_ecdh_auto(private->ctx, 1);
+           // SSL_CTX_set_ecdh_auto(private->ctx, 1); Linux compiler complains
 
             if (!flow->server_pem) {
                 neat_log(ctx, NEAT_LOG_ERROR, "PEM file not set via neat_secure_identity()");
@@ -558,7 +558,7 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
         tls_init_trust_list(private->ctx);
     } else {
         private->ctx = SSL_CTX_new(DTLS_server_method());
-        SSL_CTX_set_ecdh_auto(private->ctx, 1);
+       // SSL_CTX_set_ecdh_auto(private->ctx, 1);
 
         if (!(sock->flow->cert_pem)) {
             neat_log(ctx, NEAT_LOG_ERROR, "Server certificate file not set via neat_secure_identity()");

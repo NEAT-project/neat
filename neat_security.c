@@ -535,6 +535,7 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
+
 neat_error_code
 neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 {
@@ -594,6 +595,10 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
        // X509_VERIFY_PARAM_set1_host(param, sock->flow->name, 0);
        // SSL_set_tlsext_host_name(private->ssl, sock->flow->name);
         private->dtlsBIO = BIO_new_dgram_sctp(sock->fd, BIO_CLOSE);
+        if (private->dtlsBIO == NULL) {
+            neat_log(ctx, NEAT_LOG_ERROR, "BIO could not be created. Is AUTH enabled?");
+            return NEAT_ERROR_SECURITY;
+        }
         SSL_set_bio(private->ssl, private->dtlsBIO, private->dtlsBIO);
     } else {
         BIO_new_dgram_sctp(sock->fd, BIO_NOCLOSE);

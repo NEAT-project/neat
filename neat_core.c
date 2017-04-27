@@ -1266,7 +1266,6 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
             case SSL_ERROR_WANT_READ:
             case SSL_ERROR_WANT_WRITE:
                 /* Just try again */
-                uvpollable_cb(flow->socket->handle, NEAT_OK, UV_READABLE | UV_WRITABLE);
                 break;
             case SSL_ERROR_ZERO_RETURN:
                 neat_log(ctx, NEAT_LOG_DEBUG, "%s: EOF received",  __func__);
@@ -5620,6 +5619,41 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
     return fd;
 }
 
+static neat_error_code
+neat_dtls_shutdown(struct neat_flow_operations *opCB)
+{
+    neat_log(opCB->ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+    struct security_data *private = (struct security_data *) opCB->flow->socket->dtls_data->userData;
+    socklen_t len = SSL_shutdown(private->ssl);
+    switch (SSL_get_error(private->ssl, len)) {
+        case SSL_ERROR_NONE:
+            neat_log(opCB->ctx, NEAT_LOG_DEBUG, "SSL shutdown finished");
+            if (SSL_get_shutdown(private->ssl) & SSL_RECEIVED_SHUTDOWN) {
+                neat_log(opCB->ctx, NEAT_LOG_DEBUG, "SSL_shutdown received: close socket");
+                opCB->flow->closefx(opCB->ctx, opCB->flow);
+                private->state = DTLS_CLOSED;
+                return NEAT_OK;
+            }
+            break;
+        case SSL_ERROR_WANT_WRITE:
+        case SSL_ERROR_WANT_READ:
+            /* Just try again later */
+            break;
+        case SSL_ERROR_SYSCALL:
+            if (SSL_get_shutdown(private->ssl) & SSL_SENT_SHUTDOWN) {
+                SSL_shutdown(private->ssl);
+            }
+            break;
+        case SSL_ERROR_SSL:
+            break;
+        default:
+            printf("Unexpected error while shutting down!\n");
+            break;
+    }
+    return NEAT_OK;
+}
+
 static int
 neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
 {
@@ -5673,9 +5707,11 @@ neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
                 }
                 break;
             case SSL_ERROR_WANT_WRITE:
+            flow->operations->on_writable = neat_dtls_shutdown;
+            neat_set_operations(ctx, flow, flow->operations);
+            break;
             case SSL_ERROR_WANT_READ:
                 /* Just try again later */
-                uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
                 break;
             case SSL_ERROR_SYSCALL:
                 if (SSL_get_shutdown(private->ssl) & SSL_SENT_SHUTDOWN) {

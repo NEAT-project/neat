@@ -4660,7 +4660,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     size_t len;
     int atomic;
 #ifdef NEAT_SCTP_DTLS
-    struct security_data *private;
+    struct security_data *private = NULL;
 #endif
 
     int stream_id            = 0;

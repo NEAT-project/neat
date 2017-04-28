@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
+<reference anchor="NEAT-D1.2" target="https://www.neat-project.org/wp-content/uploads/2017/03/D1.2-public.pdf">
+	<front>
+		<title>NEAT – First Version of Services and APIs</title>
+		<author initials="M." surname="Welzl" fullname="Michael&#160;Welzl" />
+		<author initials="A." surname="Brunström" fullname="Anna&#160;Brunström" />
+		<author initials="D." surname="Damjanović" fullname="Dragana&#160;Damjanović" />
+		<author initials="K.&#160;R." surname="Evensen" fullname="Kristian Riktor&#160;Evensen" />
+		<author initials="T." surname="Eckert" fullname="Toerless&#160;Eckert" />
+		<author initials="G." surname="Fairhurst" fullname="Gorry&#160;Fairhurst" />
+		<author initials="N." surname="Khademi" fullname="Naeem&#160;Khademi" />
+		<author initials="S." surname="Mangiante" fullname="Simone&#160;Mangiante" />
+		<author initials="A." surname="Petlund" fullname="Andreas&#160;Petlund" />
+		<author initials="D." surname="Ros" fullname="David&#160;Ros" />
+		<author initials="M." surname="Tüxen" fullname="Michael&#160;Tüxen" />
+		<date day="1" month="March" year="2016" />
+	</front>
+	<seriesInfo name="" value="Number D1.2" />
+	<format type="PDF" octets="769212" target="https://www.neat-project.org/wp-content/uploads/2017/03/D1.2-public.pdf" />
+</reference>
+

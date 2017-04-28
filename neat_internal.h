@@ -311,6 +311,7 @@ struct neat_flow
     unsigned int isServer               : 1; // i.e. created via accept()
     unsigned int isSCTPMultihoming      : 1;
     unsigned int security_needed        : 1;
+    unsigned int isSCTPIdata            : 1;
 
     unsigned int streams_requested;
 

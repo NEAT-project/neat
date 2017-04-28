@@ -3,7 +3,7 @@ PROJECT(libneat)
 
 set(BUILD_MAJOR "0")
 set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td104")
+set(BUILD_PATCH "1~td144")
 set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 # INSTALLATION_DIRECTORIES
@@ -115,6 +115,8 @@ ELSE()
 
 ENDIF()
 
+find_package(Threads REQUIRED)
+
 #################################################
 # CHECK STRUCT MEMBERS
 #################################################
@@ -177,7 +179,7 @@ IF (FLOW_GROUPS)
     ADD_DEFINITIONS(-DFLOW_GROUPS)
 ENDIF()
 
-OPTION(SCTP_MULTISTREAMING "Include support for SCTP multistreaming" 0)
+OPTION(SCTP_MULTISTREAMING "Include support for SCTP multistreaming" 1)
 IF (SCTP_MULTISTREAMING)
     ADD_DEFINITIONS(-DSCTP_MULTISTREAMING)
 ENDIF()
@@ -278,11 +280,13 @@ ENDIF()
 
 # COMPILER FLAGS
 #################################################
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
+SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
-    MESSAGE("Building in DEBUG mode")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+    MESSAGE(STATUS "Building in DEBUG mode")
+    # _FORTIFY_SOURCE requires compiling with optimization
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
 ENDIF()
 
 # LIBRARIES
@@ -317,11 +321,12 @@ TARGET_LINK_LIBRARIES (neat ${neat_libs})
 #################################################
 MESSAGE("Install directory: ${CMAKE_INSTALL_PREFIX}")
 
-INSTALL(TARGETS neat LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/neat)
+INSTALL(TARGETS neat neat-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
+INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
 # INCLUDE EXAMPLES AND TESTS FOLDER
 #################################################
+ADD_SUBDIRECTORY(socketapi)
 ADD_SUBDIRECTORY(examples)
 ADD_SUBDIRECTORY(tests)

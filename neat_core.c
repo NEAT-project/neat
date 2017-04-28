@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include <uv.h>
 #include <errno.h>
 #include <ifaddrs.h>
@@ -880,11 +881,17 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     const int stream_id = NEAT_INVALID_STREAM;
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
-    unsigned int optlen;
+    unsigned int statuslen;
     int rc;
     struct sctp_status status;
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
+#if defined(IPPROTO_SCTP) && defined(SCTP_INTERLEAVING_SUPPORTED) && !defined(USRSCTP_SUPPORT)
+    int value;
+    unsigned int valuelen;
+#endif // #if defined(IPPROTO_SCTP) && defined(SCTP_INTERLEAVING_SUPPORTED) && !defined(USRSCTP_SUPPORT)
     char proto[16];
+
+
 
     switch (flow->socket->stack) {
         case NEAT_STACK_UDP:
@@ -896,18 +903,28 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
         case NEAT_STACK_SCTP:
             snprintf(proto, 16, "SCTP");
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
-            optlen = sizeof(status);
-            rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &optlen);
+            statuslen = sizeof(status);
+
+            rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &statuslen);
             if (rc < 0) {
                 neat_log(ctx, NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
                 flow->socket->sctp_streams_available = 1;
             } else {
                 flow->socket->sctp_streams_available = MIN(status.sstat_outstrms, status.sstat_outstrms);
             }
-
             // number of outbound streams == number of inbound streams
             neat_log(ctx, NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->socket->sctp_streams_available);
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
+
+#if defined(IPPROTO_SCTP) && defined(SCTP_INTERLEAVING_SUPPORTED) && !defined(USRSCTP_SUPPORT)
+            valuelen = sizeof(value);
+            rc = getsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED, &value, &valuelen);
+            if (rc < 0) {
+                neat_log(ctx, NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_INTERLEAVING_SUPPORTED) failed");
+            } else {
+                neat_log(ctx, NEAT_LOG_WARNING, "I-DATA support: %d", value == 2 ? "enable" : "disabled");
+            }
+#endif // defined(IPPROTO_SCTP) && defined(SCTP_INTERLEAVING_SUPPORTED) && !defined(USRSCTP_SUPPORT)
             break;
         case NEAT_STACK_UDPLITE:
             snprintf(proto, 16, "UDPLite");
@@ -1011,13 +1028,13 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
             // follow D1.2
             neat_log(ctx, NEAT_LOG_DEBUG, "%s - state : SCTP_COMM_LOST", __func__);
             neat_notify_aborted(flow);
-            //break;
+            break;
 
             // Fallthrough:
         case SCTP_COMM_UP: // Fallthrough:
             neat_log(ctx, NEAT_LOG_DEBUG, "%s - state : SCTP_COMM_UP", __func__);
             // TODO: Allocate send buffers here instead?
-            //break;
+            break;
 
         case SCTP_RESTART:
             neat_log(ctx, NEAT_LOG_DEBUG, "%s - state : SCTP_RESTART", __func__);
@@ -1101,7 +1118,8 @@ static void handle_sctp_send_failed(neat_flow *flow, struct sctp_send_failed *ss
 
 
 // Handle notifications about SCTP events
-static int handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
+static int
+handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 {
     struct neat_ctx *ctx = flow->ctx;
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
@@ -1538,7 +1556,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
                 neat_log(ctx, NEAT_LOG_DEBUG, "%s - new incoming flow - stream_id %d", __func__, stream_id);
 
                 neat_flow *listen_flow = flow->socket->listen_socket->flow;
-                neat_flow *multistream_flow = neat_new_flow(ctx);
+                multistream_flow = neat_new_flow(ctx);
 
                 multistream_flow->name                      = strdup(listen_flow->name);
                 if (!multistream_flow->name) {
@@ -2070,7 +2088,11 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     } else {
         neat_log(ctx, NEAT_LOG_DEBUG, "%s - NOT first connect", __func__);
 
-        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
+        if (status == 0) {
+            send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
+        } else {
+           send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
+        }
 
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);
@@ -2275,7 +2297,8 @@ neat_getlpaddrs(struct neat_ctx*  ctx,
     return -1;
 }
 
-void neat_freelpaddrs(struct sockaddr* addrs)
+void
+neat_freelpaddrs(struct sockaddr* addrs)
 {
     free(addrs);
 }
@@ -2284,16 +2307,12 @@ static neat_flow *
 do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_socket)
 {
     const char *proto = NULL;
+    int rc;
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
-#if defined(IPPROTO_SCTP)
-#if defined(SCTP_RECVRCVINFO) && !defined(USRSCTP_SUPPORT)
     int optval;
-#endif
 #ifdef SCTP_STATUS
     unsigned int optlen;
-    int rc;
     struct sctp_status status;
-#endif
 #endif
 
     neat_flow *newFlow = neat_new_flow(ctx);
@@ -2405,6 +2424,13 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         }
 #endif
 
+#if defined(SO_NOSIGPIPE)
+    optval = 1;
+    rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval));
+    if (rc < 0) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_NOSIGPIPE) failed");
+    }
+#endif //  defined(SO_NOSIGPIPE)
 
     switch (newFlow->socket->stack) {
     case NEAT_STACK_SCTP_UDP:
@@ -2452,16 +2478,14 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 #if defined(SCTP_RECVRCVINFO)
         // Enable anciliarry data when receiving data from SCTP
         optval = 1;
-        optlen = sizeof(optval);
-        rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &optval, optlen);
+        rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &optval, sizeof(optval));
         if (rc < 0)
             neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
 #endif // defined(SCTP_RECVRCVINFO)
 #if defined(SCTP_RECVNXTINFO)
         // Enable anciliarry data when receiving data from SCTP
         optval = 1;
-        optlen = sizeof(optval);
-        rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &optval, optlen);
+        rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &optval, sizeof(optval));
         if (rc < 0)
             neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
 #endif // defined(SCTP_RECVNXTINFO)
@@ -2475,10 +2499,10 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             neat_free_flow(newFlow);
             return NULL;
         } else {
-            int enable = 1;
 
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+            optval = 1;
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 
             bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
             connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
@@ -2504,10 +2528,8 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             neat_free_flow(newFlow);
             return NULL;
         } else {
-            int enable = 1;
-
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 
             bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
             connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
@@ -2534,7 +2556,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             newFlow->socket->handle->data = newFlow->socket;
 
             if (newFlow->socket->fd > 0) {
-                int rc;
                 void *ptr;
                 json_t *json;
                 struct sockaddr_storage sockaddr;
@@ -2555,6 +2576,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             }
 
             newFlow->acceptPending = 0;
+
             // xxx patrick?
             if ((false) &&
                 (newFlow->socket->stack == NEAT_STACK_TCP)) {
@@ -3322,16 +3344,16 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 char *ip;
                 char newIp[100];
                 int srcfound = false;
+                uint32_t j, k;
                 for (index = 0; index < json_array_size(flow->user_ips); index++) {
-                    uint32_t i, j;
                     addr = json_array_get(flow->user_ips, index);
                     ipvalue = json_object_get(addr, "value");
                     ip = json_dumps(ipvalue, JSON_ENCODE_ANY);
                     // Remove quotes
-                    for (i = 1, j = 0; i <= strlen(ip) - 2; i++, j++) {
-                        newIp[j] = ip[i];
+                    for (j = 1, k = 0; j <= strlen(ip) - 2; j++, k++) {
+                        newIp[k] = ip[j];
                     }
-                    newIp[j] = '\0';;
+                    newIp[k] = '\0';;
                     free (ip);
                     if (strcmp(src_buffer, newIp) != 0) {
                         continue;
@@ -5098,8 +5120,20 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         neat_log(ctx, NEAT_LOG_ERROR, "Failed to create he socket");
         return -1;
     }
-    setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
-    setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int));
+
+    if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_REUSEADDR) failed");
+    }
+
+    if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_REUSEPORT) failed");
+    }
+
+#if defined(SO_NOSIGPIPE)
+    if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable)) < 0) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_NOSIGPIPE) failed");
+    }
+#endif //defined(SO_NOSIGPIPE)
 
     TAILQ_FOREACH(sockopt_ptr, &(candidate->sock_opts), next) {
         switch (sockopt_ptr->type) {
@@ -5118,7 +5152,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
     if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
-        char *address_name, *ptr;
+        char *address_name, *ptr = NULL;
         char *tmp = strdup(candidate->pollable_socket->src_address);
         if (!tmp) {
             return -1;
@@ -5135,6 +5169,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #endif
                 local_addr_ptr += sizeof(struct sockaddr_in6);
             } else {
+                s4->sin_addr.s_addr = 0;
                 if (inet_pton(AF_INET, address_name, &s4->sin_addr)) {
                     s4->sin_family = AF_INET;
 #ifdef HAVE_SIN_LEN
@@ -5212,18 +5247,19 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
     switch (candidate->pollable_socket->stack) {
     case NEAT_STACK_TCP:
-        setsockopt(candidate->pollable_socket->fd,
-                   IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int));
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable) < 0)) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(TCP_NODELAY) failed");
+        }
 
 #if defined(__FreeBSD__) && defined(FLOW_GROUPS)
         group = candidate->pollable_socket->flow->group;
-        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 8192 /* Group ID */, &group, sizeof(int)) != 0) {
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 8192 /* Group ID */, &group, sizeof(group)) != 0) {
             neat_log(ctx, NEAT_LOG_DEBUG, "Unable to set flow group: %s", strerror(errno));
         }
 
         // Map the priority range to some integer range
         prio = candidate->pollable_socket->flow->priority * 255;
-        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 4096 /* Priority */, &prio, sizeof(int)) != 0) {
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 4096 /* Priority */, &prio, sizeof(prio)) != 0) {
             neat_log(ctx, NEAT_LOG_DEBUG, "Unable to set flow priority: %s", strerror(errno));
         }
 #endif
@@ -5329,9 +5365,14 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             return -1;
         }
 #endif // defined(SCTP_RECVRCVINFO)
-#if defined(SCTP_ADAPTATION_LAYER) && defined(SCTP_MULTISTREAMING)
-        // Set adaptation layer indication
+
+#if defined(SCTP_MULTISTREAMING)
+#if defined(SCTP_ADAPTATION_LAYER) && defined(SCTP_FRAGMENT_INTERLEAVE) && defined(SCTP_INTERLEAVING_SUPPORTED) && defined(SCTP_ENABLE_STREAM_RESET)
+
+        struct sctp_assoc_value assoc_value;
         struct sctp_setadaptation adaptation;
+
+        // Set adaptation layer indication
         memset(&adaptation, 0, sizeof(adaptation));
         adaptation.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
         if (setsockopt(candidate->pollable_socket->fd,
@@ -5343,14 +5384,35 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             close(candidate->pollable_socket->fd);
             return -1;
         }
-#ifdef SCTP_MULTISTREAMING
         candidate->pollable_socket->sctp_notification_wait = 1;
-#endif
 
-#endif // defined(SCTP_ADAPTATION_LAYER)
-#if defined(SCTP_ENABLE_STREAM_RESET)
-        // Set adaptation layer indication
-        struct sctp_assoc_value assoc_value;
+        // Enable fragment interleaving
+        enable = 2;
+        if ((retval = setsockopt(candidate->pollable_socket->fd,
+                        IPPROTO_SCTP,
+                        SCTP_FRAGMENT_INTERLEAVE,
+                        &enable,
+                        sizeof(int))) < 0) {
+            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_FRAGMENT_INTERLEAVE) failed - %s", strerror(retval));
+            close(candidate->pollable_socket->fd);
+            return -1;
+        }
+        enable = 1;
+
+        // Enable anciliarry data when receiving data from SCTP
+        memset(&assoc_value, 0, sizeof(assoc_value));
+        assoc_value.assoc_value = 1;
+        if ((retval = setsockopt(candidate->pollable_socket->fd,
+                        IPPROTO_SCTP,
+                        SCTP_INTERLEAVING_SUPPORTED,
+                        &assoc_value,
+                        sizeof(struct sctp_assoc_value))) < 0) {
+            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INTERLEAVING_SUPPORTED) failed - %s", strerror(retval));
+            close(candidate->pollable_socket->fd);
+            return -1;
+        }
+
+        // Enable Stream Reset extension
         memset(&assoc_value, 0, sizeof(assoc_value));
         assoc_value.assoc_value = SCTP_ENABLE_RESET_STREAM_REQ;
         if (setsockopt(candidate->pollable_socket->fd,
@@ -5362,7 +5424,10 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             close(candidate->pollable_socket->fd);
             return -1;
         }
-#endif // defined(SCTP_ENABLE_STREAM_RESET)
+
+#endif // defined(SCTP_FRAGMENT_INTERLEAVE) && defined(SCTP_INTERLEAVING_SUPPORTED) && defined(SCTP_ENABLE_STREAM_RESET)
+#endif // defined(SCTP_MULTISTREAMING)
+
 #if defined(SCTP_INITMSG)
         struct sctp_initmsg init;
         memset(&init, 0, sizeof(init));
@@ -5469,7 +5534,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                         struct neat_pollable_socket *listen_socket)
 {
     // TODO: This function should not write to any fields in neat_flow
-    const int enable = 1;
+    int enable = 1;
     int fd, protocol, size;
     socklen_t len;
 #if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
@@ -5540,24 +5605,69 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         // Subscribe to events needed for callbacks
         neat_sctp_init_events(fd);
 #endif
-#if defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT) && defined(SCTP_MULTISTREAMING)
+
+#if defined(SCTP_MULTISTREAMING) && !defined(USRSCTP_SUPPORT)
+#if defined(SCTP_ADAPTATION_LAYER) && defined(SCTP_FRAGMENT_INTERLEAVE) && defined(SCTP_ENABLE_STREAM_RESET)
+
+        struct sctp_assoc_value assoc_value;
         struct sctp_setadaptation adaptation;
+        int retval;
+
+        // Set adaptation layer indication
         memset(&adaptation, 0, sizeof(adaptation));
         adaptation.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
-        if (setsockopt(fd, IPPROTO_SCTP, SCTP_ADAPTATION_LAYER, &adaptation, sizeof(adaptation)) < 0) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
+        if (setsockopt(fd,
+                        IPPROTO_SCTP,
+                        SCTP_ADAPTATION_LAYER,
+                        &adaptation,
+                        sizeof(adaptation)) < 0) {
+            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
+            close(fd);
             return -1;
         }
-#endif // defined(SCTP_ADAPTATION_LAYER) && !defined(USRSCTP_SUPPORT) && defined(SCTP_MULTISTREAMING)
-#if defined(SCTP_ENABLE_STREAM_RESET) && !defined(USRSCTP_SUPPORT)
-        struct sctp_assoc_value assoc_value;
+
+        // Enable fragment interleaving
+        enable = 2;
+        if ((retval = setsockopt(fd,
+                        IPPROTO_SCTP,
+                        SCTP_FRAGMENT_INTERLEAVE,
+                        &enable,
+                        sizeof(int))) < 0) {
+            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_FRAGMENT_INTERLEAVE) failed - %s", strerror(retval));
+            close(fd);
+            return -1;
+        }
+        enable = 1;
+
+        // Enable anciliarry data when receiving data from SCTP
+        memset(&assoc_value, 0, sizeof(assoc_value));
+        assoc_value.assoc_value = 1;
+        if ((retval = setsockopt(fd,
+                        IPPROTO_SCTP,
+                        SCTP_INTERLEAVING_SUPPORTED,
+                        &assoc_value,
+                        sizeof(struct sctp_assoc_value))) < 0) {
+            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INTERLEAVING_SUPPORTED) failed - %s", strerror(retval));
+            close(fd);
+            return -1;
+        }
+
+        // Enable Stream Reset extension
         memset(&assoc_value, 0, sizeof(assoc_value));
         assoc_value.assoc_value = SCTP_ENABLE_RESET_STREAM_REQ;
-        if (setsockopt(fd, IPPROTO_SCTP, SCTP_ENABLE_STREAM_RESET, &assoc_value, sizeof(assoc_value)) < 0) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_ENABLE_STREAM_RESET) failed");
+        if (setsockopt(fd,
+                        IPPROTO_SCTP,
+                        SCTP_ENABLE_STREAM_RESET,
+                        &assoc_value,
+                        sizeof(assoc_value)) < 0) {
+            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ENABLE_STREAM_RESET) failed");
+            close(fd);
             return -1;
         }
-#endif // defined(SCTP_ENABLE_STREAM_RESET) && !defined(USRSCTP_SUPPORT)
+
+#endif // defined(SCTP_MULTISTREAMING) && !defined(USRSCTP_SUPPORT)
+#endif // defined(SCTP_ADAPTATION_LAYER) && defined(SCTP_FRAGMENT_INTERLEAVE) && defined(SCTP_ENABLE_STREAM_RESET)
+
 #if defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
         memset(&initmsg, 0, sizeof(struct sctp_initmsg));
 
@@ -5888,7 +5998,7 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
 
     if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP && candidate->pollable_socket->nr_local_addr > 0) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
-        char *address_name, *ptr;
+        char *address_name, *ptr = NULL;
         char *tmp = strdup(candidate->pollable_socket->src_address);
 
         if (!tmp)

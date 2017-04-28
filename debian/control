@@ -4,14 +4,14 @@ Section: net
 Priority: optional
 Build-Depends: cmake,
                debhelper (>= 9),
+               libfile-fcntllock-perl,
                libjansson-dev,
                libldns-dev,
                libmnl-dev,
                libsctp-dev,
                libssl-dev,
-               libuv1-dev (>= 1.0.2),
-               python-sphinx,
-               python-sphinx-rtd-theme
+               libusrsctp-dev,
+               libuv1-dev (>= 1.0.2)
 Standards-Version: 3.9.8
 Vcs-Browser: https://github.com/NEAT-project/neat
 Vcs-Git: https://github.com/NEAT-project/neat.git
@@ -21,49 +21,132 @@ Package: libneat0
 Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends}
-Description: NEAT Sockets API
- NEAT is a callback based library and everything revovles around the neat_ctx
- struct. This struct has to be initialized before anything else can be done.
- NEAT uses libuv as event library, and this loop is available to users so that
- they can hook in and add their own callbacks.
+Description: NEAT Core API
+ The NEAT project wants to achieve a complete redesign of the way in which
+ Internet applications interact with the network. Our goal is to allow network
+ “services” offered to applications – such as reliability, low-delay
+ communication or security – to be dynamically tailored based on application
+ demands, current network conditions, hardware capabilities or local policies,
+ and also to support the integration of new network functionality in an
+ evolutionary fashion, without applications having to be rewritten. This
+ architectural change will make the Internet truly “enhanceable”, by allowing
+ applications to seamlessly and more easily take advantage of new network
+ features as they evolve.
  .
- This package contains the shared library.
+ This package contains the shared library for the NEAT Core API.
 
 Package: libneat-dev
 Architecture: any
 Depends: libneat0 (= ${binary:Version}),
+         libuv1-dev (>= 1.0.2),
          ${misc:Depends},
          ${shlibs:Depends}
-Description: NEAT Sockets API (Development Files)
- NEAT is a callback based library and everything revovles around the neat_ctx
- struct. This struct has to be initialized before anything else can be done.
- NEAT uses libuv as event library, and this loop is available to users so that
- they can hook in and add their own callbacks.
+Description: NEAT Core API Development Files
+ The NEAT project wants to achieve a complete redesign of the way in which
+ Internet applications interact with the network. Our goal is to allow network
+ “services” offered to applications – such as reliability, low-delay
+ communication or security – to be dynamically tailored based on application
+ demands, current network conditions, hardware capabilities or local policies,
+ and also to support the integration of new network functionality in an
+ evolutionary fashion, without applications having to be rewritten. This
+ architectural change will make the Internet truly “enhanceable”, by allowing
+ applications to seamlessly and more easily take advantage of new network
+ features as they evolve.
  .
- This package contains the development files.
+ This package contains the development files for the NEAT Core API.
 
 Package: libneat-docs
 Architecture: all
 Section: doc
 Depends: ${misc:Depends},
          ${sphinxdoc:Depends}
-Description: NEAT Sockets API (Documentation)
- NEAT is a callback based library and everything revovles around the neat_ctx
- struct. This struct has to be initialized before anything else can be done.
- NEAT uses libuv as event library, and this loop is available to users so that
- they can hook in and add their own callbacks.
+Description: NEAT Core API Documentation
+ The NEAT project wants to achieve a complete redesign of the way in which
+ Internet applications interact with the network. Our goal is to allow network
+ “services” offered to applications – such as reliability, low-delay
+ communication or security – to be dynamically tailored based on application
+ demands, current network conditions, hardware capabilities or local policies,
+ and also to support the integration of new network functionality in an
+ evolutionary fashion, without applications having to be rewritten. This
+ architectural change will make the Internet truly “enhanceable”, by allowing
+ applications to seamlessly and more easily take advantage of new network
+ features as they evolve.
  .
  This package contains the common documentation.
 
-Package: neat-tools
+Package: libneat-examples
 Architecture: any
 Depends: libneat0 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
-Description: NEAT Tools
- NEAT is a callback based library and everything revovles around the neat_ctx
- struct. This struct has to be initialized before anything else can be done.
- NEAT uses libuv as event library, and this loop is available to users so that
- they can hook in and add their own callbacks.
+Description: NEAT Core API Examples
+ The NEAT project wants to achieve a complete redesign of the way in which
+ Internet applications interact with the network. Our goal is to allow network
+ “services” offered to applications – such as reliability, low-delay
+ communication or security – to be dynamically tailored based on application
+ demands, current network conditions, hardware capabilities or local policies,
+ and also to support the integration of new network functionality in an
+ evolutionary fashion, without applications having to be rewritten. This
+ architectural change will make the Internet truly “enhanceable”, by allowing
+ applications to seamlessly and more easily take advantage of new network
+ features as they evolve.
  .
- This package contains the test tools.
+ This package contains the built examples for the NEAT Core API.
+
+Package: libneat-socketapi0
+Architecture: any
+Depends: libneat0 (= ${binary:Version}),
+         ${misc:Depends},
+         ${shlibs:Depends}
+Description: NEAT Sockets API
+ The NEAT project wants to achieve a complete redesign of the way in which
+ Internet applications interact with the network. Our goal is to allow network
+ “services” offered to applications – such as reliability, low-delay
+ communication or security – to be dynamically tailored based on application
+ demands, current network conditions, hardware capabilities or local policies,
+ and also to support the integration of new network functionality in an
+ evolutionary fashion, without applications having to be rewritten. This
+ architectural change will make the Internet truly “enhanceable”, by allowing
+ applications to seamlessly and more easily take advantage of new network
+ features as they evolve.
+ .
+ This package contains the shared library for the NEAT Sockets API.
+
+Package: libneat-socketapi-dev
+Architecture: any
+Depends: libneat-dev (= ${binary:Version}),
+         libneat-socketapi0 (= ${binary:Version}),
+         ${misc:Depends},
+         ${shlibs:Depends}
+Description: NEAT Sockets API Development Files
+ The NEAT project wants to achieve a complete redesign of the way in which
+ Internet applications interact with the network. Our goal is to allow network
+ “services” offered to applications – such as reliability, low-delay
+ communication or security – to be dynamically tailored based on application
+ demands, current network conditions, hardware capabilities or local policies,
+ and also to support the integration of new network functionality in an
+ evolutionary fashion, without applications having to be rewritten. This
+ architectural change will make the Internet truly “enhanceable”, by allowing
+ applications to seamlessly and more easily take advantage of new network
+ features as they evolve.
+ .
+ This package contains the development files for the NEAT Sockets API.
+
+Package: libneat-socketapi-examples
+Architecture: any
+Depends: libneat0 (= ${binary:Version}),
+         ${misc:Depends},
+         ${shlibs:Depends}
+Description: NEAT Sockets API Examples
+ The NEAT project wants to achieve a complete redesign of the way in which
+ Internet applications interact with the network. Our goal is to allow network
+ “services” offered to applications – such as reliability, low-delay
+ communication or security – to be dynamically tailored based on application
+ demands, current network conditions, hardware capabilities or local policies,
+ and also to support the integration of new network functionality in an
+ evolutionary fashion, without applications having to be rewritten. This
+ architectural change will make the Internet truly “enhanceable”, by allowing
+ applications to seamlessly and more easily take advantage of new network
+ features as they evolve.
+ .
+ This package contains the built examples for the NEAT Sockets API.

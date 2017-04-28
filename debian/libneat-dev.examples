@@ -1,1 +1,5 @@
-examples/*
+examples/*.c
+examples/*.h
+examples/*.json
+examples/*.pem
+examples/README.md

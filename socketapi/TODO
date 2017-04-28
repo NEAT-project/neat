@@ -1,0 +1,6 @@
+Still to be implemented:
+
+- Notifications
+
+- TLS Security
+(needs working support by the underlying NEAT Callback API).

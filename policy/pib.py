@@ -99,7 +99,7 @@ class NEATPolicy(object):
                 logging.warning("Policy doesn't contain attribute %s" % attr)
 
         d['match'] = self.match.dict()
-        d['properties'] = self.properties.dict()
+        d['properties'] = self.properties.list()
 
         return d
 

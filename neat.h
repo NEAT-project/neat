@@ -203,6 +203,7 @@ NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
 
 #define NEAT_OPTARGS_RESET          NEAT_OPTARGS_INIT
 
+#define NEAT_CERT_NONE   0
 #define NEAT_CERT_PEM    1
 #define NEAT_KEY_PEM     2
 #define NEAT_CERT_KEY_PEM 3

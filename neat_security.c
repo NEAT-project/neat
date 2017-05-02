@@ -433,8 +433,10 @@ neat_dtls_dtor(struct neat_dtls_data *dtls)
         SSL_CTX_free(private->ctx);
         private->ctx = NULL;
     }
-    free(dtls->userData);
-    dtls->userData = NULL;
+    if (dtls->userData) {
+        free(dtls->userData);
+        dtls->userData = NULL;
+    }
 }
 
 
@@ -548,8 +550,7 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
     private->outputBIO = NULL;
     private->state = DTLS_CLOSED;
     sock->flow->firstWritePending = 0;
-printf("alloc private=%p\n", (void *)private);
-printf("alloc dtls=%p\n", (void *)dtls);
+
     int isClient = !(sock->flow->isServer);
     OpenSSL_add_ssl_algorithms();
     SSL_load_error_strings();
@@ -593,7 +594,6 @@ printf("alloc dtls=%p\n", (void *)dtls);
 
     if (isClient) {
         private->ssl = SSL_new(private->ctx);
-        printf("ssl=%p\n", (void *)private->ssl);
         private->dtlsBIO = BIO_new_dgram_sctp(sock->fd, BIO_CLOSE);
         if (private->dtlsBIO == NULL) {
             neat_log(ctx, NEAT_LOG_ERROR, "BIO could not be created. Is AUTH enabled?");
@@ -665,7 +665,6 @@ copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_sock
     private->outputBIO = NULL;
     struct security_data *server = (struct security_data *) socket->dtls_data->userData;
     private->ctx = server->ctx;
-    SSL_CTX_up_ref(server->ctx);
     private->ssl = server->ssl;
     private->dtlsBIO = server->dtlsBIO;
     dtls->userData = private;

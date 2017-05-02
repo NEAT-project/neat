@@ -37,8 +37,6 @@ def gen_hello_msg():
 
     if resthelper_loaded:
         ips = resthelper.get_local_ips()
-        import code
-        code.interact(local=locals(), banner='here')
         host_info['local-addresses'] = ips
     else:
         logging.warning('Local addresses not available')

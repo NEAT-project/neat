@@ -425,8 +425,6 @@ neat_dtls_dtor(struct neat_dtls_data *dtls)
 printf("neat_dtls_dtor\n");
     // private->outputBIO and private->inputBIO are freed by SSL_free(private->ssl)
     if (private && private->ssl) {
-            printf("call BIO_free\n");
-        BIO_free(private->dtlsBIO);
         SSL_free(private->ssl);
         private->ssl = NULL;
     }
@@ -439,6 +437,7 @@ printf("neat_dtls_dtor\n");
         SSL_CTX_free(private->ctx);
         private->ctx = NULL;
     }
+    printf("free private %p\n", (void *)private);
     free(dtls->userData);
     dtls->userData = NULL;
 }
@@ -554,7 +553,8 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
     private->outputBIO = NULL;
     private->state = DTLS_CLOSED;
     sock->flow->firstWritePending = 0;
-
+printf("alloc private=%p\n", (void *)private);
+printf("alloc dtls=%p\n", (void *)dtls);
     int isClient = !(sock->flow->isServer);
     OpenSSL_add_ssl_algorithms();
     SSL_load_error_strings();
@@ -665,6 +665,7 @@ copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_sock
 {
     struct security_data *private = calloc (1, sizeof (struct security_data));
     struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
+    printf("copy dtls_data private=%p, dtls=%p\n", (void *)private, (void *)dtls);
     dtls->dtor = neat_dtls_dtor;
     private->inputBIO = NULL;
     private->outputBIO = NULL;

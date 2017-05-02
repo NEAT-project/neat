@@ -2,6 +2,7 @@
 import subprocess
 import sys
 import os
+import platform
 
 # usage: python3.5 run.py [test-set] [prefix]
 
@@ -19,6 +20,9 @@ tests_general.append([0, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 2a02:
 tests_general.append([1, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 not.resolvable.neat'])
 tests_general.append([1, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 buildbot.nplab.de'])
 tests_general.append([0, 0, workdir + 'client_http_get -n 2 -u /files/4M bsd10.nplab.de'])
+if (platform.system() == "FreeBSD") or (platform.system() == "FreeBSD"):
+    tests_general.append([0, 0, workdir + './tneat -v 2 -P prop_sctp_dtls.json interop.fh-muenster.de'])
+
 #tests_general.append([0, 0, 'python3.5 ../../policy/pmtests.py'])
 
 # USRSCTP specific tests

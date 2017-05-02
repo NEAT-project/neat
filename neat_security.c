@@ -422,7 +422,7 @@ neat_dtls_dtor(struct neat_dtls_data *dtls)
 {
     struct security_data *private;
     private = (struct security_data *) dtls->userData;
-printf("neat_dtls_dtor\n");
+
     // private->outputBIO and private->inputBIO are freed by SSL_free(private->ssl)
     if (private && private->ssl) {
         SSL_free(private->ssl);
@@ -430,14 +430,9 @@ printf("neat_dtls_dtor\n");
     }
 
     if (private && private->ctx) {
-        if (SSL_CTX_get_cert_store(private->ctx)) {
-            X509_STORE_free(SSL_CTX_get_cert_store(private->ctx));
-        }
-        printf("call SSL_CTX_free\n");
         SSL_CTX_free(private->ctx);
         private->ctx = NULL;
     }
-    printf("free private %p\n", (void *)private);
     free(dtls->userData);
     dtls->userData = NULL;
 }
@@ -561,6 +556,7 @@ printf("alloc dtls=%p\n", (void *)dtls);
 
     if (isClient) {
         private->ctx = SSL_CTX_new(DTLS_client_method());
+        printf("ctx=%p\n", (void *)private->ctx);
         SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
         tls_init_trust_list(private->ctx);
     } else {
@@ -597,9 +593,7 @@ printf("alloc dtls=%p\n", (void *)dtls);
 
     if (isClient) {
         private->ssl = SSL_new(private->ctx);
-       // X509_VERIFY_PARAM *param = SSL_get0_param(private->ssl);
-       // X509_VERIFY_PARAM_set1_host(param, sock->flow->name, 0);
-       // SSL_set_tlsext_host_name(private->ssl, sock->flow->name);
+        printf("ssl=%p\n", (void *)private->ssl);
         private->dtlsBIO = BIO_new_dgram_sctp(sock->fd, BIO_CLOSE);
         if (private->dtlsBIO == NULL) {
             neat_log(ctx, NEAT_LOG_ERROR, "BIO could not be created. Is AUTH enabled?");
@@ -665,7 +659,7 @@ copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_sock
 {
     struct security_data *private = calloc (1, sizeof (struct security_data));
     struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
-    printf("copy dtls_data private=%p, dtls=%p\n", (void *)private, (void *)dtls);
+
     dtls->dtor = neat_dtls_dtor;
     private->inputBIO = NULL;
     private->outputBIO = NULL;

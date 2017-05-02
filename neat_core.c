@@ -2040,9 +2040,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 #ifdef NEAT_SCTP_DTLS
         if (flow->security_needed && flow->socket->stack == NEAT_STACK_SCTP) {
             copy_dtls_data(flow->socket, candidate->pollable_socket);
-            printf("now free %p and %p\n", (void *)candidate->pollable_socket->dtls_data->userData, (void *)candidate->pollable_socket->dtls_data);
-            free(candidate->pollable_socket->dtls_data->userData);
-            free(candidate->pollable_socket->dtls_data);
+            free_dtlsdata(candidate->pollable_socket->dtls_data);
         }
 #endif
 

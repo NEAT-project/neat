@@ -37,6 +37,8 @@ def gen_hello_msg():
 
     if resthelper_loaded:
         ips = resthelper.get_local_ips()
+        import code
+        code.interact(local=locals(), banner='here')
         host_info['local-addresses'] = ips
     else:
         logging.warning('Local addresses not available')
@@ -71,7 +73,7 @@ async def controller_announce():
                     # logging.debug(html)
 
             # aiohttp.errors.ClientOSError not suported in aiohttp 2.0 TODO https://github.com/jwilk/urlycue/commit/e18179c771c1e594cc6701605d3e8a6de07e1189
-            except (ValueError) as e:
+            except (ValueError, aiohttp.client_exceptions.ClientConnectorError) as e:
                 print(e)
 
         await asyncio.sleep(sleep_time)

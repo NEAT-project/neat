@@ -5368,61 +5368,63 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
 #if defined(SCTP_MULTISTREAMING)
 #if defined(SCTP_ADAPTATION_LAYER) && defined(SCTP_FRAGMENT_INTERLEAVE) && defined(SCTP_INTERLEAVING_SUPPORTED) && defined(SCTP_ENABLE_STREAM_RESET)
+        if (!(candidate->pollable_socket->flow->security_needed)) {
+            struct sctp_assoc_value assoc_value;
+            struct sctp_setadaptation adaptation;
 
-        struct sctp_assoc_value assoc_value;
-        struct sctp_setadaptation adaptation;
+            // Set adaptation layer indication
+            memset(&adaptation, 0, sizeof(adaptation));
+            adaptation.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
+            if (setsockopt(candidate->pollable_socket->fd,
+                            IPPROTO_SCTP,
+                            SCTP_ADAPTATION_LAYER,
+                            &adaptation,
+                            sizeof(adaptation)) < 0) {
+                neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
+                close(candidate->pollable_socket->fd);
+                return -1;
+            }
+            candidate->pollable_socket->sctp_notification_wait = 1;
 
-        // Set adaptation layer indication
-        memset(&adaptation, 0, sizeof(adaptation));
-        adaptation.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
-        if (setsockopt(candidate->pollable_socket->fd,
-                        IPPROTO_SCTP,
-                        SCTP_ADAPTATION_LAYER,
-                        &adaptation,
-                        sizeof(adaptation)) < 0) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
-            close(candidate->pollable_socket->fd);
-            return -1;
-        }
-        candidate->pollable_socket->sctp_notification_wait = 1;
 
-        // Enable fragment interleaving
-        enable = 2;
-        if ((retval = setsockopt(candidate->pollable_socket->fd,
-                        IPPROTO_SCTP,
-                        SCTP_FRAGMENT_INTERLEAVE,
-                        &enable,
-                        sizeof(int))) < 0) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_FRAGMENT_INTERLEAVE) failed - %s", strerror(retval));
-            close(candidate->pollable_socket->fd);
-            return -1;
-        }
-        enable = 1;
+            // Enable fragment interleaving
+            enable = 2;
+            if ((retval = setsockopt(candidate->pollable_socket->fd,
+                            IPPROTO_SCTP,
+                            SCTP_FRAGMENT_INTERLEAVE,
+                            &enable,
+                            sizeof(int))) < 0) {
+                neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_FRAGMENT_INTERLEAVE) failed - %s", strerror(retval));
+                close(candidate->pollable_socket->fd);
+                return -1;
+            }
+            enable = 1;
 
-        // Enable anciliarry data when receiving data from SCTP
-        memset(&assoc_value, 0, sizeof(assoc_value));
-        assoc_value.assoc_value = 1;
-        if ((retval = setsockopt(candidate->pollable_socket->fd,
-                        IPPROTO_SCTP,
-                        SCTP_INTERLEAVING_SUPPORTED,
-                        &assoc_value,
-                        sizeof(struct sctp_assoc_value))) < 0) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INTERLEAVING_SUPPORTED) failed - %s", strerror(retval));
-            close(candidate->pollable_socket->fd);
-            return -1;
-        }
+            // Enable anciliarry data when receiving data from SCTP
+            memset(&assoc_value, 0, sizeof(assoc_value));
+            assoc_value.assoc_value = 1;
+            if ((retval = setsockopt(candidate->pollable_socket->fd,
+                            IPPROTO_SCTP,
+                            SCTP_INTERLEAVING_SUPPORTED,
+                            &assoc_value,
+                            sizeof(struct sctp_assoc_value))) < 0) {
+                neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INTERLEAVING_SUPPORTED) failed - %s", strerror(retval));
+                close(candidate->pollable_socket->fd);
+                return -1;
+            }
 
-        // Enable Stream Reset extension
-        memset(&assoc_value, 0, sizeof(assoc_value));
-        assoc_value.assoc_value = SCTP_ENABLE_RESET_STREAM_REQ;
-        if (setsockopt(candidate->pollable_socket->fd,
-                        IPPROTO_SCTP,
-                        SCTP_ENABLE_STREAM_RESET,
-                        &assoc_value,
-                        sizeof(assoc_value)) < 0) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ENABLE_STREAM_RESET) failed");
-            close(candidate->pollable_socket->fd);
-            return -1;
+            // Enable Stream Reset extension
+            memset(&assoc_value, 0, sizeof(assoc_value));
+            assoc_value.assoc_value = SCTP_ENABLE_RESET_STREAM_REQ;
+            if (setsockopt(candidate->pollable_socket->fd,
+                            IPPROTO_SCTP,
+                            SCTP_ENABLE_STREAM_RESET,
+                            &assoc_value,
+                            sizeof(assoc_value)) < 0) {
+                neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ENABLE_STREAM_RESET) failed");
+                close(candidate->pollable_socket->fd);
+                return -1;
+            }
         }
 
 #endif // defined(SCTP_FRAGMENT_INTERLEAVE) && defined(SCTP_INTERLEAVING_SUPPORTED) && defined(SCTP_ENABLE_STREAM_RESET)
@@ -5608,61 +5610,62 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 
 #if defined(SCTP_MULTISTREAMING) && !defined(USRSCTP_SUPPORT)
 #if defined(SCTP_ADAPTATION_LAYER) && defined(SCTP_FRAGMENT_INTERLEAVE) && defined(SCTP_ENABLE_STREAM_RESET)
+        if (!(flow->security_needed)) {
+            struct sctp_assoc_value assoc_value;
+            struct sctp_setadaptation adaptation;
+            int retval;
 
-        struct sctp_assoc_value assoc_value;
-        struct sctp_setadaptation adaptation;
-        int retval;
+            // Set adaptation layer indication
+            memset(&adaptation, 0, sizeof(adaptation));
+            adaptation.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
+            if (setsockopt(fd,
+                            IPPROTO_SCTP,
+                            SCTP_ADAPTATION_LAYER,
+                            &adaptation,
+                            sizeof(adaptation)) < 0) {
+                neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
+                close(fd);
+                return -1;
+            }
 
-        // Set adaptation layer indication
-        memset(&adaptation, 0, sizeof(adaptation));
-        adaptation.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
-        if (setsockopt(fd,
-                        IPPROTO_SCTP,
-                        SCTP_ADAPTATION_LAYER,
-                        &adaptation,
-                        sizeof(adaptation)) < 0) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
-            close(fd);
-            return -1;
-        }
+            // Enable fragment interleaving
+            enable = 2;
+            if ((retval = setsockopt(fd,
+                            IPPROTO_SCTP,
+                            SCTP_FRAGMENT_INTERLEAVE,
+                            &enable,
+                            sizeof(int))) < 0) {
+                neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_FRAGMENT_INTERLEAVE) failed - %s", strerror(retval));
+                close(fd);
+                return -1;
+            }
+            enable = 1;
 
-        // Enable fragment interleaving
-        enable = 2;
-        if ((retval = setsockopt(fd,
-                        IPPROTO_SCTP,
-                        SCTP_FRAGMENT_INTERLEAVE,
-                        &enable,
-                        sizeof(int))) < 0) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_FRAGMENT_INTERLEAVE) failed - %s", strerror(retval));
-            close(fd);
-            return -1;
-        }
-        enable = 1;
+            // Enable anciliarry data when receiving data from SCTP
+            memset(&assoc_value, 0, sizeof(assoc_value));
+            assoc_value.assoc_value = 1;
+            if ((retval = setsockopt(fd,
+                            IPPROTO_SCTP,
+                            SCTP_INTERLEAVING_SUPPORTED,
+                            &assoc_value,
+                            sizeof(struct sctp_assoc_value))) < 0) {
+                neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INTERLEAVING_SUPPORTED) failed - %s", strerror(retval));
+                close(fd);
+                return -1;
+            }
 
-        // Enable anciliarry data when receiving data from SCTP
-        memset(&assoc_value, 0, sizeof(assoc_value));
-        assoc_value.assoc_value = 1;
-        if ((retval = setsockopt(fd,
-                        IPPROTO_SCTP,
-                        SCTP_INTERLEAVING_SUPPORTED,
-                        &assoc_value,
-                        sizeof(struct sctp_assoc_value))) < 0) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INTERLEAVING_SUPPORTED) failed - %s", strerror(retval));
-            close(fd);
-            return -1;
-        }
-
-        // Enable Stream Reset extension
-        memset(&assoc_value, 0, sizeof(assoc_value));
-        assoc_value.assoc_value = SCTP_ENABLE_RESET_STREAM_REQ;
-        if (setsockopt(fd,
-                        IPPROTO_SCTP,
-                        SCTP_ENABLE_STREAM_RESET,
-                        &assoc_value,
-                        sizeof(assoc_value)) < 0) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ENABLE_STREAM_RESET) failed");
-            close(fd);
-            return -1;
+            // Enable Stream Reset extension
+            memset(&assoc_value, 0, sizeof(assoc_value));
+            assoc_value.assoc_value = SCTP_ENABLE_RESET_STREAM_REQ;
+            if (setsockopt(fd,
+                            IPPROTO_SCTP,
+                            SCTP_ENABLE_STREAM_RESET,
+                            &assoc_value,
+                            sizeof(assoc_value)) < 0) {
+                neat_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ENABLE_STREAM_RESET) failed");
+                close(fd);
+                return -1;
+            }
         }
 
 #endif // defined(SCTP_MULTISTREAMING) && !defined(USRSCTP_SUPPORT)

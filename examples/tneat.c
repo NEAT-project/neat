@@ -26,7 +26,7 @@
     default values
 */
 static uint32_t config_rcv_buffer_size      = 10240;
-static uint32_t config_snd_buffer_size      = 10240;
+static uint32_t config_snd_buffer_size      = 1024;
 static uint32_t config_message_count        = 10;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_active               = 0;
@@ -43,28 +43,11 @@ static char *config_property = "\
             \"precedence\": 1\
         },\
         {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ],\
-    \"security\": {\
-        \"value\": true,\
-        \"precedence\": 2\
-    }\
-}";
-/*static char *config_property = "\
-{\
-    \"transport\": [\
-        {\
             \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
             \"precedence\": 1\
         }\
     ]\
-}";*/
+}";
 
 static uint32_t flows_active = 0;
 static char *cert_file = NULL;

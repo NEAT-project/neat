@@ -433,7 +433,7 @@ neat_dtls_dtor(struct neat_dtls_data *dtls)
         SSL_CTX_free(private->ctx);
         private->ctx = NULL;
     }
-    free(private);
+    free(dtls->userData);
     dtls->userData = NULL;
 }
 

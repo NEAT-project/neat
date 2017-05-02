@@ -422,7 +422,7 @@ neat_dtls_dtor(struct neat_dtls_data *dtls)
 {
     struct security_data *private;
     private = (struct security_data *) dtls->userData;
-
+printf("neat_dtls_dtor\n");
     // private->outputBIO and private->inputBIO are freed by SSL_free(private->ssl)
     if (private && private->ssl) {
         SSL_free(private->ssl);
@@ -430,6 +430,10 @@ neat_dtls_dtor(struct neat_dtls_data *dtls)
     }
 
     if (private && private->ctx) {
+    printf("call SSL_CTX_free\n");
+        if (SSL_CTX_get_cert_store(private->ctx)) {
+            X509_STORE_free(SSL_CTX_get_cert_store(private->ctx));
+        }
         SSL_CTX_free(private->ctx);
         private->ctx = NULL;
     }

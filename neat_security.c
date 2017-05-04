@@ -545,6 +545,7 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 
     struct security_data *private = calloc (1, sizeof (struct security_data));
     struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
+
     dtls->dtor = neat_dtls_dtor;
     private->inputBIO = NULL;
     private->outputBIO = NULL;
@@ -557,7 +558,6 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 
     if (isClient) {
         private->ctx = SSL_CTX_new(DTLS_client_method());
-        printf("ctx=%p\n", (void *)private->ctx);
         SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
         tls_init_trust_list(private->ctx);
     } else {
@@ -566,14 +566,14 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 
         if (!(sock->flow->cert_pem)) {
             neat_log(ctx, NEAT_LOG_ERROR, "Server certificate file not set via neat_secure_identity()");
-            free (dtls);
-            free (private);
+            free(dtls);
+            free(private);
             return NEAT_ERROR_SECURITY;
         }
         if (!(sock->flow->key_pem)) {
             neat_log(ctx, NEAT_LOG_ERROR, "Server key file not set via neat_secure_identity()");
-            free (dtls);
-            free (private);
+            free(dtls);
+            free(private);
             return NEAT_ERROR_SECURITY;
         }
         int pid = getpid();
@@ -659,7 +659,6 @@ copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_sock
 {
     struct security_data *private = calloc (1, sizeof (struct security_data));
     struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
-
     dtls->dtor = neat_dtls_dtor;
     private->inputBIO = NULL;
     private->outputBIO = NULL;

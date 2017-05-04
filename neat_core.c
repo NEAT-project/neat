@@ -457,8 +457,8 @@ static void free_dtlsdata(struct neat_dtls_data *dtls)
     if (dtls->dtor) {
         dtls->dtor(dtls);
     }
-    printf("free dtls %p\n", (void *)dtls);
     free (dtls);
+    dtls = NULL;
 }
 
 static void
@@ -475,6 +475,9 @@ on_handle_closed_candidate(uv_handle_t *handle)
     //neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     struct neat_he_candidate *candidate = (struct neat_he_candidate *)handle->data;
     close(candidate->pollable_socket->fd);
+    if (candidate->pollable_socket->dtls_data) {
+        free_dtlsdata(candidate->pollable_socket->dtls_data);
+    }
     free(candidate->pollable_socket);
     free(candidate->if_name);
     json_decref(candidate->properties);
@@ -528,6 +531,12 @@ neat_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
         }
     }
 
+    if (candidate->pollable_socket->dtls_data) {
+        free (candidate->pollable_socket->dtls_data->userData);
+        candidate->pollable_socket->dtls_data->userData = NULL;
+        free (candidate->pollable_socket->dtls_data);
+        candidate->pollable_socket->dtls_data = NULL;
+    }
     free(candidate->pollable_socket);
     free(candidate->if_name);
     json_decref(candidate->properties);
@@ -2041,7 +2050,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         if (flow->security_needed && flow->socket->stack == NEAT_STACK_SCTP) {
             copy_dtls_data(flow->socket, candidate->pollable_socket);
             free(candidate->pollable_socket->dtls_data->userData);
+            candidate->pollable_socket->dtls_data->userData = NULL;
             free(candidate->pollable_socket->dtls_data);
+            candidate->pollable_socket->dtls_data = NULL;
         }
 #endif
 
@@ -2104,6 +2115,12 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         TAILQ_REMOVE(candidate_list, candidate, next);
         free(candidate->pollable_socket->dst_address);
         free(candidate->pollable_socket->src_address);
+        if (candidate->pollable_socket->dtls_data) {
+            free(candidate->pollable_socket->dtls_data->userData);
+            candidate->pollable_socket->dtls_data->userData = NULL;
+            free(candidate->pollable_socket->dtls_data);
+            candidate->pollable_socket->dtls_data = NULL;
+        }
         free(candidate->pollable_socket);
         free(candidate->if_name);
         json_decref(candidate->properties);
@@ -2790,6 +2807,12 @@ error:
                 }
                 if (candidate->pollable_socket->dst_address)
                     free(candidate->pollable_socket->dst_address);
+                if (candidate->pollable_socket->dtls_data) {
+                    free (candidate->pollable_socket->dtls_data->userData);
+                    candidate->pollable_socket->dtls_data->userData = NULL;
+                    free (candidate->pollable_socket->dtls_data);
+                    candidate->pollable_socket->dtls_data = NULL;
+                }
                 free(candidate->pollable_socket);
             }
             if (candidate->if_name)
@@ -2876,6 +2899,12 @@ combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
         TAILQ_REMOVE(candidate_list, candid, next);
         free(candid->pollable_socket->dst_address);
         free(candid->pollable_socket->src_address);
+        if (candid->pollable_socket->dtls_data) {
+            free(candid->pollable_socket->dtls_data->userData);
+            candid->pollable_socket->dtls_data->userData = NULL;
+            free(candid->pollable_socket->dtls_data);
+            candid->pollable_socket->dtls_data = NULL;
+        }
         free(candid->pollable_socket);
         free(candid->if_name);
         json_decref(candid->properties);
@@ -3374,6 +3403,12 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     free(candidate->pollable_socket->dst_address);
                     free(candidate->pollable_socket->src_address);
                     free(candidate->if_name);
+                    if (candidate->pollable_socket->dtls_data) {
+                        free (candidate->pollable_socket->dtls_data->userData);
+                        candidate->pollable_socket->dtls_data->userData = NULL;
+                        free (candidate->pollable_socket->dtls_data);
+                        candidate->pollable_socket->dtls_data = NULL;
+                    }
                     free(candidate->pollable_socket);
                     free(candidate);
                     continue;
@@ -3537,6 +3572,12 @@ loop_error:
             }
             if (candidate->pollable_socket->dst_address)
                 free(candidate->pollable_socket->dst_address);
+            if (candidate->pollable_socket->dtls_data) {
+                free (candidate->pollable_socket->dtls_data->userData);
+                candidate->pollable_socket->dtls_data->userData = NULL;
+                free (candidate->pollable_socket->dtls_data);
+                candidate->pollable_socket->dtls_data = NULL;
+            }
             free(candidate->pollable_socket);
         }
         free(candidate);

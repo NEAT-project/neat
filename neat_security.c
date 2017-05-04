@@ -9,7 +9,6 @@
 
 #include "neat.h"
 #include "neat_internal.h"
-#include "neat_property_helpers.h"
 #include "neat_security.h"
 
 #ifdef NEAT_USETLS
@@ -138,7 +137,8 @@ neat_security_filter_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           uint32_t *actualAmt,
                           struct neat_tlv optional[], unsigned int opt_count);
 
-static neat_error_code neat_security_handshake(struct neat_flow_operations *opCB)
+static neat_error_code
+neat_security_handshake(struct neat_flow_operations *opCB)
 {
     // neat_log(NEAT_LOG_DEBUG, "%s", __func__);
     neat_error_code rv = neat_write(opCB->ctx, opCB->flow, NULL, 0, NULL, 0);
@@ -218,7 +218,7 @@ handshake(struct neat_ctx *ctx, struct neat_flow *flow,
     if (rv != NEAT_OK) {
         return rv;
     }
-        
+
     // its possible we have some tls data from the server (e.g. a server hello) that
     // we need to read from the network and push through the BIO
     rv = gather_input(ctx, flow, filter, optional, opt_count);
@@ -355,7 +355,13 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
     int isClient = !flow->isServer;
     if (flow->socket->stack == NEAT_STACK_TCP) {
         struct security_data *private = calloc (1, sizeof (struct security_data));
+        if (!private)
+            return NEAT_ERROR_OUT_OF_MEMORY;
         struct neat_iofilter *filter = insert_neat_iofilter(ctx, flow);
+        if (!filter) {
+            free(private);
+            return NEAT_ERROR_OUT_OF_MEMORY;
+        }
         filter->userData = private;
         filter->dtor = neat_security_filter_dtor;
         filter->writefx = neat_security_filter_write;
@@ -389,6 +395,8 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
             // authenticate the server.. todo an option to skip
             X509_VERIFY_PARAM *param = SSL_get0_param(private->ssl);
             X509_VERIFY_PARAM_set1_host(param, flow->name, 0);
+            // support Server Name Indication (SNI)
+            SSL_set_tlsext_host_name(private->ssl, flow->name);
         }
 
         private->inputBIO = BIO_new(BIO_s_mem());

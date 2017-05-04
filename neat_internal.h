@@ -11,18 +11,18 @@
 #include "neat_pm_socket.h"
 
 #ifdef __linux__
-#include "neat_linux.h"
+    #include "neat_linux.h"
 #endif //  __linux__
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-#include "neat_bsd.h"
+    #include "neat_bsd.h"
 #endif // defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 
 #ifdef USRSCTP_SUPPORT
-#include "neat_usrsctp.h"
-#include <usrsctp.h>
+    #include "neat_usrsctp.h"
+    #include <usrsctp.h>
 #else // USRSCTP_SUPPORT
-#define NEAT_INTERNAL_USRSCTP
+    #define NEAT_INTERNAL_USRSCTP
 #endif // USRSCTP_SUPPORT
 
 #include "neat_log.h"
@@ -235,9 +235,6 @@ struct neat_flow
     uint16_t port;
     uint8_t qos;
     uint8_t ecn;
-    uint64_t propertyMask;
-    uint64_t propertyAttempt;
-    uint64_t propertyUsed;
     //uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
@@ -284,6 +281,7 @@ struct neat_flow
     unsigned int isDraining             : 1;
     unsigned int isServer               : 1; // i.e. created via accept()
     unsigned int isSCTPMultihoming      : 1;
+    unsigned int isSCTPIdata            : 1;
 
     unsigned int streams_requested;
 
@@ -375,6 +373,24 @@ struct neat_resolver_res {
     LIST_ENTRY(neat_resolver_res) next_res;
 };
 
+enum neat_sockopt_type {
+    NEAT_SOCKOPT_INT = 0,
+    NEAT_SOCKOPT_STRING,
+};
+
+struct neat_he_sockopt {
+    uint32_t level;
+    uint32_t name;
+    enum neat_sockopt_type type;
+    union {
+        int i_val;
+        char *s_val;
+    } value;
+    TAILQ_ENTRY(neat_he_sockopt) next;
+};
+
+TAILQ_HEAD(sock_opts_head, neat_he_sockopt);
+
 // Linked list passed to HE after the first PM call.
 // The list contains each candidate HE should get resolved.
 struct neat_he_candidate {
@@ -386,6 +402,8 @@ struct neat_he_candidate {
     int32_t priority;
     json_t *properties;
     struct neat_ctx *ctx;
+    struct sock_opts_head sock_opts;
+    uint8_t to_be_removed;
     TAILQ_ENTRY(neat_he_candidate) next;
     TAILQ_ENTRY(neat_he_candidate) resolution_list;
 };

@@ -2,6 +2,7 @@
 #################################################
 LIST(APPEND neat_programs
     client.c
+    client_data.c
     client_http_get.c
     client_mptcp_http_get.c
     client_http_run_once.c
@@ -13,7 +14,7 @@ LIST(APPEND neat_programs
     server_http.c
     tneat.c
     peer.c
-    http_client_multihomed.c
+    msbench.c
 )
 
 LIST(APPEND neat_property_examples
@@ -21,7 +22,7 @@ LIST(APPEND neat_property_examples
     prop_datagram.json
     prop_default.json
     prop_sctp.json
-	prop_sctp_multihomed.json
+    prop_sctp_multihomed.json
     prop_tcp.json
 )
 
@@ -36,8 +37,8 @@ FOREACH (source_file ${neat_programs})
     )
     TARGET_LINK_LIBRARIES(${source_file_we} neat)
     INSTALL(TARGETS             ${source_file_we}
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            BUNDLE DESTINATION  ${CMAKE_INSTALL_BINDIR})
+            RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/libneat
+            BUNDLE DESTINATION  ${CMAKE_INSTALL_LIBDIR}/libneat)
 ENDFOREACH ()
 
 # COPY EXAMPLE PROPERTY FILES

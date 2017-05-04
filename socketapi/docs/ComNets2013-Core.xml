@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
+<reference anchor="ComNets2013-Core" target="https://www.simula.no/file/simulasimula2236pdf/download">
+	<front>
+		<title>NorNet Core – A Multi-Homed Research Testbed</title>
+		<author initials="E.&#160;G." surname="Gran" fullname="Ernst Gunnar&#160;Gran" />
+		<author initials="T." surname="Dreibholz" fullname="Thomas&#160;Dreibholz" />
+		<author initials="A." surname="Kvalbein" fullname="Amund&#160;Kvalbein" />
+		<date day="14" month="March" year="2014" />
+	</front>
+	<seriesInfo name="Computer Networks, Special Issue on Future Internet Testbeds" value="Volume 61, Pages 75–87, ISSN&#160;1389-1286, DOI&#160;10.1016/j.bjp.2013.12.035" />
+	<format type="PDF" octets="1492106" target="https://www.simula.no/file/simulasimula2236pdf/download" />
+</reference>
+

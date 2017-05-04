@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
+<reference anchor="NEAT-D2.2" target="https://www.neat-project.org/wp-content/uploads/2017/03/D2.2-public.pdf">
+	<front>
+		<title>NEAT – Core Transport System, with both Low-level and High-level Components</title>
+		<author initials="N." surname="Khademi" fullname="Naeem&#160;Khademi" />
+		<author initials="Z." surname="Bozakov" fullname="Zdravko&#160;Bozakov" />
+		<author initials="A." surname="Brunström" fullname="Anna&#160;Brunström" />
+		<author initials="Ø." surname="Dale" fullname="Øystein&#160;Dale" />
+		<author initials="D." surname="Damjanović" fullname="Dragana&#160;Damjanović" />
+		<author initials="K.&#160;R." surname="Evensen" fullname="Kristian Riktor&#160;Evensen" />
+		<author initials="G." surname="Fairhurst" fullname="Gorry&#160;Fairhurst" />
+		<author initials="K." surname="Grinnemo" fullname="Karl-Johan&#160;Grinnemo" />
+		<author initials="T." surname="Jones" fullname="Tom&#160;Jones" />
+		<author initials="S." surname="Mangiante" fullname="Simone&#160;Mangiante" />
+		<author initials="A." surname="Petlund" fullname="Andreas&#160;Petlund" />
+		<author initials="D." surname="Ros" fullname="David&#160;Ros" />
+		<author initials="D." surname="Stenberg" fullname="Daniel&#160;Stenberg" />
+		<author initials="M." surname="Tüxen" fullname="Michael&#160;Tüxen" />
+		<author initials="F." surname="Weinrank" fullname="Felix&#160;Weinrank" />
+		<author initials="M." surname="Welzl" fullname="Michael&#160;Welzl" />
+		<date day="14" month="March" year="2017" />
+	</front>
+	<seriesInfo name="" value="Number D2.2" />
+	<format type="PDF" octets="1682077" target="https://www.neat-project.org/wp-content/uploads/2017/03/D2.2-public.pdf" />
+</reference>
+

@@ -13,6 +13,12 @@ except ImportError as e:
     web = None
     logging.warning("aiohttp in required to start the REST interface, but it is not installed")
 
+try:
+    resthelper_loaded = True
+    import resthelper
+except ImportError as e:
+    resthelper_loaded = False
+
 profiles = None
 cib = None
 pib = None
@@ -28,8 +34,14 @@ def gen_hello_msg():
                  'management-address': PM.REST_IP,
                  'rest-port': PM.REST_PORT,
                  'client-type': 'neat'}
-    x = json.dumps({"input": host_info})
-    return x
+
+    if resthelper_loaded:
+        ips = resthelper.get_local_ips()
+        host_info['local-addresses'] = ips
+    else:
+        logging.warning('Local addresses not available')
+    hello_msg = json.dumps({"input": host_info})
+    return hello_msg
 
 
 async def controller_announce():
@@ -53,13 +65,13 @@ async def controller_announce():
             try:
                 async with session.post(PM.CONTROLLER_REST, data=gen_hello_msg(),
                                         headers={'content-type': 'application/json'}) as resp:
-                    logging.debug(
-                        'announce addr: %s:%s' % resp.connection._protocol.transport.get_extra_info('sockname'))
+                    # logging.debug('announce addr: %s:%s' % resp.connection._protocol.transport.get_extra_info('sockname'))
                     assert resp.status == 200
                     html = await resp.text()
-                    #logging.debug(html)
+                    # logging.debug(html)
 
-            except (ValueError, aiohttp.errors.ClientOSError) as e:
+            # aiohttp.errors.ClientOSError not suported in aiohttp 2.0 TODO https://github.com/jwilk/urlycue/commit/e18179c771c1e594cc6701605d3e8a6de07e1189
+            except (ValueError, aiohttp.client_exceptions.ClientConnectorError) as e:
                 print(e)
 
         await asyncio.sleep(sleep_time)
@@ -175,8 +187,8 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
     pmrest.router.add_get('/pib/{uid}', handle_pib)
 
     pmrest.router.add_get('/cib', handle_cib)
-    pmrest.router.add_get('/cib/rows', handle_cib_rows)
     pmrest.router.add_get('/cib/{uid}', handle_cib)
+    pmrest.router.add_get('/cib/rows', handle_cib_rows)
 
     pmrest.router.add_put('/cib/{uid}', handle_cib_put)
     pmrest.router.add_put('/pib/{uid}', handle_pib_put)

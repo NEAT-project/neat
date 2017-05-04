@@ -3,7 +3,7 @@ PROJECT(libneat)
 
 set(BUILD_MAJOR "0")
 set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td104")
+set(BUILD_PATCH "1~td144")
 set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 # INSTALLATION_DIRECTORIES
@@ -66,7 +66,6 @@ LIST(APPEND neat_sources
     neat_log.c
     neat_qos.c
     neat_stat.c
-    neat_property_helpers.c
     neat_json_helpers.c
     neat_pvd.c
     neat_resolver.c
@@ -114,6 +113,8 @@ ELSE()
     MESSAGE(FATAL_ERROR ${CMAKE_SYSTEM_NAME} " not supported (yet?)")
 
 ENDIF()
+
+find_package(Threads REQUIRED)
 
 #################################################
 # CHECK STRUCT MEMBERS
@@ -177,7 +178,7 @@ IF (FLOW_GROUPS)
     ADD_DEFINITIONS(-DFLOW_GROUPS)
 ENDIF()
 
-OPTION(SCTP_MULTISTREAMING "Include support for SCTP multistreaming" 0)
+OPTION(SCTP_MULTISTREAMING "Include support for SCTP multistreaming" 1)
 IF (SCTP_MULTISTREAMING)
     ADD_DEFINITIONS(-DSCTP_MULTISTREAMING)
 ENDIF()
@@ -207,10 +208,7 @@ ELSE()
         MESSAGE(STATUS "openssl >= 1.0.2 required for TLS")
     ELSE()
         CHECK_INCLUDE_FILE(openssl/ssl.h HAVE_SYS_OPENSSL_H)
-        FIND_LIBRARY(OPENSSL_LIB ssl)
-        FIND_LIBRARY(OPENSSL_CRYPTO_LIB crypto)
-        MESSAGE(STATUS "OPENSSL found: " ${OPENSSL_LIB})
-        MESSAGE(STATUS "OPENSSL Crypto found: " ${OPENSSL_CRYPTO_LIB})
+        MESSAGE(STATUS "OPENSSL Crypto found: " ${OPENSSL_LIBRARIES})
         ADD_DEFINITIONS(-DNEAT_USETLS)
     ENDIF()
 ENDIF()
@@ -269,11 +267,13 @@ ENDIF()
 
 # COMPILER FLAGS
 #################################################
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
+SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+    # _FORTIFY_SOURCE requires compiling with optimization
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
 ENDIF()
 
 # LIBRARIES
@@ -284,8 +284,8 @@ LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}
     ${JANSSON_LIB}
-    ${OPENSSL_LIB}
-    ${OPENSSL_CRYPTO_LIB}
+    ${OPENSSL_SSL_LIBRARY}
+    ${OPENSSL_CRYPTO_LIBRARY}
     )
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -308,11 +308,12 @@ TARGET_LINK_LIBRARIES (neat ${neat_libs})
 #################################################
 MESSAGE(STATUS "Install directory: ${CMAKE_INSTALL_PREFIX}")
 
-INSTALL(TARGETS neat LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/neat)
+INSTALL(TARGETS neat neat-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
+INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
 # INCLUDE EXAMPLES AND TESTS FOLDER
 #################################################
+ADD_SUBDIRECTORY(socketapi)
 ADD_SUBDIRECTORY(examples)
 ADD_SUBDIRECTORY(tests)

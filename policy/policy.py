@@ -1,18 +1,13 @@
 import copy
+import itertools
 import json
 import math
 import numbers
 import shutil
 
 from pmdefaults import *
+from pmdefaults import STYLES, CHARS
 
-DARK_GRAY_START = '\033[90m'
-BOLD_START = '\033[1m'
-BOLD_END = '\033[21m'
-UNDERLINE_START = '\033[4m'
-UNDERLINE_END = '\033[24m'
-STRIKETHROUGH_START = '\033[9m'
-FORMAT_END = '\033[0m'
 SUB = str.maketrans("0123456789+-", "₀₁₂₃₄₅₆₇₈₉₊₋")
 
 
@@ -70,11 +65,16 @@ def dict_to_properties(property_dict):
             for p in attr:
                 properties.extend(dict_to_properties({key: p}))
         else:
-            val = attr.get('value', None)
+            try:
+                val = attr.get('value', None)
+            except AttributeError as e:
+                raise NEATPropertyError('Property dictionary item invalid') from e
+
             try:
                 neat_property = NEATProperty((key, val),
                                              precedence=attr.get('precedence', NEATProperty.OPTIONAL),
                                              banned=attr.get('banned', []),
+                                             evaluated=attr.get('evaluated', False),
                                              score=attr.get('score', 0.0))
             except KeyError as e:
                 raise NEATPropertyError('property import failed') from e
@@ -105,6 +105,7 @@ class PropertyValue(object):
     2. a set of values [100, 200, 300, "foo"]. uses a set() internally
     3. a numeric range {"start":1, "end":10}. uses a tuple internally
     """
+    ANY = None
 
     def __init__(self, value):
         self._value = None
@@ -155,7 +156,7 @@ class PropertyValue(object):
                     self._value = set(value)
                 except TypeError:
                     import code
-                    code.interact(local=locals(), banner='here')
+                    code.interact(local=locals(), banner='policy error')
                 self.is_set = True
         elif isinstance(value, PropertyValue):
             self._value = value._value
@@ -183,6 +184,11 @@ class PropertyValue(object):
 
         if not isinstance(other, PropertyValue):
             other = PropertyValue(other)
+
+        if self.value == PropertyValue.ANY:
+            return other
+        if other.value == PropertyValue.ANY:
+            return self
 
         if (self.is_range or self.is_numeric) and (other.is_range or other.is_numeric):
             return self._overlapping_range(other)
@@ -276,7 +282,7 @@ class NEATProperty(object):
     OPTIONAL = 1
     BASE = 0
 
-    def __init__(self, key_val, precedence=OPTIONAL, score=0, banned=None):
+    def __init__(self, key_val, precedence=OPTIONAL, score=0, banned=None, evaluated=False):
         self.key = key_val[0]
         self._value = PropertyValue(key_val[1])
 
@@ -289,7 +295,7 @@ class NEATProperty(object):
             self.banned = []
 
         # set if property was compared or updated during a lookup
-        self.evaluated = False
+        self.evaluated = evaluated
 
         # TODO check if value is in banned list
 
@@ -448,10 +454,10 @@ class NEATProperty(object):
         else:
             score_str = ''
         # use subscript UTF8 characters
-        score_str = BOLD_START + score_str.translate(SUB) + BOLD_END
+        score_str = STYLES.BOLD_START + score_str.translate(SUB) + STYLES.BOLD_END
 
         if self.evaluated:
-            keyval_str = UNDERLINE_START + keyval_str + UNDERLINE_END
+            keyval_str = STYLES.UNDERLINE_START + keyval_str + STYLES.UNDERLINE_END
 
         if self.precedence == NEATProperty.IMMUTABLE:
             property_str = '[%s]%s' % (keyval_str, score_str)
@@ -462,7 +468,7 @@ class NEATProperty(object):
         else:
             property_str = '?%s?%s' % (keyval_str, score_str)
 
-        property_str = DARK_GRAY_START + property_str + FORMAT_END
+        property_str = STYLES.DARK_GRAY_START + property_str + STYLES.FORMAT_END
 
         return property_str
 
@@ -489,6 +495,10 @@ class PropertyArray(dict):
                 logging.error(
                     "only NEATProperty objects may be added to PropertyDict: received %s instead" % type(p))
                 raise NEATPropertyError("cannot add %s" % type(p))
+
+    @staticmethod
+    def from_dict(d):
+        return PropertyArray(*dict_to_properties(d))
 
     def __add__(self, other):
         """ Return a new PropertyArray constructed using PropertyArray1 + PropertyArray2 """
@@ -531,78 +541,67 @@ class PropertyArray(dict):
     def __repr__(self):
         # sort alphabetically by property key
         str_list = [str(i) for i in sorted(list(self.values()), key=lambda v: v.key.lower())]
-        return '├─' + '──'.join(str_list) + '─┤'
+        j = CHARS.DASH * 2
+        return '├─' + j.join(str_list) + '─┤'
 
 
-class PropertyMultiArray(dict):
+class PropertyMultiArray(list):
     def __init__(self, *properties):
         # FIXME this needs improvement
         self.add(*properties)
 
-    def __getitem__(self, key):
-        item = super().__getitem__(key)
-        return [i for i in item]
-
-    def __contains__(self, item):
-        # check if item is already in the array
-        return any(item.eq(property) for property in self.get(item.key, []))
-
     def add(self, *properties):
-        """
-        Insert a new NEATProperty object into the dict. If the property key already exists make it a multi property list.
-        """
-
         for property in properties:
             if isinstance(property, list):
-                for p in property:
-                    self.add(p)
-            elif isinstance(property, NEATProperty):
-                if property.key in self.keys() and property not in self:
-                    super().__getitem__(property.key).append(property)
+                if all([isinstance(i, PropertyArray) for i in property]):
+                    self.append(property)
                 else:
-                    self[property.key] = [property]
-            elif not isinstance(property, NEATProperty):
+                    logging.error("list must contain property arrays")
+            elif isinstance(property, PropertyArray):
+                self.append([property])
+            elif isinstance(property, NEATProperty):
+                self.append([PropertyArray(property)])
+            else:
                 logging.error(
-                    "only NEATProperty objects may be added to PropertyDict: received %s instead" % type(property))
+                    "Cannot add %s objects to PropertyArrays" % type(property))
                 return
 
     def expand(self):
-        pas = [PropertyArray()]
-        for k, ps in self.items():
-            tmp = []
-            while len(pas) > 0:
-                pa = pas.pop()
-                for p in ps:
-                    pa_copy = copy.deepcopy(pa)
-                    pa_copy.add(p)
-                    tmp.append(pa_copy)
-            pas.extend(tmp)
-        return pas
+        expanded_pas = []
+        for pa_product in list(itertools.product(*self)):
+            pa = PropertyArray()
+            for p in pa_product:
+                pa.add(*p.values())
+            expanded_pas.append(pa)
+        return expanded_pas
 
-    def dict(self):
-        """ Return a dictionary containing all contained NEAT property attributes"""
+    def list(self):
+        new_list = []
+        for l in list(self):
+            new_list.append([pa.dict() for pa in l])
+        return new_list
 
-        property_dict = dict()
-        for k, v in self.items():
-            if len(v) == 1:
-                p = v[0]
-                property_dict[k] = p.dict()[p.key]
+    @staticmethod
+    def from_json(j):
+        pma_list = json.loads(j)
+        pma = PropertyMultiArray()
+        for l in pma_list:
+            if isinstance(l, dict):
+                pa = [PropertyArray.from_dict(l)]
+            elif isinstance(l, list):
+                pa = [PropertyArray.from_dict(pa) for pa in l]
             else:
-                property_dict[k] = []
-                for p in v:
-                    property_dict[k].append(p.dict()[p.key])
-
-        return property_dict
+                pa = []
+            pma.add(pa)
+        return pma
 
     def __repr__(self):
-        slist = []
-        for i in self.values():
-            slist.append(str(i))
-        return '╠═' + '══'.join(slist) + '═╣'  # UTF8
+        j = CHARS.LINE_SEPARATOR * 2
+        return '╠═' + j.join([str(i) for i in self]) + '═╣'  # UTF8
 
 
 # TODO move to pm_util ############
-def term_separator(text='', line_char='═', offset=0):
+def term_separator(text='', line_char=CHARS.LINE_SEPARATOR, offset=0):
     """
     Get a separator line with the width of the terminal with a centered text
     """
@@ -622,5 +621,22 @@ def term_separator(text='', line_char='═', offset=0):
 
 
 if __name__ == "__main__":
+    pa = PropertyArray()
+    pb = PropertyArray()
+    pc = PropertyArray()
+
+    pa.add(NEATProperty(('x', 1)))
+    pa.add(NEATProperty(('y', 1)))
+    pb.add(NEATProperty(('x', 2)))
+    pb.add(NEATProperty(('v', 1)))
+    pc.add(NEATProperty(('a', 1)))
+
+    pp = PropertyMultiArray()
+    pp.append(pc)
+
+    ppp = PropertyMultiArray()
+    ppp.add(pa, [pb, pc])
+
     import code
+
     code.interact(local=locals(), banner='policy')

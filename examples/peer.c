@@ -1,5 +1,4 @@
 #include <neat.h>
-#include <neat_internal.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -21,7 +20,6 @@
 
 static uint32_t config_buffer_size_max = 1400;
 static uint16_t config_log_level = 1;
-static char config_property[] = "NEAT_PROPERTY_UDP_REQUIRED";
 static uint32_t config_drop_randomly= 0;
 static uint32_t config_drop_rate= 80;
 static uint32_t config_port=6969;
@@ -115,22 +113,22 @@ random_loss()
 }
 
 struct fileinfo *
-openfile(const char *filename, const char *mode)
+openfile(const char *fname, const char *mode)
 {
-    struct fileinfo *fi;
+    struct fileinfo *finfo;
     struct stat st;
     uint8_t write = 0;
 
-    fi = calloc(1, sizeof(struct fileinfo));
+    finfo = calloc(1, sizeof(struct fileinfo));
 
-    if (fi == NULL) {
+    if (finfo == NULL) {
         fprintf(stderr, "%s - could not calloc fileinfo struct\n", __func__);
         return NULL;
     }
 
-    if(strstr(filename, "\\") != NULL || strstr(filename, "/") != NULL) {
+    if(strstr(fname, "\\") != NULL || strstr(fname, "/") != NULL) {
         fprintf(stderr, "%s - banned characters in file path '\\' or '/'\n", __func__);
-        free(fi);
+        free(finfo);
         return NULL;
     }
 
@@ -138,39 +136,39 @@ openfile(const char *filename, const char *mode)
         write = 1;
     }
 
-    if (stat(filename, &st) == -1) {
+    if (stat(fname, &st) == -1) {
         if(write == 0) {
             fprintf(stderr, "%s - file not found\n", __func__);
-            free(fi);
+            free(finfo);
             return NULL;
         }
     }
 
-    fi->size = st.st_size;
-    fi->segments = (fi->size+SEGMENT_SIZE-1)/SEGMENT_SIZE; /* round up */
-    fi->filename = strdup(filename);
+    finfo->size = st.st_size;
+    finfo->segments = (finfo->size+SEGMENT_SIZE-1)/SEGMENT_SIZE; /* round up */
+    finfo->filename = strdup(fname);
 
-    fi->stream = fopen(filename, mode);
+    finfo->stream = fopen(fname, mode);
 
-    if (fi->stream == NULL) {
-        free(fi->filename);
-        free(fi);
+    if (finfo->stream == NULL) {
+        free(finfo->filename);
+        free(finfo);
         fprintf(stderr, "%s - file not found\n", __func__);
         return NULL;
     }
 
-    return fi;
+    return finfo;
 }
 
 void
-freefileinfo( struct fileinfo *fi)
+freefileinfo(struct fileinfo *finfo)
 {
-    if (fclose(fi->stream) != -1) {
-            fprintf(stderr, "%s - failed to close file\n", __func__);
-            perror("closing file");
+    if (fclose(finfo->stream) != -1) {
+        fprintf(stderr, "%s - failed to close file\n", __func__);
+        perror("closing file");
     }
-    free(fi->filename);
-    free(fi);
+    free(finfo->filename);
+    free(finfo);
 }
 
 int
@@ -306,7 +304,6 @@ print_usage()
     }
 
     printf("peer [OPTIONS]\n");
-    printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size_max);
     printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
     printf("\t- h \thost\n");
@@ -326,8 +323,6 @@ on_error(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
     explode();
-
-    exit(EXIT_FAILURE);
 }
 
 static neat_error_code
@@ -513,17 +508,17 @@ on_all_written(struct neat_flow_operations *opCB)
 
         if (!pf->master) {
             /* time to save and file then shut down*/
-            struct fileinfo *fi;
+            struct fileinfo *finfo;
 
-            fi = openfile(pf->file_name,"w");
-            if (fi == NULL) {
+            finfo = openfile(pf->file_name,"w");
+            if (finfo == NULL) {
                 fprintf(stderr, "%s:%d could not open file %s\n",
                     __func__, __LINE__, pf->file_name);
             }
 
-            fwrite(pf->file_buffer, sizeof(char), pf->file_buffer_size, fi->stream);
-            fclose(fi->stream);
-            freefileinfo(fi);
+            fwrite(pf->file_buffer, sizeof(char), pf->file_buffer_size, finfo->stream);
+            fclose(finfo->stream);
+            freefileinfo(finfo);
         }
         neat_close(opCB->ctx, opCB->flow);
         return NEAT_OK;
@@ -676,6 +671,7 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct peer *pf = NULL;
+    uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -694,7 +690,7 @@ on_connected(struct neat_flow_operations *opCB)
     neat_set_ecn(opCB->ctx, opCB->flow, 0x00);
 
     pf = opCB->userData;
-    uv_timer_init(opCB->ctx->loop, pf->timer);
+    uv_timer_init(loop, pf->timer);
     pf->timer->data = opCB;
 
     if ((pf->buffer = malloc(config_buffer_size_max)) == NULL) {
@@ -725,8 +721,7 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    struct peer *pf = NULL;
-    pf = opCB->userData;
+    struct peer *pf = opCB->userData;
 
     opCB->on_readable = NULL;
     opCB->on_writable = NULL;
@@ -745,7 +740,6 @@ int
 main(int argc, char *argv[])
 {
     int arg, result;
-    char *arg_property = config_property;
     char *target_addr = NULL;
     static struct neat_ctx *ctx = NULL;
     static struct neat_flow *flow = NULL;
@@ -757,12 +751,6 @@ main(int argc, char *argv[])
 
     while ((arg = getopt(argc, argv, "P:S:v:h:p:f:D:")) != -1) {
         switch(arg) {
-        case 'P':
-            arg_property = optarg;
-            if (config_log_level >= 1) {
-                printf("option - properties: %s\n", arg_property);
-            }
-            break;
         case 'S':
             config_buffer_size_max = atoi(optarg);
             if (config_log_level >= 1) {

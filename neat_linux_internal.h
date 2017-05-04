@@ -18,10 +18,9 @@ struct nlattr_storage {
     uint32_t limit;
 };
 
-//TODO: Do not export this to user 
 struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *nic);
 
 /* Get statistics from Linux TCP_INFO */
-void linux_get_tcp_info(struct neat_flow * , struct neat_tcp_info *);
+int linux_get_tcp_info(struct neat_flow * , struct neat_tcp_info *);
 
 #endif

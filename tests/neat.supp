@@ -1,0 +1,32 @@
+{
+    <OPENSSL-1>
+    Memcheck:Addr8
+    obj:/libexec/ld-elf.so.1
+    obj:/libexec/ld-elf.so.1
+    obj:/libexec/ld-elf.so.1
+    obj:/libexec/ld-elf.so.1
+    obj:/usr/local/lib/libcrypto.so.10
+    fun:DSO_load
+    fun:DSO_dsobyaddr
+    obj:/usr/local/lib/libcrypto.so.10
+    fun:pthread_once
+    fun:CRYPTO_THREAD_run_once
+    fun:OPENSSL_init_crypto
+    fun:OPENSSL_init_ssl
+}
+{
+    <OPENSSL-2>
+    Memcheck:Addr8
+    obj:/libexec/ld-elf.so.1
+    obj:/libexec/ld-elf.so.1
+    obj:/libexec/ld-elf.so.1
+    obj:/libexec/ld-elf.so.1
+    obj:/libexec/ld-elf.so.1
+    obj:/libexec/ld-elf.so.1
+    obj:/usr/local/lib/libcrypto.so.10
+    fun:DSO_load
+    fun:DSO_dsobyaddr
+    obj:/usr/local/lib/libcrypto.so.10
+    fun:pthread_once
+    fun:CRYPTO_THREAD_run_once
+}

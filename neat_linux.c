@@ -17,7 +17,8 @@
 
 //In order to build a list of available source addresses, we need to start by
 //requesting all available addresses. That is the work of this function
-static ssize_t neat_linux_request_addrs(struct mnl_socket *mnl_sock)
+static ssize_t
+neat_linux_request_addrs(struct mnl_socket *mnl_sock)
 {
     uint8_t snd_buf[MNL_SOCKET_BUFFER_SIZE];
     struct nlmsghdr *nl_hdr = mnl_nlmsg_put_header(snd_buf);
@@ -36,7 +37,8 @@ static ssize_t neat_linux_request_addrs(struct mnl_socket *mnl_sock)
 }
 
 //Helper function for parsing netfilter attributes
-static int neat_linux_parse_nlattr(const struct nlattr *attr, void *data)
+static int
+neat_linux_parse_nlattr(const struct nlattr *attr, void *data)
 {
     struct nlattr_storage *storage = (struct nlattr_storage*) data;
     int32_t type = mnl_attr_get_type(attr);
@@ -51,8 +53,8 @@ static int neat_linux_parse_nlattr(const struct nlattr *attr, void *data)
 //Function which parses the netlink message (*ADDR) we have received and extract
 //relevant information, which is parsed to OS-independent
 //neat_addr_update_src_list
-static neat_error_code neat_linux_handle_addr(struct neat_ctx *ctx,
-                                   struct nlmsghdr *nl_hdr)
+static neat_error_code
+neat_linux_handle_addr(struct neat_ctx *ctx, struct nlmsghdr *nl_hdr)
 {
     struct ifaddrmsg *ifm = (struct ifaddrmsg*) mnl_nlmsg_get_payload(nl_hdr);
     const struct nlattr *attr_table[IFA_MAX+1];
@@ -103,8 +105,8 @@ static neat_error_code neat_linux_handle_addr(struct neat_ctx *ctx,
 }
 
 //libuv datagram socket alloc function, un-interesting
-static void neat_linux_nl_alloc(uv_handle_t *handle, size_t suggested_size,
-        uv_buf_t *buf)
+static void
+neat_linux_nl_alloc(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
 {
     struct neat_ctx *nc = handle->data;
 
@@ -198,7 +200,7 @@ struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *ctx)
 
 /* Get the Linux TCP_INFO and copy the relevant fields into the neat-specific
  * TCP_INFO struct. Return pointer to the struct with the copied data */
-void linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
+int linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
 {
     int tcp_info_length;
     struct tcp_info tcpi;
@@ -206,7 +208,9 @@ void linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
     neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     tcp_info_length = sizeof(struct tcp_info);
-    getsockopt(flow->socket->fd, SOL_TCP, TCP_INFO, (void *)&tcpi, (socklen_t *)&tcp_info_length );
+    if (getsockopt(flow->socket->fd, SOL_TCP, TCP_INFO, (void *)&tcpi,
+                   (socklen_t *)&tcp_info_length ))
+        return RETVAL_FAILURE; /* failed! */
 
     /* Copy relevant fields between structs */
 
@@ -222,4 +226,6 @@ void linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
     neat_tcp_info->tcpi_rcv_rtt = tcpi.tcpi_rcv_rtt;
     neat_tcp_info->tcpi_rcv_space = tcpi.tcpi_rcv_space;
     neat_tcp_info->tcpi_total_retrans = tcpi.tcpi_total_retrans;
+
+    return RETVAL_SUCCESS;
 }

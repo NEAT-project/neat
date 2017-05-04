@@ -1,0 +1,27 @@
+h1 {
+   text-align: center
+}
+
+h2 {
+   text-align: left
+}
+
+h3 {
+   text-align: left
+}
+
+h4 {
+   text-align: left
+}
+
+p {
+   text-align: justify
+}
+
+p.center {
+   text-align: center
+}
+
+body {
+   background-image: url(background.png)
+}

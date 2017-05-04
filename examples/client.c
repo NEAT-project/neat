@@ -1,5 +1,4 @@
 #include <neat.h>
-#include <neat_internal.h>
 #include "util.h"
 
 #include <stdlib.h>
@@ -101,12 +100,12 @@ on_error(struct neat_flow_operations *opCB)
 }
 
 static void
-print_neat_stats(neat_ctx *mgr)
+print_neat_stats()
 {
     neat_error_code error;
 
     char* stats = NULL;
-    error = neat_get_stats(mgr, &stats);
+    error = neat_get_stats(ctx, &stats);
     if (error != NEAT_OK){
         printf("NEAT ERROR: %i\n", (int)error);
         return;
@@ -195,8 +194,8 @@ on_readable(struct neat_flow_operations *opCB)
     } else {
         fprintf(stderr, "%s - nothing more to read\n", __func__);
         ops.on_readable = NULL;
-        neat_set_operations(ctx, flow, &ops);
-        neat_close(ctx, flow);
+        neat_set_operations(opCB->ctx, opCB->flow, &ops);
+        neat_close(opCB->ctx, opCB->flow);
     }
 
     return NEAT_OK;
@@ -225,7 +224,7 @@ on_writable(struct neat_flow_operations *opCB)
     }
 
     if (config_json_stats){
-       print_neat_stats(ctx);
+       print_neat_stats();
     }
 
     if (config_log_level >= 1) {
@@ -234,7 +233,7 @@ on_writable(struct neat_flow_operations *opCB)
 
     // stop writing
     ops.on_writable = NULL;
-    neat_set_operations(ctx, flow, &ops);
+    neat_set_operations(opCB->ctx, opCB->flow, &ops);
     return NEAT_OK;
 }
 
@@ -254,6 +253,7 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     int rc;
+    uv_loop_t *loop;
 
     /*
     if (config_log_level >= 1) {
@@ -262,15 +262,16 @@ on_connected(struct neat_flow_operations *opCB)
     */
 
     last_stream = 0;
+    loop = neat_get_event_loop(opCB->ctx);
 
-    uv_tty_init(ctx->loop, &tty, 0, 1);
+    uv_tty_init(loop, &tty, 0, 1);
     uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
 
     ops.on_readable = on_readable;
-    neat_set_operations(ctx, flow, &ops);
+    neat_set_operations(opCB->ctx, opCB->flow, &ops);
 
     if (config_primary_dest_addr != NULL) {
-        rc = neat_set_primary_dest(ctx, flow, config_primary_dest_addr);
+        rc = neat_set_primary_dest(opCB->ctx, opCB->flow, config_primary_dest_addr);
         if (rc) {
             fprintf(stderr, "Failed to set primary dest. addr.: %u\n", rc);
         } else {
@@ -281,7 +282,7 @@ on_connected(struct neat_flow_operations *opCB)
     }
 
     if (config_timeout)
-        neat_change_timeout(ctx, flow, config_timeout);
+        neat_change_timeout(opCB->ctx, opCB->flow, config_timeout);
 
     return NEAT_OK;
 }
@@ -289,7 +290,7 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    fprintf(stderr, "%s - flow closed OK! - %s\n", __func__, opCB->flow->name);
+    fprintf(stderr, "%s - flow closed OK!\n", __func__);
 
     // cleanup
     ops.on_close = NULL;
@@ -299,7 +300,7 @@ on_close(struct neat_flow_operations *opCB)
     if (!uv_is_closing((uv_handle_t*) &tty)) {
         uv_close((uv_handle_t*) &tty, NULL);
     }
-    neat_set_operations(ctx, flow, &ops);
+    neat_set_operations(opCB->ctx, opCB->flow, &ops);
 
     neat_stop_event_loop(opCB->ctx);
 

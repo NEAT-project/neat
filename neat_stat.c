@@ -92,6 +92,9 @@ neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
                     json_object_set_new(newflow, "tcpstats", protostat);
                     break;
                 }
+            case NEAT_STACK_MPTCP:
+                /* TODO: add statistics */
+                break;
             case NEAT_STACK_SCTP:
                 break;
             case NEAT_STACK_UDPLITE:

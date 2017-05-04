@@ -5862,7 +5862,6 @@ neat_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
                 if (SSL_get_shutdown(private->ssl) & SSL_RECEIVED_SHUTDOWN) {
                     neat_log(ctx, NEAT_LOG_DEBUG, "SSL_shutdown received: close socket");
                     flow->closefx(ctx, flow);
-                    free_dtlsdata(flow->socket->dtls_data);
                     private->state = DTLS_CLOSED;
                     return NEAT_OK;
                 }

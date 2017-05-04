@@ -1,0 +1,8 @@
+{
+    "transport": [
+        {
+            "value": "MPTCP",
+            "precedence": 1
+        }
+    ]
+}

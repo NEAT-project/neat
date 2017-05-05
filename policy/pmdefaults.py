@@ -53,6 +53,7 @@ REST_IP = '0.0.0.0'
 REST_PORT = 45888
 
 # SDN controller northbound API address
+# use http://httpbin.org/post for testing
 CONTROLLER_REST = ''
 CONTROLLER_USER = 'admin'
 CONTROLLER_PASS = 'admin'

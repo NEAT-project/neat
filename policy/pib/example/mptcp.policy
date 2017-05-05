@@ -1,0 +1,17 @@
+{
+    "uid":"mptcp",
+    "description":"prefer MPTCP over other protocols",
+    "priority": 10,
+    "replace_matched": false,
+    "match":{
+        "transport": {
+            "value": "MPTCP"
+        }
+    },
+    "properties":{
+        "transport": {
+            "value": "MPTCP", "precedence": 2,
+            "score": 2
+        }
+    }
+}

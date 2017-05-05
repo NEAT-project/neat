@@ -98,7 +98,9 @@ def process_special_properties(r):
         interface = deepcopy(local_endpoint)
         interface.key = 'interface'
         interface.value = eth
+        # FIXME check for conflicts with user-defined properties
         r.add(interface)
+
 
         del r['local_endpoint']
 

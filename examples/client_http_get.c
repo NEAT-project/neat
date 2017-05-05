@@ -34,14 +34,14 @@
     } while (0)
 #endif
 
-static int           result                  = 0;
-static uint32_t      config_rcv_buffer_size  = 32*1024*1024; // 32MB rcv buffer
-static uint32_t      config_max_flows        = 2000;
-static uint8_t       config_log_level        = 0;
+static int           result                 = 0;
+static uint32_t      config_rcv_buffer_size = 32*1024*1024; // 32MB rcv buffer
+static uint32_t      config_max_flows       = 2000;
+static uint8_t       config_log_level       = 0;
+static uint16_t      config_port            = 80;
 static char          request[512];
-static uint32_t      flows_active            = 0;
-static const char    *request_tail           = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static char          *config_property        = "\
+static uint32_t      flows_active           = 0;
+static char          *config_property       = "\
 {\
     \"transport\": [\
         {\
@@ -160,7 +160,7 @@ on_readable(struct neat_flow_operations *opCB)
         gettimeofday(&(stat->tv_last), NULL);
         if (config_log_level >= 1) {
             fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
-           // fwrite(buffer, sizeof(char), bytes_read, stdout);
+            fwrite(buffer, sizeof(char), bytes_read, stdout);
         }
     }
     return NEAT_OK;
@@ -275,9 +275,10 @@ main(int argc, char *argv[])
     memset(&ops, 0, sizeof(ops));
     memset(flows, 0, sizeof(flows));
 
-    snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
+    // request index directory by default
+    snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n", "/", argv[argc - 1]);
 
-    while ((arg = getopt(argc, argv, "P:R:u:n:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:p:R:u:n:v:")) != -1) {
         switch(arg) {
         case 'P':
             if (read_file(optarg, &arg_property) < 0) {
@@ -289,11 +290,18 @@ main(int argc, char *argv[])
                 fprintf(stderr, "%s - option - properties: %s\n", __func__, arg_property);
             }
             break;
+        case 'p':
+            if (atoi(optarg) > 0 && atoi(optarg) < 65556) {
+                config_port = atoi(optarg);
+            } else {
+                fprintf(stderr, "%s - option - port - invalid port, using default : %u\n", __func__, config_port);
+            }
+            break;
         case 'R':
             config_rcv_buffer_size = atoi(optarg);
             break;
         case 'u':
-            snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);
+            snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n", optarg, argv[argc - 1]);
             break;
         case 'n':
             num_flows = strtoul(optarg, NULL, 0);
@@ -364,7 +372,7 @@ main(int argc, char *argv[])
         neat_set_operations(ctx, flows[i], &(ops[i]));
 
         // wait for on_connected or on_error to be invoked
-        if (neat_open(ctx, flows[i], argv[argc - 1], 80, NULL, 0) != NEAT_OK) {
+        if (neat_open(ctx, flows[i], argv[argc - 1], config_port, NULL, 0) != NEAT_OK) {
             fprintf(stderr, "Could not open flow\n");
             result = EXIT_FAILURE;
         } else {

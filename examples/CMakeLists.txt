@@ -5,7 +5,6 @@ LIST(APPEND neat_programs
     client_data.c
     client_http_get.c
     client_http_run_once.c
-    client_https_get.c
     server_chargen.c
     server_daytime.c
     server_discard.c
@@ -23,6 +22,7 @@ LIST(APPEND neat_property_examples
     prop_sctp.json
     prop_sctp_multihomed.json
     prop_tcp.json
+    prop_tcp_security.json
 )
 
 # BUILD EACH PROGRAM

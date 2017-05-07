@@ -1611,10 +1611,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
         retval = recv(flow->socket->fd, buffer, 1, MSG_PEEK);
         if (retval <= 0) {
             neat_log(ctx, NEAT_LOG_INFO, "%s - TCP connection peek: %d - connection closed", __func__, retval);
-            if (flow->operations->on_close) {
-                READYCALLBACKSTRUCT;
-                flow->operations->on_close(flow->operations);
-            }
+            neat_notify_close(flow);
             return READ_WITH_ZERO;
         }
     }
@@ -6414,13 +6411,21 @@ neat_notify_close(neat_flow *flow)
     neat_error_code code = NEAT_ERROR_OK;
     neat_ctx *ctx = flow->ctx;
 
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
-    if (!flow->operations || !flow->operations->on_close) {
+    if (flow->state == NEAT_FLOW_CLOSED) {
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - flow already closed - skipping", __func__);
         return;
     }
 
-    READYCALLBACKSTRUCT;
-    flow->operations->on_close(flow->operations);
+    flow->state = NEAT_FLOW_CLOSED;
+
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    if (flow->operations && flow->operations->on_close) {
+        READYCALLBACKSTRUCT;
+        flow->operations->on_close(flow->operations);
+    }
+
+    // this was the last callback - free all ressources
+    neat_free_flow(flow);
 }
 
 // Notify application about network changes.
@@ -6464,8 +6469,6 @@ neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
 #ifdef SCTP_MULTISTREAMING
     }
 #endif
-
-    neat_free_flow(flow);
 
     return NEAT_OK;
 }

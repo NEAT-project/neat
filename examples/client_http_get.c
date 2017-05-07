@@ -67,6 +67,7 @@ struct stat_flow {
     struct timeval tv_first;
     struct timeval tv_last;
     struct timeval tv_delta;
+    uint16_t protocol;
     uv_timer_t timer;
     struct neat_flow *flow;
 };
@@ -91,17 +92,10 @@ on_readable(struct neat_flow_operations *opCB)
     uint32_t bytes_read = 0;
     struct stat_flow *stat = opCB->userData;
     neat_error_code code;
-    struct timeval tv_duration;
-    double time_elapsed = 0.0;
-    char buffer_filesize_human[32];
-    char buffer_bandwidth_human[32];
     struct neat_tlv options[1];
-
-    //last_stream = (last_stream + 1) % opCB->flow->stream_count;
     options[0].tag           = NEAT_TAG_TRANSPORT_STACK;
     options[0].type          = NEAT_TYPE_INTEGER;
 
-    //fprintf(stderr, "%s - reading from flow\n", __func__);
     code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read, options, 1);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
         if (config_log_level >= 1) {
@@ -112,49 +106,9 @@ on_readable(struct neat_flow_operations *opCB)
         return on_error(opCB);
     }
 
-    if (!bytes_read) { // eof
-        uv_timer_stop(&(stat->timer));
-
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - neat_read() returned 0 bytes - connection closed\n", __func__);
-        }
-
-        timersub(&(stat->tv_last), &(stat->tv_first), &tv_duration);
-        time_elapsed = tv_duration.tv_sec + (double)tv_duration.tv_usec / 1000000.0;
-        filesize_human(8 * (stat->rcv_bytes) / time_elapsed, buffer_bandwidth_human, sizeof(buffer_bandwidth_human));
-        filesize_human(stat->rcv_bytes, buffer_filesize_human, sizeof(buffer_filesize_human));
-
-        printf("########################################################\n");
-        printf("# %p - transfer finished\n", (void *)opCB->flow);
-        printf("########################################################\n");
-        printf("# size:\t\t%s\n", buffer_filesize_human);
-        printf("# duration:\t%.2f s\n", time_elapsed);
-        printf("# bandwidth:\t%sit/s\n", buffer_bandwidth_human);
-        printf("# protocol:\t");
-
-        switch ((int)options[0].value.integer) {
-            case NEAT_STACK_TCP:
-                printf("TCP");
-                break;
-            case NEAT_STACK_SCTP:
-                printf("SCTP");
-                break;
-            case NEAT_STACK_SCTP_UDP:
-                printf("SCTP/UDP");
-                break;
-            default:
-                printf("OTHER");
-                break;
-        }
-        printf("\n");
-
-        printf("########################################################\n");
-
-        fflush(stdout);
-        on_close(opCB);
-
-    } else if (bytes_read > 0) {
+    if (bytes_read > 0) {
         stat = opCB->userData;
+        stat->protocol = (int)options[0].value.integer;
         stat->rcv_bytes += bytes_read;
         stat->rcv_calls++;
         gettimeofday(&(stat->tv_last), NULL);
@@ -233,12 +187,50 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    // cleanup
-    opCB->on_close = NULL;
-    opCB->on_readable = NULL;
-    opCB->on_writable = NULL;
-    opCB->on_error = NULL;
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
+    struct stat_flow *stat = opCB->userData;
+    struct timeval tv_duration;
+    double time_elapsed = 0.0;
+    char buffer_filesize_human[32];
+    char buffer_bandwidth_human[32];
+
+    uv_timer_stop(&(stat->timer));
+
+    if (config_log_level >= 1) {
+        fprintf(stderr, "%s - neat_read() returned 0 bytes - connection closed\n", __func__);
+    }
+
+    timersub(&(stat->tv_last), &(stat->tv_first), &tv_duration);
+    time_elapsed = tv_duration.tv_sec + (double)tv_duration.tv_usec / 1000000.0;
+    filesize_human(8 * (stat->rcv_bytes) / time_elapsed, buffer_bandwidth_human, sizeof(buffer_bandwidth_human));
+    filesize_human(stat->rcv_bytes, buffer_filesize_human, sizeof(buffer_filesize_human));
+
+    printf("########################################################\n");
+    printf("# %p - transfer finished\n", (void *)opCB->flow);
+    printf("########################################################\n");
+    printf("# size:\t\t%s\n", buffer_filesize_human);
+    printf("# duration:\t%.2f s\n", time_elapsed);
+    printf("# bandwidth:\t%sit/s\n", buffer_bandwidth_human);
+    printf("# protocol:\t");
+
+    switch (stat->protocol) {
+        case NEAT_STACK_TCP:
+            printf("TCP");
+            break;
+        case NEAT_STACK_SCTP:
+            printf("SCTP");
+            break;
+        case NEAT_STACK_SCTP_UDP:
+            printf("SCTP/UDP");
+            break;
+        default:
+            printf("OTHER");
+            break;
+    }
+    printf("\n");
+
+    printf("########################################################\n");
+
+    fflush(stdout);
 
     free(opCB->userData);
 
@@ -252,7 +244,6 @@ on_close(struct neat_flow_operations *opCB)
         if (config_log_level >= 1) {
             fprintf(stderr, "%s - stopping event loop\n", __func__);
         }
-
         neat_stop_event_loop(opCB->ctx);
     }
 
@@ -384,9 +375,6 @@ main(int argc, char *argv[])
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
 cleanup:
-    for (i = 0; i < num_flows; i++) {
-        //free((flows[i])->userData);
-    }
 
     if (ctx != NULL) {
         neat_free_ctx(ctx);
@@ -395,6 +383,7 @@ cleanup:
     if (arg_property) {
         free(arg_property);
     }
+
     if (buffer) {
         free(buffer);
     }

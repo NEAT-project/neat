@@ -1228,6 +1228,8 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
     struct sockaddr_storage peerAddr;
     socklen_t peerAddrLen = sizeof(struct sockaddr_storage);
     int stream_id = -1;
+    int retval;
+    char buffer[1];
     ssize_t n;
     struct msghdr msghdr;
     //Not used when notifications aren't available:
@@ -1279,7 +1281,6 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
      * anything else will.
      */
     if (!flow->operations->on_readable && flow->acceptPending) {
-
         if (socket->stack != NEAT_STACK_UDP && socket->stack != NEAT_STACK_UDPLITE) {
             neat_log(ctx, NEAT_LOG_WARNING, "%s - READ_WITH_ERROR 1", __func__);
             return READ_WITH_ERROR;
@@ -1603,6 +1604,18 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
                 return READ_WITH_ZERO;
             }
 #endif //!defined(USRSCTP_SUPPORT)
+        }
+    }
+
+    if (socket->stack == NEAT_STACK_TCP) {
+        retval = recv(flow->socket->fd, buffer, 1, MSG_PEEK);
+        if (retval <= 0) {
+            neat_log(ctx, NEAT_LOG_INFO, "%s - TCP connection peek: %d - connection closed", __func__, retval);
+            if (flow->operations->on_close) {
+                READYCALLBACKSTRUCT;
+                flow->operations->on_close(flow->operations);
+            }
+            return READ_WITH_ZERO;
         }
     }
 
@@ -6412,7 +6425,8 @@ neat_notify_close(neat_flow *flow)
 
 // Notify application about network changes.
 // Code should identify what happened.
-void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code)
+void
+neat_notify_network_status_changed(neat_flow *flow, neat_error_code code)
 {
     const int stream_id = NEAT_INVALID_STREAM;
     //READYCALLBACKSTRUCT expects this:
@@ -6457,7 +6471,8 @@ neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
 }
 
 // ABORT, D1.2 sect. 3.2.4
-neat_error_code neat_abort(struct neat_ctx *ctx, struct neat_flow *flow)
+neat_error_code
+neat_abort(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     struct linger ling;
 

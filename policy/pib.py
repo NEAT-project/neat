@@ -179,7 +179,7 @@ def load_policies(self, policy_dir=None):
             if filename.endswith(self.file_extension) and not filename.startswith(('.', '#')):
                 self.load_policy(os.path.join(policy_dir, filename))
 
-    def import_json(self, slim, uid=None):
+def import_json(self, slim, uid=None):
         """
         Import a JSON formatted PIB entry into current pib.
         """

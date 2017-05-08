@@ -232,7 +232,7 @@ on_close(struct neat_flow_operations *opCB)
 
     fflush(stdout);
 
-    free(stat);
+    //free(stat);
 
     // stop event loop if all flows are closed
     flows_active--;
@@ -244,7 +244,7 @@ on_close(struct neat_flow_operations *opCB)
         if (config_log_level >= 1) {
             fprintf(stderr, "%s - stopping event loop\n", __func__);
         }
-        //neat_stop_event_loop(opCB->ctx);
+        neat_stop_event_loop(opCB->ctx);
     }
 
     return NEAT_OK;

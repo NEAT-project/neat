@@ -691,7 +691,6 @@ neat_free_flow(neat_flow *flow)
 
     LIST_REMOVE(flow, next_flow);
 
-
 #if defined(USRSCTP_SUPPORT)
     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
        synchronous_free(flow);
@@ -1758,6 +1757,7 @@ updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     assert(flow->socket->handle);
 
     if (handle->loop == NULL || uv_is_closing((uv_handle_t *)handle)) {
+        neat_log(ctx, NEAT_LOG_DEBUG, "%s - loop is NULL or handle is closing - skipping", __func__);
         return;
     }
 

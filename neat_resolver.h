@@ -9,7 +9,7 @@
 #include "neat_addr.h"
 
 //Timeout for complete DNS query
-#define DNS_TIMEOUT             30000
+#define DNS_TIMEOUT             10000
 //Timeout after first good reply
 #define DNS_RESOLVED_TIMEOUT    1000
 #define DNS_LITERAL_TIMEOUT     1

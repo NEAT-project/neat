@@ -1762,7 +1762,7 @@ updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     }
 
     do {
-        neat_log(ctx, NEAT_LOG_DEBUG, "%s - iterating flows ...", __func__);
+        //neat_log(ctx, NEAT_LOG_DEBUG, "%s - iterating flows ...", __func__);
         assert(flow);
 
         flow->isPolling = 0;
@@ -1814,8 +1814,10 @@ updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
         }
 
 #ifdef SCTP_MULTISTREAMING
-        flow = LIST_NEXT(flow, multistream_next_flow);
-        neat_log(ctx, NEAT_LOG_DEBUG, "%s - next multistream flow : %p", __func__, flow);
+        if (pollable_socket->multistream == 1) {
+            flow = LIST_NEXT(flow, multistream_next_flow);
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - next multistream flow : %p", __func__, flow);
+        }
 #endif
 
     // iterate through all flows
@@ -6808,14 +6810,18 @@ neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
     }
 
     if (!flow->socket->multistream || flow->socket->sctp_streams_used == 0) {
-        neat_log(ctx, NEAT_LOG_DEBUG, "%s - not multistream socket or all streams closed", __func__);
+        //neat_log(ctx, NEAT_LOG_DEBUG, "%s - not multistream socket or all streams closed", __func__);
 #endif // SCTP_MULTISTREAMING
         if (flow->isPolling && uv_is_active((uv_handle_t*)flow->socket->handle)) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - stopping polling", __func__);
             uv_poll_stop(flow->socket->handle);
         }
 #ifdef SCTP_MULTISTREAMING
     }
 #endif
+
+    neat_notify_close(flow);
+
 
     return NEAT_OK;
 }

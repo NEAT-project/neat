@@ -193,7 +193,7 @@ on_close(struct neat_flow_operations *opCB)
     char buffer_bandwidth_human[32];
 
     uv_timer_stop(&(stat->timer));
-    uv_close((uv_handle_t *) &(stat->timer), NULL);
+    //uv_close((uv_handle_t *) &(stat->timer), NULL);
 
     if (config_log_level >= 1) {
         fprintf(stderr, "%s - neat_read() returned 0 bytes - connection closed\n", __func__);

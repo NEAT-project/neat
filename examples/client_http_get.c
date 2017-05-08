@@ -68,7 +68,6 @@ struct stat_flow {
     struct timeval tv_last;
     struct timeval tv_delta;
     uint16_t protocol;
-    uv_timer_t timer;
     struct neat_flow *flow;
 };
 
@@ -138,31 +137,11 @@ on_writable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-static void
-print_timer_stats(uv_timer_t *handle)
-{
-    struct stat_flow *stat = handle->data;
-    struct timeval tv_now, tv_delta;
-    double time_elapsed = 0.0;
-    char buffer_filesize_human[32];
-
-    gettimeofday(&tv_now, NULL);
-    timersub(&tv_now, &(stat->tv_delta), &tv_delta);
-    time_elapsed = tv_delta.tv_sec + (double)tv_delta.tv_usec / 1000000.0;
-    filesize_human(8 * (stat->rcv_bytes - stat->rcv_bytes_last) / time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human));
-
-    fprintf(stderr, "%p - %d bytes in %.2fs = %sit/s\n", (void *) stat->flow, stat->rcv_bytes - stat->rcv_bytes_last, time_elapsed, buffer_filesize_human);
-
-    stat->rcv_bytes_last = stat->rcv_bytes;
-    gettimeofday(&(stat->tv_delta), NULL);
-    uv_timer_again(&(stat->timer));
-}
-
 static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct stat_flow *stat = opCB->userData;
-    uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
+
     // now we can start writing
     if (config_log_level >= 1) {
         fprintf(stderr, "%s - connection established\n", __func__);
@@ -171,10 +150,6 @@ on_connected(struct neat_flow_operations *opCB)
     gettimeofday(&(stat->tv_first), NULL);
     gettimeofday(&(stat->tv_last), NULL);
     gettimeofday(&(stat->tv_delta), NULL);
-
-    uv_timer_init(loop, &(stat->timer));
-    stat->timer.data = stat;
-    uv_timer_start(&(stat->timer), print_timer_stats, 1000, 1000);
 
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
@@ -191,9 +166,6 @@ on_close(struct neat_flow_operations *opCB)
     double time_elapsed = 0.0;
     char buffer_filesize_human[32];
     char buffer_bandwidth_human[32];
-
-    uv_timer_stop(&(stat->timer));
-    //uv_close((uv_handle_t *) &(stat->timer), NULL);
 
     if (config_log_level >= 1) {
         fprintf(stderr, "%s - neat_read() returned 0 bytes - connection closed\n", __func__);

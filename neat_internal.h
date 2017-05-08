@@ -137,7 +137,7 @@ typedef enum {
     NEAT_FLOW_CLOSING
 } neat_flow_states;
 
-#define NEAT_STACK_MAX_NUM              5
+#define NEAT_STACK_MAX_NUM              6
 #define SCTP_UDP_TUNNELING_PORT         9899
 #define SCTP_ADAPTATION_NEAT            1207
 #define SCTP_STREAMCOUNT                123

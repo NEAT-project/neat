@@ -66,9 +66,10 @@ async def controller_announce():
                 async with session.post(PM.CONTROLLER_REST, data=gen_hello_msg(),
                                         headers={'content-type': 'application/json'}) as resp:
                     # logging.debug('announce addr: %s:%s' % resp.connection._protocol.transport.get_extra_info('sockname'))
-                    assert resp.status == 200
+                    if resp.status != 200:
+                        logging.warning("Controller provided an invalid response")
+                        print(resp)
                     html = await resp.text()
-                    # logging.debug(html)
 
             except (ValueError, aiohttp.ClientConnectionError) as e:
                 print(e)

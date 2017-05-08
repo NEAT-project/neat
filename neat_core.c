@@ -287,14 +287,16 @@ static void neat_core_cleanup(struct neat_ctx *nc)
     neat_close_loop(nc);
     neat_addr_free_src_list(nc);
 
-    if (nc->cleanup)
+    if (nc->cleanup) {
         nc->cleanup(nc);
+    }
 }
 
 //Free any resource used by the context. Loop must be stopped before this is
 //called
 //TODO: Consider adding callback, like for resolver
-void neat_free_ctx(struct neat_ctx *nc)
+void
+neat_free_ctx(struct neat_ctx *nc)
 {
     struct neat_flow *flow, *prev_flow = NULL;
     neat_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
@@ -657,7 +659,8 @@ free_cb(uv_handle_t *handle)
 
 }
 
-static int neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
+static int
+neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     struct neat_pollable_socket *s;
     struct neat_pollable_socket *stemp;
@@ -699,8 +702,7 @@ neat_free_flow(neat_flow *flow)
     neat_free_candidates(ctx, flow->candidate_list);
 
 
-    if (flow->socket->handle != NULL
-        && flow->socket->handle->type != UV_UNKNOWN_HANDLE
+    if (flow->socket->handle != NULL && flow->socket->handle->type != UV_UNKNOWN_HANDLE
 #ifdef SCTP_MULTISTREAMING
         && (!flow->socket->multistream || flow->socket->sctp_streams_used == 0)
 #endif
@@ -5636,7 +5638,7 @@ neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         // kernel and userspace.. same for connect read and write
 
         if (flow->socket->fd != 0) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "%s: Close fd %d", __func__, flow->socket->fd);
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - close fd %d", __func__, flow->socket->fd);
             close(flow->socket->fd);
         }
 
@@ -5644,8 +5646,10 @@ neat_close_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         // further status of the close op for TCP.
         // taps-transports-usage does not specify CLOSE-EVENT.TCP,
         // maybe it should be dropped from the implementation?
-        neat_notify_close(flow);
     }
+
+    neat_notify_close(flow);
+
     return 0;
 }
 
@@ -5654,7 +5658,7 @@ neat_close_via_kernel_2(struct neat_ctx *ctx, int fd)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     if (fd != -1) {
-        neat_log(ctx, NEAT_LOG_DEBUG, "%s: Close fd %d", __func__, fd);
+        neat_log(ctx, NEAT_LOG_DEBUG, "%s - close fd %d", __func__, fd);
         close(fd);
     }
     return 0;

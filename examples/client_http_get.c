@@ -107,7 +107,6 @@ on_readable(struct neat_flow_operations *opCB)
     }
 
     if (bytes_read > 0) {
-        stat = opCB->userData;
         stat->protocol = (int)options[0].value.integer;
         stat->rcv_bytes += bytes_read;
         stat->rcv_calls++;
@@ -194,6 +193,7 @@ on_close(struct neat_flow_operations *opCB)
     char buffer_bandwidth_human[32];
 
     uv_timer_stop(&(stat->timer));
+    uv_close((uv_handle_t *) &(stat->timer), NULL);
 
     if (config_log_level >= 1) {
         fprintf(stderr, "%s - neat_read() returned 0 bytes - connection closed\n", __func__);
@@ -375,6 +375,10 @@ main(int argc, char *argv[])
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
 cleanup:
+
+    for (i = 0; i < num_flows; i++) {
+        free(ops[i].userData);
+    }
 
     if (ctx != NULL) {
         neat_free_ctx(ctx);

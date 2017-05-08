@@ -1,14 +1,20 @@
 #include <neat.h>
+#include "util.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 /**********************************************************************
 
     HTTPS-GET client in neat
 
-    client_https_get HOST [URI]
+    client_https_get [OPTIONS] HOST
+
+    -u : URI
+    -P : property file
+    -v : log level (0 .. 2)
 
     * connect to HOST and send GET request
     * write response to stdout
@@ -17,7 +23,8 @@
 
 static uint32_t config_rcv_buffer_size = 1024;
 static char request[512];
-static const char *request_tail = "User-agent: libneat\r\nConnection: close\r\n\r\n";
+static uint8_t config_log_level = 0;
+static const char *request_tail = "HTTP/1.1\r\nHost: %s\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 static char *config_property = "{\
     \"transport\": [\
         {\
@@ -38,6 +45,7 @@ static char *config_property = "{\
         \"precedence\": 2\
     }\
 }";\
+
 
 static neat_error_code on_error(struct neat_flow_operations *opCB)
 {
@@ -96,25 +104,47 @@ int main(int argc, char *argv[])
     struct neat_ctx *ctx = NULL;
     struct neat_flow *flow = NULL;
     struct neat_flow_operations ops;
+    int arg = 0;
+    char *arg_property = NULL;
     int result;
 
     memset(&ops, 0, sizeof(ops));
 
     result = EXIT_SUCCESS;
 
-    if (argc < 2 || argc > 3) {
-        fprintf(stderr, "usage: neat_https_get HOST [URI]\n");
-        result = EXIT_FAILURE;
-        goto cleanup;
+    snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
+
+    while ((arg = getopt(argc, argv, "P:u:v:")) != -1) {
+        switch(arg) {
+        case 'P':
+            if (read_file(optarg, &arg_property) < 0) {
+                fprintf(stderr, "Unable to read properties from %s: %s", optarg, strerror(errno));
+                result = EXIT_FAILURE;
+                goto cleanup;
+            }
+            if (config_log_level >= 1) {
+                fprintf(stderr, "%s - option - properties: %s\n", __func__, arg_property);
+            }
+            break;
+        case 'u':
+            snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);
+            break;
+        case 'v':
+            config_log_level = atoi(optarg);
+            if (config_log_level >= 1) {
+                fprintf(stderr, "%s - option - log level: %d\n", __func__, config_log_level);
+            }
+            break;
+        default:
+            fprintf(stderr, "usage: client_https_get [OPTIONS] HOST\n");
+            goto cleanup;
+            break;
+        }
     }
 
-    if (argc == 3) {
-        snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\n%s",
-                 argv[2], argv[1], request_tail);
-    } else {
-        snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\n%s",
-                 "/", argv[1], request_tail);
-
+    if (optind + 1 != argc) {
+        fprintf(stderr, "usage: client_https_get [OPTIONS] HOST\n");
+        goto cleanup;
     }
     printf("requesting: %s\n", request);
 
@@ -124,13 +154,21 @@ int main(int argc, char *argv[])
         goto cleanup;
     }
 
+    if (config_log_level == 0) {
+        neat_log_level(ctx, NEAT_LOG_ERROR);
+    } else if (config_log_level == 1){
+        neat_log_level(ctx, NEAT_LOG_WARNING);
+    } else {
+        neat_log_level(ctx, NEAT_LOG_DEBUG);
+    }
+
     if ((flow = neat_new_flow(ctx)) == NULL) {
         fprintf(stderr, "could not initialize context\n");
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
-    if (neat_set_property(ctx, flow, config_property)) {
+    if (neat_set_property(ctx, flow, arg_property ? arg_property : config_property)) {
         fprintf(stderr, "%s - error: neat_set_property\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
@@ -139,9 +177,10 @@ int main(int argc, char *argv[])
     ops.on_connected = on_connected;
     ops.on_error = on_error;
     neat_set_operations(ctx, flow, &ops);
+    neat_log_level(ctx, NEAT_LOG_DEBUG);
 
     // wait for on_connected or on_error to be invoked
-    if (neat_open(ctx, flow, argv[1], 443, NULL, 0) == NEAT_OK)
+    if (neat_open(ctx, flow, argv[argc - 1], 443, NULL, 0) == NEAT_OK)
         neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
     else {
         fprintf(stderr, "Could not open flow\n");
@@ -151,6 +190,9 @@ int main(int argc, char *argv[])
 cleanup:
     if (ctx != NULL) {
         neat_free_ctx(ctx);
+    }
+    if (arg_property) {
+        free(arg_property);
     }
     exit(result);
 }

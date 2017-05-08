@@ -39,7 +39,7 @@ static char *caBundle = "\
 ##\n\
 ## Bundle of CA Root Certificates\n\
 ##\n\
-## Certificate data from Mozilla as of: Wed Jan 18 04:12:05 2017 GMT\n\
+## Certificate data from Mozilla as of: Tue Apr 11 10:42:33 2017 GMT\n\
 ##\n\
 ## This is a bundle of X.509 certificates of public Certificate Authorities\n\
 ## (CA). These were automatically extracted from Mozilla's root certificates\n\

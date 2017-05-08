@@ -70,8 +70,7 @@ async def controller_announce():
                     html = await resp.text()
                     # logging.debug(html)
 
-            # aiohttp.errors.ClientOSError not suported in aiohttp 2.0 TODO https://github.com/jwilk/urlycue/commit/e18179c771c1e594cc6701605d3e8a6de07e1189
-            except (ValueError, aiohttp.client_exceptions.ClientConnectorError) as e:
+            except (ValueError, aiohttp.ClientConnectionError) as e:
                 print(e)
 
         await asyncio.sleep(sleep_time)

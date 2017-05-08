@@ -20,6 +20,7 @@ LIST(APPEND neat_property_examples
     prop_datagram.json
     prop_default.json
     prop_sctp.json
+    prop_sctp_dtls.json
     prop_sctp_multihomed.json
     prop_tcp.json
     prop_tcp_security.json

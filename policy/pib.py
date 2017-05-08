@@ -2,10 +2,10 @@ import bisect
 import hashlib
 import json
 import logging
-import os
+import sys
 import time
 
-import sys
+import os
 
 import pmdefaults as PM
 from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
@@ -75,7 +75,7 @@ class NEATPolicy(object):
                 self.properties.add(PropertyArray.from_dict(p))
 
 
-    # set UID
+                # set UID
         self.uid = policy_dict.get('uid')
         if self.uid is None:
             self.uid = self.__gen_uid()
@@ -164,7 +164,7 @@ class PIB(list):
 
     @property
     def files(self):
-        return {v.filename: v for uid, v in self.index.items()}
+        return {v.filename: v for v in self.policies}
 
     def load_policies(self, policy_dir=None):
         """Load all policies in policy directory."""
@@ -274,14 +274,20 @@ class PIB(list):
             # logging.debug("Policy match fields for policy %s already registered. " % (policy.uid))
             pass
 
+        # check if a policy with the same UID is already installed and remove it XXX
+        if policy.uid in self.index:
+            self.unregister(policy.uid)
+
         # TODO tie breaker using match_len?
-        uid = bisect.bisect([p.priority for p in self.policies], policy.priority)
-        self.policies.insert(uid, policy)
+        idx = bisect.bisect([p.priority for p in self.policies], policy.priority)
+        self.policies.insert(idx, policy)
 
         # self.policies.sort(key=operator.methodcaller('match_len'))
         self.index[policy.uid] = policy
 
     def unregister(self, policy_uid):
+        idx = self.index[policy_uid]
+        del self.policies[idx]
         del self.index[policy_uid]
 
     def lookup(self, input_properties, apply=True, tag=None):

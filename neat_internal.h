@@ -138,7 +138,7 @@ typedef enum {
     NEAT_FLOW_CLOSING
 } neat_flow_states;
 
-#define NEAT_STACK_MAX_NUM              5
+#define NEAT_STACK_MAX_NUM              6
 #define SCTP_UDP_TUNNELING_PORT         9899
 #define SCTP_ADAPTATION_NEAT            1207
 #define SCTP_STREAMCOUNT                123
@@ -164,6 +164,39 @@ struct neat_iofilter
 
     neat_filter_write_impl writefx;
     neat_filter_read_impl  readfx;
+};
+
+#define CIPHER_BUFFER_SIZE 8192
+
+#if defined(NEAT_SCTP_DTLS) || defined(NEAT_USETLS)
+struct security_data
+{
+    SSL_CTX *ctx;
+    SSL *ssl;
+
+    BIO *outputBIO;
+    int outCipherBufferUsed;
+    unsigned char outCipherBuffer[CIPHER_BUFFER_SIZE];
+
+    BIO *inputBIO;
+    int inCipherBufferUsed;
+    int inCipherBufferSent;
+    unsigned char inCipherBuffer[CIPHER_BUFFER_SIZE];
+
+    BIO *dtlsBIO;
+
+    neat_flow_operations_fx pushed_on_connected;
+    neat_flow_operations_fx pushed_on_readable;
+    neat_flow_operations_fx pushed_on_writable;
+    uint8_t state;
+};
+#endif
+
+struct neat_dtls_data
+{
+    void *userData;
+
+    void (*dtor)(struct neat_dtls_data *);
 };
 
 struct neat_pollable_socket
@@ -211,6 +244,8 @@ struct neat_pollable_socket
 
     struct neat_pollable_socket *listen_socket;
 
+	struct neat_dtls_data *dtls_data;
+
     uv_poll_t *handle;
 
     TAILQ_ENTRY(neat_pollable_socket) next;
@@ -225,6 +260,8 @@ struct neat_flow
     struct neat_flow_operations *operations; // see ownedByCore flag
     const char *name;
     char *server_pem;
+    char *cert_pem;
+    char *key_pem;
     uint16_t port;
     uint8_t qos;
     uint8_t ecn;
@@ -260,6 +297,7 @@ struct neat_flow
 
     uint8_t heConnectAttemptCount;
 
+
 #if defined(USRSCTP_SUPPORT)
     neat_accept_usrsctp_impl acceptusrsctpfx;
 #endif
@@ -273,6 +311,7 @@ struct neat_flow
     unsigned int isDraining             : 1;
     unsigned int isServer               : 1; // i.e. created via accept()
     unsigned int isSCTPMultihoming      : 1;
+    unsigned int security_needed        : 1;
     unsigned int isSCTPIdata            : 1;
     unsigned int isClosing              : 1;
     unsigned int notifyDrainPending     : 1;
@@ -592,6 +631,9 @@ neat_error_code neat_security_install(neat_ctx *ctx, neat_flow *flow);
 void            neat_security_init(neat_ctx *ctx);
 void            neat_security_close(neat_ctx *ctx);
 void uvpollable_cb(uv_poll_t *handle, int status, int events);
+neat_error_code neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock);
+neat_error_code neat_dtls_connect(neat_ctx *ctx, neat_flow *flow);
+neat_error_code copy_dtls_data(struct neat_pollable_socket *new, struct neat_pollable_socket *old);
 
 neat_error_code neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
 

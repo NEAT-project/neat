@@ -570,6 +570,7 @@ synchronous_free(neat_flow *flow)
     neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     assert(flow);
+    assert(flow->socket);
 
     if (!flow->socket->multistream
 #ifdef SCTP_MULTISTREAMING
@@ -583,6 +584,7 @@ synchronous_free(neat_flow *flow)
     free((char *)flow->server_pem);
     free((char *)flow->cert_pem);
     free((char *)flow->key_pem);
+
     if (flow->cc_algorithm) {
         free((char*)flow->cc_algorithm);
     }
@@ -1226,6 +1228,9 @@ resize_read_buffer(neat_flow *flow)
 {
     ssize_t spaceFree;
     ssize_t spaceNeeded, spaceThreshold;
+
+    assert(flow);
+    assert(flow->socket);
 
     spaceFree = flow->readBufferAllocation - flow->readBufferSize;
     if (flow->socket->read_size > 0) {

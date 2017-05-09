@@ -904,8 +904,6 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
 #endif // #if defined(IPPROTO_SCTP) && defined(SCTP_INTERLEAVING_SUPPORTED) && !defined(USRSCTP_SUPPORT)
     char proto[16];
 
-
-
     switch (flow->socket->stack) {
         case NEAT_STACK_UDP:
             snprintf(proto, 16, "UDP");
@@ -954,6 +952,8 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
     }
 
     neat_log(ctx, NEAT_LOG_INFO, "Connected: %s/%s", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6"));
+
+    flow->state = NEAT_FLOW_OPEN;
 
     if (flow->operations && flow->operations->on_connected) {
         READYCALLBACKSTRUCT;
@@ -1611,6 +1611,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
                 multistream_flow->operations->on_connected  = listen_flow->operations->on_connected;
                 multistream_flow->operations->on_readable   = listen_flow->operations->on_readable;
                 multistream_flow->operations->on_writable   = listen_flow->operations->on_writable;
+                multistream_flow->operations->on_close      = listen_flow->operations->on_close;
                 multistream_flow->operations->on_error      = listen_flow->operations->on_error;
                 multistream_flow->operations->ctx           = ctx;
                 multistream_flow->operations->flow          = multistream_flow;
@@ -2499,6 +2500,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->operations->on_connected   = flow->operations->on_connected;
     newFlow->operations->on_readable    = flow->operations->on_readable;
     newFlow->operations->on_writable    = flow->operations->on_writable;
+    newFlow->operations->on_close       = flow->operations->on_close;
     newFlow->operations->on_error       = flow->operations->on_error;
     newFlow->operations->ctx            = ctx;
     newFlow->operations->flow           = flow;
@@ -4512,19 +4514,16 @@ neat_error_code
 neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
                             uint16_t port, struct neat_tlv optional[], unsigned int opt_count)
 {
-    // const char *service_name = NULL;
-    const char *local_name = NULL;
-    json_t *val = NULL, *security = NULL;
-    int stream_count = 0;
+    const char *local_name  = NULL;
+    json_t *val             = NULL;
+    json_t *security        = NULL;
+    int stream_count        = 0;
+
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    //nr_of_stacks = neat_property_translate_protocols(flow->propertyMask, stacks);
-
-    //if (nr_of_stacks == 0)
-        //return NEAT_ERROR_UNABLE;
-
-    if (flow->name)
+    if (flow->name) {
         return NEAT_ERROR_BAD_ARGUMENT;
+    }
 
     HANDLE_OPTIONAL_ARGUMENTS_START()
         OPTIONAL_STRING(NEAT_TAG_LOCAL_NAME, local_name)
@@ -4537,16 +4536,17 @@ neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
         neat_log(ctx, NEAT_LOG_DEBUG, "%s - %d streams", __func__, flow->streams_requested);
     }
 
-    if (!local_name)
+    if (!local_name) {
         local_name = "0.0.0.0";
+    }
 
-    flow->name = strdup(local_name);
-    if (flow->name == NULL) {
+    ;
+    if ((flow->name = strdup(local_name)) == NULL) {
         return NEAT_ERROR_OUT_OF_MEMORY;
     }
 
-    flow->port = port;
-    flow->ctx = ctx;
+    flow->port  = port;
+    flow->ctx   = ctx;
 
     if ((security = json_object_get(flow->properties, "security")) != NULL &&
         (val = json_object_get(security, "value")) != NULL &&
@@ -4556,14 +4556,15 @@ neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
         flow->security_needed = 0;
     }
 
-    if (!ctx->resolver)
+    if (!ctx->resolver) {
         ctx->resolver = neat_resolver_init(ctx, "/etc/resolv.conf");
+    }
 
-    if (!ctx->pvd)
+    if (!ctx->pvd) {
         ctx->pvd = neat_pvd_init(ctx);
+    }
 
-    neat_resolve(ctx->resolver, AF_INET, flow->name, flow->port,
-                 accept_resolve_cb, flow);
+    neat_resolve(ctx->resolver, AF_INET, flow->name, flow->port, accept_resolve_cb, flow);
     return NEAT_OK;
 }
 
@@ -6760,6 +6761,8 @@ neat_notify_close(neat_flow *flow)
     neat_error_code code = NEAT_ERROR_OK;
     neat_ctx *ctx = flow->ctx;
 
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
     if (flow->state == NEAT_FLOW_CLOSED) {
         neat_log(ctx, NEAT_LOG_WARNING, "%s - flow already closed - skipping", __func__);
         return;
@@ -6767,7 +6770,6 @@ neat_notify_close(neat_flow *flow)
 
     flow->state = NEAT_FLOW_CLOSED;
 
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     if (flow->operations && flow->operations->on_close) {
         READYCALLBACKSTRUCT;
         flow->operations->on_close(flow->operations);

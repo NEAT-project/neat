@@ -283,7 +283,7 @@ class PIB(list):
         self.policies.insert(idx, policy)
 
         # self.policies.sort(key=operator.methodcaller('match_len'))
-        self.index[policy.uid] = policy
+        self.index[policy.uid] = idx
 
     def unregister(self, policy_uid):
         idx = self.index[policy_uid]

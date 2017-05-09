@@ -301,7 +301,7 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-    if (pem_file && neat_secure_identity(ctx, flow, pem_file)) {
+    if (pem_file && neat_secure_identity(ctx, flow, pem_file, NEAT_CERT_KEY_PEM)) {
         fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;

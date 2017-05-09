@@ -23,6 +23,7 @@ LIST(APPEND neat_property_examples
     prop_sctp.json
     prop_sctp_multihomed.json
     prop_tcp.json
+    prop_sctp_dtls.json
 )
 
 # BUILD EACH PROGRAM

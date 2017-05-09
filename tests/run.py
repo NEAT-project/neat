@@ -21,6 +21,7 @@ tests_general.append([1, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 not.r
 tests_general.append([1, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 buildbot.nplab.de'])
 tests_general.append([0, 0, workdir + 'client_http_get -n 2 -u /files/4M bsd10.nplab.de'])
 if (platform.system() == "FreeBSD") or (platform.system() == "Linux"):
+    tests_general.append([1, 0, workdir + 'client_http_get -P ' + workdir = 'prop_tcp_security.json -p 443 -v 2 www.neat-project.org'])
     tests_general.append([0, 0, workdir + 'tneat -v 2 -P ' + workdir + 'prop_sctp_dtls.json interop.fh-muenster.de'])
 
 #tests_general.append([0, 0, 'python3.5 ../../policy/pmtests.py'])

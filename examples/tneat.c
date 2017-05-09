@@ -163,7 +163,6 @@ on_writable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
-printf("tneat: on_writable\n");
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -199,10 +198,7 @@ printf("tneat: on_writable\n");
     code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size, NULL, 0);
 
     if (tnf->done) {
-        opCB->on_writable = NULL;
-        opCB->on_all_written = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_shutdown(opCB->ctx, opCB->flow);
+        neat_close(opCB->ctx, opCB->flow);
         return NEAT_OK;
     }
 
@@ -219,11 +215,10 @@ on_readable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     uint32_t buffer_filled;
-    struct timeval diff_time;
     neat_error_code code;
-    char buffer_filesize_human[32];
-    double time_elapsed;
-printf("tneat: on_readable\n");
+
+
+
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -256,35 +251,6 @@ printf("tneat: on_readable\n");
             }
         }
     // peer disconnected
-    } else if (buffer_filled == 0){
-        if (config_log_level >= 1) {
-            printf("connection closed\n");
-        }
-
-        if (config_active) {
-            on_close(opCB);
-        } else {
-            // we are server
-            opCB->on_readable = NULL;
-            opCB->on_writable = NULL;
-            opCB->on_all_written = NULL;
-            neat_set_operations(opCB->ctx, opCB->flow, opCB);
-
-            // print statistics
-            timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
-            time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
-
-            printf("%u, %u, %.2f, %.2f, %s\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
-
-            if (config_log_level >= 1) {
-                printf("client disconnected - statistics\n");
-                printf("\tbytes\t\t: %u\n", tnf->rcv.bytes);
-                printf("\trcv-calls\t: %u\n", tnf->rcv.calls);
-                printf("\tduration\t: %.2fs\n", time_elapsed);
-                printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
-            }
-            neat_shutdown(opCB->ctx, opCB->flow);
-        }
     }
 
     return NEAT_OK;
@@ -297,7 +263,6 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = NULL;
-printf("tneat: on_connected\n");
     if (config_log_level >= 1) {
         fprintf(stderr, "%s() - connection established\n", __func__);
     }
@@ -340,12 +305,25 @@ static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
+    char buffer_filesize_human[32];
+    double time_elapsed;
+    struct timeval diff_time;
 
-    // cleanup
-    opCB->on_close = NULL;
-    opCB->on_readable = NULL;
-    opCB->on_writable = NULL;
-    opCB->on_error = NULL;
+    if (!config_active) {
+        // print statistics
+        timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
+        time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+
+        printf("%u, %u, %.2f, %.2f, %s\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+
+        if (config_log_level >= 1) {
+            printf("client disconnected - statistics\n");
+            printf("\tbytes\t\t: %u\n", tnf->rcv.bytes);
+            printf("\trcv-calls\t: %u\n", tnf->rcv.calls);
+            printf("\tduration\t: %.2fs\n", time_elapsed);
+            printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+        }
+    }
 
     if (tnf->snd.buffer) {
         free(tnf->snd.buffer);
@@ -358,8 +336,6 @@ on_close(struct neat_flow_operations *opCB)
     if (tnf) {
         free(tnf);
     }
-
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     fprintf(stderr, "%s - flow closed OK!\n", __func__);
 

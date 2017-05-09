@@ -80,7 +80,7 @@ on_error(struct neat_flow_operations *opCB)
 
     result = EXIT_FAILURE;
 
-    neat_close(opCB->ctx, opCB->flow);
+    neat_stop_event_loop(opCB->ctx, opCB->flow);
     return NEAT_OK;
 }
 

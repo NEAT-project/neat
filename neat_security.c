@@ -692,6 +692,7 @@ neat_security_close(neat_ctx *ctx)
 #if (OPENSSL_VERSION_NUMBER < 0x10100000L)
     ERR_remove_state(0);
 #endif
+    SSL_COMP_free_compression_methods();
 }
 
 #endif

@@ -6587,80 +6587,74 @@ neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow)
     return flow->shutdownfx(ctx, flow);
 }
 
-neat_flow
-*neat_new_flow(neat_ctx *ctx)
+neat_flow *
+neat_new_flow(neat_ctx *ctx)
 {
-    neat_flow *rv;
+    neat_flow *flow;
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    rv = (neat_flow *)calloc (1, sizeof (neat_flow));
-    if (!rv) {
-        goto error;
+    flow = calloc (1, sizeof (struct neat_flow));
+    if (flow == NULL) {
+        return NULL;
     }
 
-    rv->ctx                 = ctx;
-    rv->writefx             = neat_write_to_lower_layer;
-    rv->readfx              = neat_read_from_lower_layer;
-    rv->acceptfx            = neat_accept_via_kernel;
-    rv->connectfx           = neat_connect;
-    rv->closefx             = neat_close_socket;
-    rv->listenfx            = NULL; // TODO: Consider reimplementing
-    rv->shutdownfx          = neat_shutdown_via_kernel;
+    flow->state               = NEAT_FLOW_CLOSED;
+    flow->ctx                 = ctx;
+    flow->writefx             = neat_write_to_lower_layer;
+    flow->readfx              = neat_read_from_lower_layer;
+    flow->acceptfx            = neat_accept_via_kernel;
+    flow->connectfx           = neat_connect;
+    flow->closefx             = neat_close_socket;
+    flow->listenfx            = NULL; // TODO: Consider reimplementing
+    flow->shutdownfx          = neat_shutdown_via_kernel;
 #if defined(USRSCTP_SUPPORT)
-    rv->acceptusrsctpfx     = neat_accept_via_usrsctp;
+    flow->acceptusrsctpfx     = neat_accept_via_usrsctp;
 #endif
 
-    TAILQ_INIT(&(rv->listen_sockets));
-    TAILQ_INIT(&rv->bufferedMessages);
+    TAILQ_INIT(&(flow->listen_sockets));
+    TAILQ_INIT(&flow->bufferedMessages);
+
 #ifdef SCTP_MULTISTREAMING
-    TAILQ_INIT(&rv->multistream_read_queue);
+    TAILQ_INIT(&flow->multistream_read_queue);
 #endif // SCTP_MULTISTREAMING
 
-    rv->properties = json_object();
-    rv->user_ips = NULL;
-    rv->security_needed = 0;
+    flow->properties        = json_object();
+    flow->user_ips          = NULL;
+    flow->security_needed   = 0;
 
-    rv->socket = calloc(1, sizeof(struct neat_pollable_socket));
-    if (!rv->socket) {
-        goto error;
+    flow->socket = calloc(1, sizeof(struct neat_pollable_socket));
+    if (flow->socket == NULL) {
+        free(flow);
+        return NULL;
     }
 
-    rv->socket->flow = rv;
-    rv->socket->fd = 0;
-    rv->readBufferSize = 0;
+    flow->socket->flow      = flow;
+    flow->socket->fd        = 0;
+    flow->readBufferSize    = 0;
 #if defined(USRSCTP_SUPPORT)
-    rv->socket->usrsctp_socket = NULL;
-    if (neat_base_stack(rv->socket->stack) == NEAT_STACK_SCTP) {
-        rv->socket->fd = -1;
+    flow->socket->usrsctp_socket = NULL;
+    if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+        flow->socket->fd = -1;
     }
 #endif
 
-    rv->socket->handle = (uv_poll_t *) calloc(1, sizeof(uv_poll_t));
-    if (!rv->socket->handle) {
-        goto error;
+    flow->socket->handle = calloc(1, sizeof(uv_poll_t));
+    if (flow->socket->handle == NULL) {
+        free(flow->socket);
+        free(flow);
+        return NULL;
     }
 
-    rv->socket->handle->loop    = NULL;
-    rv->socket->handle->type    = UV_UNKNOWN_HANDLE;
+    flow->socket->handle->loop    = NULL;
+    flow->socket->handle->type    = UV_UNKNOWN_HANDLE;
 
     /* Initialise flow statistics */
-    rv->flow_stats.bytes_sent       = 0;
-    rv->flow_stats.bytes_received   = 0;
+    flow->flow_stats.bytes_sent       = 0;
+    flow->flow_stats.bytes_received   = 0;
 
-    LIST_INSERT_HEAD(&ctx->flows, rv, next_flow);
+    LIST_INSERT_HEAD(&ctx->flows, flow, next_flow);
 
-    return rv;
-error:
-    if (rv) {
-        if (rv->socket) {
-            if (rv->socket->handle) {
-                free(rv->socket->handle);
-            }
-            free(rv->socket);
-        }
-        free(rv);
-    }
-    return NULL;
+    return flow;
 }
 
 // Notify application about congestion via callback
@@ -6767,9 +6761,12 @@ neat_notify_close(neat_flow *flow)
     const int stream_id = NEAT_INVALID_STREAM;
     //READYCALLBACKSTRUCT expects this:
     neat_error_code code = NEAT_ERROR_OK;
+
+    assert(flow);
+
     neat_ctx *ctx = flow->ctx;
 
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s - state: %d", __func__, flow->state);
 
     if (flow->state == NEAT_FLOW_CLOSED) {
         neat_log(ctx, NEAT_LOG_WARNING, "%s - flow already closed - skipping", __func__);

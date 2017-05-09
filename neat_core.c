@@ -1280,9 +1280,7 @@ resize_read_buffer(neat_flow *flow)
 }
 
 static int
-io_readable(neat_ctx *ctx, neat_flow *flow,
-            struct neat_pollable_socket *socket,
-            neat_error_code code)
+io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket, neat_error_code code)
 {
     struct sockaddr_storage peerAddr;
     socklen_t peerAddrLen = sizeof(struct sockaddr_storage);
@@ -6419,43 +6417,53 @@ handle_upcall(struct socket *sock, void *arg, int flags)
 {
     struct neat_pollable_socket *pollable_socket = arg;
     neat_flow *flow = pollable_socket->flow;
+    neat_ctx *ctx;
+    int events = 0;
+    neat_error_code code;
 
     neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     assert(flow);
 
-    if (flow) {
-        neat_ctx *ctx = flow->ctx;
-        neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    ctx = flow->ctx;
+    events = usrsctp_get_events(sock);
 
-        int events = usrsctp_get_events(sock);
+    if ((events & SCTP_EVENT_READ) && flow->acceptPending) {
+        do_accept(ctx, flow, pollable_socket);
+        return;
+    }
 
-        if ((events & SCTP_EVENT_READ) && flow->acceptPending) {
-            do_accept(ctx, flow, pollable_socket);
-            return;
-        }
-
-        // remove "on_writable" callback check
-        if (events & SCTP_EVENT_WRITE && flow->operations->on_writable) {
-            if (flow->firstWritePending)
-                flow->firstWritePending = 0;
+    // remove "on_writable" callback check
+    if (events & SCTP_EVENT_WRITE) {
+        if (flow->state == NEAT_FLOW_OPEN) {
+            flow->firstWritePending = 0;
             io_writable(ctx, flow, NEAT_OK);
+        } else {
+            neat_log(ctx, NEAT_LOG_WARNING, "%s - io_writable and flow in wrong state");
         }
 
-        if (events & SCTP_EVENT_READ && flow->operations->on_readable) {
-            neat_error_code code;
+    }
+
+    if (events & SCTP_EVENT_READ && flow->operations->on_readable) {
+        if (flow->state == NEAT_FLOW_OPEN) {
             do {
                 code = io_readable(ctx, flow, pollable_socket, NEAT_OK);
-            } while (code == READ_OK);
-            if (code == READ_WITH_ZERO && flow->operations && flow->operations->on_readable)
-                flow->operations->on_readable(flow->operations);
-        }
+            } while (code == READ_OK && flow->state == NEAT_FLOW_OPEN);
 
-        // xxx why two times?
-        events = usrsctp_get_events(sock);
-        if (events & SCTP_EVENT_WRITE && flow->operations->on_writable)
-            io_writable(ctx, flow, NEAT_OK);
+            if (code == READ_WITH_ZERO && flow->operations && flow->operations->on_readable) {
+                flow->operations->on_readable(flow->operations);
+            }
+        } else {
+            neat_log(ctx, NEAT_LOG_WARNING, "%s - io_readable and flow in wrong state");
+        }
     }
+
+    // xxx why two times?
+    events = usrsctp_get_events(sock);
+    if (events & SCTP_EVENT_WRITE && flow->operations->on_writable) {
+        io_writable(ctx, flow, NEAT_OK);
+    }
+
 }
 
 static int

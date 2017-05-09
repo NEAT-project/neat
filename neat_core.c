@@ -1256,10 +1256,9 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
 {
     struct sockaddr_storage peerAddr;
     socklen_t peerAddrLen = sizeof(struct sockaddr_storage);
-    int stream_id = -1;
-    int retval;
+    int stream_id   = -1;
+    ssize_t n       = 0;
     char buffer[1];
-    ssize_t n;
     struct msghdr msghdr;
     //Not used when notifications aren't available:
 #ifdef MSG_NOTIFICATION
@@ -1285,8 +1284,6 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
 #if (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
     struct cmsghdr *cmsg;
 #endif
-
-
     struct iovec iov;
 
 #else // !defined(USRSCTP_SUPPORT)
@@ -1685,12 +1682,18 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
     }
 
     if (socket->stack == NEAT_STACK_TCP) {
-        retval = recv(flow->socket->fd, buffer, 1, MSG_PEEK);
-        if (retval <= 0) {
-            neat_log(ctx, NEAT_LOG_INFO, "%s - TCP connection peek: %d - connection closed", __func__, retval);
+        n = recv(flow->socket->fd, buffer, 1, MSG_PEEK);
+        if (n <= 0) {
+            neat_log(ctx, NEAT_LOG_INFO, "%s - TCP connection peek: %d - connection closed", __func__, n);
             neat_notify_close(flow);
             return READ_WITH_ZERO;
         }
+    }
+
+    if (socket->stack == NEAT_STACK_SCTP && n == 0 && flow->readBufferSize == 0) {
+        neat_log(ctx, NEAT_LOG_INFO, "%s - SCTP connection closed and no outstanding messages buffered", __func__);
+        neat_notify_close(flow);
+        return READ_WITH_ZERO;
     }
 
     if (flow->operations->on_readable) {

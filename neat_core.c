@@ -1744,6 +1744,7 @@ updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     assert(handle);
+    assert(handle->data);
     pollable_socket = handle->data;
 
 #ifdef SCTP_MULTISTREAMING

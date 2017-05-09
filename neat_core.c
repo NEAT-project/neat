@@ -664,8 +664,8 @@ free_cb(uv_handle_t *handle)
 static int
 neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
 {
-    struct neat_pollable_socket *s;
-    struct neat_pollable_socket *stemp;
+    struct neat_pollable_socket *socket;
+    struct neat_pollable_socket *socket_temp;
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -676,9 +676,9 @@ neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
     }
 #endif
 
-    TAILQ_FOREACH_SAFE(s, &(flow->listen_sockets), next, stemp) {
-        neat_close_via_kernel_2(ctx, s->fd);
-        free(s);
+    TAILQ_FOREACH_SAFE(socket, &(flow->listen_sockets), next, socket_temp) {
+        neat_close_via_kernel_2(ctx, socket->fd);
+        free(socket);
     }
 
     neat_close_via_kernel(flow->ctx, flow);
@@ -840,7 +840,6 @@ neat_error_code neat_set_operations(neat_ctx *ctx, neat_flow *flow,
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    flow->ownedByCore   = 0;
     flow->operations    = ops;
 
     if (flow->socket == NULL) {
@@ -4406,8 +4405,9 @@ accept_resolve_cb(struct neat_resolver_results *results,
         }
 
         listen_socket = calloc(1, sizeof(*listen_socket));
-        if (!listen_socket)
+        if (listen_socket == NULL) {
             return NEAT_ERROR_OUT_OF_MEMORY;
+        }
 
         listen_socket->flow     = flow;
         listen_socket->stack    = neat_base_stack(stacks[i]);
@@ -4440,8 +4440,9 @@ accept_resolve_cb(struct neat_resolver_results *results,
         listen_socket->fd = fd;
 
         handle = calloc(1, sizeof(*handle));
-        if (!handle)
+        if (handle == NULL) {
             return NEAT_ERROR_OUT_OF_MEMORY;
+        }
         listen_socket->handle = handle;
         handle->data = listen_socket;
 

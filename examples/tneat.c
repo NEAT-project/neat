@@ -139,13 +139,11 @@ on_all_written(struct neat_flow_operations *opCB)
     if ((config_runtime_max > 0 && time_elapsed >= config_runtime_max) ||
         (config_message_count > 0 && tnf->snd.calls >= config_message_count)) {
         neat_close(opCB->ctx, opCB->flow);
+    } else {
+        opCB->on_writable = on_writable;
+        opCB->on_all_written = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
     }
-
-
-
-    opCB->on_writable = on_writable;
-    opCB->on_all_written = NULL;
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
 }
 

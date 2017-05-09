@@ -625,8 +625,10 @@ socket_handle_free_cb(uv_handle_t *handle)
     struct neat_flow *flow = NULL;
     struct neat_flow *prev_flow = NULL;
 #endif
-    struct neat_ctx *ctx = pollable_socket->flow->ctx;
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+    assert(pollable_socket);
+    //struct neat_ctx *ctx = pollable_socket->flow->ctx;
+    //neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (pollable_socket->multistream) {
 #ifdef SCTP_MULTISTREAMING
@@ -648,7 +650,7 @@ socket_handle_free_cb(uv_handle_t *handle)
 
         assert(pollable_socket->sctp_streams_used == 0);
 
-        neat_log(ctx, NEAT_LOG_DEBUG, "%s - all multistreams closed - freeing socket", __func__);
+        //neat_log(ctx, NEAT_LOG_DEBUG, "%s - all multistreams closed - freeing socket", __func__);
         free(pollable_socket->handle);
         free(pollable_socket);
 #else
@@ -719,10 +721,10 @@ neat_free_flow(neat_flow *flow)
     // close all listening sockets
     TAILQ_FOREACH_SAFE(listen_socket, &(flow->listen_sockets), next, listen_socket_temp) {
         if (!uv_is_closing((uv_handle_t *)listen_socket->handle)) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "%s - closing handle and waiting for socket_handle_free_cb", __func__);
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - closing listening handle and waiting for listen_socket_handle_free_cb", __func__);
             uv_close((uv_handle_t *)(listen_socket->handle), listen_socket_handle_free_cb);
         } else {
-            neat_log(ctx, NEAT_LOG_DEBUG, "%s - handle is already closing", __func__);
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - listen handle is already closing", __func__);
         }
     }
 
@@ -864,7 +866,7 @@ neat_error_code neat_set_operations(neat_ctx *ctx, neat_flow *flow,
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    flow->operations    = ops;
+    flow->operations = ops;
 
     if (flow->socket == NULL) {
         return NEAT_OK;
@@ -6848,6 +6850,9 @@ neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
             neat_log(ctx, NEAT_LOG_DEBUG, "%s - stopping polling", __func__);
             uv_poll_stop(flow->socket->handle);
         }
+
+        neat_close_socket(ctx, flow);
+
 #ifdef SCTP_MULTISTREAMING
     }
 #endif

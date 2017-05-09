@@ -618,7 +618,7 @@ synchronous_free(neat_flow *flow)
 }
 
 static void
-free_cb(uv_handle_t *handle)
+socket_handle_free_cb(uv_handle_t *handle)
 {
     struct neat_pollable_socket *pollable_socket = handle->data;
 #ifdef SCTP_MULTISTREAMING
@@ -658,7 +658,17 @@ free_cb(uv_handle_t *handle)
     } else {
         synchronous_free(pollable_socket->flow);
     }
+}
 
+static void
+listen_socket_handle_free_cb(uv_handle_t *handle)
+{
+    struct neat_pollable_socket *pollable_socket = handle->data;
+    //struct neat_ctx *ctx = pollable_socket->flow->ctx;
+    //neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+    free(pollable_socket);
+    free(handle);
 }
 
 static int
@@ -676,11 +686,12 @@ neat_close_socket(struct neat_ctx *ctx, struct neat_flow *flow)
     }
 #endif
 
+    // close all listening sockets
     TAILQ_FOREACH_SAFE(socket, &(flow->listen_sockets), next, socket_temp) {
         neat_close_via_kernel_2(ctx, socket->fd);
-        free(socket);
     }
 
+    // close active socket
     neat_close_via_kernel(flow->ctx, flow);
     return 0;
 }
@@ -689,6 +700,9 @@ void
 neat_free_flow(neat_flow *flow)
 {
     struct neat_ctx *ctx = flow->ctx;
+    struct neat_pollable_socket *listen_socket;
+    struct neat_pollable_socket *listen_socket_temp;
+
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     LIST_REMOVE(flow, next_flow);
@@ -702,15 +716,25 @@ neat_free_flow(neat_flow *flow)
 
     neat_free_candidates(ctx, flow->candidate_list);
 
+    // close all listening sockets
+    TAILQ_FOREACH_SAFE(listen_socket, &(flow->listen_sockets), next, listen_socket_temp) {
+        if (!uv_is_closing((uv_handle_t *)listen_socket->handle)) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - closing handle and waiting for socket_handle_free_cb", __func__);
+            uv_close((uv_handle_t *)(listen_socket->handle), listen_socket_handle_free_cb);
+        } else {
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - handle is already closing", __func__);
+        }
+    }
 
+    // close handles for active flow
     if (flow->socket->handle != NULL && flow->socket->handle->type != UV_UNKNOWN_HANDLE
 #ifdef SCTP_MULTISTREAMING
         && (!flow->socket->multistream || flow->socket->sctp_streams_used == 0)
 #endif
     ) {
         if (!uv_is_closing((uv_handle_t *)flow->socket->handle)) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "%s - closing handle and waiting for free_cb", __func__);
-            uv_close((uv_handle_t *)(flow->socket->handle), free_cb);
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - closing handle and waiting for socket_handle_free_cb", __func__);
+            uv_close((uv_handle_t *)(flow->socket->handle), socket_handle_free_cb);
         } else {
             neat_log(ctx, NEAT_LOG_DEBUG, "%s - handle is already closing", __func__);
         }
@@ -4404,7 +4428,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
 #endif
         }
 
-        listen_socket = calloc(1, sizeof(*listen_socket));
+        listen_socket = calloc(1, sizeof(struct neat_pollable_socket));
         if (listen_socket == NULL) {
             return NEAT_ERROR_OUT_OF_MEMORY;
         }

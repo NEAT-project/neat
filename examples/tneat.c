@@ -39,7 +39,7 @@ static char *config_property = "\
 {\
     \"transport\": [\
         {\
-            \"value\": \"SCTP\",\
+            \"value\": \"TCP\",\
             \"precedence\": 1\
         },\
         {\
@@ -389,8 +389,7 @@ main(int argc, char *argv[])
             break;
         case 'P':
             if (read_file(optarg, &arg_property) < 0) {
-                fprintf(stderr, "Unable to read properties from %s: %s",
-                        optarg, strerror(errno));
+                fprintf(stderr, "Unable to read properties from %s: %s", optarg, strerror(errno));
                 result = EXIT_FAILURE;
                 goto cleanup;
             }
@@ -552,6 +551,10 @@ main(int argc, char *argv[])
 cleanup:
     if (ctx != NULL) {
         neat_free_ctx(ctx);
+    }
+
+    if (arg_property != config_property && arg_property != NULL) {
+        free(arg_property);
     }
     exit(result);
 }

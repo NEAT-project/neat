@@ -183,20 +183,12 @@ on_readable(struct neat_flow_operations *opCB)
         }
     }
 
-    // all fine
-    if (buffer_filled > 0) {
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - received %d bytes on stream id %d\n", __func__, buffer_filled, opCB->stream_id);
-        }
-        fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
-        fflush(stdout);
 
-    } else {
-        fprintf(stderr, "%s - nothing more to read\n", __func__);
-        ops.on_readable = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, &ops);
-        neat_close(opCB->ctx, opCB->flow);
+    if (config_log_level >= 1) {
+        fprintf(stderr, "%s - received %d bytes on stream id %d\n", __func__, buffer_filled, opCB->stream_id);
     }
+    fwrite(buffer_rcv, sizeof(char), buffer_filled, stdout);
+    fflush(stdout);
 
     return NEAT_OK;
 }
@@ -255,12 +247,6 @@ on_connected(struct neat_flow_operations *opCB)
     int rc;
     uv_loop_t *loop;
 
-    /*
-    if (config_log_level >= 1) {
-        printf("%s - available streams : %d\n", __func__, opCB->flow->stream_count);
-    }
-    */
-
     last_stream = 0;
     loop = neat_get_event_loop(opCB->ctx);
 
@@ -281,8 +267,9 @@ on_connected(struct neat_flow_operations *opCB)
         }
     }
 
-    if (config_timeout)
+    if (config_timeout) {
         neat_change_timeout(opCB->ctx, opCB->flow, config_timeout);
+    }
 
     return NEAT_OK;
 }

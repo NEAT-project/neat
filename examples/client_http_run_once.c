@@ -258,11 +258,9 @@ main(int argc, char *argv[])
 
         ctx_flows[c]++;
 
-
         ops[i].on_connected = on_connected;
         ops[i].on_error     = on_error;
         ops[i].on_close     = on_close;
-
 
         flows[i].id     = streams_going;
         flows[i].ctx_id = c;
@@ -284,7 +282,7 @@ main(int argc, char *argv[])
        descriptors to become readable to know when to ask NEAT to run another
        loop ONCE on everything that it might have to work on. */
 
-    for (c=0; c<num_ctxs; c++) {
+    for (c = 0; c < num_ctxs; c++) {
         backend_fds[c] = neat_get_backend_fd(ctx[c]);
         /* kick off the event loop first for each context */
         neat_start_event_loop(ctx[c], NEAT_RUN_ONCE);
@@ -294,11 +292,11 @@ main(int argc, char *argv[])
         int timeout = 9999;
 
         fprintf(stderr, "[%d flows to go]\n", streams_going);
-        for (c=0; c<num_ctxs; c++) {
+        for (c = 0; c < num_ctxs; c++) {
             int t;
-            fds[c].fd = backend_fds[c];
-            fds[c].events = POLLERR | POLLIN | POLLHUP;
-            fds[c].revents = 0;
+            fds[c].fd       = backend_fds[c];
+            fds[c].events   = POLLERR | POLLIN | POLLHUP;
+            fds[c].revents  = 0;
 
             t = neat_get_backend_timeout(ctx[c]);
             if (t < timeout) {
@@ -311,11 +309,11 @@ main(int argc, char *argv[])
         if (rc > 0) {
             /* there's stuff to do on one or more contexts, do them all */
             ;
-        }
-        else {
+        } else {
             fprintf(stderr, "Waiting...\n");
         }
-        for (c=0; c<num_ctxs; c++) {
+
+        for (c = 0; c < num_ctxs; c++) {
             neat_start_event_loop(ctx[c], NEAT_RUN_NOWAIT);
         }
     }

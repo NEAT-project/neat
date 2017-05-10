@@ -1214,6 +1214,7 @@ handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
         case SCTP_SHUTDOWN_EVENT:
             neat_log(ctx, NEAT_LOG_DEBUG, "Got SCTP shutdown event");
             flow->eofSeen = 1;
+            neat_notify_close(flow);
             return READ_WITH_ZERO;
             break;
         case SCTP_ADAPTATION_INDICATION:
@@ -1593,10 +1594,10 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                 sctp_event_ret = handle_sctp_event(flow, (union sctp_notification*)(multistream_buffer));
                 free(multistream_buffer);
             } else {
-                sctp_event_ret = handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer+ flow->readBufferSize));
+                sctp_event_ret = handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer + flow->readBufferSize));
             }
 #else // SCTP_MULTISTREAM
-            sctp_event_ret = handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer+ flow->readBufferSize));
+            sctp_event_ret = handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer + flow->readBufferSize));
 #endif // SCTP_MULTISTREAM
 
             // We don't update readBufferSize, so buffer is implicitly "freed"
@@ -6497,7 +6498,7 @@ handle_upcall(struct socket *sock, void *arg, int flags)
                 code = io_readable(ctx, flow, pollable_socket, NEAT_OK);
             } while (code == READ_OK && flow->state == NEAT_FLOW_OPEN);
 
-            if (code == READ_WITH_ZERO && flow->operations && flow->operations->on_readable) {
+            if (code == READ_WITH_ZERO && flow->operations && flow->operations->on_readable && flow->state == NEAT_FLOW_OPEN) {
                 flow->operations->on_readable(flow->operations);
             }
         } else {
@@ -6507,7 +6508,7 @@ handle_upcall(struct socket *sock, void *arg, int flags)
 
     // xxx why two times?
     events = usrsctp_get_events(sock);
-    if (events & SCTP_EVENT_WRITE && flow->operations->on_writable) {
+    if (events & SCTP_EVENT_WRITE && flow->operations->on_writable && flow->state == NEAT_FLOW_OPEN) {
         io_writable(ctx, flow, NEAT_OK);
     }
 

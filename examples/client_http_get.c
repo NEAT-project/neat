@@ -56,10 +56,6 @@ static char          *config_property       = "\
     \"multihoming\": {\
         \"value\": true,\
         \"precedence\": 1\
-    },\
-    \"transport_type\": {\
-        \"value\": \"message\",\
-        \"precedence\": 1\
     }\
 }";
 static unsigned char *buffer                 = NULL;

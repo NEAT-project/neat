@@ -68,10 +68,30 @@ Requires: %{name} = %{version}-%{release}
  This package contains the built examples for the NEAT Core API.
 
 
+%package socketapi
+Summary: NEAT (Socket API Library)
+Group: Development/Libraries
+Requires: %{name} = %{version}-%{release}
+
+%description socketapi
+ The NEAT project wants to achieve a complete redesign of the way in which
+ Internet applications interact with the network. Our goal is to allow network
+ “services” offered to applications – such as reliability, low-delay
+ communication or security – to be dynamically tailored based on application
+ demands, current network conditions, hardware capabilities or local policies,
+ and also to support the integration of new network functionality in an
+ evolutionary fashion, without applications having to be rewritten. This
+ architectural change will make the Internet truly “enhanceable”, by allowing
+ applications to seamlessly and more easily take advantage of new network
+ features as they evolve.
+ This package contains the library for the NEAT Sockets API.
+
+ 
 %package socketapi-devel
 Summary: NEAT (Socket API Development Files)
 Group: Development/Libraries
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}-devel = %{version}-%{release}
+Requires: %{name}-socketapi = %{version}-%{release}
 
 %description socketapi-devel
  The NEAT project wants to achieve a complete redesign of the way in which
@@ -84,13 +104,13 @@ Requires: %{name} = %{version}-%{release}
  architectural change will make the Internet truly “enhanceable”, by allowing
  applications to seamlessly and more easily take advantage of new network
  features as they evolve.
- This package contains the built examples for the NEAT (Socket API.
+ This package contains the built examples for the NEAT Sockets API.
 
 
 %package socketapi-examples
 Summary: NEAT (Socket API Examples)
 Group: Applications/Internet
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}-socketapi = %{version}-%{release}
 
 %description socketapi-examples
  The NEAT project wants to achieve a complete redesign of the way in which
@@ -103,7 +123,7 @@ Requires: %{name} = %{version}-%{release}
  architectural change will make the Internet truly “enhanceable”, by allowing
  applications to seamlessly and more easily take advantage of new network
  features as they evolve.
- This package contains the built examples for the NEAT (Socket API.
+ This package contains the built examples for the NEAT Sockets API.
 
 
 %prep
@@ -123,7 +143,6 @@ make install DESTDIR=%{buildroot}
 %files
 %defattr(-,root,root,-)
 /usr/lib/libneat.so*
-/usr/lib/libneat-socketapi.so*
 
 %files devel
 /usr/include/neat.h
@@ -146,6 +165,10 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat/server_echo
 /usr/lib/libneat/server_http
 /usr/lib/libneat/tneat
+
+%files socketapi
+%defattr(-,root,root,-)
+/usr/lib/libneat-socketapi.so*
 
 %files socketapi-devel
 /usr/include/neat-socketapi.h

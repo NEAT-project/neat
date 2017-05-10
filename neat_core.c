@@ -1213,7 +1213,8 @@ handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
             break;
         case SCTP_SHUTDOWN_EVENT:
             neat_log(ctx, NEAT_LOG_DEBUG, "Got SCTP shutdown event");
-            flow->eofSeen = 1;
+            flow->eofSeen               = 1;
+            flow->readBufferMsgComplete = 1;
             neat_notify_close(flow);
             return READ_WITH_ZERO;
             break;
@@ -1599,12 +1600,6 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
 #else // SCTP_MULTISTREAM
             sctp_event_ret = handle_sctp_event(flow, (union sctp_notification*)(flow->readBuffer + flow->readBufferSize));
 #endif // SCTP_MULTISTREAM
-
-            // We don't update readBufferSize, so buffer is implicitly "freed"
-            if (sctp_event_ret == READ_WITH_ZERO && flow->state == NEAT_FLOW_OPEN) {
-                assert(flow);
-                flow->readBufferMsgComplete = 1;
-            }
 
             return sctp_event_ret;
 

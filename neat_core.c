@@ -1601,7 +1601,8 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
 #endif // SCTP_MULTISTREAM
 
             // We don't update readBufferSize, so buffer is implicitly "freed"
-            if (sctp_event_ret == READ_WITH_ZERO) {
+            if (sctp_event_ret == READ_WITH_ZERO && flow->state == NEAT_FLOW_OPEN) {
+                assert(flow);
                 flow->readBufferMsgComplete = 1;
             }
 

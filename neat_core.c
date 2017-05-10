@@ -1213,6 +1213,7 @@ handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
             break;
         case SCTP_SHUTDOWN_EVENT:
             neat_log(ctx, NEAT_LOG_DEBUG, "Got SCTP shutdown event");
+            flow->eofSeen = 1;
             return READ_WITH_ZERO;
             break;
         case SCTP_ADAPTATION_INDICATION:
@@ -1249,7 +1250,7 @@ handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
 }
 #endif // defined(HAVE_NETINET_SCTP_H) || defined(USRSCTP_SUPPORT)
 
-int
+static int
 resize_read_buffer(neat_flow *flow)
 {
     ssize_t spaceFree;
@@ -1496,10 +1497,6 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
 
         msghdr.msg_flags = 0;
 
-#ifdef MSG_NOTIFICATION
-        msghdr.msg_flags |= MSG_NOTIFICATION;
-#endif // MSG_NOTIFICATION
-
         if ((n = recvmsg(socket->fd, &msghdr, 0)) < 0) {
 #ifdef SCTP_MULTISTREAMING
             if (multistream_buffer) {
@@ -1509,6 +1506,12 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
             neat_log(ctx, NEAT_LOG_WARNING, "%s - READ_WITH_ERROR 9 - %s", __func__, strerror(errno));
             return READ_WITH_ERROR;
         }
+
+        // felix XXX polish me!
+        if (n == 0) {
+            flow->eofSeen = 1;
+        }
+
 
 #if (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
         for (cmsg = CMSG_FIRSTHDR(&msghdr); cmsg != NULL; cmsg = CMSG_NXTHDR(&msghdr, cmsg)) {
@@ -1698,7 +1701,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                 flow->readBufferMsgComplete = 1;
             }
 
-            if (!flow->readBufferMsgComplete) {
+            if (!flow->readBufferMsgComplete && flow->preserveMessageBoundaries) {
                 neat_log(ctx, NEAT_LOG_WARNING, "%s - READ_WITH_ERROR 12", __func__);
                 return READ_WITH_ERROR;
             }
@@ -2517,11 +2520,12 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 
     neat_log(ctx, NEAT_LOG_INFO, "%s - write_size %d - read_size %d", __func__, listen_socket->write_size, listen_socket->read_size);
 
-    newFlow->ctx            = ctx;
-    newFlow->ownedByCore    = 1;
-    newFlow->isServer       = 1;
-    newFlow->isSCTPMultihoming = flow->isSCTPMultihoming;
-    newFlow->security_needed = flow->security_needed;
+    newFlow->ctx                = ctx;
+    newFlow->ownedByCore        = 1;
+    newFlow->isServer           = 1;
+    newFlow->isSCTPMultihoming  = flow->isSCTPMultihoming;
+    newFlow->security_needed    = flow->security_needed;
+    newFlow->eofSeen            = 0;
 
     newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
     if (newFlow->operations == NULL) {
@@ -3423,6 +3427,11 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
         for (unsigned int i = 0; i < nr_of_stacks; ++i) {
             // struct neat_he_candidate *tmp;
 
+            if (flow->preserveMessageBoundaries &&
+                (neat_base_stack(stacks[i]) != NEAT_STACK_SCTP && stacks[i] != NEAT_STACK_UDP && stacks[i] != NEAT_STACK_UDPLITE)) {
+                continue;
+            }
+
             struct neat_he_candidate *candidate = calloc(1, sizeof(*candidate));
             if (!candidate)
                 return NEAT_ERROR_OUT_OF_MEMORY;
@@ -4077,7 +4086,10 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     int group = 0;
     float priority = 0.5f;
     const char *cc_algorithm = NULL;
-    json_t *multihoming = NULL, *val = NULL, *security = NULL;
+    json_t *multihoming = NULL;
+    json_t *val = NULL;
+    json_t *security = NULL;
+    json_t *transport_type = NULL;
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -4104,12 +4116,16 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     }
 
     flow->name = strdup(name);
-    if (flow->name == NULL)
+    if (flow->name == NULL) {
         return NEAT_ERROR_OUT_OF_MEMORY;
-    flow->port = port;
+    }
+
+    flow->port      = port;
     //flow->stream_count = stream_count;
-    flow->group = group;
-    flow->priority = priority;
+    flow->group     = group;
+    flow->priority  = priority;
+    flow->eofSeen   = 0;
+
     if ((multihoming = json_object_get(flow->properties, "multihoming")) != NULL &&
         (val = json_object_get(multihoming, "value")) != NULL &&
         json_typeof(val) == JSON_TRUE)
@@ -4118,6 +4134,15 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     } else {
         flow->isSCTPMultihoming = 0;
     }
+
+    if ((transport_type = json_object_get(flow->properties, "transport_type")) != NULL &&
+        (val = json_object_get(transport_type, "value")) != NULL &&
+        !strcmp(json_string_value(val), "message")) {
+        flow->preserveMessageBoundaries = 1;
+    } else {
+        flow->preserveMessageBoundaries = 0;
+    }
+
 
     if ((security = json_object_get(flow->properties, "security")) != NULL &&
         (val = json_object_get(security, "value")) != NULL &&
@@ -5111,21 +5136,42 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             assert(false);
 #endif // SCTP_MULTISTREAMING
 
-        } else {
-            if (!flow->readBufferMsgComplete) {
-                return NEAT_ERROR_WOULD_BLOCK;
-            }
-            if (flow->readBufferSize > amt) {
-                neat_log(ctx, NEAT_LOG_DEBUG, "%s: Message too big", __func__);
-                return NEAT_ERROR_MESSAGE_TOO_BIG;
+            } else {
+                if (flow->preserveMessageBoundaries) {
+                    if (!flow->readBufferMsgComplete) {
+                        return NEAT_ERROR_WOULD_BLOCK;
+                    }
+                    if (flow->readBufferSize > amt) {
+                        neat_log(ctx, NEAT_LOG_DEBUG, "%s: Message too big", __func__);
+                        return NEAT_ERROR_MESSAGE_TOO_BIG;
+                    }
+                } else if (flow->readBufferSize == 0) {
+                    neat_log(ctx, NEAT_LOG_DEBUG, "%s nothing scheduled", __func__);
+                    if (flow->eofSeen) {
+                        flow->eofSeen = 0;
+                        printf("eofSeen: return NEAT_OK\n");
+                        return NEAT_OK;
+                    } else {
+                        return NEAT_ERROR_WOULD_BLOCK;
+                    }
+                }
+
+                assert(flow->readBuffer);
+                if (flow->readBufferSize > amt) {
+                    /* this can only happen if message boundaries are not preserved */
+                    *actualAmt = amt;
+                    memcpy(buffer, flow->readBuffer, amt);
+                    /* This is very inefficient, we should also use a offset */
+                    memmove(flow->readBuffer, flow->readBuffer + amt, flow->readBufferSize - amt);
+                    flow->readBufferSize -= amt;
+                } else {
+                    *actualAmt = flow->readBufferSize;
+                    memcpy(buffer, flow->readBuffer, flow->readBufferSize);
+                    flow->readBufferSize = 0;
+                    flow->readBufferMsgComplete = 0;
+                }
             }
 
-            assert(flow->readBuffer);
-            memcpy(buffer, flow->readBuffer, flow->readBufferSize);
-            *actualAmt = flow->readBufferSize;
-            flow->readBufferSize = 0;
-            flow->readBufferMsgComplete = 0;
-        }
 
         goto end;
     }

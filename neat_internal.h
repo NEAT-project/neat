@@ -302,19 +302,21 @@ struct neat_flow
     neat_accept_usrsctp_impl acceptusrsctpfx;
 #endif
 
-    unsigned int hefirstConnect         : 1;
-    unsigned int firstWritePending      : 1;
-    unsigned int acceptPending          : 1;
-    unsigned int isPolling              : 1;
-    unsigned int ownedByCore            : 1;
-    unsigned int everConnected          : 1;
-    unsigned int isDraining             : 1;
-    unsigned int isServer               : 1; // i.e. created via accept()
-    unsigned int isSCTPMultihoming      : 1;
-    unsigned int security_needed        : 1;
-    unsigned int isSCTPIdata            : 1;
-    unsigned int isClosing              : 1;
-    unsigned int notifyDrainPending     : 1;
+    unsigned int hefirstConnect             : 1;
+    unsigned int firstWritePending          : 1;
+    unsigned int acceptPending              : 1;
+    unsigned int isPolling                  : 1;
+    unsigned int ownedByCore                : 1;
+    unsigned int everConnected              : 1;
+    unsigned int isDraining                 : 1;
+    unsigned int isServer                   : 1; // i.e. created via accept()
+    unsigned int isSCTPMultihoming          : 1;
+    unsigned int security_needed            : 1;
+    unsigned int isSCTPIdata                : 1;
+    unsigned int isClosing                  : 1;
+    unsigned int notifyDrainPending         : 1;
+    unsigned int preserveMessageBoundaries  : 1;
+    unsigned int eofSeen                    : 1;
 
     unsigned int streams_requested;
 

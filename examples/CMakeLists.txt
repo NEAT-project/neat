@@ -36,9 +36,6 @@ FOREACH (source_file ${neat_programs})
         util.c
     )
     TARGET_LINK_LIBRARIES(${source_file_we} neat)
-    INSTALL(TARGETS             ${source_file_we}
-            RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/libneat
-            BUNDLE DESTINATION  ${CMAKE_INSTALL_LIBDIR}/libneat)
 ENDFOREACH ()
 
 # COPY EXAMPLE PROPERTY FILES

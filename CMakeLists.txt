@@ -9,30 +9,30 @@ set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 # INSTALLATION_DIRECTORIES
 #################################################
 
-SET(CMAKE_INSTALL_BINDIR_DOC        "user executables [PREFIX/bin]")
-SET(CMAKE_INSTALL_SBINDIR_DOC       "system admin executables [EPREFIX/sbin]")
-SET(CMAKE_INSTALL_DATADIR_DOC       "read-only architecture-independent data [PREFIX/share]")
-SET(CMAKE_INSTALL_SYSCONFDIR_DOC    "read-only single-machine data [PREFIX/etc]")
-SET(CMAKE_INSTALL_LOCALSTATEDIR_DOC "modifiable single-machine data [PREFIX/var]")
-SET(CMAKE_INSTALL_LIBDIR_DOC        "object code libraries [PREFIX/lib]")
-SET(CMAKE_INSTALL_INCLUDEDIR_DOC    "read-only includes [PREFIX/include]")
-SET(CMAKE_INSTALL_MANDIR_DOC        "man documentation [PREFIX/share/man]")
+SET(CMAKE_INSTALL_BINDIR_DOC        "user executables [PREFIX/bin/neat]")
+SET(CMAKE_INSTALL_SBINDIR_DOC       "system admin executables [EPREFIX/sbin/neat]")
+SET(CMAKE_INSTALL_DATADIR_DOC       "read-only architecture-independent data [PREFIX/share/neat]")
+SET(CMAKE_INSTALL_SYSCONFDIR_DOC    "read-only single-machine data [PREFIX/etc/neat]")
+SET(CMAKE_INSTALL_LOCALSTATEDIR_DOC "modifiable single-machine data [PREFIX/var/neat]")
+SET(CMAKE_INSTALL_LIBDIR_DOC        "object code libraries [PREFIX/lib/neat]")
+SET(CMAKE_INSTALL_INCLUDEDIR_DOC    "read-only includes [PREFIX/include/neat]")
+SET(CMAKE_INSTALL_MANDIR_DOC        "man documentation [PREFIX/share/man/neat]")
 
-SET(CMAKE_INSTALL_BINDIR "bin"
+SET(CMAKE_INSTALL_BINDIR "bin/neat"
     CACHE PATH ${CMAKE_INSTALL_BINDIR_DOC})
-SET(CMAKE_INSTALL_SBINDIR "sbin"
+SET(CMAKE_INSTALL_SBINDIR "sbin/neat"
     CACHE PATH ${CMAKE_INSTALL_SBINDIR_DOC})
-SET(CMAKE_INSTALL_DATADIR "share"
+SET(CMAKE_INSTALL_DATADIR "share/neat"
     CACHE PATH ${CMAKE_INSTALL_DATADIR_DOC})
-SET(CMAKE_INSTALL_SYSCONFDIR "etc"
+SET(CMAKE_INSTALL_SYSCONFDIR "etc/neat"
     CACHE PATH ${CMAKE_INSTALL_SYSCONFDIR_DOC})
-SET(CMAKE_INSTALL_LOCALSTATEDIR "var"
+SET(CMAKE_INSTALL_LOCALSTATEDIR "var/neat"
     CACHE PATH ${CMAKE_INSTALL_LOCALSTATEDIR_DOC})
-SET(CMAKE_INSTALL_LIBDIR "lib"
+SET(CMAKE_INSTALL_LIBDIR "lib/neat"
     CACHE PATH ${CMAKE_INSTALL_LIBDIR_DOC})
-SET(CMAKE_INSTALL_INCLUDEDIR "include"
+SET(CMAKE_INSTALL_INCLUDEDIR "include/neat"
     CACHE PATH ${CMAKE_INSTALL_INCLUDEDIR_DOC})
-SET(CMAKE_INSTALL_MANDIR "share/man"
+SET(CMAKE_INSTALL_MANDIR "share/man/neat"
     CACHE PATH ${CMAKE_INSTALL_MANDIR_DOC})
 
 # PACKAGING
@@ -46,7 +46,6 @@ set(CPACK_SOURCE_IGNORE_FILES
 include(CPack)
 
 add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
-
 
 INCLUDE(CheckIncludeFile)
 INCLUDE(CheckStructHasMember)
@@ -185,6 +184,8 @@ IF (SCTP_MULTISTREAMING)
 ENDIF()
 
 OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 1)
+
+OPTION(SOCKET_API "Include the socket API" 0)
 
 # REQUIREMENTS
 #################################################
@@ -335,6 +336,8 @@ INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # INCLUDE EXAMPLES AND TESTS FOLDER
 #################################################
-ADD_SUBDIRECTORY(socketapi)
+IF (SOCKET_API)
+    ADD_SUBDIRECTORY(socketapi)
+ENDIF()
 ADD_SUBDIRECTORY(examples)
 ADD_SUBDIRECTORY(tests)

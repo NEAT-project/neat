@@ -1277,7 +1277,9 @@ io_readable(neat_ctx *ctx, neat_flow *flow,
 
 #ifdef NEAT_SCTP_DTLS
     if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+#if !defined(USRSCTP_SUPPORT)
         socklen_t len;
+#endif // !defined(USRSCTP_SUPPORT)
         int ret = 0;
         struct security_data *private = (struct security_data *) flow->socket->dtls_data->userData;
 

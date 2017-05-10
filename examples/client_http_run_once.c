@@ -103,24 +103,29 @@ on_readable(struct neat_flow_operations *opCB)
         return on_error(opCB);
     }
 
-    if (!bytes_read) { // eof
-        struct user_flow *f = opCB->userData;
-        ctx_flows[f->ctx_id] = ctx_flows[f->ctx_id] - 1;
-        streams_going--; /* one stream less */
-        fprintf(stderr, "[Flow %u ended, %d to go, %d for ctx %d]\n", f->id, streams_going, ctx_flows[f->ctx_id], f->ctx_id);
-        fflush(stdout);
-        opCB->on_readable = NULL; // do not read more
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-
-        if (ctx_flows[f->ctx_id] == 0) {
-            fprintf(stderr, "%s - no flows left for ctx, stopping event loop\n", __func__);
-            neat_stop_event_loop(opCB->ctx);
-        }
-
-    } else if (bytes_read > 0) {
+    if (bytes_read > 0) {
         //fwrite(buffer, sizeof(char), bytes_read, stdout);
     }
+
     return 0;
+}
+
+static neat_error_code
+on_close(struct neat_flow_operations *opCB) {
+    struct user_flow *f = opCB->userData;
+    ctx_flows[f->ctx_id] = ctx_flows[f->ctx_id] - 1;
+    streams_going--; /* one stream less */
+    fprintf(stderr, "[Flow %u ended, %d to go, %d for ctx %d]\n", f->id, streams_going, ctx_flows[f->ctx_id], f->ctx_id);
+    fflush(stdout);
+    opCB->on_readable = NULL; // do not read more
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
+
+    if (ctx_flows[f->ctx_id] == 0) {
+        fprintf(stderr, "%s - no flows left for ctx, stopping event loop\n", __func__);
+        //neat_stop_event_loop(opCB->ctx);
+    }
+
+    return NEAT_OK;
 }
 
 static neat_error_code
@@ -199,8 +204,7 @@ main(int argc, char *argv[])
             break;
         case 'v':
             config_log_level = atoi(optarg);
-            fprintf(stderr, "%s - option - log level: %d\n",
-                    __func__, config_log_level);
+            fprintf(stderr, "%s - option - log level: %d\n", __func__, config_log_level);
             break;
         case 's':
             config_property = config_property_sctp;
@@ -257,6 +261,8 @@ main(int argc, char *argv[])
 
         ops[i].on_connected = on_connected;
         ops[i].on_error     = on_error;
+        ops[i].on_close     = on_close;
+
 
         flows[i].id     = streams_going;
         flows[i].ctx_id = c;
@@ -315,19 +321,14 @@ main(int argc, char *argv[])
     }
 cleanup:
     fprintf(stderr, "Cleanup!\n");
-    for (i = 0, c = 0; i < num_flows; i++, c++) {
-      if (c >= num_ctxs) {
-        c = 0;
-      }
-      if (flows[i].flow != NULL) {
-        neat_close(ctx[c], flows[i].flow);
-      }
-    }
+
     for (c = 0; c < num_ctxs; c++) {
-      neat_free_ctx(ctx[c]);
+        neat_free_ctx(ctx[c]);
     }
+
     if (buffer) {
         free(buffer);
     }
+
     exit(result);
 }

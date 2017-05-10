@@ -588,12 +588,14 @@ synchronous_free(neat_flow *flow)
     if (flow->cc_algorithm) {
         free((char*)flow->cc_algorithm);
     }
+
     if (flow->resolver_results) {
         neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s - neat_resolver_free_results", __func__);
         neat_resolver_free_results(flow->resolver_results);
     } else {
         neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s - NOT neat_resolver_free_results", __func__);
     }
+
     if (flow->ownedByCore) {
         free(flow->operations);
     }
@@ -612,7 +614,6 @@ synchronous_free(neat_flow *flow)
         free(flow->socket->handle);
         free(flow->socket);
     }
-
 
     free(flow);
 }

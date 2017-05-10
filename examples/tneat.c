@@ -35,7 +35,7 @@ static uint16_t config_port                 = 23232;
 static uint16_t config_log_level            = 1;
 static uint16_t config_num_flows            = 1;
 static uint16_t config_max_flows            = 100;
-static uint16_t close_after                 = 2;
+static uint16_t config_max_server_runs      = 0;
 static char *config_property = "\
 {\
     \"transport\": [\
@@ -51,6 +51,7 @@ static char *config_property = "\
 }";
 
 static uint32_t flows_active = 0;
+static uint32_t server_runs = 0;
 static char *cert_file = NULL;
 static char *key_file = NULL;
 
@@ -116,6 +117,7 @@ on_error(struct neat_flow_operations *opCB)
 {
 
     fprintf(stderr, "%s()\n", __func__);
+    neat_stop_event_loop(opCB->ctx);
     return NEAT_OK;
 }
 
@@ -155,6 +157,7 @@ on_writable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
+
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -169,7 +172,7 @@ on_writable(struct neat_flow_operations *opCB)
     opCB->on_all_written = on_all_written;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-    // increase stats
+    // update stats
     tnf->snd.calls++;
     tnf->snd.bytes += config_snd_buffer_size;
     gettimeofday(&(tnf->snd.tv_last), NULL);
@@ -188,7 +191,6 @@ on_writable(struct neat_flow_operations *opCB)
     }
 
     code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size, NULL, 0);
-
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: code %d\n", __func__, (int)code);
         return on_error(opCB);
@@ -203,8 +205,6 @@ on_readable(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = opCB->userData;
     uint32_t buffer_filled;
     neat_error_code code;
-
-
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -221,8 +221,9 @@ on_readable(struct neat_flow_operations *opCB)
         }
     }
 
+    // we got data!
     if (buffer_filled > 0) {
-        // we got data!
+
         if (tnf->rcv.calls == 0) {
             gettimeofday(&(tnf->rcv.tv_first), NULL);
         }
@@ -237,7 +238,6 @@ on_readable(struct neat_flow_operations *opCB)
                 printf("\n");
             }
         }
-    // peer disconnected
     }
 
     return NEAT_OK;
@@ -343,8 +343,8 @@ on_close(struct neat_flow_operations *opCB)
             neat_stop_event_loop(opCB->ctx);
         }
     } else {
-        close_after--;
-        if (!close_after) {
+        server_runs++;
+        if (config_max_server_runs > 0 && server_runs >= config_max_server_runs) {
             fprintf(stderr, "%s - stopping event loop\n", __func__);
             neat_stop_event_loop(opCB->ctx);
         }

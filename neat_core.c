@@ -1364,7 +1364,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
 #ifdef NEAT_SCTP_DTLS
-    if (flow->security_needed && nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+    if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
 #if !defined(USRSCTP_SUPPORT)
         socklen_t len;
 #endif // !defined(USRSCTP_SUPPORT)

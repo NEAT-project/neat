@@ -1215,7 +1215,7 @@ handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
             neat_log(ctx, NEAT_LOG_DEBUG, "Got SCTP shutdown event");
             flow->eofSeen               = 1;
             flow->readBufferMsgComplete = 1;
-            neat_notify_close(flow);
+            //neat_notify_close(flow);
             return READ_WITH_ZERO;
             break;
         case SCTP_ADAPTATION_INDICATION:
@@ -1571,8 +1571,10 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                             &infotype,
                             &(msghdr.msg_flags));
         if (n < 0) {
-          /*  if (errno == EAGAIN)
-                return READ_OK;*/
+            if (errno == EAGAIN) {
+                //return READ_OK;
+                neat_log(ctx, NEAT_LOG_WARNING, "%s - usrsctp_recvv error EAGAIN", __func__);
+            }
             neat_log(ctx, NEAT_LOG_WARNING, "%s - READ_WITH_ERROR 10 - usrsctp_recvv error", __func__);
             return READ_WITH_ERROR;
         }
@@ -6488,14 +6490,15 @@ handle_upcall(struct socket *sock, void *arg, int flags)
 
     }
 
-    if (events & SCTP_EVENT_READ && flow->operations->on_readable) {
+    if (events & SCTP_EVENT_READ) {
         if (flow->state == NEAT_FLOW_OPEN) {
             do {
                 code = io_readable(ctx, flow, pollable_socket, NEAT_OK);
-            } while (code == READ_OK && flow->state == NEAT_FLOW_OPEN);
+            } while (code == READ_OK);
 
-            if (code == READ_WITH_ZERO && flow->operations && flow->operations->on_readable && flow->state == NEAT_FLOW_OPEN) {
-                flow->operations->on_readable(flow->operations);
+            if (code == READ_WITH_ZERO) {
+                neat_notify_close(flow);
+                return;
             }
         } else {
             neat_log(ctx, NEAT_LOG_WARNING, "%s - io_readable and flow in wrong state");

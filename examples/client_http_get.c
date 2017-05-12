@@ -19,6 +19,7 @@
     -n : number of requests/flows
     -R : receive buffer size in byte
     -v : log level (0 .. 2)
+    -J : Print json stats on receiving data
 
 **********************************************************************/
 

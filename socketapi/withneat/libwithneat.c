@@ -29,5 +29,90 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdarg.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include <neat-socketapi.h>
 
+
+#define DEF1(rt, name,t1) \
+   rt name(t1 a) { return(nsa_##name(a)); }
+#define DEF2(rt, name, t1, t2) \
+   rt name(t1 a, t2 b) { return(nsa_##name(a, b)); }
+#define DEF3(rt, name, t1, t2, t3) \
+   rt name(t1 a, t2 b, t3 c) { return(nsa_##name(a, b, c)); }
+#define DEF4(rt, name, t1, t2, t3, t4) \
+   rt name(t1 a, t2 b, t3 c, t4 d) { return(nsa_##name(a, b, c, d)); }
+#define DEF5(rt, name, t1, t2, t3, t4, t5) \
+   rt name(t1 a, t2 b, t3 c, t4 d, t5 e) { return(nsa_##name(a, b, c, d, e)); }
+#define DEF6(rt, name, t1, t2, t3, t4, t5, t6) \
+   rt name(t1 a, t2 b, t3 c, t4 d, t5 e, t6 f) { return(nsa_##name(a, b, c, d, e, f)); }
+#define DEF9(rt, name, t1, t2, t3, t4, t5, t6, t7, t8, t9) \
+   rt name(t1 a, t2 b, t3 c, t4 d, t5 e, t6 f, t7 g, t8 h, t9 i) { return(nsa_##name(a, b, c, d, e, f, g, h, i)); }
+
+
+/* ====== Connection Establishment and Teardown ========================== */
+int socket(int domain, int type, int protocol)
+{
+   return(nsa_socket(domain, type, protocol, NULL));
+}
+
+DEF1(int, close, int)
+
+int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+{ return(nsa_bind(sockfd, addr, addrlen, NULL, 0)); }
+
+int connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+{ return(nsa_bind(sockfd, addr, addrlen, NULL, 0)); }
+
+DEF2(int, listen, int, int)
+DEF3(int, accept, int, struct sockaddr*, socklen_t*)
+// int peeloff(int sockfd, neat_assoc_t id);
+DEF2(int, shutdown, int, int)
+
+/* ====== Options Handling =============================================== */
+DEF5(int, getsockopt, int, int, int, void*, socklen_t*)
+DEF5(int, setsockopt, int, int, int, const void*, socklen_t)
+
+/* ====== Input/Output Handling ========================================== */
+DEF3(ssize_t, write, int, const void*, size_t)
+DEF4(ssize_t, send, int, const void*, size_t, int)
+DEF6(ssize_t, sendto, int, const void*, size_t, int, const struct sockaddr*, socklen_t)
+DEF3(ssize_t, sendmsg, int, const struct msghdr*, int)
+DEF9(ssize_t, sendv, int, struct iovec*, int, struct sockaddr*, int, void*, socklen_t, unsigned int, int)
+
+DEF3(ssize_t, read, int, void*, size_t)
+DEF4(ssize_t, recv, int, void*, size_t, int)
+DEF6(ssize_t, recvfrom, int, void*, size_t, int, struct sockaddr*, socklen_t*)
+DEF3(ssize_t, recvmsg, int, struct msghdr*, int)
+DEF9(ssize_t, recvv, int, struct iovec*, int, struct sockaddr*, socklen_t*, void*, socklen_t*, unsigned int*, int*)
+
+/* ====== Poll and Select ================================================ */
+DEF3(int, poll, struct pollfd*, const nfds_t, int)
+DEF5(int, select,int, fd_set*, fd_set*, fd_set*, struct timeval*)
+
+/* ====== Address Handling =============================================== */
+DEF3(int, getsockname, int, struct sockaddr*, socklen_t*)
+DEF3(int, getpeername, int, struct sockaddr*, socklen_t*)
+/*
+int getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
+void freeladdrs(struct sockaddr* addrs);
+int getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
+void freepaddrs(struct sockaddr* addrs);
+*/
+
+/* ====== Miscellaneous ================================================== */
+int open(const char* pathname, int flags, ...)
+{   
+   va_list args;
+   va_start(args, flags);
+//    int result = nsa_open(pathname, flags, args);
+   int result = -1;
+   va_end(args);
+   return(result);
+}
+
+DEF2(int, creat, const char*, mode_t)
+int pipe(int fds[2]) { return(nsa_pipe(fds)); }
+DEF3(int, ioctl, int, int, const void*)

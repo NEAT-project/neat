@@ -70,4 +70,5 @@ ENDFOREACH ()
 
 # INCLUDE EXAMPLES AND TESTS FOLDER
 #################################################
+ADD_SUBDIRECTORY(withneat)
 ADD_SUBDIRECTORY(examples)

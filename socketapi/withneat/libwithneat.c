@@ -35,21 +35,23 @@
 
 #include <neat-socketapi.h>
 
+#define DEBUG(name, x) \
+   printf("debug: %s %lld\n", #name, (long long)x)
 
 #define DEF1(rt, name,t1) \
-   rt name(t1 a) { return(nsa_##name(a)); }
+   rt name(t1 a) { DEBUG(name, a); return(nsa_##name(a)); }
 #define DEF2(rt, name, t1, t2) \
-   rt name(t1 a, t2 b) { return(nsa_##name(a, b)); }
+   rt name(t1 a, t2 b) { DEBUG(name, a); return(nsa_##name(a, b)); }
 #define DEF3(rt, name, t1, t2, t3) \
-   rt name(t1 a, t2 b, t3 c) { return(nsa_##name(a, b, c)); }
+   rt name(t1 a, t2 b, t3 c) { DEBUG(name, a); return(nsa_##name(a, b, c)); }
 #define DEF4(rt, name, t1, t2, t3, t4) \
-   rt name(t1 a, t2 b, t3 c, t4 d) { return(nsa_##name(a, b, c, d)); }
+   rt name(t1 a, t2 b, t3 c, t4 d) { DEBUG(name, a); return(nsa_##name(a, b, c, d)); }
 #define DEF5(rt, name, t1, t2, t3, t4, t5) \
-   rt name(t1 a, t2 b, t3 c, t4 d, t5 e) { return(nsa_##name(a, b, c, d, e)); }
+   rt name(t1 a, t2 b, t3 c, t4 d, t5 e) { DEBUG(name, a); return(nsa_##name(a, b, c, d, e)); }
 #define DEF6(rt, name, t1, t2, t3, t4, t5, t6) \
-   rt name(t1 a, t2 b, t3 c, t4 d, t5 e, t6 f) { return(nsa_##name(a, b, c, d, e, f)); }
+   rt name(t1 a, t2 b, t3 c, t4 d, t5 e, t6 f) { DEBUG(name, a); return(nsa_##name(a, b, c, d, e, f)); }
 #define DEF9(rt, name, t1, t2, t3, t4, t5, t6, t7, t8, t9) \
-   rt name(t1 a, t2 b, t3 c, t4 d, t5 e, t6 f, t7 g, t8 h, t9 i) { return(nsa_##name(a, b, c, d, e, f, g, h, i)); }
+   rt name(t1 a, t2 b, t3 c, t4 d, t5 e, t6 f, t7 g, t8 h, t9 i) { DEBUG(name, a); return(nsa_##name(a, b, c, d, e, f, g, h, i)); }
 
 
 /* ====== Connection Establishment and Teardown ========================== */
@@ -107,8 +109,7 @@ int open(const char* pathname, int flags, ...)
 {   
    va_list args;
    va_start(args, flags);
-//    int result = nsa_open(pathname, flags, args);
-   int result = -1;
+   int result = nsa_open(pathname, flags, __builtin_va_arg_pack());
    va_end(args);
    return(result);
 }

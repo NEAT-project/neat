@@ -28,10 +28,17 @@
 #  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-LIBDIR=@libdir@
-LIBVERSION=@libversion@
-export LD_PRELOAD=${LIBDIR}/libwithneat.so.${LIBVERSION}
+LIBWITHNEAT=@libdir@/libwithneat.so.@libversion@
+export LD_PRELOAD=${LIBWITHNEAT}:${LD_PRELOAD}
+
+if [ $# -lt 1 ] ; then
+   echo >&2 "Usage: $0 program [arguments ...]"
+   exit 1
+fi
+if [ ! -e "${LIBWITHNEAT}" ] ; then
+   echo >&2 "ERROR: libwithneat not found under ${LIBWITHNEAT}!"
+   exit 1
+fi
 
 echo "run-with-neat: using LD_PRELOAD=$LD_PRELOAD"
-
 exec "$@"

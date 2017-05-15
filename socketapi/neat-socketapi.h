@@ -282,7 +282,7 @@ int nsa_getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
 void nsa_freepaddrs(struct sockaddr* addrs);
 
 /* ====== Miscellaneous ================================================== */
-int nsa_open(const char* pathname, int flags, mode_t mode);
+int nsa_open(const char* pathname, int flags, ...);
 int nsa_creat(const char* pathname, mode_t mode);
 int nsa_pipe(int fds[2]);
 int nsa_ioctl(int fd, int request, const void* argp);

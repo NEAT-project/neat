@@ -678,16 +678,21 @@ int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
 
 
 /* ###### NEAT open() implementation ##################################### */
-int nsa_open(const char* pathname, int flags, mode_t mode)
+int nsa_open(const char* pathname, int flags, ...)
 {
-   int fd = open(pathname, flags, mode);
-   if(fd >= 0) {
-      int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, 0);
-      if(newFD >= 0) {
-         return(newFD);
+   if(nsa_initialize() != NULL) {
+      int fd = open(pathname, flags, __builtin_va_arg_pack());
+      if(fd >= 0) {
+         int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, 0);
+         if(newFD >= 0) {
+            return(newFD);
+         }
+         errno = ENOMEM;
+         close(fd);
       }
-      errno = ENOMEM;
-      close(fd);
+   }
+   else {
+      errno = ENXIO;
    }
    return(-1);
 }

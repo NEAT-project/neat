@@ -252,6 +252,9 @@ static void neat_walk_cb(uv_handle_t *handle, void *ctx)
         return;
     }
 
+    // Bug fix (karlgrin, 170323).
+    if ((handle == NULL) || (handle->data == NULL)) return;
+    
     if (!uv_is_closing(handle)) {
         // If this assert triggers, then some handle is not being closed
         // correctly. A handle with a data pointer should already be closed

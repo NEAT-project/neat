@@ -274,7 +274,7 @@ class PIB(list):
             # logging.debug("Policy match fields for policy %s already registered. " % (policy.uid))
             pass
 
-        # check if a policy with the same UID is already installed and remove it XXX
+        # check if a policy with the same UID is already installed and remove old version if so
         if policy.uid in self.index:
             self.unregister(policy.uid)
 
@@ -283,7 +283,7 @@ class PIB(list):
         self.policies.insert(idx, policy)
 
         # self.policies.sort(key=operator.methodcaller('match_len'))
-        self.index[policy.uid] = policy
+        self.index[policy.uid] = idx
 
     def unregister(self, policy_uid):
         idx = self.index[policy_uid]

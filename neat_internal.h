@@ -635,8 +635,7 @@ void            neat_security_close(neat_ctx *ctx);
 void uvpollable_cb(uv_poll_t *handle, int status, int events);
 neat_error_code neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock);
 neat_error_code neat_dtls_connect(neat_ctx *ctx, neat_flow *flow);
-neat_error_code copy_dtls_data(struct neat_pollable_socket *new, struct neat_pollable_socket *old);
-
+neat_error_code copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_socket *socket);
 neat_error_code neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
 
 #endif

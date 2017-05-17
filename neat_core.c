@@ -254,7 +254,7 @@ static void neat_walk_cb(uv_handle_t *handle, void *ctx)
 
     // Bug fix (karlgrin, 170323).
     if ((handle == NULL) || (handle->data == NULL)) return;
-    
+
     if (!uv_is_closing(handle)) {
         // If this assert triggers, then some handle is not being closed
         // correctly. A handle with a data pointer should already be closed
@@ -415,8 +415,8 @@ uint8_t neat_remove_event_cb(struct neat_ctx *nc, uint8_t event_type,
     return RETVAL_SUCCESS;
 }
 
-void neat_run_event_cb(struct neat_ctx *nc, uint8_t event_type,
-        void *data)
+void
+neat_run_event_cb(struct neat_ctx *nc, uint8_t event_type, void *data)
 {
     struct neat_event_cbs *cb_list_head = NULL;
     struct neat_event_cb *cb_itr = NULL;
@@ -2221,6 +2221,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
            send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
         }
 
+        close(candidate->pollable_socket->fd);
         uv_poll_stop(handle);
         uv_close((uv_handle_t*)handle, free_he_handle_cb);
 

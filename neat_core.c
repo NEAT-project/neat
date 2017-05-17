@@ -5292,7 +5292,8 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #ifdef TCP_CONGESTION
     const char *algo;
 #endif
-    int enable = 1, retval;
+    int enable = 1;
+    int retval;
     socklen_t len = 0;
     int size = 0, protocol;
 #ifdef __linux__
@@ -5455,8 +5456,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         candidate->pollable_socket->write_size = 0;
     }
     len = (socklen_t)sizeof(int);
-    if (getsockopt(candidate->pollable_socket->fd,
-                   SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
+    if (getsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
         candidate->pollable_socket->read_size = size;
     } else {
         candidate->pollable_socket->read_size = 0;
@@ -5465,19 +5465,19 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     switch (candidate->pollable_socket->stack) {
     case NEAT_STACK_TCP:
         if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable) < 0)) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(TCP_NODELAY) failed");
+            neat_log(ctx, NEAT_LOG_WARNING, "%s - Call to setsockopt(TCP_NODELAY) failed", __func__);
         }
 
 #if defined(__FreeBSD__) && defined(FLOW_GROUPS)
         group = candidate->pollable_socket->flow->group;
         if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 8192 /* Group ID */, &group, sizeof(group)) != 0) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "Unable to set flow group: %s", strerror(errno));
+            neat_log(ctx, NEAT_LOG_WARNING, "%s - Unable to set flow group: %s", __func__, strerror(errno));
         }
 
         // Map the priority range to some integer range
         prio = candidate->pollable_socket->flow->priority * 255;
         if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 4096 /* Priority */, &prio, sizeof(prio)) != 0) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "Unable to set flow priority: %s", strerror(errno));
+            neat_log(ctx, NEAT_LOG_WARNING, "%s - Unable to set flow priority: %s", __func__, strerror(errno));
         }
 #endif
 
@@ -5485,7 +5485,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         if (candidate->pollable_socket->flow->cc_algorithm) {
             algo = candidate->pollable_socket->flow->cc_algorithm;
             if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, TCP_CONGESTION, algo, strlen(algo)) != 0) {
-                neat_log(ctx, NEAT_LOG_DEBUG, "Unable to set CC algorithm: %s", strerror(errno));
+                neat_log(ctx, NEAT_LOG_WARNING, "%s - Unable to set CC algorithm: %s", __func__, strerror(errno));
             }
         }
 #endif

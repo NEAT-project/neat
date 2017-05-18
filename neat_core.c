@@ -495,6 +495,8 @@ on_handle_closed_candidate(uv_handle_t *handle)
 void
 neat_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
 {
+    struct neat_he_sockopt *sockopt;
+    struct neat_he_sockopt *tmp;
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (candidate == NULL) {
@@ -508,11 +510,14 @@ neat_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
 
+    close(candidate->pollable_socket->fd);
+
     if (!TAILQ_EMPTY(&(candidate->sock_opts))) {
-        struct neat_he_sockopt *sockopt, *tmp;
+
         TAILQ_FOREACH_SAFE(sockopt, (&candidate->sock_opts), next, tmp) {
-            if (sockopt->type == NEAT_SOCKOPT_STRING)
+            if (sockopt->type == NEAT_SOCKOPT_STRING) {
                 free(sockopt->value.s_val);
+            }
             TAILQ_REMOVE((&candidate->sock_opts), sockopt, next);
         }
     }
@@ -553,12 +558,14 @@ neat_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
 void
 neat_free_candidates(struct neat_ctx *ctx, struct neat_he_candidates *candidates)
 {
-    struct neat_he_candidate *candidate, *tmp;
+    struct neat_he_candidate *candidate;
+    struct neat_he_candidate *tmp;
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (candidates == NULL)
+    if (candidates == NULL) {
         return;
+    }
 
     TAILQ_FOREACH_SAFE(candidate, candidates, next, tmp) {
         neat_free_candidate(ctx, candidate);
@@ -721,6 +728,8 @@ neat_free_flow(neat_flow *flow)
 #endif
 
     neat_free_candidates(ctx, flow->candidate_list);
+    flow->candidate_list = NULL;
+
 
     // close all listening sockets
     TAILQ_FOREACH_SAFE(listen_socket, &(flow->listen_sockets), next, listen_socket_temp) {

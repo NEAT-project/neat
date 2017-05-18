@@ -274,7 +274,7 @@ class PIB(list):
             # logging.debug("Policy match fields for policy %s already registered. " % (policy.uid))
             pass
 
-        # check if a policy with the same UID is already installed and remove it XXX
+        # check if a policy with the same UID is already installed and remove old version if so
         if policy.uid in self.index:
             self.unregister(policy.uid)
 

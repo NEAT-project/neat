@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <assert.h>
 
+
 #include "util.h"
 #include "picohttpparser.h"
 
@@ -29,10 +30,12 @@ static char *config_property = "{\
         }\
     ]\
 }";
-static uint16_t config_log_level = 1;
+static uint8_t config_log_level     = 1;
+static uint8_t config_keep_alive    = 0;
 #define BUFFERSIZE 33768
+struct neat_ctx *ctx = NULL;
 
-static char *http_header_connection_close       = "Connection: Close";
+
 static char *http_header_connection_keep_alive  = "Connection: Keep-Alive";
 
 
@@ -53,6 +56,15 @@ struct http_flow {
     uint8_t keep_alive;
 };
 
+void
+sig_handler(int signo) {
+
+    if (signo == SIGINT) {
+        printf("received SIGINT - stopping event loop\n");
+        neat_stop_event_loop(ctx);
+    }
+}
+
 static int
 prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint32_t *buffer_len) {
 
@@ -63,7 +75,11 @@ prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint3
     int i                           = 0;
     char misc_buffer[512];
 
-    // iterate through header fields
+    if (config_log_level >= 2) {
+        fprintf(stderr, "%s()\n", __func__);
+    }
+
+    // iterate header fields
     for (i = 0; i < (int)http_flow->num_headers; i++) {
         // build string from name/value pair
         snprintf(misc_buffer, 512, "%.*s: %.*s",
@@ -72,10 +88,9 @@ prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint3
             (int)http_flow->headers[i].value_len,
             http_flow->headers[i].value);
 
-        if (strncasecmp(misc_buffer, http_header_connection_close, strlen(http_header_connection_close)) == 0) {
-            printf(">>>>>>>>>>> CLOSE !!!!!!!!!!!!!!!!\n");
-        } else if (strncasecmp(misc_buffer, http_header_connection_keep_alive, strlen(http_header_connection_keep_alive)) == 0) {
-            printf(">>>>>>>>>>> KEEP-ALIVE !!!!!!!!!!!!!!!!\n");
+        // we have a Keep-Alive connection
+        if (strncasecmp(misc_buffer, http_header_connection_keep_alive, strlen(http_header_connection_keep_alive)) == 0 &&
+            config_keep_alive == 1) {
             http_flow->keep_alive = 1;
         }
 
@@ -93,17 +108,22 @@ prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint3
         snprintf(misc_buffer, sizeof(misc_buffer), "%.*s", (int)http_flow->path_len, http_flow->path);
     }
 
+    // try to read requested file
     payload_length = read_file(misc_buffer, (char **) &payload_buffer);
 
-    // error when reading file - read inde.html
+
     if (payload_length < 0) {
-        fprintf(stderr, "%s - reading failed -  delivering index.html\n", __func__);
+        // error when reading file - read index.html
+        if (config_log_level >= 1) {
+            fprintf(stderr, "%s - reading >>%s<< failed -  delivering index.html\n", __func__, misc_buffer);
+        }
         snprintf(misc_buffer, sizeof(misc_buffer), "index.html");
         payload_length = read_file(misc_buffer, (char **) &payload_buffer);
     }
 
     if (payload_length < 0 ) {
         // we have a serious problem here...
+        fprintf(stderr, "%s - read_file failed\n", __func__);
         exit(EXIT_FAILURE);
     }
 
@@ -122,20 +142,24 @@ prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint3
         exit(EXIT_FAILURE);
     }
 
-    fprintf(stderr, "%s\n", header_buffer);
+    if (config_log_level >= 1) {
+        // print response information
+        fprintf(stderr, "\n\n%s\n", header_buffer);
+    }
+
 
     header_buffer = realloc(header_buffer, header_length + payload_length);
 
     if (header_buffer == NULL) {
         fprintf(stderr, "%s - realloc failed\n", __func__);
+        exit(EXIT_FAILURE);
     }
 
     memcpy(header_buffer + header_length, payload_buffer, payload_length);
+    free(payload_buffer);
 
     *buffer = header_buffer;
     *buffer_len = header_length + payload_length;
-
-    fprintf(stderr, "%s - pointer: %p - len: %u\n",__func__, (void *)*buffer, *buffer_len);
 
     return NEAT_OK;
 }
@@ -163,10 +187,8 @@ print_usage()
 static neat_error_code
 on_error(struct neat_flow_operations *opCB)
 {
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
 
+    fprintf(stderr, "%s()\n", __func__);
     exit(EXIT_FAILURE);
 }
 
@@ -193,19 +215,13 @@ on_readable(struct neat_flow_operations *opCB)
     }
 
     if (config_log_level >= 1) {
-        printf("received data - %d byte\n", buffer_filled);
+        printf("%s - read %d byte\n", __func__, buffer_filled);
     }
-#if 0
-    if (config_log_level >= 2) {
-        fwrite(http_flow->buffer, sizeof(char), buffer_filled, stdout);
-        printf("\n");
-        fflush(stdout);
-    }
-#endif
 
-    http_flow->buffer_len_prev = http_flow->buffer_len;
-    http_flow->buffer_len += buffer_filled;
-    http_flow->num_headers = sizeof(http_flow->headers) / sizeof(http_flow->headers[0]);
+
+    http_flow->buffer_len_prev  = http_flow->buffer_len;
+    http_flow->buffer_len       += buffer_filled;
+    http_flow->num_headers      = sizeof(http_flow->headers) / sizeof(http_flow->headers[0]);
 
     http_flow->pret = phr_parse_request((const char *) http_flow->buffer,
         http_flow->buffer_len,
@@ -219,7 +235,7 @@ on_readable(struct neat_flow_operations *opCB)
         http_flow->buffer_len_prev);
 
     if (http_flow->pret > 0) {
-        fprintf(stderr, "%s - request parsed!\n", __func__);
+        // request parsed successfully
         opCB->on_writable = on_writable;
         neat_set_operations(opCB->ctx, opCB->flow, opCB);
         return NEAT_OK;
@@ -236,6 +252,7 @@ on_readable(struct neat_flow_operations *opCB)
         return NEAT_OK;
     }
 
+    // continue reading
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
 }
@@ -273,28 +290,27 @@ on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    // print request information
-    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
-    printf("request is %d bytes long\n", http_flow->pret);
-    printf("method is %.*s\n", (int)http_flow->method_len, http_flow->method);
-    printf("path is %.*s\n", (int)http_flow->path_len, http_flow->path);
-    printf("HTTP version is 1.%d\n", http_flow->minor_version);
-    printf("headers:\n");
-    for (int i = 0; i != (int)http_flow->num_headers; ++i) {
-        printf("%.*s: %.*s\n",
-            (int)http_flow->headers[i].name_len,
-            http_flow->headers[i].name,
-            (int)http_flow->headers[i].value_len,
-            http_flow->headers[i].value);
-
+    if (config_log_level >= 1) {
+        // print request information
+        printf("#######################################################\n");
+        printf("request is %d bytes long\n", http_flow->pret);
+        printf("method is %.*s\n", (int)http_flow->method_len, http_flow->method);
+        printf("path is %.*s\n", (int)http_flow->path_len, http_flow->path);
+        printf("HTTP version is 1.%d\n", http_flow->minor_version);
+        printf("headers:\n");
+        for (int i = 0; i != (int)http_flow->num_headers; ++i) {
+            printf("%.*s: %.*s\n",
+                (int)http_flow->headers[i].name_len,
+                http_flow->headers[i].name,
+                (int)http_flow->headers[i].value_len,
+                http_flow->headers[i].value);
+        }
+        printf("#######################################################\n");
     }
-    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
 
     if (prepare_http_response(http_flow, &buffer, &buffer_len) != NEAT_OK) {
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
-
-    printf("%s - buffer len %d - pointer %p\n", __func__, buffer_len, (void *) buffer);
 
 
     code = neat_write(opCB->ctx, opCB->flow, buffer, buffer_len, NULL, 0);
@@ -302,6 +318,8 @@ on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s - neat_write failed - code: %d\n", __func__, (int)code);
         return on_error(opCB);
     }
+
+    free(buffer);
 
     opCB->on_writable = NULL;
     opCB->on_all_written = on_all_written;
@@ -314,7 +332,9 @@ on_writable(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    fprintf(stderr, "%s - flow closed OK!\n", __func__);
+    if (config_log_level >= 1) {
+        fprintf(stderr, "%s - flow closed OK!\n", __func__);
+    }
     free(opCB->userData);
     return NEAT_OK;
 }
@@ -350,7 +370,6 @@ main(int argc, char *argv[])
     // uint64_t prop;
     int arg, result;
     char *arg_property = NULL;
-    struct neat_ctx *ctx = NULL;
     struct neat_flow *flow = NULL;
     struct neat_flow_operations ops;
 
@@ -358,7 +377,7 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:v:k")) != -1) {
         switch(arg) {
         case 'P':
             if (read_file(optarg, &arg_property) < 0) {
@@ -375,6 +394,12 @@ main(int argc, char *argv[])
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {
                 printf("option - log level: %d\n", config_log_level);
+            }
+            break;
+        case 'k':
+            config_keep_alive = 1;
+            if (config_log_level >= 1) {
+                printf("option - Keep-Alive: %d\n", config_keep_alive);
             }
             break;
         default:
@@ -436,7 +461,11 @@ main(int argc, char *argv[])
     }
 
     if (chdir("htdocs")) {
-        printf("%s - chdir failed\n", __func__);
+        fprintf(stderr, "%s - chdir failed\n", __func__);
+    }
+
+    if (signal(SIGINT, sig_handler) == SIG_ERR) {
+        fprintf(stderr, "%s - can not register SIGINT\n", __func__);
     }
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);

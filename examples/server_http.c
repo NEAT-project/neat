@@ -69,11 +69,12 @@ static int
 prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint32_t *buffer_len) {
 
     int header_length               = 0;
-    unsigned char *header_buffer    = NULL;
     int payload_length              = 0;
     unsigned char *payload_buffer   = NULL;
+    unsigned char *header_buffer    = NULL;
     int i                           = 0;
     char misc_buffer[512];
+
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -127,8 +128,14 @@ prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint3
         exit(EXIT_FAILURE);
     }
 
+    header_buffer = malloc(512);
+    if (header_buffer == NULL) {
+        fprintf(stderr, "%s - malloc failed\n", __func__);
+        exit(EXIT_FAILURE);
+    }
+
     // prepare response header
-    header_length = asprintf((char **)&header_buffer,
+    header_length = snprintf((char *) header_buffer, 1024,
         "HTTP/1.1 200 OK\r\n"
         "Server: NEAT super fancy webserver\r\n"
         "Content-Length: %u\r\n"

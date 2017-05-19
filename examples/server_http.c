@@ -33,6 +33,7 @@ static char *config_property = "{\
 static uint8_t config_log_level     = 1;
 static uint8_t config_keep_alive    = 0;
 #define BUFFERSIZE 33768
+#define BUFFERSIZE_SMALL 1024
 struct neat_ctx *ctx = NULL;
 
 
@@ -73,7 +74,7 @@ prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint3
     unsigned char *payload_buffer   = NULL;
     unsigned char *header_buffer    = NULL;
     int i                           = 0;
-    char misc_buffer[512];
+    char misc_buffer[BUFFERSIZE_SMALL];
 
 
     if (config_log_level >= 2) {
@@ -83,7 +84,7 @@ prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint3
     // iterate header fields
     for (i = 0; i < (int)http_flow->num_headers; i++) {
         // build string from name/value pair
-        snprintf(misc_buffer, 512, "%.*s: %.*s",
+        snprintf(misc_buffer, BUFFERSIZE_SMALL, "%.*s: %.*s",
             (int)http_flow->headers[i].name_len,
             http_flow->headers[i].name,
             (int)http_flow->headers[i].value_len,
@@ -128,14 +129,14 @@ prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint3
         exit(EXIT_FAILURE);
     }
 
-    header_buffer = malloc(512);
+    header_buffer = malloc(BUFFERSIZE_SMALL);
     if (header_buffer == NULL) {
         fprintf(stderr, "%s - malloc failed\n", __func__);
         exit(EXIT_FAILURE);
     }
 
     // prepare response header
-    header_length = snprintf((char *) header_buffer, 1024,
+    header_length = snprintf((char *) header_buffer, BUFFERSIZE_SMALL,
         "HTTP/1.1 200 OK\r\n"
         "Server: NEAT super fancy webserver\r\n"
         "Content-Length: %u\r\n"

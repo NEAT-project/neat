@@ -198,7 +198,7 @@ neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
 
 void neat_stop_event_loop(struct neat_ctx *nc)
 {
-    neat_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
+    //neat_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
 
     uv_stop(nc->loop);
 }
@@ -2197,9 +2197,6 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         // TODO:
         // flow->ctx = he_ctx->nc;
 
-
-
-        //flow->isSCTPExplicitEOR = candidate->isSCTPExplicitEOR;
         flow->isPolling = 1;
 
 	    send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
@@ -4707,11 +4704,11 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
                 memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
                 sndinfo->snd_sid = msg->stream_id;
-#if defined(SCTP_EOR)
+#if defined(SCTP_EXPLICIT_EOR)
                 if ((flow->socket->sctp_explicit_eor) && (len == msg->bufferedSize)) {
                     sndinfo->snd_flags |= SCTP_EOR;
                 }
-#endif // defined(SCTP_EOR)
+#endif // defined(SCTP_EXPLICIT_EOR)
 #elif defined (SCTP_SNDRCV)
                 msghdr.msg_control = cmsgbuf;
                 msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
@@ -4722,11 +4719,11 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
                 memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
                 sndrcvinfo->sinfo_stream = msg->stream_id;
-#if defined(SCTP_EOR)
-                if ((flow->isSCTPExplicitEOR) && (len == msg->bufferedSize)) {
+#if defined(SCTP_EXPLICIT_EOR)
+                if ((flow->socket->sctp_explicit_eor) && (len == msg->bufferedSize)) {
                     sndrcvinfo->sinfo_flags |= SCTP_EOR;
                 }
-#endif // defined(SCTP_EOR)
+#endif // defined(SCTP_EXPLICIT_EOR)
 #else // defined(SCTP_SNDINFO)
                 msghdr.msg_control = NULL;
                 msghdr.msg_controllen = 0;
@@ -4848,6 +4845,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     size_t len;
     int atomic;
     neat_error_code code = NEAT_OK;
+    int flags = 0;
 #ifdef NEAT_SCTP_DTLS
     struct security_data *private = NULL;
 #endif
@@ -4950,11 +4948,11 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         } else {
             len = amt;
         }
-        iov.iov_len = len;
-        msghdr.msg_name = NULL;
-        msghdr.msg_namelen = 0;
-        msghdr.msg_iov = &iov;
-        msghdr.msg_iovlen = 1;
+        iov.iov_len         = len;
+        msghdr.msg_name     = NULL;
+        msghdr.msg_namelen  = 0;
+        msghdr.msg_iov      = &iov;
+        msghdr.msg_iovlen   = 1;
 
         if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
 #ifdef NEAT_SCTP_DTLS
@@ -4981,11 +4979,11 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                     sndinfo->snd_sid = stream_id;
                 }
 
-#if defined(SCTP_EOR)
+#if defined(SCTP_EXPLICIT_EOR)
                 if ((flow->socket->sctp_explicit_eor) && (len == amt)) {
                     sndinfo->snd_flags |= SCTP_EOR;
                 }
-#endif
+#endif // defined(SCTP_EXPLICIT_EOR)
 #elif defined (SCTP_SNDRCV)
                 msghdr.msg_control = cmsgbuf;
                 msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
@@ -4999,11 +4997,12 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                 if (stream_id) {
                     sndrcvinfo->sinfo_stream = stream_id;
                 }
-#if defined(SCTP_EOR)
-                if ((flow->isSCTPExplicitEOR) && (len == amt)) {
+
+#if defined(SCTP_EXPLICIT_EOR)
+                if ((flow->socket->sctp_explicit_eor) && (len == amt)) {
                     sndrcvinfo->sinfo_flags |= SCTP_EOR;
                 }
-#endif
+#endif // defined(SCTP_EXPLICIT_EOR)
 #else
                 msghdr.msg_control = NULL;
                 msghdr.msg_controllen = 0;
@@ -5020,31 +5019,28 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
                 rv = SSL_write(private->ssl, buffer, len);
             } else {
-                            rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr,
-#ifndef MSG_NOSIGNAL
-                         0
-#else
-                         MSG_NOSIGNAL
 #endif
-                         );
+
+#ifndef MSG_NOSIGNAL
+                flags = 0;
+#else   // MSG_NOSIGNAL
+                flags = MSG_NOSIGNAL;
+#endif  // MSG_NOSIGNAL
+
+                rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, flags);
+#ifdef NEAT_SCTP_DTLS
             }
-#else
-                        rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr,
-#ifndef MSG_NOSIGNAL
-                         0
-#else
-                         MSG_NOSIGNAL
 #endif
-                         );
-#endif
+
         } else {
 #if defined(USRSCTP_SUPPORT)
             neat_log(ctx, NEAT_LOG_INFO, "%s - send %zd bytes on flow %p and socket %p", __func__, len, (void *)flow, (void *)flow->socket->usrsctp_socket);
             rv = usrsctp_sendv(flow->socket->usrsctp_socket, buffer, len, NULL, 0,
                   (void *)sndinfo, (socklen_t)sizeof(struct sctp_sndinfo), SCTP_SENDV_SNDINFO,
                   0);
-            if (rv < 0)
+            if (rv < 0) {
                 perror("usrsctp_sendv");
+            }
 #endif
         }
 #ifdef IPPROTO_SCTP
@@ -5531,23 +5527,22 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                            IPPROTO_SCTP,
                            SCTP_EXPLICIT_EOR,
                            &enable,
-                           sizeof(int)) == 0)
+                           sizeof(int)) == 0) {
                 candidate->pollable_socket->sctp_explicit_eor = 1;
+            }
         } else {
 #ifndef NEAT_SCTP_DTLS
             if (setsockopt(candidate->pollable_socket->fd,
                            IPPROTO_SCTP,
                            SCTP_EXPLICIT_EOR,
                            &enable,
-                           sizeof(int)) == 0)
+                           sizeof(int)) == 0) {
                 candidate->pollable_socket->sctp_explicit_eor = 1;
-            else
-                candidate->pollable_socket->sctp_explicit_eor = 0;
-#else
-                candidate->pollable_socket->sctp_explicit_eor = 0;
-#endif
+            }
+#endif // NEAT_SCTP_DTLS
         }
-#endif
+#endif // SCTP_EXPLICIT_EOR
+
 #ifndef USRSCTP_SUPPORT
         // Subscribe to events needed for callbacks
         neat_sctp_init_events(candidate->pollable_socket->fd);
@@ -5760,8 +5755,7 @@ neat_close_via_kernel_2(struct neat_ctx *ctx, int fd)
 }
 
 static int
-neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
-                        struct neat_pollable_socket *listen_socket)
+neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_pollable_socket *listen_socket)
 {
     // TODO: This function should not write to any fields in neat_flow
     int enable = 1;
@@ -5915,7 +5909,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
         }
         neat_log(ctx, NEAT_LOG_DEBUG, "Offering %d SCTP streams in/out", initmsg.sinit_num_ostreams);
 #endif // defined(SCTP_INITMSG) && !defined(USRSCTP_SUPPORT)
-        flow->socket->write_limit = flow->socket->write_size / 4;
+        listen_socket->write_limit = listen_socket->write_size / 4;
 #ifdef SCTP_NODELAY
         if (setsockopt(fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int)) != 0)
             neat_log(ctx, NEAT_LOG_DEBUG, "Unable to set socket option IPPROTO_SCTP:SCTP_NODELAY");
@@ -5923,21 +5917,20 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
 #ifdef SCTP_EXPLICIT_EOR
         if (!flow->security_needed) {
             if (setsockopt(fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0) {
-                flow->socket->sctp_explicit_eor = 1;
+                listen_socket->sctp_explicit_eor = 1;
             } else {
                 neat_log(ctx, NEAT_LOG_DEBUG, "Unable to set socket option IPPROTO_SCTP:SCTP_EXPLICIT_EOR");
             }
         } else {
 #ifndef NEAT_SCTP_DTLS
-            if (setsockopt(fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
-                flow->socket->sctp_explicit_eor = 1;
-            else
-                flow->socket->sctp_explicit_eor = 0;
-#else
-                flow->socket->sctp_explicit_eor = 0;
-#endif
+            if (setsockopt(fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0) {
+                listen_socket->sctp_explicit_eor = 1;
+            } else {
+                neat_log(ctx, NEAT_LOG_DEBUG, "Unable to set socket option IPPROTO_SCTP:SCTP_EXPLICIT_EOR");
+            }
+#endif // NEAT_SCTP_DTLS
         }
-#endif
+#endif // SCTP_EXPLICIT_EOR
         break;
     default:
         break;
@@ -6222,8 +6215,9 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
     usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int));
 #endif
 #ifdef SCTP_EXPLICIT_EOR
-    if (usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0)
+    if (usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0) {
         candidate->pollable_socket->sctp_explicit_eor = 1;
+    }
 #endif
 
     if (candidate->pollable_socket->flow->isSCTPMultihoming && neat_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP && candidate->pollable_socket->nr_local_addr > 0) {
@@ -7298,7 +7292,7 @@ neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid)
     //memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
     sndinfo->snd_sid = sid;
     sndinfo->snd_ppid = htonl(1207);
-#if defined(SCTP_EOR)
+#if defined(SCTP_EXPLICIT_EOR)
     sndinfo->snd_flags |= SCTP_EOR;
 #endif
 #elif defined (SCTP_SNDRCV)
@@ -7313,7 +7307,7 @@ neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid)
     //memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
     sndrcvinfo->sinfo_stream = sid;
     sndrcvinfo->sinfo_ppid = htonl(1207);
-#if defined(SCTP_EOR)
+#if defined(SCTP_EXPLICIT_EOR)
     sndrcvinfo->sinfo_flags |= SCTP_EOR;
 #endif
 #else

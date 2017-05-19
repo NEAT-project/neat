@@ -138,9 +138,9 @@ neat_security_handshake(struct neat_flow_operations *opCB)
             filter->readfx == neat_security_filter_read) {
             struct security_data *private = (struct security_data *) filter->userData;
             // pop application functions back onto stack
-            opCB->on_writable = private->pushed_on_writable;
-            opCB->on_readable =  private->pushed_on_readable;
-            opCB->on_connected =  private->pushed_on_connected;
+            opCB->on_writable   = private->pushed_on_writable;
+            opCB->on_readable   = private->pushed_on_readable;
+            opCB->on_connected  = private->pushed_on_connected;
             neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
             // call on_connected
@@ -692,6 +692,7 @@ neat_security_close(neat_ctx *ctx)
 #if (OPENSSL_VERSION_NUMBER < 0x10100000L)
     ERR_remove_state(0);
 #endif
+    SSL_COMP_free_compression_methods();
 }
 
 #endif
@@ -710,6 +711,7 @@ neat_security_close(neat_ctx *ctx)
 neat_error_code
 neat_security_install(neat_ctx *ctx, neat_flow *flow)
 {
+    neat_log(ctx, NEAT_LOG_ERROR, "Library compiled without security support");
     return NEAT_ERROR_SECURITY;
 }
 

@@ -1,0 +1,13 @@
+{
+    "transport": [
+        {
+            "value": "TCP",
+            "precedence": 1
+        }
+    ],
+    "security" :
+        {
+            "value": true,
+            "precedence": 2
+        }
+}

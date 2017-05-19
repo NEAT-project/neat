@@ -34,7 +34,8 @@
     struct neat_event_cbs* event_cbs; \
     uint8_t src_addr_cnt
 
-#define NEAT_MAX_NUM_PROTO 4
+#define NEAT_MAX_NUM_PROTO  5
+#define MAX_LOCAL_ADDR      64
 
 struct neat_event_cb;
 struct neat_addr;
@@ -220,7 +221,7 @@ struct neat_pollable_socket
     struct sockaddr_storage src_sockaddr;
     socklen_t               src_len;
 
-   #define MAX_LOCAL_ADDR             64
+
    struct sockaddr_storage local_addr[MAX_LOCAL_ADDR];
    unsigned int nr_local_addr;
 
@@ -253,6 +254,7 @@ struct neat_pollable_socket
 struct neat_flow
 {
     // Main socket used for communication, not listening
+    uint8_t state;
     struct neat_pollable_socket *socket;
     TAILQ_HEAD(neat_listen_socket_head, neat_pollable_socket) listen_sockets;
     struct neat_flow_operations *operations; // see ownedByCore flag
@@ -263,7 +265,6 @@ struct neat_flow
     uint16_t port;
     uint8_t qos;
     uint8_t ecn;
-    //uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
@@ -301,17 +302,22 @@ struct neat_flow
     neat_accept_usrsctp_impl acceptusrsctpfx;
 #endif
 
-    unsigned int hefirstConnect         : 1;
-    unsigned int firstWritePending      : 1;
-    unsigned int acceptPending          : 1;
-    unsigned int isPolling              : 1;
-    unsigned int ownedByCore            : 1;
-    unsigned int everConnected          : 1;
-    unsigned int isDraining             : 1;
-    unsigned int isServer               : 1; // i.e. created via accept()
-    unsigned int isSCTPMultihoming      : 1;
-    unsigned int security_needed        : 1;
-    unsigned int isSCTPIdata            : 1;
+    unsigned int hefirstConnect             : 1;
+    unsigned int firstWritePending          : 1;
+    unsigned int acceptPending              : 1;
+    unsigned int isPolling                  : 1;
+    unsigned int ownedByCore                : 1;
+    unsigned int everConnected              : 1;
+    unsigned int isDraining                 : 1;
+    unsigned int isServer                   : 1; // i.e. created via accept()
+    unsigned int isSCTPMultihoming          : 1;
+    unsigned int security_needed            : 1;
+    unsigned int isSCTPIdata                : 1;
+    unsigned int isClosing                  : 1;
+    unsigned int notifyDrainPending         : 1;
+    unsigned int preserveMessageBoundaries  : 1;
+    unsigned int eofSeen                    : 1;
+    unsigned int webrtcEnabled              : 1;
 
     unsigned int streams_requested;
 
@@ -630,8 +636,9 @@ void            neat_security_close(neat_ctx *ctx);
 void uvpollable_cb(uv_poll_t *handle, int status, int events);
 neat_error_code neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock);
 neat_error_code neat_dtls_connect(neat_ctx *ctx, neat_flow *flow);
-neat_error_code copy_dtls_data(struct neat_pollable_socket *new, struct neat_pollable_socket *old);
-
+neat_error_code copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_socket *socket);
 neat_error_code neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
+
+void neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow);
 
 #endif

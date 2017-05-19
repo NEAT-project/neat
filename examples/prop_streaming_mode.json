@@ -1,0 +1,20 @@
+{
+    "transport": [
+        {
+            "value": "SCTP",
+            "precedence": 1
+        },
+        {
+            "value": "SCTP/UDP",
+            "precedence": 1
+        },
+        {
+            "value": "TCP",
+            "precedence": 1
+        }
+    ],
+    "transport_type": {
+        "value": "stream",
+        "precedence": 1
+    }
+}

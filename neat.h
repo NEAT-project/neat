@@ -55,7 +55,7 @@ struct neat_flow_operations {
     void *userData;
 
     neat_error_code status;
-    int stream_id;
+    uint16_t stream_id;
     neat_flow_operations_fx on_connected;
     neat_flow_operations_fx on_error;
     neat_flow_operations_fx on_readable;
@@ -282,7 +282,8 @@ typedef enum {
     NEAT_STACK_TCP,
     NEAT_STACK_MPTCP,
     NEAT_STACK_SCTP,
-    NEAT_STACK_SCTP_UDP
+    NEAT_STACK_SCTP_UDP,
+    NEAT_STACK_WEBRTC
 } neat_protocol_stack_type;
 
 

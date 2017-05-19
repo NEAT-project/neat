@@ -47,7 +47,6 @@ include(CPack)
 
 add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
 
-
 INCLUDE(CheckIncludeFile)
 INCLUDE(CheckStructHasMember)
 INCLUDE(CheckTypeSize)
@@ -76,6 +75,7 @@ LIST(APPEND neat_sources
     neat_pm_socket.c
     neat_unix_json_socket.c
     tls-trust.c
+    neat_webrtc.c
 )
 
 # OS DEPENDENT
@@ -90,9 +90,9 @@ ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     MESSAGE(${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_headers neat_bsd.h)
     LIST(APPEND neat_sources neat_bsd.c)
-    SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
-    SET(CMAKE_LIBRARY_PATH "/usr/local/lib")
-    INCLUDE_DIRECTORIES("/usr/local/include")
+    SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include" "/usr/home/ruengeler/rawrtc/build/prefix/include")
+    SET(CMAKE_LIBRARY_PATH "/usr/local/lib" "/usr/home/ruengeler/install/lib" "/usr/home/ruengeler/rawrtc/build/prefix/lib")
+    INCLUDE_DIRECTORIES("/usr/local/include" "/usr/home/ruengeler/install/include" "/usr/home/ruengeler/rawrtc/build/prefix/include")
 
 ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     MESSAGE(${CMAKE_SYSTEM_NAME} " supported")
@@ -179,10 +179,14 @@ IF (FLOW_GROUPS)
     ADD_DEFINITIONS(-DFLOW_GROUPS)
 ENDIF()
 
-OPTION(SCTP_MULTISTREAMING "Include support for SCTP multistreaming" 1)
+OPTION(SCTP_MULTISTREAMING "Include support for SCTP multistreaming" 0)
 IF (SCTP_MULTISTREAMING)
     ADD_DEFINITIONS(-DSCTP_MULTISTREAMING)
 ENDIF()
+
+OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 1)
+
+OPTION(SOCKET_API "Include the socket API" 0)
 
 # REQUIREMENTS
 #################################################
@@ -203,29 +207,33 @@ ELSE()
     MESSAGE("LDNS found: " ${LDNS_LIB})
 ENDIF()
 
-FIND_PACKAGE(OpenSSL)
-IF (NOT OPENSSL_FOUND)
-    MESSAGE(WARNING "openssl >= 1.0.2 required for TLS - none found")
-ELSE()
-    MESSAGE("OPENSSL version found: " ${OPENSSL_VERSION})
-    IF (OPENSSL_VERSION VERSION_LESS "1.0.2")
-        MESSAGE(WARNING "openssl >= 1.0.2 required for TLS")
+IF (OPENSSL_SUPPORT)
+    FIND_PACKAGE(OpenSSL)
+    IF (NOT OPENSSL_FOUND)
+        MESSAGE(WARNING "openssl >= 1.0.2 required for TLS - none found")
     ELSE()
-        CHECK_INCLUDE_FILE(openssl/ssl.h HAVE_SYS_OPENSSL_H)
-        MESSAGE(STATUS "OPENSSL Crypto found: " ${OPENSSL_LIBRARIES})
-        ADD_DEFINITIONS(-DNEAT_USETLS)
-        SET(CMAKE_EXTRA_INCLUDE_FILES "openssl/ssl.h")
+        MESSAGE("OPENSSL version found: " ${OPENSSL_VERSION})
+        IF (OPENSSL_VERSION VERSION_LESS "1.0.2")
+            MESSAGE(WARNING "openssl >= 1.0.2 required for TLS")
+        ELSE()
+            CHECK_INCLUDE_FILE(openssl/ssl.h HAVE_SYS_OPENSSL_H)
+            MESSAGE(STATUS "OPENSSL Crypto found: " ${OPENSSL_LIBRARIES})
+            ADD_DEFINITIONS(-DNEAT_USETLS)
+            SET(CMAKE_EXTRA_INCLUDE_FILES "openssl/ssl.h")
 
-        IF ((OPENSSL_VERSION VERSION_EQUAL "1.1.0") OR (OPENSSL_VERSION VERSION_GREATER "1.1.0"))
-            CHECK_TYPE_SIZE("struct bio_dgram_sctp_sndinfo" OPENSSL_DTLS)
-            IF (HAVE_OPENSSL_DTLS)
-                MESSAGE("DTLS for SCTP supported")
-                ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
+            IF ((OPENSSL_VERSION VERSION_EQUAL "1.1.0") OR (OPENSSL_VERSION VERSION_GREATER "1.1.0"))
+                CHECK_TYPE_SIZE("struct bio_dgram_sctp_sndinfo" OPENSSL_DTLS)
+                IF (HAVE_OPENSSL_DTLS)
+                    MESSAGE("DTLS for SCTP supported")
+                    ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
+                ENDIF()
             ENDIF()
-        ENDIF()
 
+        ENDIF()
     ENDIF()
 ENDIF()
+
+ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     FIND_LIBRARY(MNL_LIB mnl)
@@ -248,6 +256,14 @@ IF (NOT HAVE_JANSSON_H OR NOT JANSSON_LIB)
     MESSAGE(FATAL_ERROR "jansson.h not found - jansson installed?")
 ELSE()
     MESSAGE(STATUS "jansson found: " ${JANSSON_LIB})
+ENDIF()
+
+CHECK_INCLUDE_FILE(rawrtc.h HAVE_RAWRTC_H)
+FIND_LIBRARY(RAWRTC_LIB rawrtc)
+IF (NOT HAVE_RAWRTC_H OR NOT RAWRTC_LIB)
+    MESSAGE(FATAL_ERROR "rawrtc.h not found - rawrtc installed?")
+ELSE()
+    MESSAGE(STATUS "rawrtc found: " ${RAWRTC_LIB})
 ENDIF()
 
 CHECK_INCLUDE_FILE(netinet/sctp.h HAVE_NETINET_SCTP_H)
@@ -301,8 +317,11 @@ LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}
     ${JANSSON_LIB}
-    ${OPENSSL_SSL_LIBRARY}
-    ${OPENSSL_CRYPTO_LIBRARY}
+    /usr/home/ruengeler/install/lib/libssl.so
+    /usr/home/ruengeler/install/lib/libcrypto.so
+   # ${OPENSSL_SSL_LIBRARY}
+   # ${OPENSSL_CRYPTO_LIBRARY}
+    ${RAWRTC_LIB}
     )
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -331,6 +350,8 @@ INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # INCLUDE EXAMPLES AND TESTS FOLDER
 #################################################
-ADD_SUBDIRECTORY(socketapi)
+IF (SOCKET_API)
+    ADD_SUBDIRECTORY(socketapi)
+ENDIF()
 ADD_SUBDIRECTORY(examples)
 ADD_SUBDIRECTORY(tests)

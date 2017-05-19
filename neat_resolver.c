@@ -322,8 +322,7 @@ neat_resolver_populate_results(struct neat_resolver_request *request,
 }
 
 static void
-neat_resolver_timeout_shared(uv_timer_t *handle,
-                                uint8_t literal)
+neat_resolver_timeout_shared(uv_timer_t *handle, uint8_t literal)
 {
     struct neat_resolver_request *request = handle->data;
     struct neat_resolver_results *result_list;
@@ -811,15 +810,12 @@ neat_start_request(struct neat_resolver *resolver,
     //node is a literal, so we will just wait a short while for address list to
     //be populated
     if (is_literal) {
-        uv_timer_start(&(request->timeout_handle),
-                neat_resolver_literal_timeout_cb,
-                DNS_LITERAL_TIMEOUT, 0);
+        uv_timer_start(&(request->timeout_handle), neat_resolver_literal_timeout_cb, DNS_LITERAL_TIMEOUT, 0);
         return;
     }
 
     //Start the resolver timeout, this includes fetching addresses
-    uv_timer_start(&(request->timeout_handle), neat_resolver_timeout_cb,
-            resolver->dns_t1, 0);
+    uv_timer_start(&(request->timeout_handle), neat_resolver_timeout_cb, resolver->dns_t1, 0);
 
     //No point starting to query if we don't have any source addresses
     if (!resolver->nc->src_addr_cnt) {
@@ -874,8 +870,9 @@ neat_resolve(struct neat_resolver *resolver,
     }
 
     request = calloc(sizeof(struct neat_resolver_request), 1);
-    if (!request)
-      return RETVAL_FAILURE;
+    if (!request) {
+        return RETVAL_FAILURE;
+    }
 
     request->family = family;
     request->dst_port = htons(port);
@@ -885,8 +882,7 @@ neat_resolve(struct neat_resolver *resolver,
     uv_timer_init(resolver->nc->loop, &(request->timeout_handle));
     request->timeout_handle.data = request;
 
-    is_literal = neat_resolver_helpers_check_for_literal(&(request->family),
-                                                         node);
+    is_literal = neat_resolver_helpers_check_for_literal(&(request->family), node);
 
     if (is_literal < 0) {
         free(request);

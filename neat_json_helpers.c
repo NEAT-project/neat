@@ -34,6 +34,7 @@ static struct neat_transport_property neat_transports[] = {
     {"UDP-lite", NEAT_STACK_UDPLITE},
     {"UDPLITE", NEAT_STACK_UDPLITE},
     {"SCTP/UDP", NEAT_STACK_SCTP_UDP},
+    {"WEBRTC", NEAT_STACK_WEBRTC}
 };
 
 neat_protocol_stack_type

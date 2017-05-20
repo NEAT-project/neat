@@ -2552,11 +2552,11 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->operations->userData       = flow->operations->userData;
 
 #ifdef NEAT_SCTP_DTLS
-        if (flow->security_needed && newFlow->socket->stack == NEAT_STACK_SCTP) {
-            copy_dtls_data(newFlow->socket, listen_socket);
-            struct security_data *server = (struct security_data *) listen_socket->dtls_data->userData;
-            SSL_CTX_up_ref(server->ctx);
-        }
+    if (flow->security_needed && newFlow->socket->stack == NEAT_STACK_SCTP) {
+        copy_dtls_data(newFlow->socket, listen_socket);
+        struct security_data *server = (struct security_data *) listen_socket->dtls_data->userData;
+        SSL_CTX_up_ref(server->ctx);
+    }
 #endif
 
 #if defined(SO_NOSIGPIPE)
@@ -2568,118 +2568,120 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 #endif //  defined(SO_NOSIGPIPE)
 
     switch (newFlow->socket->stack) {
-    case NEAT_STACK_SCTP_UDP:
-    case NEAT_STACK_SCTP:
+        case NEAT_STACK_SCTP_UDP:
+        case NEAT_STACK_SCTP:
 #if defined(USRSCTP_SUPPORT)
-        newFlow->socket->usrsctp_socket = newFlow->acceptusrsctpfx(ctx, newFlow, listen_socket);
-        if (!newFlow->socket->usrsctp_socket) {
-            neat_free_flow(newFlow);
-            return NULL;
-        } else {
-            neat_log(ctx, NEAT_LOG_DEBUG, "USRSCTP io_connected");
-            io_connected(ctx, newFlow, NEAT_OK);
-            neat_sctp_init_events(newFlow->socket->usrsctp_socket);
-            newFlow->acceptPending = 0;
-        }
-#else
-        neat_log(ctx, NEAT_LOG_DEBUG, "Creating new SCTP socket");
-        newFlow->socket->fd = newFlow->acceptfx(ctx, newFlow, listen_socket->fd);
-        if (newFlow->socket->fd == -1) {
-            neat_free_flow(newFlow);
-            return NULL;
-        } else {
-#ifndef USRSCTP_SUPPORT
-            // Subscribe to events needed for callbacks
-            neat_sctp_init_events(newFlow->socket->fd);
-#endif
-            uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
-            newFlow->socket->handle->data = newFlow->socket;
-#ifdef NEAT_SCTP_DTLS
-            if (newFlow->security_needed) {
-                struct security_data *private = (struct security_data *) newFlow->socket->dtls_data->userData;
-                private->ssl = SSL_new(private->ctx);
-                private->dtlsBIO = BIO_new_dgram_sctp(newFlow->socket->fd, BIO_CLOSE);
-                if (private->dtlsBIO != NULL) {
-                    SSL_set_bio(private->ssl, private->dtlsBIO, private->dtlsBIO);
-                } else {
-                    neat_log(ctx, NEAT_LOG_ERROR, "Creating new BIO failed");
-                }
+            newFlow->socket->usrsctp_socket = newFlow->acceptusrsctpfx(ctx, newFlow, listen_socket);
+            if (!newFlow->socket->usrsctp_socket) {
+                neat_free_flow(newFlow);
+                return NULL;
+            } else {
+                neat_log(ctx, NEAT_LOG_DEBUG, "USRSCTP io_connected");
+                io_connected(ctx, newFlow, NEAT_OK);
+                neat_sctp_init_events(newFlow->socket->usrsctp_socket);
+                newFlow->acceptPending = 0;
             }
+#else
+            neat_log(ctx, NEAT_LOG_DEBUG, "Creating new SCTP socket");
+            newFlow->socket->fd = newFlow->acceptfx(ctx, newFlow, listen_socket->fd);
+            if (newFlow->socket->fd == -1) {
+                neat_free_flow(newFlow);
+                return NULL;
+            } else {
+#ifndef USRSCTP_SUPPORT
+                // Subscribe to events needed for callbacks
+                neat_sctp_init_events(newFlow->socket->fd);
 #endif
-            io_connected(ctx, newFlow, NEAT_OK);
-            uvpollable_cb(newFlow->socket->handle, NEAT_OK, 0);
-        }
+                uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
+                newFlow->socket->handle->data = newFlow->socket;
+#ifdef NEAT_SCTP_DTLS
+                if (newFlow->security_needed) {
+                    struct security_data *private = (struct security_data *) newFlow->socket->dtls_data->userData;
+                    private->ssl = SSL_new(private->ctx);
+                    private->dtlsBIO = BIO_new_dgram_sctp(newFlow->socket->fd, BIO_CLOSE);
+                    if (private->dtlsBIO != NULL) {
+                        SSL_set_bio(private->ssl, private->dtlsBIO, private->dtlsBIO);
+                    } else {
+                        neat_log(ctx, NEAT_LOG_ERROR, "Creating new BIO failed");
+                    }
+                }
+#endif
+                io_connected(ctx, newFlow, NEAT_OK);
+                uvpollable_cb(newFlow->socket->handle, NEAT_OK, 0);
+            }
 
 #if defined(SCTP_RECVRCVINFO)
-        // Enable anciliarry data when receiving data from SCTP
-        optval = 1;
-        rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &optval, sizeof(optval));
-        if (rc < 0)
-            neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
+            // Enable anciliarry data when receiving data from SCTP
+            optval = 1;
+            rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &optval, sizeof(optval));
+            if (rc < 0) {
+                neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
+            }
 #endif // defined(SCTP_RECVRCVINFO)
 #if defined(SCTP_RECVNXTINFO)
-        // Enable anciliarry data when receiving data from SCTP
-        optval = 1;
-        rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &optval, sizeof(optval));
-        if (rc < 0)
-            neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
+            // Enable anciliarry data when receiving data from SCTP
+            optval = 1;
+            rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &optval, sizeof(optval));
+            if (rc < 0) {
+                neat_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
+            }
 #endif // defined(SCTP_RECVNXTINFO)
 #endif
-        break;
-    case NEAT_STACK_UDP:
-        neat_log(ctx, NEAT_LOG_DEBUG, "Creating new UDP socket");
-        newFlow->socket->fd = socket(newFlow->socket->family, newFlow->socket->type, IPPROTO_UDP);
+            break;
+        case NEAT_STACK_UDP:
+            neat_log(ctx, NEAT_LOG_DEBUG, "Creating new UDP socket");
+            newFlow->socket->fd = socket(newFlow->socket->family, newFlow->socket->type, IPPROTO_UDP);
 
-        if (newFlow->socket->fd == -1) {
-            neat_free_flow(newFlow);
-            return NULL;
-        } else {
+            if (newFlow->socket->fd == -1) {
+                neat_free_flow(newFlow);
+                return NULL;
+            } else {
 
-            optval = 1;
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+                optval = 1;
+                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 
-            bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
-            connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
+                bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
+                connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
 
-            newFlow->everConnected = 1;
+                newFlow->everConnected = 1;
 
-            uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
+                uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
 
-            newFlow->socket->handle->data = newFlow->socket;
+                newFlow->socket->handle->data = newFlow->socket;
 
-            io_connected(ctx, newFlow, NEAT_OK);
-            uvpollable_cb(newFlow->socket->handle, NEAT_OK, 0);
-        }
-        break;
-    case NEAT_STACK_UDPLITE:
+                io_connected(ctx, newFlow, NEAT_OK);
+                uvpollable_cb(newFlow->socket->handle, NEAT_OK, 0);
+            }
+            break;
+        case NEAT_STACK_UDPLITE:
 #if defined(__NetBSD__) || defined(__APPLE__)
-        assert(0); // Should not reach this point
+            assert(0); // Should not reach this point
 #else
-        neat_log(ctx, NEAT_LOG_DEBUG, "Creating new UDPLite socket");
-        newFlow->socket->fd = socket(newFlow->socket->family, newFlow->socket->type, IPPROTO_UDPLITE);
+            neat_log(ctx, NEAT_LOG_DEBUG, "Creating new UDPLite socket");
+            newFlow->socket->fd = socket(newFlow->socket->family, newFlow->socket->type, IPPROTO_UDPLITE);
 
-        if (newFlow->socket->fd == -1) {
-            neat_free_flow(newFlow);
-            return NULL;
-        } else {
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-            setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+            if (newFlow->socket->fd == -1) {
+                neat_free_flow(newFlow);
+                return NULL;
+            } else {
+                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 
-            bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
-            connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
+                bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
+                connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
 
-            newFlow->everConnected = 1;
+                newFlow->everConnected = 1;
 
-            uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
+                uv_poll_init(ctx->loop, newFlow->socket->handle, newFlow->socket->fd); // makes fd nb as side effect
 
-            newFlow->socket->handle->data = newFlow->socket;
+                newFlow->socket->handle->data = newFlow->socket;
 
-            io_connected(ctx, newFlow, NEAT_OK);
-            uvpollable_cb(newFlow->socket->handle, NEAT_OK, 0);
-        }
+                io_connected(ctx, newFlow, NEAT_OK);
+                uvpollable_cb(newFlow->socket->handle, NEAT_OK, 0);
+            }
 #endif
-        break;
+            break;
     default:
         newFlow->socket->fd = newFlow->acceptfx(ctx, newFlow, listen_socket->fd);
         if (newFlow->socket->fd == -1) {
@@ -2713,8 +2715,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             newFlow->acceptPending = 0;
 
             // xxx patrick?
-            if ((false) &&
-                (newFlow->socket->stack == NEAT_STACK_TCP)) {
+            if ((newFlow->security_needed) && (newFlow->socket->stack == NEAT_STACK_TCP)) {
                 neat_log(ctx, NEAT_LOG_DEBUG, "TCP Server Security");
                 if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
                     neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
@@ -2728,26 +2729,26 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 
     switch (newFlow->socket->stack) {
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS)
-    case NEAT_STACK_SCTP:
-        optlen = sizeof(status);
-        rc = getsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &optlen);
-        if (rc < 0) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
-            newFlow->socket->sctp_streams_available = 1;
-        } else {
-            newFlow->socket->sctp_streams_available = MIN(status.sstat_instrms, status.sstat_outstrms);
-        }
+        case NEAT_STACK_SCTP:
+            optlen = sizeof(status);
+            rc = getsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_STATUS, &status, &optlen);
+            if (rc < 0) {
+                neat_log(ctx, NEAT_LOG_DEBUG, "Call to getsockopt(SCTP_STATUS) failed");
+                newFlow->socket->sctp_streams_available = 1;
+            } else {
+                newFlow->socket->sctp_streams_available = MIN(status.sstat_instrms, status.sstat_outstrms);
+            }
 #ifdef SCTP_MULTISTREAMING
-        newFlow->socket->sctp_streams_used = 1;
-        newFlow->multistream_id = 0;
+            newFlow->socket->sctp_streams_used = 1;
+            newFlow->multistream_id = 0;
 #endif
-        // number of outbound streams == number of inbound streams
-        neat_log(ctx, NEAT_LOG_DEBUG, "%s - SCTP - number of streams: %d", __func__, newFlow->socket->sctp_streams_available);
-        break;
+            // number of outbound streams == number of inbound streams
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - SCTP - number of streams: %d", __func__, newFlow->socket->sctp_streams_available);
+            break;
 #endif
-    default:
-        //newFlow->sockestream_count = 1;
-        break;
+        default:
+            //newFlow->sockestream_count = 1;
+            break;
     }
 
     return newFlow;

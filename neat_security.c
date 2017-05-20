@@ -138,9 +138,9 @@ neat_security_handshake(struct neat_flow_operations *opCB)
             filter->readfx == neat_security_filter_read) {
             struct security_data *private = (struct security_data *) filter->userData;
             // pop application functions back onto stack
-            opCB->on_writable = private->pushed_on_writable;
-            opCB->on_readable =  private->pushed_on_readable;
-            opCB->on_connected =  private->pushed_on_connected;
+            opCB->on_writable   = private->pushed_on_writable;
+            opCB->on_readable   = private->pushed_on_readable;
+            opCB->on_connected  = private->pushed_on_connected;
             neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
             // call on_connected

@@ -76,6 +76,7 @@ LIST(APPEND neat_sources
     neat_unix_json_socket.c
     tls-trust.c
     neat_webrtc.c
+    neat_webrtc_tools.c
 )
 
 # OS DEPENDENT
@@ -184,7 +185,7 @@ IF (SCTP_MULTISTREAMING)
     ADD_DEFINITIONS(-DSCTP_MULTISTREAMING)
 ENDIF()
 
-OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 1)
+OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 0)
 
 OPTION(SOCKET_API "Include the socket API" 0)
 
@@ -233,7 +234,7 @@ IF (OPENSSL_SUPPORT)
     ENDIF()
 ENDIF()
 
-ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
+#ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     FIND_LIBRARY(MNL_LIB mnl)
@@ -317,8 +318,8 @@ LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}
     ${JANSSON_LIB}
-    /usr/home/ruengeler/install/lib/libssl.so
-    /usr/home/ruengeler/install/lib/libcrypto.so
+   # /usr/home/ruengeler/install/lib/libssl.so
+   # /usr/home/ruengeler/install/lib/libcrypto.so
    # ${OPENSSL_SSL_LIBRARY}
    # ${OPENSSL_CRYPTO_LIBRARY}
     ${RAWRTC_LIB}

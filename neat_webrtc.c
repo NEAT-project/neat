@@ -11,7 +11,7 @@ struct rawrtc_ice_gatherer* gatherer;
 
 static neat_flow *n_flow = NULL;
 
-static uv_timer_t *timer_handle = NULL;
+//static uv_timer_t *timer_handle = NULL;
 
 static void data_channel_open_handler(
         void* const arg
@@ -38,8 +38,7 @@ struct data_channel_sctp_client {
     struct data_channel_sctp_client* other_client;
 };
 
-    struct data_channel_sctp_client a;
-    struct data_channel_sctp_client b;
+    struct data_channel_sctp_client peer;
 
 static void client_stop(
         struct data_channel_sctp_client* const client
@@ -151,7 +150,7 @@ static void dtls_transport_state_change_handler(
         }
     }
 }
-
+#if 0
 static void timer_handler(uv_timer_t *handle)
 {
     struct data_channel_helper* const channel = handle->data;
@@ -198,6 +197,7 @@ static void timer_handler(uv_timer_t *handle)
         }
     }
 }
+#endif
 
 static void data_channel_open_handler(
         void* const arg
@@ -505,13 +505,13 @@ neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow) {
     struct rawrtc_ice_gather_options* gather_options;
     char** ice_candidate_types = NULL;
     size_t n_ice_candidate_types = 0;
+    enum rawrtc_ice_role role;
     char* const stun_google_com_urls[] = {"stun:stun.l.google.com:19302",
                                           "stun:stun1.l.google.com:19302"};
 
-	a.ice_candidate_types = ice_candidate_types;
-	a.n_ice_candidate_types = n_ice_candidate_types;
-	b.ice_candidate_types = ice_candidate_types;
-	b.n_ice_candidate_types = n_ice_candidate_types;
+	peer.ice_candidate_types = ice_candidate_types;
+	peer.n_ice_candidate_types = n_ice_candidate_types;
+
 
     n_flow = flow;
     n_flow->ctx = flow->ctx;
@@ -530,6 +530,9 @@ neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow) {
 
     rawrtc_alloc_fds(128);
 
+        // Get ICE role
+    get_ice_role(&role, argv[1]);
+
     if (rawrtc_ice_gather_options_create(&gather_options, RAWRTC_ICE_GATHER_POLICY_ALL) != RAWRTC_CODE_SUCCESS) {
         neat_log(ctx, NEAT_LOG_ERROR, "Error creating ice_gather_options");
         exit (-1);
@@ -545,38 +548,26 @@ printf("rawrtc_ice_gather_options_create successfully\n");
 printf("rawrtc_ice_gather_options_add_server successfully\n");
 
       // Setup client A
-    a.name = "A";
-    a.ice_candidate_types = ice_candidate_types;
-    a.n_ice_candidate_types = n_ice_candidate_types;
-    a.gather_options = gather_options;
-    a.role = RAWRTC_ICE_ROLE_CONTROLLING;
-    a.sctp_port = 6000;
-    a.other_client = &b;
+    peer.name = "A";
+    peer.ice_candidate_types = ice_candidate_types;
+    peer.n_ice_candidate_types = n_ice_candidate_types;
+    peer.gather_options = gather_options;
+    peer.role = role;
 
-    // Setup client B
-    b.name = "B";
-    b.ice_candidate_types = ice_candidate_types;
-    b.n_ice_candidate_types = n_ice_candidate_types;
-    b.gather_options = gather_options;
-    b.role = RAWRTC_ICE_ROLE_CONTROLLED;
-    b.sctp_port = 5000;
-    b.other_client = &a;
-
-    timer_handle = calloc(1, sizeof(uv_timer_t));
+  /*  timer_handle = calloc(1, sizeof(uv_timer_t));
 	if (uv_timer_init(ctx->loop, timer_handle) < 0) {
 		printf("error initializing timer\n");
-	}
+	}*/
 
-printf("Now init client a\n");
-	// Initialise clients
-    client_init(&a);
-printf("Now init client b\n");
-    client_init(&b);
-printf("After initializing clients: a->transport=%p, b->transport=%p\n", (void *)a.ice_transport, (void *)b.ice_transport);
-printf("oter clients: a->otherTransport=%p, b->otherTransport=%p\n", (void *)a.other_client->ice_transport, (void *)b.other_client->ice_transport);
-    // Start clients
-    client_start(&a, &b);
-    client_start(&b, &a);
+printf("Now init client \n");
+	// Initialise client
+    client_init(&peer);
+
+
+    // Start client
+    client_start_gathering(&peer);
+
+    rawrtc_fd_listen(STDIN_FILENO, FD_READ, parse_remote_parameters, &peer);
 }
 
 

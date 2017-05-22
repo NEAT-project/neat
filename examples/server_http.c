@@ -11,6 +11,7 @@
 
 #include "util.h"
 #include "picohttpparser.h"
+#define QUOTE(...) #__VA_ARGS__
 
 /**********************************************************************
 
@@ -18,27 +19,46 @@
 
 **********************************************************************/
 
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";
+static char *config_property = QUOTE(
+    {
+        "transport": [
+            {
+                "value": "SCTP",
+                "precedence": 1
+            },
+            {
+                "value": "TCP",
+                "precedence": 1
+            }
+        ]
+    }
+);
+
+static char *config_property_https  = QUOTE(
+    {
+        "transport": [
+            {
+                "value": "TCP",
+                "precedence": 1
+            }
+        ],
+        "security" :
+            {
+                "value": true,
+                "precedence": 2
+            }
+    }
+);
 static uint8_t config_log_level     = 1;
 static uint8_t config_keep_alive    = 0;
+static uint8_t config_https         = 1;
+static char *htdocs_directory       = "htdocs"; // without trailing slash!!
 #define BUFFERSIZE 33768
 #define BUFFERSIZE_SMALL 1024
 struct neat_ctx *ctx = NULL;
 
 
 static char *http_header_connection_keep_alive  = "Connection: Keep-Alive";
-
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
 
@@ -101,13 +121,13 @@ prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint3
     // XXX needs refactoring - just shit ... shame on me... :/
     if (http_flow->path_len == 1 && http_flow->path[0] == '/') {
         // request root "/" --> index.html
-        snprintf(misc_buffer, sizeof(misc_buffer), "index.html");
+        snprintf(misc_buffer, sizeof(misc_buffer), "%s/index.html", htdocs_directory);
     } else if (http_flow->path_len > 1 && http_flow->path[0] == '/') {
         // path begins with "/"
-        snprintf(misc_buffer, sizeof(misc_buffer), "%.*s", (int)http_flow->path_len - 1, http_flow->path + 1);
+        snprintf(misc_buffer, sizeof(misc_buffer), "%s/%.*s", htdocs_directory, (int)http_flow->path_len - 1, http_flow->path + 1);
     } else {
         // path does not begin with "/"
-        snprintf(misc_buffer, sizeof(misc_buffer), "%.*s", (int)http_flow->path_len, http_flow->path);
+        snprintf(misc_buffer, sizeof(misc_buffer), "%s/%.*s", htdocs_directory, (int)http_flow->path_len, http_flow->path);
     }
 
     // try to read requested file
@@ -119,7 +139,7 @@ prepare_http_response(struct http_flow *http_flow, unsigned char **buffer, uint3
         if (config_log_level >= 1) {
             fprintf(stderr, "%s - reading >>%s<< failed -  delivering index.html\n", __func__, misc_buffer);
         }
-        snprintf(misc_buffer, sizeof(misc_buffer), "index.html");
+        snprintf(misc_buffer, sizeof(misc_buffer), "htdocs/index.html");
         payload_length = read_file(misc_buffer, (char **) &payload_buffer);
     }
 
@@ -197,6 +217,7 @@ on_error(struct neat_flow_operations *opCB)
 {
 
     fprintf(stderr, "%s()\n", __func__);
+    //return 0;
     exit(EXIT_FAILURE);
 }
 
@@ -377,11 +398,14 @@ main(int argc, char *argv[])
 {
     // uint64_t prop;
     int arg, result;
-    char *arg_property = NULL;
-    struct neat_flow *flow = NULL;
-    struct neat_flow_operations ops;
+    char *arg_property              = NULL;
+    struct neat_flow *flow_http     = NULL;
+    struct neat_flow *flow_https    = NULL;
+    struct neat_flow_operations ops_http;
+    struct neat_flow_operations ops_https;
 
-    memset(&ops, 0, sizeof(ops));
+    memset(&ops_http, 0, sizeof(struct neat_flow_operations));
+    memset(&ops_https, 0, sizeof(struct neat_flow_operations));
 
     result = EXIT_SUCCESS;
 
@@ -438,39 +462,79 @@ main(int argc, char *argv[])
     }
 
     // new neat flow
-    if ((flow = neat_new_flow(ctx)) == NULL) {
+    if ((flow_http = neat_new_flow(ctx)) == NULL) {
         fprintf(stderr, "%s - neat_new_flow failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // set properties
-    if (neat_set_property(ctx, flow, arg_property ? arg_property : config_property)) {
+    if (neat_set_property(ctx, flow_http, arg_property ? arg_property : config_property)) {
         fprintf(stderr, "%s - neat_set_property failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // set callbacks
-    ops.on_connected = on_connected;
-    ops.on_error = on_error;
+    ops_http.on_connected   = on_connected;
+    ops_http.on_error       = on_error;
 
-    if (neat_set_operations(ctx, flow, &ops)) {
+    if (neat_set_operations(ctx, flow_http, &ops_http)) {
         fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, 8080, NULL, 0)) {
+    if (neat_accept(ctx, flow_http, 8080, NULL, 0)) {
         fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
 
-    if (chdir("htdocs")) {
-        fprintf(stderr, "%s - chdir failed\n", __func__);
+    if (config_https) {
+        // new neat flow
+        if ((flow_https = neat_new_flow(ctx)) == NULL) {
+            fprintf(stderr, "%s - neat_new_flow failed\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
+
+        // set properties
+        if (neat_set_property(ctx, flow_https, config_property_https)) {
+            fprintf(stderr, "%s - neat_set_property failed\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
+
+        // set callbacks
+        ops_https.on_connected   = on_connected;
+        ops_https.on_error       = on_error;
+
+        if (neat_set_operations(ctx, flow_https, &ops_https)) {
+            fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
+
+        if (neat_secure_identity(ctx, flow_https, "cert.pem", NEAT_CERT_KEY_PEM)) {
+            fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
+
+        // wait for on_connected or on_error to be invoked
+        if (neat_accept(ctx, flow_https, 8081, NULL, 0)) {
+            fprintf(stderr, "%s - neat_accept failed\n", __func__);
+            result = EXIT_FAILURE;
+            goto cleanup;
+        }
+
     }
+
+    //if (chdir("htdocs")) {
+    //    fprintf(stderr, "%s - chdir failed\n", __func__);
+    //}
 
     if (signal(SIGINT, sig_handler) == SIG_ERR) {
         fprintf(stderr, "%s - can not register SIGINT\n", __func__);

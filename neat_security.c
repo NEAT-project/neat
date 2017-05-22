@@ -456,8 +456,6 @@ neat_dtls_dtor(struct neat_dtls_data *dtls)
     struct security_data *private;
     private = (struct security_data *) dtls->userData;
 
-    neat_log(NEAT_LOG_DEBUG, ctx, "%s", __func__);
-
     // private->outputBIO and private->inputBIO are freed by SSL_free(private->ssl)
     if (private && private->ssl) {
         SSL_free(private->ssl);

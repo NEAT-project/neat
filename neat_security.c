@@ -487,8 +487,6 @@ void handle_notifications(BIO *bio, void *context, void *buf) {
     struct sockaddr_storage ss;
     } addr;
 
-    neat_log(NEAT_LOG_DEBUG, ctx, "%s", __func__);
-
     switch (snp->sn_header.sn_type) {
         case SCTP_ASSOC_CHANGE:
             sac = &snp->sn_assoc_change;

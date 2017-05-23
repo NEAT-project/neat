@@ -29,7 +29,6 @@
 
 static uint32_t config_snd_chunk = 1000;
 static uint32_t config_snd_bytes = 100;
-static uint32_t config_snd_count = 0;
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
@@ -38,6 +37,8 @@ static uint16_t config_timeout = 0;
 static uint16_t config_number_of_streams = 1207;
 static char *config_primary_dest_addr = NULL;
 static char *config_property = "{\"transport\": {\"value\":\"reliable\", \"precedence\":2}}";
+
+
 
 struct std_buffer {
     unsigned char *buffer;
@@ -191,10 +192,11 @@ on_readable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-// Send data from stdin
+// Send data
 static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
+    int32_t chunk_size;
     neat_error_code code;
     struct neat_tlv options[1];
 
@@ -206,19 +208,25 @@ on_writable(struct neat_flow_operations *opCB)
     options[0].type          = NEAT_TYPE_INTEGER;
     options[0].value.integer = last_stream;
 
-    unsigned char msg[config_snd_chunk];
-    memset(msg, 0x4e, config_snd_chunk);
 
+    if (config_snd_bytes<config_snd_chunk) {
+      chunk_size = config_snd_bytes;    
+    } else {
+      chunk_size = config_snd_chunk;
+    }
+     
+    unsigned char msg[chunk_size];
+    memset(msg, 0x4e, chunk_size);
+     
     code = neat_write(opCB->ctx, opCB->flow, msg, sizeof(msg), options, 1);
     if (code != NEAT_OK) {
       fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
       return on_error(opCB);
     }
 
-    config_snd_count += config_snd_chunk;
-
+    config_snd_bytes -= chunk_size;
     // stop writing
-    if  (config_snd_count>=config_snd_bytes) {
+    if (config_snd_bytes==0) {
       neat_close(ctx, flow);
     }
 

@@ -427,6 +427,12 @@ class CIB(object):
             print(e)
             return
 
+        # TODO FIXME disable import of caching entries
+        if any(['cached' in i for i in cs.properties.expand()]):
+            logging.debug('Ignoring cached CIB node')
+            return
+
+
         if uid is not None:
             cs.uid = uid
 

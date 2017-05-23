@@ -101,7 +101,6 @@ def process_special_properties(r):
         # FIXME check for conflicts with user-defined properties
         r.add(interface)
 
-
         del r['local_endpoint']
 
     # add some default properties
@@ -146,7 +145,7 @@ def process_request(json_str, num_candidates=10):
     try:
         reqs = json.loads(json_str)
     except json.decoder.JSONDecodeError as e:
-        logging.error('Request invalid')
+        logging.error('Received invalid request')
         return
 
     logging.debug(json_str)
@@ -155,11 +154,15 @@ def process_request(json_str, num_candidates=10):
     for req in reqs:
         pma = PropertyMultiArray()
         for p, val in req.items():
-            if isinstance(val, list):
-                pma.add([policy.PropertyArray(policy.dict_to_properties({p: v})[0]) for v in val])
-            else:
-                pp = policy.dict_to_properties({p: val})[0]
-                pma.add(policy.PropertyArray(pp))
+            try:
+                if isinstance(val, list):
+                    pma.add([policy.PropertyArray(policy.dict_to_properties({p: v})[0]) for v in val])
+                else:
+                    pp = policy.dict_to_properties({p: val})[0]
+                    pma.add(policy.PropertyArray(pp))
+            except policy.NEATPropertyError as e:
+                logging.error('Received invalid request: ' + str(e))
+                return
         requests.extend(pma.expand())
 
     # local_endpoint handling
@@ -172,6 +175,7 @@ def process_request(json_str, num_candidates=10):
     candidates = []
 
     # main lookup sequence
+    # --------------------
     for i, request in enumerate(requests):
         print(policy.term_separator("processing request %d/%d" % (i + 1, len(requests)), offset=0, line_char='─'))
         logging.info("    %s" % request)
@@ -201,17 +205,18 @@ def process_request(json_str, num_candidates=10):
                 candidates.append(c)
                 logging.debug(c)
 
+    # TODO handle 'to_controller' property, wait for controller response
     candidates.sort(key=attrgetter('score'), reverse=True)
     top_candidates = candidates[:num_candidates]
 
     for candidate in top_candidates:
         cleanup_special_properties(candidate)
 
-    # print candidates before returning
     logging.info("%d candidates generated in total." % (len(candidates)))
     print(policy.term_separator('Top %d' % num_candidates))
     for candidate in top_candidates:
         print(candidate, candidate.score, candidate.meta.get('cib_uids'))
+
     # TODO check if candidates contain the minimum src/dst/transport tuple
     print(policy.term_separator())
 
@@ -308,7 +313,6 @@ def no_loop_test():
     """
     Dummy JSON request for testing
     """
-    # test_request_str = '{"remote_ip": {"precedence": 2, "value": "10:54:1.23"}, "transport": [{"value": "TCP", "banned": ["UDP", "UDPLite"]}, {"value": "UDP"}], "MTU": {"value": [1500, 9000]}, "low_latency": {"precedence": 2, "value": true}, "foo": {"banned": ["baz"]}}'
 
     test_request_str = '{"remote_ip": {"value": "192.168.113.24", "precedence": 2}, "transport": {"value": "reliable", "precedence": 2}}'
 

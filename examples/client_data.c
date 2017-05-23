@@ -13,11 +13,11 @@
     simple neat client
 
     * connect to HOST and PORT
-    * read from stdin and send data to HOST
-    * write received data from peer to stdout
+    * generate and send N amount of bytes to HOST
 
     client [OPTIONS] HOST PORT
     -P : neat properties
+    -D : number of bytes to generate
     -R : receive buffer in byte
     -S : send buffer in byte
     -J : print json stats for each time data is sent
@@ -28,7 +28,7 @@
 **********************************************************************/
 
 static uint32_t config_snd_chunk = 1000;
-static uint32_t config_snd_bytes = 1;
+static uint32_t config_snd_bytes = 100;
 static uint32_t config_snd_count = 0;
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
@@ -37,22 +37,7 @@ static uint16_t config_json_stats = 1;
 static uint16_t config_timeout = 0;
 static uint16_t config_number_of_streams = 1207;
 static char *config_primary_dest_addr = NULL;
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"SCTP/UDP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";
+static char *config_property = "{\"transport\": {\"value\":\"reliable\", \"precedence\":2}}";
 
 struct std_buffer {
     unsigned char *buffer;
@@ -217,12 +202,10 @@ on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    //last_stream = (last_stream + 1) % opCB->flow->stream_count;
     options[0].tag           = NEAT_TAG_STREAM_ID;
     options[0].type          = NEAT_TYPE_INTEGER;
     options[0].value.integer = last_stream;
 
-    //ZDR
     unsigned char msg[config_snd_chunk];
     memset(msg, 0x4e, config_snd_chunk);
 
@@ -233,9 +216,6 @@ on_writable(struct neat_flow_operations *opCB)
     }
 
     config_snd_count += config_snd_chunk;
-    // if (config_json_stats){
-    // print_neat_stats(ctx);
-    //}
 
     // stop writing
     if  (config_snd_count>=config_snd_bytes) {
@@ -260,8 +240,7 @@ on_all_written(struct neat_flow_operations *opCB)
     ops.on_all_written = NULL;
     neat_set_operations(ctx, flow, &ops);
 
-    // data sent completely - continue reading from stdin
-    //uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
+    // data sent completely
     return NEAT_OK;
 }
 
@@ -435,7 +414,6 @@ main(int argc, char *argv[])
             }
             break;
         case 'D':
-          //ZDR
             config_snd_bytes = atoi(optarg);
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - number of bytes to send: %d\n", __func__, config_snd_bytes);

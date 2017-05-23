@@ -5329,7 +5329,8 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                             socket(candidate->pollable_socket->family,
                                    candidate->pollable_socket->type,
                                    protocol)) < 0) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Failed to create he socket");
+      neat_log(ctx, NEAT_LOG_DEBUG, "Failed to create he socket (family:%d, type:%d, prodocol:%d)",
+               candidate->pollable_socket->family, candidate->pollable_socket->type, protocol);
         return -1;
     }
 

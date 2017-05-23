@@ -1850,7 +1850,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
 
     assert(he_res);
 
-    socket_path = getenv("NEAT_PM_SOCKET");
+    socket_path = getenv("NEAT_CIB_SOCKET");
     if (!socket_path) {
         if ((home_dir = getenv("HOME")) == NULL) {
             neat_log(ctx, NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");
@@ -1859,7 +1859,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
 
         rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_cib_socket", home_dir);
         if (rc < 0 || rc >= 128) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
+            neat_log(ctx, NEAT_LOG_DEBUG, "Unable to construct default path to PM CIB socket");
             goto end;
         }
 
@@ -3672,13 +3672,12 @@ send_properties_to_pm_orig(neat_ctx *ctx, neat_flow *flow)
     if (!socket_path) {
         if ((home_dir = getenv("HOME")) == NULL) {
             neat_log(ctx, NEAT_LOG_DEBUG, "Unable to locate the $HOME directory");
-
             goto end;
         }
 
         rc = snprintf(socket_path_buf, 128, "%s/.neat/neat_pm_socket", home_dir);
         if (rc < 0 || rc >= 128) {
-            neat_log(ctx, NEAT_LOG_DEBUG, "Unable to construct default path to PM socket");
+            neat_log(ctx, NEAT_LOG_DEBUG, "Unable to construct default path to PM request socket");
             goto end;
         }
 

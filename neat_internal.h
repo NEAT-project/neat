@@ -9,6 +9,7 @@
 #include "neat_queue.h"
 #include "neat_security.h"
 #include "neat_pm_socket.h"
+#include "neat_webrtc_tools.h"
 
 #ifdef __linux__
     #include "neat_linux.h"
@@ -203,7 +204,7 @@ struct neat_pollable_socket
 {
     struct neat_flow    *flow;
 
-#if defined(USRSCTP_SUPPORT)
+#if defined(USRSCTP_SUPPORT) || defined(WEBRTC_SUPPORT)
     struct socket *usrsctp_socket;
 #endif
 
@@ -342,6 +343,10 @@ struct neat_flow
 
     neat_flow_states                multistream_state;
 #endif
+
+    // WebRTC
+    uint8_t role; //just temporary
+    struct peer_connection *peer_connection;
 };
 
 typedef struct neat_flow neat_flow;
@@ -639,6 +644,11 @@ neat_error_code neat_dtls_connect(neat_ctx *ctx, neat_flow *flow);
 neat_error_code copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_socket *socket);
 neat_error_code neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
 
-void neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow);
-
+/* Declarations for WebRTC */
+void neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t role);
+void webrtc_io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
+void webrtc_io_readable(neat_ctx *ctx, neat_flow *flow, neat_error_code code, void *buffer, size_t size);
+void webrtc_io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
+neat_error_code neat_webrtc_write_to_channel(struct neat_ctx *ctx, struct neat_flow *flow,
+    const unsigned char *buffer, uint32_t amt, struct neat_tlv optional[], unsigned int opt_count);
 #endif

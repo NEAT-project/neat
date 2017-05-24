@@ -806,7 +806,7 @@ printf("set property: key=%s prop=%s\n", key, json_string_value(prop));
 printf("webrtcEnabled=%d\n", flow->webrtcEnabled);
     json_decref(props);
 
-#if 0
+#if 1
     char *buffer = json_dumps(flow->properties, JSON_INDENT(2));
     neat_log(ctx, NEAT_LOG_DEBUG, "Flow properties are now:\n%s\n", buffer);
     free(buffer);
@@ -1004,12 +1004,15 @@ static void io_connected(neat_ctx *ctx, neat_flow *flow,
         case NEAT_STACK_SCTP_UDP:
             snprintf(proto, 16, "SCTP/UDP");
             break;
+        case NEAT_STACK_WEBRTC:
+            snprintf(proto, 16, "WebRTC");
+            break;
         default:
             snprintf(proto, 16, "stack%d", flow->socket->stack);
             break;
     }
 
-    neat_log(ctx, NEAT_LOG_INFO, "Connected: %s/%s", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6"));
+    neat_log(ctx, NEAT_LOG_INFO, "Connected: %s/%s", proto, (flow->socket->family == AF_INET ? "IPv4" : (flow->socket->family == AF_INET6 ? "IPv6" : "AF_CONN" )));
 
     flow->state = NEAT_FLOW_OPEN;
 
@@ -1033,6 +1036,7 @@ io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 
     // we have buffered data, send to socket
     if (flow->isDraining) {
+    printf("flow is draining\n");
         code = neat_write_flush(ctx, flow);
         if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
             neat_log(ctx, NEAT_LOG_ERROR, "error : %d", code);
@@ -1042,6 +1046,7 @@ io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
     // no buffered datat, notifiy application about writable flow
     } else if (flow->operations && flow->operations->on_writable) {
         READYCALLBACKSTRUCT;
+        printf("call on_writable\n");
         flow->operations->on_writable(flow->operations);
     }
 
@@ -1052,6 +1057,7 @@ io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
             neat_shutdown(ctx, flow);
         } else {
             // outgoing flow buffer is empty
+            printf("call io_all_written\n");
             io_all_written(ctx, flow, 0);
         }
     }
@@ -1768,10 +1774,13 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
 static void
 io_all_written(neat_ctx *ctx, neat_flow *flow, uint16_t stream_id)
 {
+printf("%s\n", __func__);
+printf("ctx=%p\n", (void *)ctx);
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     stream_id = NEAT_INVALID_STREAM;
 
     if (!flow->operations || !flow->operations->on_all_written || !flow->notifyDrainPending) {
+    printf("return: notifyDrainPending=%d\n", flow->notifyDrainPending);
         return;
     }
 
@@ -1779,6 +1788,7 @@ io_all_written(neat_ctx *ctx, neat_flow *flow, uint16_t stream_id)
 
     neat_error_code code = NEAT_OK;
     READYCALLBACKSTRUCT;
+    printf("call on_all_written\n");
     flow->operations->on_all_written(flow->operations);
 }
 
@@ -4201,7 +4211,7 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     if (flow->webrtcEnabled) {
         neat_log(ctx, NEAT_LOG_DEBUG, "WEBRTC enabled\n");
         flow->state = NEAT_FLOW_OPEN;
-        neat_webrtc_gather_candidates(ctx, flow);
+        neat_webrtc_gather_candidates(ctx, flow, port);
     } else {
         send_properties_to_pm(ctx, flow);
     }
@@ -5132,6 +5142,25 @@ neat_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         SKIP_OPTARG(NEAT_TAG_TRANSPORT_STACK)
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
+    if (flow->socket->stack == NEAT_STACK_WEBRTC) {
+        printf("NEAT_STACK_WEBRTC\n");
+        assert(flow->readBuffer);
+        if (flow->readBufferSize > amt) {
+            /* this can only happen if message boundaries are not preserved */
+            *actualAmt = amt;
+            memcpy(buffer, flow->readBuffer, amt);
+            /* This is very inefficient, we should also use a offset */
+            memmove(flow->readBuffer, flow->readBuffer + amt, flow->readBufferSize - amt);
+            flow->readBufferSize -= amt;
+        } else {
+            *actualAmt = flow->readBufferSize;
+            memcpy(buffer, flow->readBuffer, flow->readBufferSize);
+            flow->readBufferSize = 0;
+            flow->readBufferMsgComplete = 0;
+        }
+        goto end;
+    }
+
     if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_UDP) ||
         (neat_base_stack(flow->socket->stack) == NEAT_STACK_UDPLITE) ||
         (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP)) {
@@ -5308,7 +5337,7 @@ neat_base_stack(neat_protocol_stack_type stack)
             return stack;
         case NEAT_STACK_SCTP_UDP:
         case NEAT_STACK_WEBRTC:
-            return NEAT_STACK_SCTP;
+            return NEAT_STACK_WEBRTC;
         default:
             return 0;
     }
@@ -6626,6 +6655,12 @@ neat_write(struct neat_ctx *ctx,
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+    if (flow->socket->stack == NEAT_STACK_WEBRTC) {
+        flow->notifyDrainPending = 1;
+        printf("NEAT_STACK_WEBRTC send %d bytes\n", amt);
+        return neat_webrtc_write_to_channel(ctx, flow, buffer, amt, optional, opt_count);
+    }
+
 #ifdef SCTP_MULTISTREAMING
     assert(flow->multistream_reset_out == false);
 #endif
@@ -6690,7 +6725,10 @@ neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     flow->isClosing = 1;
-
+printf("neat_shutdown\n");
+    if (flow->webrtcEnabled) {
+        rawrtc_stop_client(flow->peer_connection);
+    }
     if (flow->isDraining) {
         return NEAT_OK;
     }
@@ -7358,3 +7396,33 @@ neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid)
 }
 
 #endif // SCTP_MULTISTREAMING
+
+void webrtc_io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
+{
+    flow->socket->usrsctp_socket = flow->peer_connection->sctp_transport->socket;
+    flow->socket->stack = NEAT_STACK_WEBRTC;
+    flow->socket->family = AF_CONN;
+    io_connected(ctx, flow, code);
+}
+
+void webrtc_io_readable(neat_ctx *ctx, neat_flow *flow, neat_error_code code, void *buffer, size_t size)
+{
+    int stream_id   = -1;
+    printf("%s\n", __func__);
+    printf("flow->readBufferAllocation=%zu flow->readBufferSize=%zu\n", flow->readBufferAllocation, flow->readBufferSize);
+    if (resize_read_buffer(flow) != READ_OK) {
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - Could not resize read buffer", __func__);
+    }
+     printf("after resize flow->readBufferAllocation=%zu flow->readBufferSize=%zu\n", flow->readBufferAllocation, flow->readBufferSize);
+     memcpy(flow->readBuffer + flow->readBufferSize, buffer, size);
+     flow->readBufferSize += size;
+    if (flow->operations->on_readable) {
+        READYCALLBACKSTRUCT;
+        flow->operations->on_readable(flow->operations);
+    }
+}
+
+void webrtc_io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
+{
+    io_writable(ctx, flow, code);
+}

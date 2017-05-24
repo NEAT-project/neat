@@ -189,6 +189,8 @@ OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 0)
 
 OPTION(SOCKET_API "Include the socket API" 0)
 
+OPTION(WEBRTC_SUPPORT "Include WebRTC support" 1)
+
 # REQUIREMENTS
 #################################################
 CHECK_INCLUDE_FILE(uv.h HAVE_SYS_UV_H)
@@ -259,12 +261,15 @@ ELSE()
     MESSAGE(STATUS "jansson found: " ${JANSSON_LIB})
 ENDIF()
 
+IF (WEBRTC_SUPPORT)
 CHECK_INCLUDE_FILE(rawrtc.h HAVE_RAWRTC_H)
 FIND_LIBRARY(RAWRTC_LIB rawrtc)
 IF (NOT HAVE_RAWRTC_H OR NOT RAWRTC_LIB)
     MESSAGE(FATAL_ERROR "rawrtc.h not found - rawrtc installed?")
 ELSE()
     MESSAGE(STATUS "rawrtc found: " ${RAWRTC_LIB})
+    ADD_DEFINITIONS(-DWEBRTC_SUPPORT)
+ENDIF()
 ENDIF()
 
 CHECK_INCLUDE_FILE(netinet/sctp.h HAVE_NETINET_SCTP_H)

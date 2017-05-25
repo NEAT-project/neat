@@ -1,12 +1,12 @@
 import bisect
 import copy
 import hashlib
+import itertools
 import json
 import operator
-from collections import ChainMap
-
-import itertools
 import time
+
+from collections import ChainMap
 
 import pmdefaults as PM
 from pmdefaults import *
@@ -371,10 +371,6 @@ class CIB(object):
             for cs in deleted_cs:
                 self.nodes.pop(uid, None)
 
-        # update links for all registered CIBs
-        for cs in self.nodes.values():
-            cs.update_links_from_match()
-
         self.update_graph()
 
     def load_cib_file(self, filename):
@@ -392,6 +388,14 @@ class CIB(object):
         self.register(cib_node)
 
     def update_graph(self):
+        # FIXME this tree should be rebuilt dynamically
+
+        # update links for all registered CIBs
+        for cs in self.nodes.values():
+            cs.update_links_from_match()
+        # FIXME check for invalid pointers
+
+        self.graph = {}
         for i in self.nodes.values():
             if not i.link:
                 continue
@@ -432,7 +436,6 @@ class CIB(object):
             logging.debug('Ignoring cached CIB node')
             return
 
-
         if uid is not None:
             cs.uid = uid
 
@@ -457,42 +460,51 @@ class CIB(object):
             logging.debug("overwriting existing CIB with uid %s" % cib_node.uid)
         self.nodes[cib_node.uid] = cib_node
 
-    def lookup(self, input_properties, candidate_num=5):
-        """
-        CIB lookup logic implementation.
+    def unregister(self, cib_uid):
+        del self.nodes[cib_uid]
+        self.update_graph()
 
-        """
-        assert isinstance(input_properties, PropertyArray)
-        candidates = [input_properties]
-        for e in self.rows:
-            try:
-                # FIXME better check whether all input properties are included in row - improve matching
-                # ignore optional properties in input request
-                i = PropertyArray(*(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
-                if len(i & e) != len(i):
-                    continue
-            except ImmutablePropertyError:
+    def remove(self, cib_uid):
+        self.unregister(cib_uid)
+
+def lookup(self, input_properties, candidate_num=5):
+    """
+    CIB lookup logic implementation.
+
+    """
+    assert isinstance(input_properties, PropertyArray)
+    candidates = [input_properties]
+    for e in self.rows:
+        try:
+            # FIXME better check whether all input properties are included in row - improve matching
+            # ignore optional properties in input request
+            i = PropertyArray(*(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
+            if len(i & e) != len(i):
                 continue
+        except ImmutablePropertyError:
+            continue
 
-            try:
-                candidate = e + input_properties
-                candidate.cib_node = e.cib_node
-                candidates.append(candidate)
-            except ImmutablePropertyError:
-                pass
+        try:
+            candidate = e + input_properties
+            candidate.cib_node = e.cib_node
+            candidates.append(candidate)
+        except ImmutablePropertyError:
+            pass
 
-        return sorted(candidates, key=operator.attrgetter('score'), reverse=True)[:candidate_num]
+    return sorted(candidates, key=operator.attrgetter('score'), reverse=True)[:candidate_num]
 
-    def dump(self, show_all=False):
-        print(term_separator("CIB START"))
-        # ============================================================================
-        for i, e in enumerate(self.rows):
-            print("%3i. %s" % (i, str(e)))
-        # ============================================================================
-        print(term_separator("CIB END"))
 
-    def __repr__(self):
-        return 'CIB<%d>' % (len(self.nodes))
+def dump(self, show_all=False):
+    print(term_separator("CIB START"))
+    # ============================================================================
+    for i, e in enumerate(self.rows):
+        print("%3i. %s" % (i, str(e)))
+    # ============================================================================
+    print(term_separator("CIB END"))
+
+
+def __repr__(self):
+    return 'CIB<%d>' % (len(self.nodes))
 
 
 if __name__ == "__main__":

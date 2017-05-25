@@ -217,7 +217,7 @@ class PIB(list):
         logging.info("Policy saved as \"%s\"." % filename)
 
         # FIXME register
-        self.reload()
+        self.reload_files()
 
     def load_policy(self, filename):
         """Load policy.
@@ -244,7 +244,7 @@ class PIB(list):
             pass
             # logging.debug("Policy %s is up-to-date", filename)
 
-    def reload(self):
+    def reload_files(self):
         """
         Reload PIB files
         """
@@ -252,6 +252,8 @@ class PIB(list):
 
         for dir_path, dir_names, filenames in os.walk(self.policy_dir):
             for f in filenames:
+                if not f.endswith(self.file_extension) or f.startswith(('.', '#')):
+                    continue
                 full_name = os.path.join(dir_path, f)
                 current_files.add(full_name)
                 self.load_policy(full_name)
@@ -286,9 +288,15 @@ class PIB(list):
         self.index[policy.uid] = idx
 
     def unregister(self, policy_uid):
+        """
+        Remove policy from in-memory repository. This does not remove the policy from the file system.
+        """
         idx = self.index[policy_uid]
         del self.policies[idx]
         del self.index[policy_uid]
+
+    def remove(self, policy_uid):
+        self.unregister(policy_uid)
 
     def lookup(self, input_properties, apply=True, tag=None):
         """

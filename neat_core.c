@@ -1900,6 +1900,7 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         goto end;
     }
 
+    neat_log(ctx, NEAT_LOG_INFO, "Sending HE result to PM for caching");
     neat_json_send_once(ctx, flow, socket_path, result_array, NULL, on_pm_he_error);
 
 end:

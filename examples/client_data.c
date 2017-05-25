@@ -10,7 +10,7 @@
 
 /**********************************************************************
 
-    simple neat client
+    simple neat traffic generator
 
     * connect to HOST and PORT
     * generate and send N amount of bytes to HOST
@@ -51,11 +51,8 @@ static struct neat_ctx *ctx = NULL;
 static struct neat_flow *flow = NULL;
 static unsigned char *buffer_rcv = NULL;
 static unsigned char *buffer_snd= NULL;
-static uv_tty_t tty;
 static uint16_t last_stream = 0;
 
-void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
-void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
 static neat_error_code on_all_written(struct neat_flow_operations *opCB);
 
 
@@ -214,24 +211,23 @@ on_writable(struct neat_flow_operations *opCB)
     } else {
       chunk_size = config_snd_chunk;
     }
-     
+
     unsigned char msg[chunk_size];
     memset(msg, 0x4e, chunk_size);
-     
+
     code = neat_write(opCB->ctx, opCB->flow, msg, sizeof(msg), options, 1);
     if (code != NEAT_OK) {
       fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
       return on_error(opCB);
     }
-
+   
     config_snd_bytes -= chunk_size;
-    // stop writing
-    if (config_snd_bytes==0) {
-      neat_close(ctx, flow);
+    // stop writing if all requested bytes have been sent
+    if (config_snd_bytes<=0) {
+      ops.on_all_written = on_all_written;
+      neat_set_operations(ctx, flow, &ops);
     }
 
-    //ops.on_all_written = on_all_written;
-    //neat_set_operations(ctx, flow, &ops);
     return NEAT_OK;
 }
 
@@ -241,12 +237,10 @@ on_all_written(struct neat_flow_operations *opCB)
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
-    fprintf(stderr, "%s()\n", __func__);
 
     // stop writing
-    ops.on_writable = on_writable;
-    ops.on_all_written = NULL;
     neat_set_operations(ctx, flow, &ops);
+    neat_close(ctx, flow);
 
     // data sent completely
     return NEAT_OK;
@@ -256,23 +250,10 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     int rc;
-    uv_loop_t *loop;
-
-
-    /*
-    if (config_log_level >= 1) {
-        printf("%s - available streams : %d\n", __func__, opCB->flow->stream_count);
-    }
-    */
 
     last_stream = 0;
-    loop = neat_get_event_loop(opCB->ctx);
-    uv_tty_init(loop, &tty, 0, 1);
-    //ZDRuv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
 
     ops.on_writable = on_writable;
-
-    //ops.on_readable = on_readable;
     neat_set_operations(ctx, flow, &ops);
 
     if (config_primary_dest_addr != NULL) {
@@ -302,9 +283,6 @@ on_close(struct neat_flow_operations *opCB)
     ops.on_readable = NULL;
     ops.on_writable = NULL;
     ops.on_error = NULL;
-    if (!uv_is_closing((uv_handle_t*) &tty)) {
-        uv_close((uv_handle_t*) &tty, NULL);
-    }
     neat_set_operations(ctx, flow, &ops);
 
     neat_stop_event_loop(opCB->ctx);
@@ -312,86 +290,6 @@ on_close(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-/*
-    Read from stdin
-*/
-void
-tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
-{
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
-
-    if (config_log_level >= 1) {
-        fprintf(stderr, "%s - tty_read called with buffer_filled %zd\n", __func__, buffer_filled);
-    }
-
-    // error case
-    if (buffer_filled == UV_EOF) {
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - tty_read - UV_EOF\n", __func__);
-        }
-        uv_read_stop(stream);
-        ops.on_writable = NULL;
-        neat_set_operations(ctx, flow, &ops);
-        if (!uv_is_closing((uv_handle_t*) &tty)) {
-            uv_close((uv_handle_t*) &tty, NULL);
-        }
-        neat_shutdown(ctx, flow);
-    } else if (strncmp(buffer->base, "close\n", buffer_filled) == 0) {
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - tty_read - CLOSE\n", __func__);
-        }
-        uv_read_stop(stream);
-        ops.on_writable = NULL;
-        neat_set_operations(ctx, flow, &ops);
-        if (!uv_is_closing((uv_handle_t*) &tty)) {
-            uv_close((uv_handle_t*) &tty, NULL);
-        }
-        neat_close(ctx, flow);
-        buffer_filled = UV_EOF;
-    } else if (strncmp(buffer->base, "abort\n", buffer_filled) == 0) {
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - tty_read - ABORT\n", __func__);
-        }
-        uv_read_stop(stream);
-        ops.on_writable = NULL;
-        neat_set_operations(ctx, flow, &ops);
-        if (!uv_is_closing((uv_handle_t*) &tty)) {
-            uv_close((uv_handle_t*) &tty, NULL);
-        }
-        neat_abort(ctx, flow);
-        buffer_filled = UV_EOF;
-    }
-
-    fprintf(stderr, "%s - felix - marker\n", __func__);
-
-    // all fine
-    if (buffer_filled > 0 && buffer_filled != UV_EOF) {
-        // copy input to app buffer
-        stdin_buffer.buffer_filled = buffer_filled;
-        memcpy(stdin_buffer.buffer, buffer->base, buffer_filled);
-
-        // stop reading from stdin and set write callbacks
-        uv_read_stop(stream);
-        ops.on_writable = on_writable;
-        ops.on_all_written = on_all_written;
-        neat_set_operations(ctx, flow, &ops);
-    }
-
-    free(buffer->base);
-}
-
-void
-tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
-{
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
-
-    buffer->len = config_rcv_buffer_size;
-    buffer->base = malloc(config_rcv_buffer_size);
-}
 
 
 int

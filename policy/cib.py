@@ -5,7 +5,6 @@ import itertools
 import json
 import operator
 import time
-
 from collections import ChainMap
 
 import pmdefaults as PM
@@ -358,7 +357,7 @@ class CIB(object):
                         self.files[full_name] = stat.st_mtime_ns
                         self.load_cib_file(full_name)
                 else:
-                    logging.info("new CIB node %s. loading...", full_name)
+                    logging.info("Loading new CIB node %s.", full_name)
                     self.files[full_name] = stat.st_mtime_ns
                     self.load_cib_file(full_name)
 
@@ -467,6 +466,7 @@ class CIB(object):
     def remove(self, cib_uid):
         self.unregister(cib_uid)
 
+
 def lookup(self, input_properties, candidate_num=5):
     """
     CIB lookup logic implementation.
@@ -493,18 +493,16 @@ def lookup(self, input_properties, candidate_num=5):
 
     return sorted(candidates, key=operator.attrgetter('score'), reverse=True)[:candidate_num]
 
+    def dump(self, show_all=False):
+        print(term_separator("CIB START"))
+        # ============================================================================
+        for i, e in enumerate(self.rows):
+            print("%3i. %s" % (i, str(e)))
+        # ============================================================================
+        print(term_separator("CIB END"))
 
-def dump(self, show_all=False):
-    print(term_separator("CIB START"))
-    # ============================================================================
-    for i, e in enumerate(self.rows):
-        print("%3i. %s" % (i, str(e)))
-    # ============================================================================
-    print(term_separator("CIB END"))
-
-
-def __repr__(self):
-    return 'CIB<%d>' % (len(self.nodes))
+    def __repr__(self):
+        return 'CIB<%d>' % (len(self.nodes))
 
 
 if __name__ == "__main__":

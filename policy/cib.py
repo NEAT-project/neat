@@ -466,32 +466,29 @@ class CIB(object):
     def remove(self, cib_uid):
         self.unregister(cib_uid)
 
-
-def lookup(self, input_properties, candidate_num=5):
-    """
-    CIB lookup logic implementation.
-
-    """
-    assert isinstance(input_properties, PropertyArray)
-    candidates = [input_properties]
-    for e in self.rows:
-        try:
-            # FIXME better check whether all input properties are included in row - improve matching
-            # ignore optional properties in input request
-            i = PropertyArray(*(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
-            if len(i & e) != len(i):
+    def lookup(self, input_properties, candidate_num=5):
+        """CIB lookup logic implementation
+        """
+        assert isinstance(input_properties, PropertyArray)
+        candidates = [input_properties]
+        for e in self.rows:
+            try:
+                # FIXME better check whether all input properties are included in row - improve matching
+                # ignore optional properties in input request
+                i = PropertyArray(*(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
+                if len(i & e) != len(i):
+                    continue
+            except ImmutablePropertyError:
                 continue
-        except ImmutablePropertyError:
-            continue
 
-        try:
-            candidate = e + input_properties
-            candidate.cib_node = e.cib_node
-            candidates.append(candidate)
-        except ImmutablePropertyError:
-            pass
+            try:
+                candidate = e + input_properties
+                candidate.cib_node = e.cib_node
+                candidates.append(candidate)
+            except ImmutablePropertyError:
+                pass
 
-    return sorted(candidates, key=operator.attrgetter('score'), reverse=True)[:candidate_num]
+        return sorted(candidates, key=operator.attrgetter('score'), reverse=True)[:candidate_num]
 
     def dump(self, show_all=False):
         print(term_separator("CIB START"))

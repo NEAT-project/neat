@@ -77,6 +77,17 @@ async def controller_announce():
         await asyncio.sleep(sleep_time)
 
 
+async def handle_refresh(request):
+    logging.info("Reloading PIB...")
+    pib.reload_files()
+    logging.info("Reloading profiles...")
+    profiles.reload_files()
+    logging.info("Reloading CIB...")
+    cib.reload_files()
+
+    return web.Response(text='PM repositories reloaded.')
+
+
 async def handle_pib(request):
     uid = request.match_info.get('uid')
     if uid is None:
@@ -98,16 +109,32 @@ async def handle_pib_put(request):
 
     Test using: curl -H 'Content-Type: application/json' -T test.policy localhost:45888/pib/23423
     """
-
-    uid = request.match_info.get('uid')
-
     assert request.content_type == 'application/json'
+    uid = request.match_info.get('uid')
+    logging.info("Received new policy entry with uid \'%s\'" % (uid))
 
-    logging.info("Received new policy entry with uid %s" % (uid))
-
-    new_cib = await request.text()
-    pib.import_json(new_cib, uid)
+    new_policy = await request.text()
+    pib.import_json(new_policy, uid)
     return web.Response(text="OK")
+
+
+async def handle_pib_delete(request):
+    """
+    Delete PIB entry with specific UID 
+
+    Test using: curl -H 'Content-Type: application/json' -X DELETE localhost:45888/pib/1234
+    """
+    assert request.content_type == 'application/json'
+    uid = request.match_info.get('uid')
+    logging.info("Removing policy entry with uid \'%s\'" % (uid))
+
+    try:
+        pib.remove(uid)
+    except KeyError:
+        text = "Policy not found (uid \'%s\')." % uid
+        logging.warning(text)
+        return web.Response(status=404, text=text)
+    return web.Response(text="Policy removed")
 
 
 async def handle_cib_rows(request):
@@ -148,6 +175,25 @@ async def handle_cib_put(request):
     return web.Response(text="OK")
 
 
+async def handle_cib_delete(request):
+    """
+    Delete CIB node with specific UID 
+
+    Test using: curl -H 'Content-Type: application/json' -X DELETE localhost:45888/pib/1234
+    """
+    assert request.content_type == 'application/json'
+    uid = request.match_info.get('uid')
+    logging.info("Removing CIB node with uid \'%s\'" % (uid))
+
+    try:
+        cib.remove(uid)
+    except KeyError:
+        text = "CIB node not found (uid \'%s\')." % uid
+        logging.warning(text)
+        return web.Response(status=404, text=text)
+    return web.Response(text="CIB node removed")
+
+
 async def handle_rest(request):
     name = str(request.match_info.get('name')).lower()
     if name not in ('pib', 'cib'):
@@ -160,21 +206,20 @@ async def handle_rest(request):
 
 
 def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=None):
-    """ Initialize and register REST server
-
-    curl  -H 'Content-Type: application/json' -X PUT -d'["abc",123]' localhost:45888/c3b/23423
+    """ 
+    Initialize and register REST server.
     """
     if web is None:
         logging.info("REST server not available because the aiohttp module is not installed.")
         return
 
-    global pib, cib, port, server, loop, app
+    global pib, cib, profiles, port, server, loop, app
 
     loop = asyncio_loop
 
-    profiles = profiles_ref
     cib = cib_ref
     pib = pib_ref
+    profiles = profiles_ref
 
     if rest_port:
         PM.REST_PORT = rest_port
@@ -183,6 +228,8 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
     app = pmrest
 
     pmrest.router.add_get('/', handle_rest)
+    pmrest.router.add_get('/reload', handle_refresh)
+
     pmrest.router.add_get('/pib', handle_pib)
     pmrest.router.add_get('/pib/{uid}', handle_pib)
 
@@ -192,6 +239,9 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
 
     pmrest.router.add_put('/cib/{uid}', handle_cib_put)
     pmrest.router.add_put('/pib/{uid}', handle_pib_put)
+
+    pmrest.router.add_delete('/pib/{uid}', handle_pib_delete)
+    pmrest.router.add_delete('/cib/{uid}', handle_cib_delete)
 
     handler = pmrest.make_handler()
 

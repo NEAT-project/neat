@@ -1,12 +1,11 @@
 import bisect
 import copy
 import hashlib
+import itertools
 import json
 import operator
-from collections import ChainMap
-
-import itertools
 import time
+from collections import ChainMap
 
 import pmdefaults as PM
 from pmdefaults import *
@@ -358,7 +357,7 @@ class CIB(object):
                         self.files[full_name] = stat.st_mtime_ns
                         self.load_cib_file(full_name)
                 else:
-                    logging.info("new CIB node %s. loading...", full_name)
+                    logging.info("Loading new CIB node %s.", full_name)
                     self.files[full_name] = stat.st_mtime_ns
                     self.load_cib_file(full_name)
 
@@ -370,10 +369,6 @@ class CIB(object):
             # remove corresponding CIBNode object
             for cs in deleted_cs:
                 self.nodes.pop(uid, None)
-
-        # update links for all registered CIBs
-        for cs in self.nodes.values():
-            cs.update_links_from_match()
 
         self.update_graph()
 
@@ -392,6 +387,14 @@ class CIB(object):
         self.register(cib_node)
 
     def update_graph(self):
+        # FIXME this tree should be rebuilt dynamically
+
+        # update links for all registered CIBs
+        for cs in self.nodes.values():
+            cs.update_links_from_match()
+        # FIXME check for invalid pointers
+
+        self.graph = {}
         for i in self.nodes.values():
             if not i.link:
                 continue
@@ -432,7 +435,6 @@ class CIB(object):
             logging.debug('Ignoring cached CIB node')
             return
 
-
         if uid is not None:
             cs.uid = uid
 
@@ -457,10 +459,15 @@ class CIB(object):
             logging.debug("overwriting existing CIB with uid %s" % cib_node.uid)
         self.nodes[cib_node.uid] = cib_node
 
-    def lookup(self, input_properties, candidate_num=5):
-        """
-        CIB lookup logic implementation.
+    def unregister(self, cib_uid):
+        del self.nodes[cib_uid]
+        self.update_graph()
 
+    def remove(self, cib_uid):
+        self.unregister(cib_uid)
+
+    def lookup(self, input_properties, candidate_num=5):
+        """CIB lookup logic implementation
         """
         assert isinstance(input_properties, PropertyArray)
         candidates = [input_properties]

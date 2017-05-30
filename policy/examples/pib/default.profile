@@ -1,6 +1,7 @@
 {
     "uid":"default",
     "description":"default properties to append to request",
+    "type": "profile",
     "priority": 1,
     "replace_matched": false,
     "match":{

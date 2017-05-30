@@ -145,7 +145,7 @@ def process_request(json_str, num_candidates=10):
     try:
         reqs = json.loads(json_str)
     except json.decoder.JSONDecodeError as e:
-        logging.error('Request invalid')
+        logging.error('Received invalid request')
         return
 
     logging.debug(json_str)
@@ -154,11 +154,15 @@ def process_request(json_str, num_candidates=10):
     for req in reqs:
         pma = PropertyMultiArray()
         for p, val in req.items():
-            if isinstance(val, list):
-                pma.add([policy.PropertyArray(policy.dict_to_properties({p: v})[0]) for v in val])
-            else:
-                pp = policy.dict_to_properties({p: val})[0]
-                pma.add(policy.PropertyArray(pp))
+            try:
+                if isinstance(val, list):
+                    pma.add([policy.PropertyArray(policy.dict_to_properties({p: v})[0]) for v in val])
+                else:
+                    pp = policy.dict_to_properties({p: val})[0]
+                    pma.add(policy.PropertyArray(pp))
+            except policy.NEATPropertyError as e:
+                logging.error('Received invalid request: ' + str(e))
+                return
         requests.extend(pma.expand())
 
     # local_endpoint handling

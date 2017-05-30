@@ -28,6 +28,17 @@ get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
     return RETVAL_FAILURE;
 }
 
+static int collect_global_statistics(struct neat_ctx *ctx, struct neat_global_statistics *gstats)
+{
+    struct neat_flow *flow;
+
+    LIST_FOREACH(flow, &ctx->flows, next_flow) {
+        gstats->global_bytes_received += flow->flow_stats.bytes_received;
+        gstats->global_bytes_sent += flow->flow_stats.bytes_sent;
+    }
+
+    return NEAT_OK;
+}
 /* Traverse the relevant subsystems of NEAT and gather the stats
    then format the stats as a json string to return */
 void
@@ -36,6 +47,7 @@ neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
     json_t *json_root, *protostat, *newflow;
     struct neat_flow *flow;
     struct neat_tcp_info *neat_tcpi;
+    struct neat_global_statistics gstats;
     uint flowcount;
     char flow_name[128];
 
@@ -43,6 +55,11 @@ neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
 
     flowcount = 0;
     json_root = json_object();
+
+    /* Collect global statistics
+     * - Can be inlined with JSON generation to avoid having 2 passes */
+    memset(&gstats, 0, sizeof(struct neat_global_statistics));
+    collect_global_statistics(ctx, &gstats);
 
     LIST_FOREACH(flow, &ctx->flows, next_flow) {
         flowcount++;
@@ -54,7 +71,9 @@ neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
         json_object_set_new(newflow, "remote_host",     json_string(  flow->name ));
         json_object_set_new(newflow, "socket type",     json_integer( flow->socket->type ));
         json_object_set_new(newflow, "sock_protocol",   json_integer( neat_stack_to_protocol(flow->socket->stack)));
-        json_object_set_new(newflow, "port",            json_integer( flow->port ));
+        json_object_set_new(newflow, "port",            json_integer( flow->port )) ;
+        json_object_set_new(newflow, "ecn",            json_integer( flow->ecn ));
+        json_object_set_new(newflow, "qos",            json_integer( flow->qos ));
         json_object_set_new(newflow, "write_size",      json_integer( flow->socket->write_size));
         json_object_set_new(newflow, "read_size",       json_integer( flow->socket->read_size));
         json_object_set_new(newflow, "bytes sent",      json_integer( flow->flow_stats.bytes_sent));
@@ -103,7 +122,10 @@ neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
                 break;
         }
     }
+    /* Global statistics */
     json_object_set_new( json_root, "Number of flows", json_integer( flowcount ));
+    json_object_set_new( json_root, "Total bytes sent", json_integer(gstats.global_bytes_sent));
+    json_object_set_new( json_root, "Total bytes received", json_integer(gstats.global_bytes_received));
 
     /* Callers must remember to free the output */
     *json_stats = json_dumps(json_root, JSON_INDENT(4));

@@ -35,11 +35,12 @@ static uint16_t config_port                 = 23232;
 static uint16_t config_log_level            = 1;
 static uint16_t config_num_flows            = 1;
 static uint16_t config_max_flows            = 100;
+static uint16_t config_max_server_runs      = 0;
 static char *config_property = "\
 {\
     \"transport\": [\
         {\
-            \"value\": \"SCTP\",\
+            \"value\": \"TCP\",\
             \"precedence\": 1\
         },\
         {\
@@ -50,6 +51,7 @@ static char *config_property = "\
 }";
 
 static uint32_t flows_active = 0;
+static uint32_t server_runs = 0;
 static char *cert_file = NULL;
 static char *key_file = NULL;
 
@@ -78,7 +80,6 @@ struct tneat_flow_direction {
 };
 
 struct tneat_flow {
-    uint8_t done;
     struct tneat_flow_direction rcv;
     struct tneat_flow_direction snd;
 };
@@ -116,6 +117,7 @@ on_error(struct neat_flow_operations *opCB)
 {
 
     fprintf(stderr, "%s()\n", __func__);
+    neat_stop_event_loop(opCB->ctx);
     return NEAT_OK;
 }
 
@@ -125,7 +127,7 @@ on_all_written(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = opCB->userData;
     struct timeval now, diff_time;
     double time_elapsed;
-    char buffer_filesize_human[32];
+
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -138,20 +140,12 @@ on_all_written(struct neat_flow_operations *opCB)
     // runtime- or message-limit reached
     if ((config_runtime_max > 0 && time_elapsed >= config_runtime_max) ||
         (config_message_count > 0 && tnf->snd.calls >= config_message_count)) {
-
-        // print statistics
-        printf("neat_write finished - statistics\n");
-        printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
-        printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
-        printf("\tduration\t: %.2fs\n", time_elapsed);
-        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
-
-        tnf->done = 1;
+        neat_close(opCB->ctx, opCB->flow);
+    } else {
+        opCB->on_writable = on_writable;
+        opCB->on_all_written = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, opCB);
     }
-
-    opCB->on_writable = on_writable;
-    opCB->on_all_written = NULL;
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
 }
 
@@ -163,7 +157,7 @@ on_writable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
-printf("tneat: on_writable\n");
+
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -178,7 +172,7 @@ printf("tneat: on_writable\n");
     opCB->on_all_written = on_all_written;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-    // increase stats
+    // update stats
     tnf->snd.calls++;
     tnf->snd.bytes += config_snd_buffer_size;
     gettimeofday(&(tnf->snd.tv_last), NULL);
@@ -197,15 +191,6 @@ printf("tneat: on_writable\n");
     }
 
     code = neat_write(opCB->ctx, opCB->flow, tnf->snd.buffer, config_snd_buffer_size, NULL, 0);
-
-    if (tnf->done) {
-        opCB->on_writable = NULL;
-        opCB->on_all_written = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_shutdown(opCB->ctx, opCB->flow);
-        return NEAT_OK;
-    }
-
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: code %d\n", __func__, (int)code);
         return on_error(opCB);
@@ -219,11 +204,8 @@ on_readable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     uint32_t buffer_filled;
-    struct timeval diff_time;
     neat_error_code code;
-    char buffer_filesize_human[32];
-    double time_elapsed;
-printf("tneat: on_readable\n");
+
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -239,8 +221,9 @@ printf("tneat: on_readable\n");
         }
     }
 
+    // we got data!
     if (buffer_filled > 0) {
-        // we got data!
+
         if (tnf->rcv.calls == 0) {
             gettimeofday(&(tnf->rcv.tv_first), NULL);
         }
@@ -255,36 +238,6 @@ printf("tneat: on_readable\n");
                 printf("\n");
             }
         }
-    // peer disconnected
-    } else if (buffer_filled == 0){
-        if (config_log_level >= 1) {
-            printf("connection closed\n");
-        }
-
-        if (config_active) {
-            on_close(opCB);
-        } else {
-            // we are server
-            opCB->on_readable = NULL;
-            opCB->on_writable = NULL;
-            opCB->on_all_written = NULL;
-            neat_set_operations(opCB->ctx, opCB->flow, opCB);
-
-            // print statistics
-            timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
-            time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
-
-            printf("%u, %u, %.2f, %.2f, %s\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
-
-            if (config_log_level >= 1) {
-                printf("client disconnected - statistics\n");
-                printf("\tbytes\t\t: %u\n", tnf->rcv.bytes);
-                printf("\trcv-calls\t: %u\n", tnf->rcv.calls);
-                printf("\tduration\t: %.2fs\n", time_elapsed);
-                printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
-            }
-            neat_shutdown(opCB->ctx, opCB->flow);
-        }
     }
 
     return NEAT_OK;
@@ -297,7 +250,6 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = NULL;
-printf("tneat: on_connected\n");
     if (config_log_level >= 1) {
         fprintf(stderr, "%s() - connection established\n", __func__);
     }
@@ -320,7 +272,6 @@ printf("tneat: on_connected\n");
     }
 
     // reset stats
-    tnf->done      = 0;
     tnf->snd.calls = 0;
     tnf->snd.bytes = 0;
     tnf->rcv.calls = 0;
@@ -340,12 +291,35 @@ static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
+    char buffer_filesize_human[32];
+    double time_elapsed;
+    struct timeval diff_time;
 
-    // cleanup
-    opCB->on_close = NULL;
-    opCB->on_readable = NULL;
-    opCB->on_writable = NULL;
-    opCB->on_error = NULL;
+    fprintf(stderr, "%s\n", __func__);
+
+    if (!config_active) {
+        // print statistics
+        timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
+        time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+
+        //rintf("%u, %u, %.2f, %.2f, %s\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+        printf("flow closed - statistics\n");
+        printf("\tbytes\t\t: %u\n", tnf->rcv.bytes);
+        printf("\trcv-calls\t: %u\n", tnf->rcv.calls);
+        printf("\tduration\t: %.2fs\n", time_elapsed);
+        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+
+    } else {
+        // print statistics
+        timersub(&(tnf->snd.tv_last), &(tnf->snd.tv_first), &diff_time);
+        time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+
+        printf("flow closed - statistics\n");
+        printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
+        printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
+        printf("\tduration\t: %.2fs\n", time_elapsed);
+        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+    }
 
     if (tnf->snd.buffer) {
         free(tnf->snd.buffer);
@@ -359,14 +333,18 @@ on_close(struct neat_flow_operations *opCB)
         free(tnf);
     }
 
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
-
     fprintf(stderr, "%s - flow closed OK!\n", __func__);
 
     // stop event loop if we are active part
     if (config_active) {
         flows_active--;
         if (!flows_active) {
+            fprintf(stderr, "%s - stopping event loop\n", __func__);
+            neat_stop_event_loop(opCB->ctx);
+        }
+    } else {
+        server_runs++;
+        if (config_max_server_runs > 0 && server_runs >= config_max_server_runs) {
             fprintf(stderr, "%s - stopping event loop\n", __func__);
             neat_stop_event_loop(opCB->ctx);
         }
@@ -413,8 +391,7 @@ main(int argc, char *argv[])
             break;
         case 'P':
             if (read_file(optarg, &arg_property) < 0) {
-                fprintf(stderr, "Unable to read properties from %s: %s",
-                        optarg, strerror(errno));
+                fprintf(stderr, "Unable to read properties from %s: %s", optarg, strerror(errno));
                 result = EXIT_FAILURE;
                 goto cleanup;
             }
@@ -461,14 +438,10 @@ main(int argc, char *argv[])
 
     if (optind == argc) {
         config_active = 0;
-        if (config_log_level >= 1) {
-            printf("role: passive\n");
-        }
+        printf("role: passive\n");
     } else if (optind + 1 == argc) {
         config_active = 1;
-        if (config_log_level >= 1) {
-            printf("role: active\n");
-        }
+        printf("role: active\n");
     } else {
         fprintf(stderr, "%s - argument error\n", __func__);
         print_usage();
@@ -531,6 +504,7 @@ main(int argc, char *argv[])
 
         ops[0].on_connected = on_connected;
         ops[0].on_error     = on_error;
+        ops[0].on_close     = on_close;
 
         if (neat_set_operations(ctx, flows[0], &(ops[0]))) {
             fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
@@ -576,6 +550,10 @@ main(int argc, char *argv[])
 cleanup:
     if (ctx != NULL) {
         neat_free_ctx(ctx);
+    }
+
+    if (arg_property != config_property && arg_property != NULL) {
+        free(arg_property);
     }
     exit(result);
 }

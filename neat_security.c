@@ -692,6 +692,7 @@ neat_security_close(neat_ctx *ctx)
 #if (OPENSSL_VERSION_NUMBER < 0x10100000L)
     ERR_remove_state(0);
 #endif
+    SSL_COMP_free_compression_methods();
 }
 
 #endif
@@ -710,6 +711,7 @@ neat_security_close(neat_ctx *ctx)
 neat_error_code
 neat_security_install(neat_ctx *ctx, neat_flow *flow)
 {
+    neat_log(ctx, NEAT_LOG_ERROR, "Library compiled without security support");
     return NEAT_ERROR_SECURITY;
 }
 

@@ -874,8 +874,9 @@ neat_resolve(struct neat_resolver *resolver,
     }
 
     request = calloc(sizeof(struct neat_resolver_request), 1);
-    if (!request)
-      return RETVAL_FAILURE;
+    if (!request) {
+        return RETVAL_FAILURE;
+    }
 
     request->family = family;
     request->dst_port = htons(port);

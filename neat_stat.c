@@ -64,7 +64,8 @@ neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
     LIST_FOREACH(flow, &ctx->flows, next_flow) {
         flowcount++;
 
-        /* Create entries for flow#n in a separate object */
+        /* Create entries for flow#n in a separate object
+         * TODO: Make each flow generate a json object containing its own properties */
         newflow = json_object();;
 
         json_object_set_new(newflow, "flow number",     json_integer( flowcount));
@@ -78,12 +79,15 @@ neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
         json_object_set_new(newflow, "read_size",       json_integer( flow->socket->read_size));
         json_object_set_new(newflow, "bytes sent",      json_integer( flow->flow_stats.bytes_sent));
         json_object_set_new(newflow, "bytes received",  json_integer( flow->flow_stats.bytes_received ));
+        json_object_set_new(newflow, "priority",  json_real( flow->priority ));
 
         snprintf(flow_name, 128, "flow-%d", flowcount);
         json_object_set_new(json_root, flow_name, newflow);
+        json_object_set(newflow, "flow_properties", flow->properties);
         /* Gather stack-specific info */
         switch (flow->socket->stack) {
             case NEAT_STACK_UDP:
+                /* Any UDP-specific statistics?*/
                 break;
             case NEAT_STACK_TCP:
                 {
@@ -117,6 +121,7 @@ neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
             case NEAT_STACK_SCTP:
                 break;
             case NEAT_STACK_UDPLITE:
+                /* Any UDPLite-specific statistics? */
                 break;
             case NEAT_STACK_SCTP_UDP:
                 break;

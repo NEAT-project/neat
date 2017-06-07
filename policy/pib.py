@@ -2,10 +2,10 @@ import bisect
 import hashlib
 import json
 import logging
-import os
+import sys
 import time
 
-import sys
+import os
 
 import pmdefaults as PM
 from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
@@ -75,7 +75,7 @@ class NEATPolicy(object):
                 self.properties.add(PropertyArray.from_dict(p))
 
 
-    # set UID
+                # set UID
         self.uid = policy_dict.get('uid')
         if self.uid is None:
             self.uid = self.__gen_uid()
@@ -99,7 +99,7 @@ class NEATPolicy(object):
                 logging.warning("Policy doesn't contain attribute %s" % attr)
 
         d['match'] = self.match.dict()
-        d['properties'] = self.properties.dict()
+        d['properties'] = self.properties.list()
 
         return d
 
@@ -164,7 +164,7 @@ class PIB(list):
 
     @property
     def files(self):
-        return {v.filename: v for uid, v in self.index.items()}
+        return {v.filename: v for v in self.policies}
 
     def load_policies(self, policy_dir=None):
         """Load all policies in policy directory."""
@@ -217,7 +217,7 @@ class PIB(list):
         logging.info("Policy saved as \"%s\"." % filename)
 
         # FIXME register
-        self.reload()
+        self.reload_files()
 
     def load_policy(self, filename):
         """Load policy.
@@ -244,7 +244,7 @@ class PIB(list):
             pass
             # logging.debug("Policy %s is up-to-date", filename)
 
-    def reload(self):
+    def reload_files(self):
         """
         Reload PIB files
         """
@@ -252,6 +252,8 @@ class PIB(list):
 
         for dir_path, dir_names, filenames in os.walk(self.policy_dir):
             for f in filenames:
+                if not f.endswith(self.file_extension) or f.startswith(('.', '#')):
+                    continue
                 full_name = os.path.join(dir_path, f)
                 current_files.add(full_name)
                 self.load_policy(full_name)
@@ -274,15 +276,27 @@ class PIB(list):
             # logging.debug("Policy match fields for policy %s already registered. " % (policy.uid))
             pass
 
+        # check if a policy with the same UID is already installed and remove old version if so
+        if policy.uid in self.index:
+            self.unregister(policy.uid)
+
         # TODO tie breaker using match_len?
-        uid = bisect.bisect([p.priority for p in self.policies], policy.priority)
-        self.policies.insert(uid, policy)
+        idx = bisect.bisect([p.priority for p in self.policies], policy.priority)
+        self.policies.insert(idx, policy)
 
         # self.policies.sort(key=operator.methodcaller('match_len'))
-        self.index[policy.uid] = policy
+        self.index[policy.uid] = idx
 
     def unregister(self, policy_uid):
+        """
+        Remove policy from in-memory repository. This does not remove the policy from the file system.
+        """
+        idx = self.index[policy_uid]
+        del self.policies[idx]
         del self.index[policy_uid]
+
+    def remove(self, policy_uid):
+        self.unregister(policy_uid)
 
     def lookup(self, input_properties, apply=True, tag=None):
         """

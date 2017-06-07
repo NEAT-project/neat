@@ -25,6 +25,7 @@ struct neat_transport_property {
 
 static struct neat_transport_property neat_transports[] = {
     NEAT_TRANSPORT(TCP),
+    NEAT_TRANSPORT(MPTCP),
     NEAT_TRANSPORT(SCTP),
     NEAT_TRANSPORT(UDP),
     {"UDPlite", NEAT_STACK_UDPLITE},

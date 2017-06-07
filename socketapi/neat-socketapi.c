@@ -565,7 +565,7 @@ int nsa_set_secure_identity(int sockfd, const char* pem)
 /*      const neat_error_code result = */
          neat_secure_identity(gSocketAPIInternals->nsi_neat_context,
                               neatSocket->ns_flow,
-                              pem);
+                              pem, NEAT_CERT_NONE);
       pthread_mutex_unlock(&neatSocket->ns_mutex);
       pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 

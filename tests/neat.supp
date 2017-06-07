@@ -30,3 +30,37 @@
     fun:pthread_once
     fun:CRYPTO_THREAD_run_once
 }
+{
+   <OPENSSL-3>
+   Memcheck:Param
+   sendmsg(sendmsg.msg_control)
+   fun:_sendmsg
+   obj:/lib/libthr.so.3
+   fun:sendmsg
+   obj:/usr/local/lib/libcrypto.so.10
+   fun:BIO_write
+   obj:/usr/local/lib/libssl.so.10
+   obj:/usr/local/lib/libssl.so.10
+   obj:/usr/local/lib/libssl.so.10
+   obj:/usr/local/lib/libssl.so.10
+   fun:neat_dtls_connect
+   fun:io_connected
+   fun:uvpollable_cb
+}
+{
+   <OPENSSL-4>
+   Memcheck:Param
+   socketcall.setsockopt(optval)
+   fun:setsockopt
+   fun:BIO_dgram_sctp_wait_for_dry
+   obj:/usr/local/lib/libssl.so.10
+   obj:/usr/local/lib/libssl.so.10
+   obj:/usr/local/lib/libssl.so.10
+   fun:neat_dtls_connect
+   fun:io_connected
+   fun:uvpollable_cb
+   fun:he_connected_cb
+   fun:uv__io_poll
+   fun:uv_run
+   fun:neat_start_event_loop
+}

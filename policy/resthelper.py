@@ -1,14 +1,18 @@
-import os
 from ipaddress import IPv4Network, IPv4Address
+import pmdefaults as PM
 
-import netifaces
+import os
 
 import cib
 
+try:
+    import netifaces
+except ImportError as e:
+    e.msg = "netifaces is not installed, but is needed to generate local CIBs"
+    raise
+
 
 # Builds a ip network object given an input ip address and netmask
-
-
 def get_network_address(ip, netmask):
     ip = IPv4Address(ip)
     netmask = IPv4Address(netmask)
@@ -31,6 +35,20 @@ def get_if(ipaddr):
 
 
 from policy import NEATProperty, PropertyArray
+
+
+def get_local_ips():
+    ips = []
+    for en in netifaces.interfaces():
+        for af, addresses in netifaces.ifaddresses(en).items():
+            if af not in (netifaces.AF_INET, ): # TODO support netifaces.AF_INET6
+                continue
+            for address in addresses:
+                if 'addr' in address:
+                    ip = address['addr']
+                    if ip not in ('127.0.0.1', '::1', PM.REST_IP):
+                        ips.append(ip)
+    return ips
 
 
 def gen_cibs():
@@ -59,7 +77,7 @@ def gen_cibs():
 
             for addr in addresses:
                 pa = PropertyArray()
-                pa.add(NEATProperty(('local_ip', addr.get('addr', 0)),precedence=NEATProperty.IMMUTABLE))
+                pa.add(NEATProperty(('local_ip', addr.get('addr', 0)), precedence=NEATProperty.IMMUTABLE))
                 pa.add(af_prop)
                 addr_list.append(pa)
 

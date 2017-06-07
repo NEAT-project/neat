@@ -163,7 +163,7 @@ NEAT_EXTERN neat_error_code neat_set_checksum_coverage(struct neat_ctx *ctx, str
                                       unsigned int send_coverage, unsigned int receive_coverage);
 // The filename should be a PEM file with both cert and key
 NEAT_EXTERN neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct neat_flow *flow,
-                                     const char *filename);
+                                     const char *filename, int pemType);
 
 NEAT_EXTERN neat_error_code neat_set_qos(struct neat_ctx *ctx,
                     struct neat_flow *flow, uint8_t qos);
@@ -202,6 +202,11 @@ NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
     } while (0);
 
 #define NEAT_OPTARGS_RESET          NEAT_OPTARGS_INIT
+
+#define NEAT_CERT_NONE   0
+#define NEAT_CERT_PEM    1
+#define NEAT_KEY_PEM     2
+#define NEAT_CERT_KEY_PEM 3
 
 #ifdef assert
 
@@ -275,6 +280,7 @@ typedef enum {
     NEAT_STACK_UDP = 1,
     NEAT_STACK_UDPLITE,
     NEAT_STACK_TCP,
+    NEAT_STACK_MPTCP,
     NEAT_STACK_SCTP,
     NEAT_STACK_SCTP_UDP
 } neat_protocol_stack_type;

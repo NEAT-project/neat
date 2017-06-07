@@ -121,6 +121,16 @@ class PropertyValue(object):
     def value(self):
         return self._value
 
+    def __to_inf(self, value):
+        str_value = str(value).strip().lower()
+        if str_value in ['inf', '-inf', 'infinity', '-infinity']:
+            if str_value.startswith('-'):
+                value = -math.inf
+            else:
+                value = math.inf
+        return value
+
+
     @value.setter
     def value(self, value):
 
@@ -136,10 +146,15 @@ class PropertyValue(object):
         # min-max numeric range
         elif isinstance(value, (dict,)):
             try:
-                self._value = (value['start'], value['end'])
+                range_start, range_end = self.__to_inf(value['start']), self.__to_inf(value['end'])
+                range_end - range_start > 0
+                self._value = (range_start, range_end)
             except KeyError as e:
                 print(e)
                 raise IndexError("Invalid property range definition")
+            except TypeError as e:
+                print(e)
+                raise IndexError("Invalid property range definition: ranges should be numeric")
             self.is_range = True
         # old-style numeric ranges stored as tuples
         # deprecated

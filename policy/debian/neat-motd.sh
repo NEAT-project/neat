@@ -17,5 +17,5 @@ echo
 echo 'NEAT Policy Manager'
 echo 'Usage: service neatpmd {start|stop|status|restart|uninstall}'
 /etc/init.d/neatpmd status
-echo 'Log: /var/log/neatpm.log'
+echo 'Log: /var/log/neatpmd.log'
 

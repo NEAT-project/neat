@@ -1,5 +1,5 @@
 Name: libneat
-Version: 0.0.1~td140
+Version: 0.0.1~td142
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -15,6 +15,7 @@ BuildRequires: libmnl-devel
 BuildRequires: lksctp-tools-devel
 BuildRequires: openssl-devel
 BuildRequires: libuv-devel
+BuildRequires: libusrsctp-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 
 %description
@@ -110,7 +111,7 @@ Requires: %{name} = %{version}-%{release}
 %setup -q
 
 %build
-%cmake -DCMAKE_INSTALL_PREFIX=/usr .
+%cmake -DCMAKE_INSTALL_PREFIX=/usr -DUSRSCTP_SUPPORT=1 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1 .
 make %{?_smp_mflags}
 
 %install

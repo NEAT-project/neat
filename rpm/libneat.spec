@@ -1,5 +1,5 @@
 Name: libneat
-Version: 0.0.1~td151
+Version: 0.0.1~td152
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -15,6 +15,7 @@ BuildRequires: libmnl-devel
 BuildRequires: lksctp-tools-devel
 BuildRequires: openssl-devel
 BuildRequires: libuv-devel
+# BuildRequires: libusrsctp-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 
 %description

@@ -105,11 +105,6 @@ def process_special_properties(r):
 
         del r['local_endpoint']
 
-    # add some default properties
-    if 'transport' not in r:
-        p = policy.NEATProperty(('transport', 'unknown'), precedence=policy.NEATProperty.OPTIONAL, score=0.0)
-        r.add(p)
-
     # add hook to trigger default policy profile
     p = policy.NEATProperty(('default_profile', True), precedence=policy.NEATProperty.OPTIONAL, score=0.0)
     r.add(p)
@@ -168,15 +163,17 @@ def process_request(json_str, num_candidates=10):
         requests.extend(pma.expand())
 
     for r in requests:
+        process_special_properties(r)
+
+    for r in requests:
+        # FIXME workaround
         if 'pm_reply' not in r:
-            logging.warning("skipping pre_resolve PM lookup")  # FIXME workaround:
-            # just add tag and return the requests, the will be processed during the next round
+            logging.warning("skipping pre_resolve PM lookup")
+            # just add tag and return the requests, theses will be processed during the next round
             for rr in requests:
                 p = policy.NEATProperty(('pm_reply', True))
                 rr.add(p)
             return requests
-
-        process_special_properties(r)
 
     print('Received %d NEAT requests' % len(requests))
 

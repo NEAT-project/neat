@@ -467,6 +467,8 @@ class CIB(object):
 
     def lookup(self, input_properties, candidate_num=5):
         """CIB lookup logic implementation
+
+        Return CIB rows that include *all* required properties from the request PropertyArray
         """
         assert isinstance(input_properties, PropertyArray)
         candidates = [input_properties]
@@ -474,8 +476,8 @@ class CIB(object):
             try:
                 # FIXME better check whether all input properties are included in row - improve matching
                 # ignore optional properties in input request
-                i = PropertyArray(*(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
-                if len(i & e) != len(i):
+                required_pa = PropertyArray(*(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
+                if len(required_pa & e) != len(required_pa):
                     continue
             except ImmutablePropertyError:
                 continue

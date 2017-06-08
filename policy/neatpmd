@@ -84,6 +84,8 @@ except OSError as e:
 
 
 def process_special_properties(r):
+    # local_endpoint handling
+    # let's try to avoid any other special handling of properties!
     if 'local_endpoint' in r:
         # the local_endpoint property has the format a.b.c.d@eth0 so we need to split it
         local_endpoint = r.get('local_endpoint')
@@ -165,9 +167,15 @@ def process_request(json_str, num_candidates=10):
                 return
         requests.extend(pma.expand())
 
-    # local_endpoint handling
-    # let's try to avoid any other special handling of properties!
     for r in requests:
+        if 'pm_reply' not in r:
+            logging.warning("skipping pre_resolve PM lookup")  # FIXME workaround:
+            # just add tag and return the requests, the will be processed during the next round
+            for rr in requests:
+                p = policy.NEATProperty(('pm_reply', True))
+                rr.add(p)
+            return requests
+
         process_special_properties(r)
 
     print('Received %d NEAT requests' % len(requests))

@@ -582,11 +582,16 @@ class PropertyMultiArray(list):
                 return
 
     def expand(self):
+        # FIXME this alters the properties?? XXXX
+        # FIXME this is called too often
         expanded_pas = []
-        for pa_product in list(itertools.product(*self)):
+
+        for pa_product in itertools.product(*self):
+            print(pa_product)
             pa = PropertyArray()
             for p in pa_product:
-                pa.add(*p.values())
+                tmp = copy.deepcopy(p)
+                pa.add(*tmp.values())
             expanded_pas.append(pa)
         return expanded_pas
 

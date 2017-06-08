@@ -46,13 +46,12 @@ class CIBNode(object):
         # otherwise chain matched CIBs
         self.link = node_dict.get('link', False)
         self.priority = node_dict.get('priority', 0)
-        # TTL for the CIB node
-        self.expire = node_dict.get('expire', None)
+        # TTL for the CIB node: the node is considered invalid after the time specified
+        self.expire = node_dict.get('expire', None) or node_dict.get('expires', None)  # FIXME expires is deprecated
         self.filename = node_dict.get('filename', None)
         self.description = node_dict.get('description', '')
 
         # convert to PropertyMultiArray with NEATProperties
-
         properties = node_dict.get('properties', [])
 
         if not isinstance(properties, list):
@@ -65,6 +64,9 @@ class CIBNode(object):
                 self.properties.add([PropertyArray.from_dict(ps) for ps in p])
             else:
                 self.properties.add(PropertyArray.from_dict(p))
+
+        import code
+        code.interact(banner='>>> test here:', local=dict(globals(), **locals()))
 
         self.match = []
         # FIXME better error handling if match undefined

@@ -65,9 +65,6 @@ class CIBNode(object):
             else:
                 self.properties.add(PropertyArray.from_dict(p))
 
-        import code
-        code.interact(banner='>>> test here:', local=dict(globals(), **locals()))
-
         self.match = []
         # FIXME better error handling if match undefined
         for l in node_dict.get('match', []):

@@ -587,7 +587,6 @@ class PropertyMultiArray(list):
         expanded_pas = []
 
         for pa_product in itertools.product(*self):
-            print(pa_product)
             pa = PropertyArray()
             for p in pa_product:
                 tmp = copy.deepcopy(p)

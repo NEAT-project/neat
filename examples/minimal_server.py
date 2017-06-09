@@ -21,9 +21,14 @@ def on_all_written(ops):
     return neat.NEAT_OK
 
 def on_connected(ops):
-    ops.on_writable = on_writable
+    print("Called! :D")
+    ops.on_writable = on_writable  # Currently fails
+    print("Set callback one") 
     ops.on_all_written = on_all_written
+    print("Set callback two")
     neat.neat_set_operations(ops.ctx, ops.flow, ops)
+    print("Set operations")
+    print("Connected!")
     return neat.NEAT_OK
 
 if __name__ == "__main__":

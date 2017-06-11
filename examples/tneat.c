@@ -25,13 +25,17 @@
 /*
     default values
 */
+#define NEAT_MODE_CLIENT    1
+#define NEAT_MODE_SERVER    2
+#define NEAT_MODE_LOOP      3
+
 static uint32_t config_rcv_buffer_size      = 10240;
 static uint32_t config_snd_buffer_size      = 1024;
-static uint32_t config_message_count        = 10;
+static uint32_t config_message_count        = 1;
 static uint32_t config_runtime_max          = 0;
-static uint16_t config_active               = 0;
+static uint16_t config_mode                 = 0;
 static uint16_t config_chargen_offset       = 0;
-static uint16_t config_port                 = 23232;
+static uint16_t config_port                 = 1988;
 static uint16_t config_log_level            = 1;
 static uint16_t config_num_flows            = 1;
 static uint16_t config_max_flows            = 100;
@@ -80,8 +84,9 @@ struct tneat_flow_direction {
 };
 
 struct tneat_flow {
-    struct tneat_flow_direction rcv;
-    struct tneat_flow_direction snd;
+    uint8_t active;
+    struct  tneat_flow_direction rcv;
+    struct  tneat_flow_direction snd;
 };
 
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
@@ -107,6 +112,7 @@ print_usage()
     printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
     printf("\t- c \tpath to server certificate (%s)\n", cert_file);
     printf("\t- k \tpath to server key (%s)\n", key_file);
+    printf("\t- L \tloop mode - tneat talking to itself\n");
 }
 
 /*
@@ -254,12 +260,10 @@ on_connected(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s() - connection established\n", __func__);
     }
 
-    if ((opCB->userData = calloc(1, sizeof(struct tneat_flow))) == NULL) {
+    if ((tnf = calloc(1, sizeof(struct tneat_flow))) == NULL) {
         fprintf(stderr, "%s - could not allocate tneat_flow\n", __func__);
         exit(EXIT_FAILURE);
     }
-
-    tnf = opCB->userData;
 
     if ((tnf->snd.buffer = malloc(config_snd_buffer_size)) == NULL) {
         fprintf(stderr, "%s - could not allocate send buffer\n", __func__);
@@ -277,9 +281,16 @@ on_connected(struct neat_flow_operations *opCB)
     tnf->rcv.calls = 0;
     tnf->rcv.bytes = 0;
 
+    // hacky but quick and easy solution
+    if (opCB->userData) {
+        tnf->active = 1;
+    }
+
+    opCB->userData = tnf;
+
     // set callbacks
     opCB->on_readable = on_readable;
-    if (config_active) {
+    if (tnf->active) {
         opCB->on_writable = on_writable;
     }
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
@@ -297,7 +308,7 @@ on_close(struct neat_flow_operations *opCB)
 
     fprintf(stderr, "%s\n", __func__);
 
-    if (!config_active) {
+    if (tnf->active) {
         // print statistics
         timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
         time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
@@ -307,7 +318,9 @@ on_close(struct neat_flow_operations *opCB)
         printf("\tbytes\t\t: %u\n", tnf->rcv.bytes);
         printf("\trcv-calls\t: %u\n", tnf->rcv.calls);
         printf("\tduration\t: %.2fs\n", time_elapsed);
-        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+        if (time_elapsed) {
+            printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+        }
 
     } else {
         // print statistics
@@ -318,7 +331,9 @@ on_close(struct neat_flow_operations *opCB)
         printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
         printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
         printf("\tduration\t: %.2fs\n", time_elapsed);
-        printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+        if (time_elapsed > 0) {
+            printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+        }
     }
 
     if (tnf->snd.buffer) {
@@ -336,9 +351,9 @@ on_close(struct neat_flow_operations *opCB)
     fprintf(stderr, "%s - flow closed OK!\n", __func__);
 
     // stop event loop if we are active part
-    if (config_active) {
+    if (tnf->active) {
         flows_active--;
-        if (!flows_active) {
+        if (!flows_active && config_mode != NEAT_MODE_LOOP) {
             fprintf(stderr, "%s - stopping event loop\n", __func__);
             neat_stop_event_loop(opCB->ctx);
         }
@@ -359,7 +374,8 @@ main(int argc, char *argv[])
     struct neat_ctx *ctx = NULL;
     int i = 0;
 
-    struct neat_flow *flows[config_max_flows];
+    struct neat_flow *flows_client[config_max_flows];
+    struct neat_flow *flow_server;
     struct neat_flow_operations ops[config_max_flows];
 
     int arg, result;
@@ -369,7 +385,7 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:c:k:")) != -1) {
+    while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:c:k:L")) != -1) {
         switch(arg) {
         case 'l':
             config_snd_buffer_size = atoi(optarg);
@@ -429,6 +445,12 @@ main(int argc, char *argv[])
                 printf("option - server key file: %s\n", key_file);
             }
             break;
+        case 'L':
+            config_mode = NEAT_MODE_LOOP;
+            if (config_log_level >= 1) {
+                printf("option - LOOP MODE\n");
+            }
+            break;
         default:
             print_usage();
             goto cleanup;
@@ -436,16 +458,18 @@ main(int argc, char *argv[])
         }
     }
 
-    if (optind == argc) {
-        config_active = 0;
-        printf("role: passive\n");
-    } else if (optind + 1 == argc) {
-        config_active = 1;
-        printf("role: active\n");
-    } else {
-        fprintf(stderr, "%s - argument error\n", __func__);
-        print_usage();
-        goto cleanup;
+    if (config_mode != NEAT_MODE_LOOP) {
+        if (optind == argc) {
+            config_mode = NEAT_MODE_SERVER;
+            printf("role: passive\n");
+        } else if (optind + 1 == argc) {
+            config_mode = NEAT_MODE_CLIENT;
+            printf("role: active\n");
+        } else {
+            fprintf(stderr, "%s - argument error\n", __func__);
+            print_usage();
+            goto cleanup;
+        }
     }
 
     if ((ctx = neat_init_ctx()) == NULL) {
@@ -462,16 +486,16 @@ main(int argc, char *argv[])
         neat_log_level(ctx, NEAT_LOG_DEBUG);
     }
 
-    if (config_active) {
+    if (config_mode == NEAT_MODE_CLIENT || config_mode == NEAT_MODE_LOOP) {
         for (i = 0; i < config_num_flows; i++) {
-            if ((flows[i] = neat_new_flow(ctx)) == NULL) {
+            if ((flows_client[i] = neat_new_flow(ctx)) == NULL) {
                 fprintf(stderr, "could not initialize context\n");
                 result = EXIT_FAILURE;
                 goto cleanup;
             }
 
             // set properties
-            if (neat_set_property(ctx, flows[i], arg_property)) {
+            if (neat_set_property(ctx, flows_client[i], arg_property)) {
                 fprintf(stderr, "%s - error: neat_set_property\n", __func__);
                 result = EXIT_FAILURE;
                 goto cleanup;
@@ -481,10 +505,10 @@ main(int argc, char *argv[])
             ops[i].on_error = on_error;
             ops[i].on_close = on_close;
             ops[i].userData = &result; // allow on_error to modify the result variable
-            neat_set_operations(ctx, flows[i], &(ops[i]));
+            neat_set_operations(ctx, flows_client[i], &(ops[i]));
 
             // wait for on_connected or on_error to be invoked
-            if (neat_open(ctx, flows[i], argv[optind], config_port, NULL, 0) != NEAT_OK) {
+            if (neat_open(ctx, flows_client[i], argv[optind], config_port, NULL, 0) != NEAT_OK) {
                 fprintf(stderr, "Could not open flow\n");
                 exit(EXIT_FAILURE);
             } else {
@@ -492,11 +516,12 @@ main(int argc, char *argv[])
                 flows_active++;
             }
         }
+    }
 
-    } else {
+    if (config_mode == NEAT_MODE_SERVER || config_mode == NEAT_MODE_LOOP) {
 
         // new neat flow
-        if ((flows[0] = neat_new_flow(ctx)) == NULL) {
+        if ((flow_server = neat_new_flow(ctx)) == NULL) {
             fprintf(stderr, "%s - neat_new_flow failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
@@ -506,26 +531,26 @@ main(int argc, char *argv[])
         ops[0].on_error     = on_error;
         ops[0].on_close     = on_close;
 
-        if (neat_set_operations(ctx, flows[0], &(ops[0]))) {
+        if (neat_set_operations(ctx, flow_server, &(ops[0]))) {
             fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
         }
 
-        if (cert_file && neat_secure_identity(ctx, flows[0], cert_file, NEAT_CERT_PEM)) {
+        if (cert_file && neat_secure_identity(ctx, flow_server, cert_file, NEAT_CERT_PEM)) {
             fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
         }
 
-        if (key_file && neat_secure_identity(ctx, flows[0], key_file, NEAT_KEY_PEM)) {
+        if (key_file && neat_secure_identity(ctx, flow_server, key_file, NEAT_KEY_PEM)) {
             fprintf(stderr, "%s - neat_get_secure_identity failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
         }
 
         // set properties
-        if (neat_set_property(ctx, flows[0], arg_property)) {
+        if (neat_set_property(ctx, flow_server, arg_property)) {
             fprintf(stderr, "%s - neat_set_property failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;
@@ -533,7 +558,7 @@ main(int argc, char *argv[])
 
 
         // wait for on_connected or on_error to be invoked
-        if (neat_accept(ctx, flows[0], config_port, NULL, 0)) {
+        if (neat_accept(ctx, flow_server, config_port, NULL, 0)) {
             fprintf(stderr, "%s - neat_accept failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;

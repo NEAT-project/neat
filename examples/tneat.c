@@ -318,7 +318,7 @@ on_close(struct neat_flow_operations *opCB)
         printf("\tbytes\t\t: %u\n", tnf->rcv.bytes);
         printf("\trcv-calls\t: %u\n", tnf->rcv.calls);
         printf("\tduration\t: %.2fs\n", time_elapsed);
-        if (time_elapsed) {
+        if (time_elapsed > 0.0) {
             printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
         }
 
@@ -331,7 +331,7 @@ on_close(struct neat_flow_operations *opCB)
         printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
         printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
         printf("\tduration\t: %.2fs\n", time_elapsed);
-        if (time_elapsed > 0) {
+        if (time_elapsed > 0.0) {
             printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
         }
     }

@@ -121,7 +121,7 @@ neat_init_ctx()
     struct neat_ctx *nc;
     struct neat_ctx *ctx = NULL;
 
-    nc = calloc(sizeof(struct neat_ctx), 1);
+    nc = calloc(1, sizeof(struct neat_ctx));
 
     if (!nc) {
         return NULL;
@@ -436,7 +436,7 @@ neat_run_event_cb(struct neat_ctx *nc, uint8_t event_type, void *data)
 struct neat_iofilter *
 insert_neat_iofilter(neat_ctx *ctx, neat_flow *flow)
 {
-    struct neat_iofilter *filter = calloc (1, sizeof (struct neat_iofilter));
+    struct neat_iofilter *filter = calloc(1, sizeof (struct neat_iofilter));
     if (filter) {
         filter->next = flow->iofilters;
         flow->iofilters = filter;
@@ -1645,7 +1645,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                 multistream_flow->ctx                       = ctx;
                 multistream_flow->ownedByCore               = 1;
                 multistream_flow->isServer                  = 1;
-                multistream_flow->operations                = calloc (sizeof(struct neat_flow_operations), 1);
+                multistream_flow->operations                = calloc(1, sizeof(struct neat_flow_operations));
                 if (!multistream_flow->operations)
                     return READ_WITH_ERROR;
                 multistream_flow->operations->on_connected  = listen_flow->operations->on_connected;
@@ -2298,7 +2298,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
             int so_error = 0;
             unsigned int len = sizeof(so_error);
             if (getsockopt(flow->socket->fd, SOL_SOCKET, SO_ERROR, &so_error, &len) < 0) {
-                neat_log(ctx, NEAT_LOG_DEBUG, "Call to getsockopt failed: %s", strerror(errno));
+                neat_log(ctx, NEAT_LOG_DEBUG, "Call to getsockopt failed for FD : %d - %s", flow->socket->fd, strerror(errno));
                 neat_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
                 return;
             }
@@ -2537,7 +2537,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->security_needed    = flow->security_needed;
     newFlow->eofSeen            = 0;
 
-    newFlow->operations = calloc (sizeof(struct neat_flow_operations), 1);
+    newFlow->operations = calloc(1, sizeof(struct neat_flow_operations));
     if (newFlow->operations == NULL) {
         neat_io_error(ctx, flow, NEAT_ERROR_OUT_OF_MEMORY);
         return NULL;
@@ -6684,7 +6684,7 @@ neat_new_flow(neat_ctx *ctx)
     neat_flow *flow;
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    flow = calloc (1, sizeof (struct neat_flow));
+    flow = calloc(1, sizeof (struct neat_flow));
     if (flow == NULL) {
         return NULL;
     }

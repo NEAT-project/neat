@@ -336,20 +336,6 @@ on_close(struct neat_flow_operations *opCB)
         }
     }
 
-    if (tnf->snd.buffer) {
-        free(tnf->snd.buffer);
-    }
-
-    if (tnf->rcv.buffer) {
-        free(tnf->rcv.buffer);
-    }
-
-    if (tnf) {
-        free(tnf);
-    }
-
-    fprintf(stderr, "%s - flow closed OK!\n", __func__);
-
     // stop event loop if we are active part
     if (tnf->active) {
         flows_active--;
@@ -364,6 +350,20 @@ on_close(struct neat_flow_operations *opCB)
             neat_stop_event_loop(opCB->ctx);
         }
     }
+
+    if (tnf->snd.buffer) {
+        free(tnf->snd.buffer);
+    }
+
+    if (tnf->rcv.buffer) {
+        free(tnf->rcv.buffer);
+    }
+
+    if (tnf) {
+        free(tnf);
+    }
+
+    fprintf(stderr, "%s - flow closed OK!\n", __func__);
 
     return NEAT_OK;
 }

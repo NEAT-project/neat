@@ -6,6 +6,11 @@ so_prefix = 'SO'
 
 
 def sock_prop(so_str):
+    """
+    convert socket option names to system specific integers
+    e.g., 'SO/IPPROTO_IP/IP_TOS' --> 'SO/0/1'
+    """
+    so_str = so_str.upper()
     if not so_str.startswith(so_prefix + so_separator):
         return
     _, level, optname = so_str.split(so_separator)

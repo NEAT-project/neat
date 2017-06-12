@@ -46,13 +46,12 @@ class CIBNode(object):
         # otherwise chain matched CIBs
         self.link = node_dict.get('link', False)
         self.priority = node_dict.get('priority', 0)
-        # TTL for the CIB node
-        self.expire = node_dict.get('expire', None)
+        # TTL for the CIB node: the node is considered invalid after the time specified
+        self.expire = node_dict.get('expire', None) or node_dict.get('expires', None)  # FIXME expires is deprecated
         self.filename = node_dict.get('filename', None)
         self.description = node_dict.get('description', '')
 
         # convert to PropertyMultiArray with NEATProperties
-
         properties = node_dict.get('properties', [])
 
         if not isinstance(properties, list):
@@ -468,6 +467,8 @@ class CIB(object):
 
     def lookup(self, input_properties, candidate_num=5):
         """CIB lookup logic implementation
+
+        Return CIB rows that include *all* required properties from the request PropertyArray
         """
         assert isinstance(input_properties, PropertyArray)
         candidates = [input_properties]
@@ -475,8 +476,8 @@ class CIB(object):
             try:
                 # FIXME better check whether all input properties are included in row - improve matching
                 # ignore optional properties in input request
-                i = PropertyArray(*(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
-                if len(i & e) != len(i):
+                required_pa = PropertyArray(*(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
+                if len(required_pa & e) != len(required_pa):
                     continue
             except ImmutablePropertyError:
                 continue

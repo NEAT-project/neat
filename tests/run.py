@@ -20,6 +20,8 @@ tests_general.append([0, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 2a02:
 tests_general.append([1, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 not.resolvable.neat'])
 tests_general.append([1, 0, workdir + 'client_http_get -u /cgi-bin/he -v 2 buildbot.nplab.de'])
 tests_general.append([0, 0, workdir + 'client_http_get -n 2 -u /files/4M bsd10.nplab.de'])
+tests_general.append([0, 0, workdir + 'tneat -n 1000 -v 3 -L -P ' + workdir + 'prop_tcp.json 127.0.0.1'])
+tests_general.append([0, 0, workdir + 'tneat -n 1000 -v 3 -L -P ' + workdir + 'prop_sctp.json 127.0.0.1'])
 if (platform.system() == "FreeBSD") or (platform.system() == "Linux"):
     tests_general.append([1, 0, workdir + 'client_http_get -P ' + workdir + 'prop_tcp_security.json -p 443 -v 2 ec.europa.eu'])
     tests_general.append([0, 0, workdir + 'tneat -v 2 -P ' + workdir + 'prop_sctp_dtls.json interop.fh-muenster.de'])

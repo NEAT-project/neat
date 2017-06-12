@@ -308,7 +308,7 @@ on_close(struct neat_flow_operations *opCB)
 
     fprintf(stderr, "%s\n", __func__);
 
-    if (tnf->active) {
+    if (tnf->active == 0) {
         // print statistics
         timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
         time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
@@ -345,7 +345,7 @@ on_close(struct neat_flow_operations *opCB)
         }
     } else {
         server_runs++;
-        if (config_max_server_runs > 0 && server_runs >= config_max_server_runs) {
+        if ((config_max_server_runs > 0 && server_runs >= config_max_server_runs) || (config_mode == NEAT_MODE_LOOP && !flows_active)) {
             fprintf(stderr, "%s - stopping event loop\n", __func__);
             neat_stop_event_loop(opCB->ctx);
         }
@@ -376,12 +376,14 @@ main(int argc, char *argv[])
 
     struct neat_flow *flows_client[config_max_flows];
     struct neat_flow *flow_server;
-    struct neat_flow_operations ops[config_max_flows];
+    struct neat_flow_operations ops_client[config_max_flows];
+    struct neat_flow_operations op_server;
 
     int arg, result;
     char *arg_property = config_property;
 
-    memset(&ops, 0, sizeof(ops));
+    memset(&ops_client, 0, sizeof(ops_client));
+    memset(&op_server, 0, sizeof(op_server));
 
     result = EXIT_SUCCESS;
 
@@ -501,20 +503,20 @@ main(int argc, char *argv[])
                 goto cleanup;
             }
 
-            ops[i].on_connected = on_connected;
-            ops[i].on_error = on_error;
-            ops[i].on_close = on_close;
-            ops[i].userData = &result; // allow on_error to modify the result variable
-            neat_set_operations(ctx, flows_client[i], &(ops[i]));
+            ops_client[i].on_connected = on_connected;
+            ops_client[i].on_error = on_error;
+            ops_client[i].on_close = on_close;
+            ops_client[i].userData = &result; // allow on_error to modify the result variable
+            neat_set_operations(ctx, flows_client[i], &(ops_client[i]));
 
             // wait for on_connected or on_error to be invoked
             if (neat_open(ctx, flows_client[i], argv[optind], config_port, NULL, 0) != NEAT_OK) {
                 fprintf(stderr, "Could not open flow\n");
                 exit(EXIT_FAILURE);
-            } else {
-                fprintf(stderr, "Opened flow %d\n", i);
-                flows_active++;
             }
+
+            fprintf(stderr, "Opened flow %d\n", i);
+            flows_active++;
         }
     }
 
@@ -527,11 +529,11 @@ main(int argc, char *argv[])
             goto cleanup;
         }
 
-        ops[0].on_connected = on_connected;
-        ops[0].on_error     = on_error;
-        ops[0].on_close     = on_close;
+        op_server.on_connected = on_connected;
+        op_server.on_error     = on_error;
+        op_server.on_close     = on_close;
 
-        if (neat_set_operations(ctx, flow_server, &(ops[0]))) {
+        if (neat_set_operations(ctx, flow_server, &(op_server))) {
             fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
             result = EXIT_FAILURE;
             goto cleanup;

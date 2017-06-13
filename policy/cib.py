@@ -124,12 +124,6 @@ class CIBNode(object):
             except KeyError:
                 pass
 
-        # for k in ['cib_uids', ]:
-        #     try:
-        #         del d['properties'][k]
-        #     except KeyError:
-        #         pass
-
         s = json.dumps(d, indent=0, sort_keys=True)
         return hashlib.md5(s.encode('utf-8')).hexdigest()
 

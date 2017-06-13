@@ -179,7 +179,7 @@ async def handle_cib_delete(request):
     """
     Delete CIB node with specific UID 
 
-    Test using: curl -H 'Content-Type: application/json' -X DELETE localhost:45888/pib/1234
+    Test using: curl -H 'Content-Type: application/json' -X DELETE localhost:45888/cib/1234
     """
     assert request.content_type == 'application/json'
     uid = request.match_info.get('uid')

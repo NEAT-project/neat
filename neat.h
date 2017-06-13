@@ -68,6 +68,7 @@ struct neat_flow_operations {
     neat_cb_send_failure_t on_send_failure;
     neat_cb_flow_slowdown_t on_slowdown;
     neat_cb_flow_rate_hint_t on_rate_hint;
+    char *label;
 
     struct neat_ctx *ctx;
     struct neat_flow *flow;
@@ -98,6 +99,7 @@ enum neat_tlv_tag {
     NEAT_TAG_FLOW_GROUP,
     NEAT_TAG_CC_ALGORITHM,
     NEAT_TAG_TRANSPORT_STACK,
+    NEAT_TAG_CHANNEL_NAME,
 
     NEAT_TAG_LAST
 };

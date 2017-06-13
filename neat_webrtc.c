@@ -4,10 +4,13 @@
 #include "neat_internal.h"
 #include "neat_webrtc_tools.h"
 #include <rawrtc.h>
+#include <unistd.h>
 
 #define STDIN_FILENO 0
 
 #define ARRAY_SIZE(a) ((sizeof(a))/(sizeof((a)[0])))
+
+struct rawrtc_flow;
 
 struct rawrtc_ice_gatherer* gatherer;
 
@@ -51,7 +54,12 @@ void transport_upcall_handler(
         struct rawrtc_sctp_transport* const transport = arg;
         printf("arg of rawrtc_sctp_transport = peer_connection %p\n", (void *)transport->arg);
         struct peer_connection* const client = transport->arg;
-        webrtc_io_writable(client->ctx, client->flow, NEAT_OK);
+        printf("n_flows=%zu\n", client->n_flows);
+        for (int i = 0; i < (int)client->max_flows; i++) {
+            if (client->flows[i]->state == NEAT_FLOW_OPEN && client->flows[i]->flow->operations && client->flows[i]->flow->operations->on_writable) {
+                webrtc_io_writable(client->ctx, client->flows[i]->flow, NEAT_OK);
+            }
+        }
     }
 }
 
@@ -153,7 +161,9 @@ out:
         printf("close rawrtc\n");
         rawrtc_close();
         printf("rawrtc_closed\n");
-        neat_close(client->ctx, client->flow);
+        for (int i = 0; i < (int)client->n_flows; i++) {
+            neat_close(client->ctx, client->flows[i]->flow);
+        }
     }
 }
 
@@ -171,6 +181,15 @@ printf("%s\n", __func__);
     }
 }
 
+static void close_all_channels(struct peer_connection* const client)
+{
+    for (int i = 0; i < (int)client->n_flows; i++) {
+        if (rawrtc_data_channel_close(client->flows[i]->channel) != RAWRTC_CODE_SUCCESS) {
+            printf("%s could not be closed \n", client->flows[i]->label);
+        }
+    }
+}
+
 
 static void client_stop(
         struct peer_connection* const client
@@ -179,6 +198,8 @@ printf("%s\n", __func__);
         // Stop transports & close gatherer
     // Clear data channels
     rawrtc_list_flush(&client->data_channels);
+
+    close_all_channels(client);
 
     if (rawrtc_sctp_transport_stop(client->sctp_transport) != RAWRTC_CODE_SUCCESS) {
         printf("Error stopping sctp transport \n");
@@ -226,7 +247,38 @@ void data_channel_message_handler(
 printf("%s: arg=data_channel_helper\n", __func__);
     // Print message size
     default_data_channel_message_handler(buffer, flags, arg);
-   webrtc_io_readable(client->ctx, client->flow, NEAT_OK, (void *)buffer->buf, buffer->end);
+    for (int i = 0; i < (int)client->n_flows; i++) {
+    printf("compare %s with %s\n", client->flows[i]->label, channel->label);
+        if (!strcmp(client->flows[i]->label, channel->label)) {
+        printf("found! call io_readable\n");
+           webrtc_io_readable(client->ctx, client->flows[i]->flow, NEAT_OK, (void *)buffer->buf, buffer->end);
+           break;
+        }
+    }
+}
+
+void data_channel_close_handler(
+        void* const arg // will be casted to `struct data_channel_helper*`
+) {
+    struct data_channel_helper* const channel = arg;
+    struct peer_connection* const client = (struct peer_connection *)channel->client;
+
+    default_data_channel_close_handler(arg);
+    printf("%s for channel with label %s\n", __func__, channel->label);
+
+    for (int i = 0; i < (int)client->max_flows; i++) {
+    printf("%s: label=%s state=%d\n", __func__, client->flows[i]->label, client->flows[i]->state);
+        if ((client->flows[i]->state != NEAT_FLOW_CLOSED) && (!strcmp(client->flows[i]->label, channel->label))) {
+            client->flows[i]->state = NEAT_FLOW_CLOSED;
+            client->n_flows--;
+            printf("call neat_notify_close for %s\n", client->flows[i]->label);
+            neat_notify_close(client->flows[i]->flow);
+        }
+    }
+    if (client->n_flows == 0) {
+    printf("close listening flow\n");
+        neat_notify_close(client->listening_flow);
+    }
 }
 
 /*
@@ -249,31 +301,61 @@ printf("%s: arg= peer_connection\n", __func__);
 
     // Set handler argument & handlers
     if (rawrtc_data_channel_set_arg(channel, channel_helper) != RAWRTC_CODE_SUCCESS)              {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set arg");
-            exit (-1);
-        }
+        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set arg");
+        exit (-1);
+    }
     if (rawrtc_data_channel_set_open_handler(channel, default_data_channel_open_handler) != RAWRTC_CODE_SUCCESS) {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not open handler");
-            exit (-1);
-        }
+        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not open handler");
+        exit (-1);
+    }
     if (rawrtc_data_channel_set_buffered_amount_low_handler(
             channel, default_data_channel_buffered_amount_low_handler)!= RAWRTC_CODE_SUCCESS) {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set buffered amount low");
-            exit (-1);
-        }
+        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set buffered amount low");
+        exit (-1);
+    }
     if (rawrtc_data_channel_set_error_handler(channel, default_data_channel_error_handler)!= RAWRTC_CODE_SUCCESS) {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set error handler");
-            exit (-1);
-        }
-    if (rawrtc_data_channel_set_close_handler(channel, default_data_channel_close_handler)!= RAWRTC_CODE_SUCCESS) {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set close handler");
-            exit (-1);
-        }
+        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set error handler");
+        exit (-1);
+    }
+    if (rawrtc_data_channel_set_close_handler(channel, data_channel_close_handler)!= RAWRTC_CODE_SUCCESS) {
+        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set close handler");
+        exit (-1);
+    }
     if (rawrtc_data_channel_set_message_handler(channel, data_channel_message_handler)!= RAWRTC_CODE_SUCCESS) {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set message handler");
-            exit (-1);
-        }
-        client->flow->peer_connection = client;
+        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set message handler");
+        exit (-1);
+    }
+    struct neat_flow *newFlow = neat_new_flow(client->ctx);
+    newFlow->state = NEAT_FLOW_OPEN;
+
+    newFlow->operations = calloc (1, sizeof(struct neat_flow_operations));
+    if (newFlow->operations == NULL) {
+        neat_io_error(client->ctx, newFlow, NEAT_ERROR_OUT_OF_MEMORY);
+        return;
+    }
+
+    newFlow->operations->on_connected   = client->listening_flow->operations->on_connected;
+    newFlow->operations->on_readable    = client->listening_flow->operations->on_readable;
+    newFlow->operations->on_writable    = client->listening_flow->operations->on_writable;
+    newFlow->operations->on_close       = client->listening_flow->operations->on_close;
+    newFlow->operations->on_error       = client->listening_flow->operations->on_error;
+    newFlow->operations->ctx            = client->ctx;
+    newFlow->operations->flow           = client->listening_flow;
+    newFlow->operations->userData       = client->listening_flow->operations->userData;
+    newFlow->peer_connection            = client;
+    newFlow->webrtcEnabled              = true;
+    newFlow->operations->label = strdup(channel_helper->label);
+    struct rawrtc_flow* r_flow = calloc(1, sizeof(struct rawrtc_flow));
+    r_flow->flow = newFlow;
+    r_flow->state = NEAT_FLOW_OPEN;
+    r_flow->label = strdup(channel_helper->label);
+    r_flow->channel = channel;
+    client->flows[client->n_flows] = r_flow;
+    client->n_flows++;
+    client->max_flows++;
+
+    webrtc_io_connected(client->ctx, newFlow, NEAT_OK);
+       // client->active_flow->peer_connection = client;
 }
 
 
@@ -289,51 +371,70 @@ printf("%s: arg=peer_connection\n", __func__);
 
     // Open?
     if (state == RAWRTC_SCTP_TRANSPORT_STATE_CONNECTED) {
-        client->flow->state = NEAT_FLOW_OPEN;
+      //  client->active_flow->state = NEAT_FLOW_OPEN;
 
-        if (client->flow->operations && client->flow->operations->on_connected) {
-            client->flow->peer_connection = client;
-            webrtc_io_connected(client->ctx, client->flow, NEAT_OK);
+        for (int i = 0; i < (int)client->max_flows; i++) {
+            if (client->flows[i]->state == NEAT_FLOW_WAITING) {
+                struct rawrtc_data_channel_parameters* channel_parameters;
+                struct data_channel_helper* data_channel_negotiated;
+
+                if (client->flows[i]->flow->operations && client->flows[i]->flow->operations->on_connected) {
+            client->flows[i]->flow->peer_connection = client;
+            webrtc_io_connected(client->ctx, client->flows[i]->flow, NEAT_OK);
         }
 
-        struct rawrtc_data_channel_parameters* channel_parameters;
-        struct data_channel_helper* data_channel_negotiated;
+                // Create data channel helper
+                data_channel_helper_create(
+                    &data_channel_negotiated, (struct peer_connection *) arg, client->flows[i]->label);
 
-        // Create data channel helper
-        data_channel_helper_create(
-            &data_channel_negotiated, (struct peer_connection *) arg, "first");
-
-        // Create data channel parameters
-        if (rawrtc_data_channel_parameters_create(
+                // Create data channel parameters
+                if (rawrtc_data_channel_parameters_create(
                     &channel_parameters, data_channel_negotiated->label,
                     RAWRTC_DATA_CHANNEL_TYPE_RELIABLE_UNORDERED, 0, NULL, false, 0)  != RAWRTC_CODE_SUCCESS)              {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not create channel parameters parameters");
-            exit (-1);
-        }
-        printf("call rawrtc_data_channel_create\n");
-        if (rawrtc_data_channel_create(
-            &data_channel_negotiated->channel, client->data_transport,
-            channel_parameters, NULL,
-            default_data_channel_open_handler, default_data_channel_buffered_amount_low_handler,
-            default_data_channel_error_handler, default_data_channel_close_handler,
-            default_data_channel_message_handler, data_channel_negotiated) != RAWRTC_CODE_SUCCESS) {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Error creating data channel");
-            exit (-1);
-        } else {
-            neat_log(client->ctx, NEAT_LOG_DEBUG, "Created data channel successfully");
-        }
+                    neat_log(client->ctx, NEAT_LOG_ERROR, "Could not create channel parameters parameters");
+                    exit (-1);
+                }
+                printf("call rawrtc_data_channel_create for flow %d\n", i);
+                if (rawrtc_data_channel_create(
+                    &data_channel_negotiated->channel, client->data_transport,
+                    channel_parameters, NULL,
+                    default_data_channel_open_handler,
+                    default_data_channel_buffered_amount_low_handler,
+                    default_data_channel_error_handler,
+                    data_channel_close_handler,
+                    data_channel_message_handler,
+                    data_channel_negotiated) != RAWRTC_CODE_SUCCESS) {
+                    neat_log(client->ctx, NEAT_LOG_ERROR, "Error creating data channel");
+                    exit (-1);
+                } else {
+                    neat_log(client->ctx, NEAT_LOG_DEBUG, "Created data channel successfully");
+                }
 
-        if (rawrtc_dtls_parameters_get_role(&role, client->local_parameters.dtls_parameters) != RAWRTC_CODE_SUCCESS) {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not get role");
-            exit (-1);
-        }
-        client->flow->peer_connection = client;
+                if (rawrtc_dtls_parameters_get_role(&role, client->local_parameters.dtls_parameters) != RAWRTC_CODE_SUCCESS) {
+                    neat_log(client->ctx, NEAT_LOG_ERROR, "Could not get role");
+                    exit (-1);
+                }
+              //  client->active_flow->peer_connection = client;
+                client->flows[i]->state = NEAT_FLOW_OPEN;
+                client->flows[i]->channel = data_channel_negotiated->channel;
+                client->flows[i]->flow->peer_connection = client;
+                client->flows[i]->flow->operations->label = strdup(client->flows[i]->label);
 
-        // Un-reference
-        rawrtc_mem_deref(channel_parameters);
+                // Un-reference
+                rawrtc_mem_deref(channel_parameters);
+            }
+        }
     }
     if (state == RAWRTC_SCTP_TRANSPORT_STATE_CLOSED) {
-        neat_notify_close(client->flow);
+        for (int i = (int)client->max_flows - 1; i >= 0; i--) {
+            printf("i=%d state = %d flowState=%d \n", i, client->flows[i]->state, client->flows[i]->flow->state);
+            printf("%s:%d\n", __func__, __LINE__);
+            neat_notify_close(client->flows[i]->flow);
+            printf("nach neat_notify_close\n");
+            client->n_flows--;
+            free(client->flows[i]);
+            printf("nach free \n");
+        }
     }
 }
 
@@ -571,16 +672,24 @@ neat_webrtc_write_to_channel(struct neat_ctx *ctx,
     printf("sctp_transport=%p\n", (void *)sctp);
     printf("num channels: %d\n", sctp->n_channels);
     int i = 0;
-    for (i = 0; i < sctp->n_channels; i++) {
+    for (i = 0; i < (int)pc->max_flows; i++) {
+        if (pc->flows[i]->state == NEAT_FLOW_OPEN && pc->flows[i]->flow == flow) {
+            printf("send %zu bytes on %s \n", buf->end, pc->flows[i]->label);
+            rawrtc_data_channel_send(pc->flows[i]->channel, buf, true);
+            found = 1;
+            break;
+        }
+    }
+  /*  for (i = 0; i < sctp->n_channels; i++) {
         if (sctp->channels[i] && sctp->channels[i]->state == RAWRTC_DATA_CHANNEL_STATE_OPEN) {
         printf("send %zu bytes on channel %d \n", buf->end, i);
             rawrtc_data_channel_send(sctp->channels[i], buf, true);
             found = 1;
             break;
         }
-    }
+    }*/
     if (found) {
-        printf("data was sent on channel sid %d\n", i);
+        printf("data was sent on %s\n", pc->flows[i]->label);
     } else {
         printf("no open channel found\n");
     }
@@ -590,83 +699,167 @@ neat_webrtc_write_to_channel(struct neat_ctx *ctx,
 
 // TODO: return the candidate
 void
-neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t peer_role) {
+neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t peer_role, const char *label) {
     struct rawrtc_ice_gather_options* gather_options;
     char** ice_candidate_types = NULL;
     size_t n_ice_candidate_types = 0;
     enum rawrtc_ice_role role;
     char* const stun_google_com_urls[] = {"stun:stun.l.google.com:19302",
                                           "stun:stun1.l.google.com:19302"};
+printf("flow=%p, flow->name=%s\n", (void *)flow, flow->name);
 
-	peer.ice_candidate_types = ice_candidate_types;
-	peer.n_ice_candidate_types = n_ice_candidate_types;
+    if (peer.max_flows == 0) {
+	    peer.ice_candidate_types = ice_candidate_types;
+	    peer.n_ice_candidate_types = n_ice_candidate_types;
 
+        struct rawrtc_flow* r_flow = calloc(1, sizeof(struct rawrtc_flow));
+        r_flow->flow = flow;
+        r_flow->state = NEAT_FLOW_WAITING;
+        r_flow->label = strdup(label);
+        peer.flows = calloc(1, 100 * sizeof(void *));
+        peer.flows[peer.max_flows] = r_flow;
+        peer.n_flows++;
+        peer.max_flows++;
+       // peer.active_flow = flow;
+        peer.ctx = flow->ctx;
+        peer.remote_host = strdup(flow->name);
 
-    peer.flow = flow;
-    peer.ctx = flow->ctx;
+        neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+        if (peer_role == 0) {
+            role = RAWRTC_ICE_ROLE_CONTROLLING;
+            peer.name = "A";
+        } else {
+            role = RAWRTC_ICE_ROLE_CONTROLLED;
+            peer.name = "B";
+        }
 
-    if (peer_role == 0) {
-        role = RAWRTC_ICE_ROLE_CONTROLLING;
-    } else {
-        role = RAWRTC_ICE_ROLE_CONTROLLED;
-    }
+        if (rawrtc_init() != RAWRTC_CODE_SUCCESS) {
+            neat_log(ctx, NEAT_LOG_ERROR, "Error initializing RawRTC");
+            exit (-1);
+        }
 
-    if (rawrtc_init() != RAWRTC_CODE_SUCCESS) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Error initializing RawRTC");
-        exit (-1);
-    }
+        rawrtc_dbg_init(DBG_DEBUG, DBG_ALL);
 
-    rawrtc_dbg_init(DBG_DEBUG, DBG_ALL);
+        printf("ctx=%p loop=%p\n", (void *)ctx, (void *)ctx->loop);
+        rawrtc_set_uv_loop((void *)(ctx->loop));
 
-    printf("ctx=%p loop=%p\n", (void *)ctx, (void *)ctx->loop);
-    rawrtc_set_uv_loop((void *)(ctx->loop));
+        rawrtc_alloc_fds(128);
 
-    rawrtc_alloc_fds(128);
+        if (rawrtc_ice_gather_options_create(&gather_options, RAWRTC_ICE_GATHER_POLICY_ALL) != RAWRTC_CODE_SUCCESS) {
+            neat_log(ctx, NEAT_LOG_ERROR, "Error creating ice_gather_options");
+            exit (-1);
+        }
+        printf("rawrtc_ice_gather_options_create successfully\n");
 
-        // Get ICE role
-   // get_ice_role(&role, flow->role);
-
-    if (rawrtc_ice_gather_options_create(&gather_options, RAWRTC_ICE_GATHER_POLICY_ALL) != RAWRTC_CODE_SUCCESS) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Error creating ice_gather_options");
-        exit (-1);
-    }
-printf("rawrtc_ice_gather_options_create successfully\n");
-
-    if (rawrtc_ice_gather_options_add_server(
+        if (rawrtc_ice_gather_options_add_server(
             gather_options, stun_google_com_urls, ARRAY_SIZE(stun_google_com_urls),
             NULL, NULL, RAWRTC_ICE_CREDENTIAL_TYPE_NONE) != RAWRTC_CODE_SUCCESS) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Error adding server");
-        exit (-1);
+            neat_log(ctx, NEAT_LOG_ERROR, "Error adding server");
+            exit (-1);
+        }
+        printf("rawrtc_ice_gather_options_add_server successfully\n");
+
+        peer.ice_candidate_types = ice_candidate_types;
+        peer.n_ice_candidate_types = n_ice_candidate_types;
+        peer.gather_options = gather_options;
+        peer.role = role;
+        rawrtc_list_init(&peer.data_channels);
+
+        printf("Now init client \n");
+	    // Initialise client
+        client_init(&peer);
+
+
+        // Start client
+        client_start_gathering(&peer);
+
+        rawrtc_fd_listen(STDIN_FILENO, 1, parse_remote_parameters, &peer);
+    } else {
+        printf("num flows = %zu\n", peer.n_flows);
+        printf("peer.remote_host: %s, flow->name: %s\n", peer.remote_host, flow->name);
+        // same peer_connection
+        if (peer.n_flows > 0 && !strcmp(peer.remote_host, flow->name)) {
+        printf("%d\n", __LINE__);
+            struct rawrtc_flow* r_flow = calloc(1, sizeof(struct rawrtc_flow));
+            r_flow->label = strdup(label);
+printf("%d\n", __LINE__);
+            if (peer.sctp_transport->state == RAWRTC_SCTP_TRANSPORT_STATE_CONNECTED) {
+                struct rawrtc_data_channel_parameters* channel_parameters;
+                struct data_channel_helper* data_channel_negotiated;
+printf("%d\n", __LINE__);
+                r_flow->state = NEAT_FLOW_OPEN;
+                // Create data channel helper
+                data_channel_helper_create(
+                    &data_channel_negotiated, &peer, (char *)label);
+printf("%d\n", __LINE__);
+                // Create data channel parameters
+                if (rawrtc_data_channel_parameters_create(
+                    &channel_parameters, data_channel_negotiated->label,
+                    RAWRTC_DATA_CHANNEL_TYPE_RELIABLE_UNORDERED, 0, NULL, false, 0)  != RAWRTC_CODE_SUCCESS)              {
+                    neat_log(peer.ctx, NEAT_LOG_ERROR, "Could not create channel parameters parameters");
+                    exit (-1);
+                }
+                printf("call rawrtc_data_channel_create\n");
+                if (rawrtc_data_channel_create(
+                    &data_channel_negotiated->channel, peer.data_transport,
+                    channel_parameters, NULL,
+                    default_data_channel_open_handler,    default_data_channel_buffered_amount_low_handler,
+                    default_data_channel_error_handler, data_channel_close_handler,
+                    data_channel_message_handler, data_channel_negotiated) != RAWRTC_CODE_SUCCESS) {
+                    neat_log(peer.ctx, NEAT_LOG_ERROR, "Error creating data channel");
+                    exit (-1);
+                } else {
+                    neat_log(peer.ctx, NEAT_LOG_DEBUG, "Created data channel successfully");
+                }
+                r_flow->channel = data_channel_negotiated->channel;
+               // peer.active_flow = flow;
+
+            } else {
+                r_flow->state = NEAT_FLOW_WAITING;
+            }
+            flow->peer_connection = &peer;
+            r_flow->flow = flow;
+            peer.flows[peer.max_flows] = r_flow;
+            peer.n_flows++;
+            peer.max_flows++;
+        }
     }
-printf("rawrtc_ice_gather_options_add_server successfully\n");
+}
 
-      // Setup client A
-    if (peer_role == 0)
-        peer.name = "A";
-    else
-        peer.name = "B";
-    peer.ice_candidate_types = ice_candidate_types;
-    peer.n_ice_candidate_types = n_ice_candidate_types;
-    peer.gather_options = gather_options;
-    peer.role = role;
-    rawrtc_list_init(&peer.data_channels);
+int
+rawrtc_stop_client(struct peer_connection *pc) {
+    client_stop(pc);
+    printf("nach client_stop\n");
+    free(pc->flows);
+    printf("nach free flows\n");
+    rawrtc_close();
+    return NEAT_OK;
+}
 
-printf("Now init client \n");
-	// Initialise client
-    client_init(&peer);
-
-
-    // Start client
-    client_start_gathering(&peer);
-
-    rawrtc_fd_listen(STDIN_FILENO, 1, parse_remote_parameters, &peer);
+int
+rawrtc_close_flow(neat_flow *flow, struct peer_connection *pc)
+{
+printf("%s\n", __func__);
+    for (int i = 0; i < (int)pc->max_flows; i++) {
+        if (pc->flows[i]->flow == flow) {
+            if (rawrtc_data_channel_close(pc->flows[i]->channel) != RAWRTC_CODE_SUCCESS) {
+                printf("%s could not be closed \n", pc->flows[i]->label);
+                return NEAT_ERROR_INTERNAL;
+            } else {
+                return NEAT_OK;
+            }
+        }
+    }
+    return NEAT_ERROR_INTERNAL;
 }
 
 void
-rawrtc_stop_client(struct peer_connection *pc) {
-    client_stop(pc);
+neat_set_listening_flow(neat_ctx *ctx, neat_flow *flow)
+{
+    flow->state = NEAT_FLOW_OPEN;
+    peer.listening_flow = flow;
+    peer.ctx = ctx;
 }
 
 

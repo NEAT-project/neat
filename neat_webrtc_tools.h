@@ -36,8 +36,16 @@ struct parameters {
     struct sctp_parameters sctp_parameters;
 };
 
+struct rawrtc_flow {
+    struct neat_flow *flow;
+    int state;
+    char *label;
+    struct rawrtc_data_channel* channel;
+};
+
 struct peer_connection {
     char* name;
+    char* remote_host;
     char** ice_candidate_types;
     size_t n_ice_candidate_types;
     struct rawrtc_ice_gather_options* gather_options;
@@ -51,7 +59,10 @@ struct peer_connection {
     struct rawrtc_list data_channels;
     struct parameters local_parameters;
     struct parameters remote_parameters;
-    struct neat_flow *flow;
+    size_t n_flows;   // number of active flows
+    size_t max_flows; // highest index-1 that is occupied in the flows array
+    struct rawrtc_flow** flows;
+    struct neat_flow *listening_flow;
     struct neat_ctx *ctx;
 };
 
@@ -239,5 +250,7 @@ void data_channel_helper_create_from_channel(
         void* const arg // nullable
 );
 
-void rawrtc_stop_client(struct peer_connection *pc);
+int rawrtc_stop_client(struct peer_connection *pc);
+
+int rawrtc_close_flow(struct neat_flow *flow, struct peer_connection *pc);
 #endif

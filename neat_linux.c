@@ -148,7 +148,7 @@ static void neat_linux_cleanup(struct neat_ctx *nc)
 struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *ctx)
 {
     //TODO: Consider allocator function
-    if ((ctx->mnl_rcv_buf = calloc(MNL_SOCKET_BUFFER_SIZE, 1)) == NULL) {
+    if ((ctx->mnl_rcv_buf = calloc(1, MNL_SOCKET_BUFFER_SIZE)) == NULL) {
         neat_log(ctx, NEAT_LOG_ERROR, "Failed to allocate netlink buffer", __func__);
         return NULL;
     }

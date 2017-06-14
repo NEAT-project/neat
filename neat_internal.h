@@ -32,7 +32,9 @@
     void (*cleanup)(struct neat_ctx *nc); \
     struct neat_src_addrs src_addrs; \
     struct neat_event_cbs* event_cbs; \
-    uint8_t src_addr_cnt
+    uint8_t src_addr_cnt; \
+    uint8_t src_addr_dump_done; \
+    uint16_t __pad
 
 #define NEAT_MAX_NUM_PROTO 4
 

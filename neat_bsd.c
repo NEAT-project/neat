@@ -324,3 +324,36 @@ struct neat_ctx
     }
     return ctx;
 }
+
+/**Get the BSD TCP_INFO and copy the relevant fields into the neat-specific
+ * TCP_INFO struct. Return pointer to the struct with the copied data.
+ * NOTE: TCP_INFO in BSD isa tagged as unstable, potentially leading to a
+ * need to update this code in case of API changes*/
+int bsd_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
+{
+    int tcp_info_length;
+    struct tcp_info tcpi;
+
+    neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    tcp_info_length = sizeof(struct tcp_info);
+    if (getsockopt(flow->socket->fd, SOL_TCP, TCP_INFO, (void *)&tcpi,
+                   (socklen_t *)&tcp_info_length ))
+        return RETVAL_FAILURE; /* failed! */
+
+    /* Copy relevant fields between structs */
+    neat_tcp_info->retransmits = tcpi.tcpi_retransmits;
+    neat_tcp_info->tcpi_pmtu = tcpi.tcpi_pmtu;
+    neat_tcp_info->tcpi_rcv_ssthresh = tcpi.tcpi_rcv_ssthresh;
+    neat_tcp_info->tcpi_rtt = tcpi.tcpi_rtt;
+    neat_tcp_info->tcpi_rttvar = tcpi.tcpi_rttvar;
+    neat_tcp_info->tcpi_snd_ssthresh = tcpi.tcpi_snd_ssthresh;
+    neat_tcp_info->tcpi_snd_cwnd = tcpi.tcpi_snd_cwnd;
+    neat_tcp_info->tcpi_advmss = tcpi.tcpi_advmss;
+    neat_tcp_info->tcpi_reordering = tcpi.tcpi_reordering;
+    neat_tcp_info->tcpi_rcv_rtt = tcpi.tcpi_rcv_rtt;
+    neat_tcp_info->tcpi_rcv_space = tcpi.tcpi_rcv_space;
+    neat_tcp_info->tcpi_total_retrans = tcpi.tcpi_total_retrans;
+
+    return RETVAL_SUCCESS;
+}
+

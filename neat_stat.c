@@ -12,9 +12,6 @@
 #endif
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-    #include <sys/types.h>
-    #include <sys/socket.h>
-    #include <net/if.h>
     #include "neat_bsd_internal.h"
 #endif
 
@@ -27,14 +24,18 @@ get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
      * relevant fields of the neat-generic tcp-info struct */
     neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+    memset(tcpinfo, 0, sizeof(struct neat_tcp_info));
+
 #ifdef __linux__
     return linux_get_tcp_info(flow, tcpinfo);
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
     return bsd_get_tcp_info(flow, tcpinfo);
 #else
     // TODO: implement error reporting for not-supported OSes
-    memset(tcpinfo, 0, sizeof(struct neat_tcp_info));
+
 #endif
+
+
     return RETVAL_FAILURE;
 }
 

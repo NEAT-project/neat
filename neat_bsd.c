@@ -331,17 +331,30 @@ struct neat_ctx
  * need to update this code in case of API changes*/
 int bsd_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
 {
+
     int tcp_info_length;
+#if defined(__APPLE__)
+    struct tcp_connection_info tcpi;
+    tcp_info_length = sizeof(struct tcp_connection_info);
+#else
     struct tcp_info tcpi;
+    tcp_info_length = sizeof(struct tcp_info);
+#endif
 
     neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
-    tcp_info_length = sizeof(struct tcp_info);
-    if (getsockopt(flow->socket->fd, SOL_TCP, TCP_INFO, (void *)&tcpi,
-                   (socklen_t *)&tcp_info_length ))
-        return RETVAL_FAILURE; /* failed! */
 
-    /* Copy relevant fields between structs */
-    neat_tcp_info->retransmits = tcpi.tcpi_retransmits;
+    if (getsockopt(flow->socket->fd, IPPROTO_TCP, TCP_CONNECTION_INFO, (void *)&tcpi,
+                   (socklen_t *)&tcp_info_length ))
+        return 1; /* failed! */
+
+
+    /* Copy relevant fields between structs
+     * OSX has severly more limited Statistics than Linux and *BSD */
+#if defined(__APPLE__)
+    neat_tcp_info->tcpi_rttvar = tcpi.tcpi_rttvar;
+    neat_tcp_info->tcpi_snd_ssthresh = tcpi.tcpi_snd_ssthresh;
+    neat_tcp_info->tcpi_snd_cwnd = tcpi.tcpi_snd_cwnd;
+#else
     neat_tcp_info->tcpi_pmtu = tcpi.tcpi_pmtu;
     neat_tcp_info->tcpi_rcv_ssthresh = tcpi.tcpi_rcv_ssthresh;
     neat_tcp_info->tcpi_rtt = tcpi.tcpi_rtt;
@@ -353,7 +366,7 @@ int bsd_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
     neat_tcp_info->tcpi_rcv_rtt = tcpi.tcpi_rcv_rtt;
     neat_tcp_info->tcpi_rcv_space = tcpi.tcpi_rcv_space;
     neat_tcp_info->tcpi_total_retrans = tcpi.tcpi_total_retrans;
-
-    return RETVAL_SUCCESS;
+#endif
+    return 0;
 }
 

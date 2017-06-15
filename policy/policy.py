@@ -291,6 +291,7 @@ class NEATProperty(object):
     """
     The basic unit for representing properties in NEAT. NEATProperties are (key,value) tuples.
 
+    NEATProperty keys are always in lower case
     """
 
     IMMUTABLE = 2
@@ -298,7 +299,7 @@ class NEATProperty(object):
     BASE = 0
 
     def __init__(self, key_val, precedence=OPTIONAL, score=0, banned=None, evaluated=False):
-        self.key = key_val[0]
+        self.key = str(key_val[0]).lower()
         self._value = PropertyValue(key_val[1])
 
         self.precedence = precedence
@@ -582,11 +583,14 @@ class PropertyMultiArray(list):
                 return
 
     def expand(self):
+        # FIXME this is called too often
         expanded_pas = []
-        for pa_product in list(itertools.product(*self)):
+
+        for pa_product in itertools.product(*self):
             pa = PropertyArray()
             for p in pa_product:
-                pa.add(*p.values())
+                tmp = copy.deepcopy(p) # FIXME otherwise method alters the properties
+                pa.add(*tmp.values())
             expanded_pas.append(pa)
         return expanded_pas
 

@@ -1,6 +1,7 @@
 {
     "uid":"low_latency",
-    "description":"low latency profile",
+    "policy_type": "profile",
+    "description":"generic low latency profile",
     "priority": 1,
     "replace_matched": false,
     "match":{

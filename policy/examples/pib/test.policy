@@ -1,0 +1,17 @@
+{
+    "uid":"dummy",
+    "priority": 1,
+    "replace_matched": false,
+    "match":{
+        "quality": {
+            "value": null
+        }
+    },
+    "properties":{
+        "quality": {
+            "precedence": 1,
+            "value": null,
+            "score": 5
+        }}
+}
+

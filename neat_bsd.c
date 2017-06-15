@@ -140,6 +140,8 @@ neat_bsd_get_addresses(struct neat_ctx *ctx)
           break;
     }
     freeifaddrs(ifp);
+
+    ctx->src_addr_dump_done = 1;
     return rc;
 }
 

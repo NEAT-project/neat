@@ -4,12 +4,12 @@ import asyncio
 import io
 import json
 import logging
+import os
 import signal
-import sys
 from copy import deepcopy
 from operator import attrgetter
 
-import os
+import sys
 
 import pmdefaults as PM
 import pmhelper
@@ -84,6 +84,8 @@ except OSError as e:
 
 
 def process_special_properties(r):
+    # local_endpoint handling
+    # let's try to avoid any other special handling of properties!
     if 'local_endpoint' in r:
         # the local_endpoint property has the format a.b.c.d@eth0 so we need to split it
         local_endpoint = r.get('local_endpoint')
@@ -102,15 +104,6 @@ def process_special_properties(r):
         r.add(interface)
 
         del r['local_endpoint']
-
-    # add some default properties
-    if 'transport' not in r:
-        p = policy.NEATProperty(('transport', 'unknown'), precedence=policy.NEATProperty.OPTIONAL, score=0.0)
-        r.add(p)
-
-    # add hook to trigger default policy profile
-    p = policy.NEATProperty(('default_profile', True), precedence=policy.NEATProperty.OPTIONAL, score=0.0)
-    r.add(p)
 
 
 def cleanup_special_properties(r):
@@ -165,10 +158,18 @@ def process_request(json_str, num_candidates=10):
                 return
         requests.extend(pma.expand())
 
-    # local_endpoint handling
-    # let's try to avoid any other special handling of properties!
     for r in requests:
         process_special_properties(r)
+
+    for r in requests:
+        # FIXME workaround
+        if 'pre_resolve' not in r:
+            logging.warning("skipping pre_resolve PM lookup")
+            # just add tag and return the requests, theses will be processed during the next round
+            for rr in requests:
+                p = policy.NEATProperty(('pre_resolve', True))
+                rr.add(p)
+            return requests
 
     print('Received %d NEAT requests' % len(requests))
 
@@ -178,7 +179,7 @@ def process_request(json_str, num_candidates=10):
     # --------------------
     for i, request in enumerate(requests):
         print(policy.term_separator("processing request %d/%d" % (i + 1, len(requests)), offset=0, line_char='─'))
-        logging.info("    %s" % request)
+        print("%s" % request)
 
         print('Profile lookup...')
         updated_requests = profiles.lookup(request, tag='(profile)')
@@ -199,7 +200,7 @@ def process_request(json_str, num_candidates=10):
 
         print('PIB lookup...')
         for j, candidate in enumerate(cib_candidates):
-            cand_id = 'CIB candidate %s' % (j + 1)
+            cand_id = 'on CIB candidate %s' % (j + 1)
             for c in pib.lookup(candidate, tag=cand_id):
                 if c in candidates: continue
                 candidates.append(c)
@@ -212,10 +213,11 @@ def process_request(json_str, num_candidates=10):
     for candidate in top_candidates:
         cleanup_special_properties(candidate)
 
-    logging.info("%d candidates generated in total." % (len(candidates)))
+    print(policy.term_separator(line_char='─'))
+    print("%d candidates generated" % (len(candidates)))
     print(policy.term_separator('Top %d' % num_candidates))
     for candidate in top_candidates:
-        print(candidate, candidate.score, candidate.meta.get('cib_uids'))
+        print(candidate, 'score: %d|%d' % candidate.score)
 
     # TODO check if candidates contain the minimum src/dst/transport tuple
     print(policy.term_separator())

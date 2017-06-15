@@ -1,0 +1,31 @@
+{
+    "filename": "elephant_flows.policy",
+    "policy_type": "policy",
+    "match": {
+        "flow_size_bytes": {
+            "precedence": 2,
+            "value": {
+                "start": 10000000.0,
+                "end": "Inf"
+            }
+        }
+    },
+    "priority": 2,
+    "properties": [
+        [
+            {
+                "SO/IPPROTO_IP/IP_TOS": {
+                    "precedence": 2,
+                    "value": 40
+                },
+                "elephant": {
+                    "precedence": 2,
+                    "value": true
+                }
+            }
+        ]
+    ],
+    "replace_matched": false,
+    "time": 1493307808.030206,
+    "uid": "elephant_flows"
+}

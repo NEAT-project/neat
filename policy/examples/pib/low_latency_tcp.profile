@@ -1,7 +1,7 @@
 {
     "uid":"low_latency_tcp",
     "policy_type": "profile",
-    "description":"low latency TCP profile",
+    "description":"TCP specific low latency profile",
     "priority": 2,
     "replace_matched": false,
     "match":{

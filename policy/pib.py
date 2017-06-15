@@ -2,10 +2,10 @@ import bisect
 import hashlib
 import json
 import logging
+import os
+
 import sys
 import time
-
-import os
 
 import pmdefaults as PM
 from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
@@ -312,39 +312,35 @@ class PIB(list):
 
         logging.info("matching policies %s" % tag)
         candidates = [input_properties]
+        processed_candidates = []
 
+        # itterate through all policies and apply them to candidate.
         for p in self.policies:
-            if p.match_query(input_properties):
-                tmp_candidates = []
-
-                policy_info = str(p.uid)
-                if hasattr(p, "description"):
-                    policy_info += ' (%s)' % p.description
-
-                if apply:
-                    while candidates:
-                        candidate = candidates.pop()
-                        # if replace_matched is true, remove all matched properties from the candidate
-                        if p.replace_matched:
-                            for key in p.match:
-                                del candidate[key]
-
-                        for policy_properties in p.properties.expand():
-                            try:
-                                new_candidate = candidate + policy_properties
-                            except ImmutablePropertyError:
-                                logging.info(
-                                    ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *REJECTED*' + PM.STYLES.FORMAT_END)
-                                return []
-                            # TODO copy policies from candidate and policy_properties for debugging
-                            #  if hasattr(new_candidate, 'policies'):
-                            #      new_candidate.policies.append(p.uid)
-                            #  else:
-                            #      new_candidate.policies = [p.uid]
-                            tmp_candidates.append(new_candidate)
-                candidates.extend(tmp_candidates)
-
-                logging.info(' ' * 4 + policy_info)
+            policy_info = str(p.uid)
+            if hasattr(p, "description"):
+                policy_info += ' (%s)' % p.description
+            updated_candidates = []
+            for cand in candidates:
+                if p.match_query(cand) or not p.match:
+                    logging.info(' ' * 4 + policy_info)
+                    # if not apply:  ## fixme
+                    #    continue
+                    # if replace_matched attribute is true, remove the matched properties from the candidate
+                    if p.replace_matched:
+                        for key in p.match:
+                            del cand[key]
+                    for policy_properties in p.properties.expand():
+                        try:
+                            updated_candidate = cand + policy_properties
+                            updated_candidates.append(updated_candidate)
+                        except ImmutablePropertyError:
+                            logging.info(
+                                ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *REJECTED*' + PM.STYLES.FORMAT_END)
+                            continue
+                else:
+                    updated_candidates.append(cand)
+            candidates = updated_candidates
+            # TODO copy policies from candidate and policy_properties for debugging
         return candidates
 
     def dump(self):

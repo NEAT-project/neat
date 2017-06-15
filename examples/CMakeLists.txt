@@ -13,6 +13,9 @@ LIST(APPEND neat_programs
     tneat.c
     peer.c
     msbench.c
+    minimal_client.c
+    minimal_server.c
+    minimal_server2.c
 )
 
 LIST(APPEND neat_property_examples

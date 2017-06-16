@@ -669,7 +669,7 @@ socket_handle_free_cb(uv_handle_t *handle)
 #endif
 
     } else {
-        //synchronous_free(pollable_socket->flow);
+        synchronous_free(pollable_socket->flow);
     }
 }
 

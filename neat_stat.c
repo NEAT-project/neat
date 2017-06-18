@@ -119,8 +119,6 @@ neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
                     json_object_set_new(protostat, "snd_cwnd", json_integer(neat_tcpi->tcpi_snd_cwnd));
                     json_object_set_new(protostat, "advmss", json_integer(neat_tcpi->tcpi_advmss));
                     json_object_set_new(protostat, "reordering", json_integer(neat_tcpi->tcpi_reordering));
-                    json_object_set_new(protostat, "rcv_rtt", json_integer(neat_tcpi->tcpi_rcv_rtt));
-                    json_object_set_new(protostat, "rcv_space", json_integer(neat_tcpi->tcpi_rcv_space));
                     json_object_set_new(protostat, "total retrans", json_integer(neat_tcpi->tcpi_total_retrans));
 
                     json_object_set_new(newflow, "tcpstats", protostat);

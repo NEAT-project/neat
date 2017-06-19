@@ -234,6 +234,7 @@ struct neat_pollable_socket
     uint8_t                     multistream;            // multistreaming active
 
     unsigned int                sctp_explicit_eor : 1;
+    unsigned int                sctp_partial_reliability : 1;
     uint16_t                    sctp_streams_available; // available streams
 #ifdef SCTP_MULTISTREAMING
     uint8_t                     sctp_notification_wait; // wait for all notifications
@@ -342,7 +343,7 @@ struct neat_flow
     size_t                          multistream_read_queue_size;
 
     neat_flow_states                multistream_state;
-#endif
+#endif // SCTP_MULTISTREAMING
 };
 
 typedef struct neat_flow neat_flow;

@@ -1127,6 +1127,7 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
 #ifdef SCTP_ASSOC_SUPPORTS_PR
                 case SCTP_ASSOC_SUPPORTS_PR:
                     neat_log(ctx, NEAT_LOG_DEBUG, "\t- PR");
+                    flow->socket->sctp_partial_reliability = 1;
                     break;
 #endif // SCTP_ASSOC_SUPPORTS_PR
 
@@ -4488,106 +4489,116 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
     TAILQ_FOREACH_SAFE(msg, &flow->bufferedMessages, message_next, next_msg) {
         do {
 #ifdef NEAT_SCTP_DTLS
-                if ((flow->socket->fd != -1) && flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-                    struct security_data *private = (struct security_data *) flow->socket->dtls_data->userData;
-                    struct bio_dgram_sctp_sndinfo sinfo;
-                    memset(&sinfo, 0, sizeof(struct bio_dgram_sctp_sndinfo));
-                    BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(struct bio_dgram_sctp_sndinfo), &sinfo);
-                    socklen_t size = SSL_write(private->ssl, msg->buffered + msg->bufferedOffset, msg->bufferedSize);
-                    if (SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_WRITE || SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_READ) {
-                        uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
-                    } else if (size > 0) {
-                        msg->bufferedOffset += size;
-                        msg->bufferedSize -= size;
-                    }
+            if ((flow->socket->fd != -1) && flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+                struct security_data *private = (struct security_data *) flow->socket->dtls_data->userData;
+                struct bio_dgram_sctp_sndinfo sinfo;
+                memset(&sinfo, 0, sizeof(struct bio_dgram_sctp_sndinfo));
+                BIO_ctrl(private->dtlsBIO, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(struct bio_dgram_sctp_sndinfo), &sinfo);
+                socklen_t size = SSL_write(private->ssl, msg->buffered + msg->bufferedOffset, msg->bufferedSize);
+                if (SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_WRITE || SSL_get_error(private->ssl, size) == SSL_ERROR_WANT_READ) {
+                    uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
+                } else if (size > 0) {
+                    msg->bufferedOffset += size;
+                    msg->bufferedSize -= size;
                 }
-#endif
-        if (!flow->security_needed || !(neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP)) {
-            iov.iov_base = msg->buffered + msg->bufferedOffset;
-            if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) &&
-                (flow->socket->sctp_explicit_eor) &&
-                (flow->socket->write_limit > 0) &&
-                (msg->bufferedSize > flow->socket->write_limit)) {
-                len = flow->socket->write_limit;
-            } else {
-                len = msg->bufferedSize;
             }
-            iov.iov_len = len;
-            msghdr.msg_name = NULL;
-            msghdr.msg_namelen = 0;
-            msghdr.msg_iov = &iov;
-            msghdr.msg_iovlen = 1;
-
-            if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-#if defined(SCTP_SNDINFO)
-                msghdr.msg_control = cmsgbuf;
-                msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo));
-                cmsg = (struct cmsghdr *)cmsgbuf;
-                cmsg->cmsg_level = IPPROTO_SCTP;
-                cmsg->cmsg_type = SCTP_SNDINFO;
-                cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
-                sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
-                memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
-                sndinfo->snd_sid = msg->stream_id;
-#if defined(SCTP_EXPLICIT_EOR)
-                if ((flow->socket->sctp_explicit_eor) && (len == msg->bufferedSize)) {
-                    sndinfo->snd_flags |= SCTP_EOR;
+#endif
+            if (!flow->security_needed || !(neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP)) {
+                iov.iov_base = msg->buffered + msg->bufferedOffset;
+                if ((neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) &&
+                    (flow->socket->sctp_explicit_eor) &&
+                    (flow->socket->write_limit > 0) &&
+                    (msg->bufferedSize > flow->socket->write_limit)) {
+                    len = flow->socket->write_limit;
+                } else {
+                    len = msg->bufferedSize;
                 }
+                iov.iov_len = len;
+                msghdr.msg_name = NULL;
+                msghdr.msg_namelen = 0;
+                msghdr.msg_iov = &iov;
+                msghdr.msg_iovlen = 1;
+
+                if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+#if defined(SCTP_SNDINFO)
+                    msghdr.msg_control = cmsgbuf;
+                    msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo));
+                    cmsg = (struct cmsghdr *)cmsgbuf;
+                    cmsg->cmsg_level = IPPROTO_SCTP;
+                    cmsg->cmsg_type = SCTP_SNDINFO;
+                    cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
+                    sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
+                    memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
+                    sndinfo->snd_sid = msg->stream_id;
+
+                    if (unordered) {
+                        sndinfo->snd_flags |= SCTP_UNORDERED;
+                    }
+
+#if defined(SCTP_EXPLICIT_EOR)
+                    if ((flow->socket->sctp_explicit_eor) && (len == msg->bufferedSize)) {
+                        sndinfo->snd_flags |= SCTP_EOR;
+                    }
 #endif // defined(SCTP_EXPLICIT_EOR)
 #elif defined (SCTP_SNDRCV)
-                msghdr.msg_control = cmsgbuf;
-                msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
-                cmsg = (struct cmsghdr *)cmsgbuf;
-                cmsg->cmsg_level = IPPROTO_SCTP;
-                cmsg->cmsg_type = SCTP_SNDRCV;
-                cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
-                sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
-                memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
-                sndrcvinfo->sinfo_stream = msg->stream_id;
+                    msghdr.msg_control = cmsgbuf;
+                    msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
+                    cmsg = (struct cmsghdr *)cmsgbuf;
+                    cmsg->cmsg_level = IPPROTO_SCTP;
+                    cmsg->cmsg_type = SCTP_SNDRCV;
+                    cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
+                    sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
+                    memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
+                    sndrcvinfo->sinfo_stream = msg->stream_id;
+
+                    if (unordered) {
+                        sndrcvinfo->sinfo_flags |= SCTP_UNORDERED;
+                    }
+
 #if defined(SCTP_EXPLICIT_EOR)
-                if ((flow->socket->sctp_explicit_eor) && (len == msg->bufferedSize)) {
-                    sndrcvinfo->sinfo_flags |= SCTP_EOR;
-                }
+                    if ((flow->socket->sctp_explicit_eor) && (len == msg->bufferedSize)) {
+                        sndrcvinfo->sinfo_flags |= SCTP_EOR;
+                    }
 #endif // defined(SCTP_EXPLICIT_EOR)
 #else // defined(SCTP_SNDINFO)
-                msghdr.msg_control = NULL;
-                msghdr.msg_controllen = 0;
+                    msghdr.msg_control = NULL;
+                    msghdr.msg_controllen = 0;
 #endif // defined(SCTP_SNDINFO)
-            } else {
-                msghdr.msg_control = NULL;
-                msghdr.msg_controllen = 0;
-            }
-
-            msghdr.msg_flags = 0;
-            if (flow->socket->fd != -1) {
-                rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
-            } else {
-#if defined(USRSCTP_SUPPORT)
-                if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-                    neat_log(ctx, NEAT_LOG_INFO, "%s - send %zd bytes on flow %p and socket %p", __func__, msg->bufferedSize, (void *)flow, (void *)flow->socket->usrsctp_socket);
-                    rv = usrsctp_sendv(flow->socket->usrsctp_socket, msg->buffered + msg->bufferedOffset, msg->bufferedSize,
-                                       (struct sockaddr *) (flow->sockAddr), 1, (void *)sndinfo,
-                                       (socklen_t)sizeof(struct sctp_sndinfo), SCTP_SENDV_SNDINFO,
-                                       0);
                 } else {
-                    neat_log(ctx, NEAT_LOG_ERROR, "%s - fd == -1 and no SCTP used ... error!", __func__);
+                    msghdr.msg_control = NULL;
+                    msghdr.msg_controllen = 0;
                 }
-#else
-                neat_log(ctx, NEAT_LOG_ERROR, "%s - fd == -1 and not usrsctp support - fixme!", __func__);
-                assert(false);
-#endif
-            }
-            if (!flow->security_needed) {
-                if (rv < 0) {
-                    if (errno == EWOULDBLOCK) {
-                        return NEAT_ERROR_WOULD_BLOCK;
+
+                msghdr.msg_flags = 0;
+                if (flow->socket->fd != -1) {
+                    rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+                } else {
+#if defined(USRSCTP_SUPPORT)
+                    if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+                        neat_log(ctx, NEAT_LOG_INFO, "%s - send %zd bytes on flow %p and socket %p", __func__, msg->bufferedSize, (void *)flow, (void *)flow->socket->usrsctp_socket);
+                        rv = usrsctp_sendv(flow->socket->usrsctp_socket, msg->buffered + msg->bufferedOffset, msg->bufferedSize,
+                                           (struct sockaddr *) (flow->sockAddr), 1, (void *)sndinfo,
+                                           (socklen_t)sizeof(struct sctp_sndinfo), SCTP_SENDV_SNDINFO,
+                                           0);
                     } else {
-                        return NEAT_ERROR_IO;
+                        neat_log(ctx, NEAT_LOG_ERROR, "%s - fd == -1 and no SCTP used ... error!", __func__);
                     }
+#else
+                    neat_log(ctx, NEAT_LOG_ERROR, "%s - fd == -1 and not usrsctp support - fixme!", __func__);
+                    assert(false);
+#endif
                 }
-                msg->bufferedOffset += rv;
-                msg->bufferedSize -= rv;
-            }
+                if (!flow->security_needed) {
+                    if (rv < 0) {
+                        if (errno == EWOULDBLOCK) {
+                            return NEAT_ERROR_WOULD_BLOCK;
+                        } else {
+                            return NEAT_ERROR_IO;
+                        }
+                    }
+                    msg->bufferedOffset += rv;
+                    msg->bufferedSize -= rv;
+                }
             }
         } while (msg->bufferedSize > 0);
 
@@ -4602,8 +4613,14 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 }
 
 static neat_error_code
-neat_write_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
-                                 const unsigned char *buffer, uint32_t amt, int stream_id)
+neat_write_fillbuffer(struct neat_ctx *ctx,
+                        struct neat_flow *flow,
+                        const unsigned char *buffer,
+                        uint32_t amt,
+                        int stream_id,
+                        uint8_t unordered,
+                        uint8_t pr_method,
+                        uint32_t pr_value)
 {
     struct neat_buffered_message *msg;
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
@@ -4622,8 +4639,11 @@ neat_write_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
         msg->buffered = NULL;
         msg->bufferedOffset = 0;
         msg->bufferedSize = 0;
-        msg->bufferedAllocation= 0;
+        msg->bufferedAllocation = 0;
         msg->stream_id = stream_id;
+        msg->unordered = unordered;
+        msg->pr_method = pr_method;
+        msg->pr_value = pr_value;
         TAILQ_INSERT_TAIL(&flow->bufferedMessages, msg, message_next);
     } else {
         assert(stream_id == 0);
@@ -4631,8 +4651,7 @@ neat_write_fillbuffer(struct neat_ctx *ctx, struct neat_flow *flow,
     }
     // check if there is room to buffer without extending allocation
     if ((msg->bufferedOffset + msg->bufferedSize + amt) <= msg->bufferedAllocation) {
-        memcpy(msg->buffered + msg->bufferedOffset + msg->bufferedSize,
-                buffer, amt);
+        memcpy(msg->buffered + msg->bufferedOffset + msg->bufferedSize, buffer, amt);
         msg->bufferedSize += amt;
         return NEAT_OK;
     }
@@ -4679,12 +4698,12 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     int has_stream_id        = 0;
     // int has_context       = 0;
     // int context           = 0;
-    // int has_pr_method     = 0;
-    // int pr_method         = 0;
-    // int has_pr_value      = 0;
-    // int pr_value          = 0;
-    // int has_unordered     = 0;
-    // int unordered         = 0;
+    int has_pr_method     = 0;
+    int pr_method         = 0;
+    int has_pr_value      = 0;
+    int pr_value          = 0;
+    int has_unordered     = 0;
+    int unordered         = 0;
     // int has_priority      = 0;
     // float priority        = 0.5f;
     // int has_dest_addr     = 0;
@@ -4696,7 +4715,14 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     struct msghdr msghdr;
     struct iovec iov;
 #if defined(SCTP_SNDINFO)
-    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo))];
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo) +
+#if defined(SCTP_PRINFO)
+        CMSG_SPACE(sizeof(struct sctp_sndinfo))
+#else // defined(SCTP_PRINFO)
+        0
+#endif // defined(SCTP_PRINFO)
+        ];
+
     struct sctp_sndinfo *sndinfo = NULL;
     memset(&cmsgbuf, 0, sizeof(cmsgbuf));
 #elif defined (SCTP_SNDRCV)
@@ -4710,9 +4736,9 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     HANDLE_OPTIONAL_ARGUMENTS_START()
         OPTIONAL_INTEGER_PRESENT(NEAT_TAG_STREAM_ID, stream_id, has_stream_id)
         // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_CONTEXT, context, has_context)
-        // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_PARTIAL_RELIABILITY_METHOD, pr_method, has_pr_method)
-        // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_PARTIAL_RELIABILITY_VALUE, pr_value, has_pr_value)
-        // OPTIONAL_INTEGER_PRESENT(NEAT_TAG_UNORDERED, unordered, has_unordered)
+        OPTIONAL_INTEGER_PRESENT(NEAT_TAG_PARTIAL_RELIABILITY_METHOD, pr_method, has_pr_method)
+        OPTIONAL_INTEGER_PRESENT(NEAT_TAG_PARTIAL_RELIABILITY_VALUE, pr_value, has_pr_value)
+        OPTIONAL_INTEGER_PRESENT(NEAT_TAG_UNORDERED, unordered, has_unordered)
         // OPTIONAL_FLOAT_PRESENT(  NEAT_TAG_PRIORITY, priority, has_priority)
         // OPTIONAL_STRING_PRESENT( NEAT_TAG_DESTINATION_IP_ADDRESS, dest_addr, has_dest_addr)
     HANDLE_OPTIONAL_ARGUMENTS_END();
@@ -4804,11 +4830,17 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                     sndinfo->snd_sid = stream_id;
                 }
 
+                if (unordered) {
+                    sndinfo->snd_flags |= SCTP_UNORDERED;
+                }
+
 #if defined(SCTP_EXPLICIT_EOR)
                 if ((flow->socket->sctp_explicit_eor) && (len == amt)) {
                     sndinfo->snd_flags |= SCTP_EOR;
                 }
 #endif // defined(SCTP_EXPLICIT_EOR)
+
+
 #elif defined (SCTP_SNDRCV)
                 msghdr.msg_control = cmsgbuf;
                 msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
@@ -4821,6 +4853,10 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
                 if (stream_id) {
                     sndrcvinfo->sinfo_stream = stream_id;
+                }
+
+                if (unordered) {
+                    sndrcvinfo->sinfo_flags |= SCTP_UNORDERED;
                 }
 
 #if defined(SCTP_EXPLICIT_EOR)
@@ -4891,7 +4927,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     /* Update flow statistics with the sent bytes */
     flow->flow_stats.bytes_sent += rv;
 
-    code = neat_write_fillbuffer(ctx, flow, buffer, amt, stream_id);
+    code = neat_write_fillbuffer(ctx, flow, buffer, amt, stream_id, unordered, pr_method, pr_value);
     if (code != NEAT_OK) {
         return code;
     }

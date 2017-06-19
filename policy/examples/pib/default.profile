@@ -2,8 +2,7 @@
     "uid":"default",
     "description":"default properties applied to each request",
     "policy_type": "profile",
-    "priority": 1,
-    "replace_matched": false,
+    "priority": 0,
     "properties":{
         "cached": {
             "value": false,

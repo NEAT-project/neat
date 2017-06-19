@@ -1,7 +1,6 @@
 #!/usr/bin/env python3.5
 
 import locale
-import sys
 import unittest
 
 from policy import *
@@ -31,11 +30,17 @@ class PropertyTests(unittest.TestCase):
         self.assertEqual(np1.value, 9000)
         self.assertEqual(np1.score, 1)
 
-        np3 = NEATProperty(("MTU", {"start": 50, "end": 1000}), score=1)
-        np4 = NEATProperty(("MTU", 100), score=1)
-        np3.update(np4)
-        self.assertEqual(np3.value, 100)
-        self.assertEqual(np3.score, 2)
+        np1 = NEATProperty(("MTU", {"start": 50, "end": 1000}), score=1)
+        np2 = NEATProperty(("MTU", 100), score=1)
+        np1.update(np2)
+        self.assertEqual(np1.value, 100)
+        self.assertEqual(np1.score, 2)
+
+        np1 = NEATProperty(("MTU", {"start": 50, "end": 1000}), score=1)
+        np2 = NEATProperty(("MTU", [100, 500, 9000]), score=1)
+        np1.update(np2)
+        self.assertEqual(np1.value, {100, 500})
+        self.assertEqual(np1.score, 2)
 
     def test_sets(self):
         np1 = NEATProperty(("MTU", {"start": 50, "end": 1000}), score=1, precedence=NEATProperty.IMMUTABLE)
@@ -51,13 +56,15 @@ class PropertyTests(unittest.TestCase):
         self.assertEqual(np3.value, 55)
 
     def test_empty_value(self):
+        # None essentially means ANY
         np1 = NEATProperty(("MTU", None), score=1, precedence=NEATProperty.IMMUTABLE)
 
-        np2 = NEATProperty(("MTU", "lala"), score=1, precedence=NEATProperty.OPTIONAL)
-        np3 = NEATProperty(("MTU", "lolo"), score=1, precedence=NEATProperty.OPTIONAL)
-
+        np2 = NEATProperty(("MTU", "foo"), score=1, precedence=NEATProperty.OPTIONAL)
+        np3 = NEATProperty(("MTU", "bar"), score=1, precedence=NEATProperty.OPTIONAL)
         self.assertEqual(np2 & np3, False)
-        self.assertEqual(np1 & np2, False)
+
+        # np1 should match any property
+        self.assertNotEqual(np1 & np2, False)
 
     def test_property_array_creation(self):
         np1 = NEATProperty(("MTU", {"start": 50, "end": 1000}))
@@ -66,16 +73,19 @@ class PropertyTests(unittest.TestCase):
         np4 = NEATProperty(('foo', 'bar'))
         np5 = NEATProperty(('foo', 'bas'))
 
-        pd1 = PropertyArray()
-        pd2 = PropertyArray()
-        pd1.add(np3)
-        pd1.add(np1, np2)
-        pd2.add(np4, np5, NEATProperty(('moo', 'bar')))
-        print(pd1)
-        self.assertEqual(pd1['MTU'].value, 10000)
-        self.assertEqual(pd2['foo'].value, 'bas')
-        self.assertEqual(len(pd1 + pd2), 3)
-        self.assertEqual(len(pd1 & pd2), 0)
+        pa1 = PropertyArray()
+        pa1.add(np3)
+        pa1.add(np1, np2)
+
+        pa2 = PropertyArray()
+        pa2.add(np4, np5, NEATProperty(('moo', 'bar')))
+        print(pa1)
+
+        # properties names use lower case internally
+        self.assertEqual(pa1['mtu'].value, 10000)
+        self.assertEqual(pa2['foo'].value, 'bas')
+        self.assertEqual(len(pa1 + pa2), 3)
+        self.assertEqual(len(pa1 & pa2), 0)
 
     def test_property_multi_array_creation(self):
         test_request_str = '[{"remote_ip": {"precedence": 2, "value": "10:54:1.23"}, "transport": [{"value": "TCP", "banned": ["UDP", "UDPLite"]}, {"value": "UDP"}], "MTU": {"value": [1500, 9000]}, "low_latency": {"precedence": 2, "value": true}, "foo": {"banned": ["baz"]}}]'
@@ -96,6 +106,11 @@ class PropertyTests(unittest.TestCase):
                 pma.add(property)
             print(pma)
             pma_list.append(pma)
+
+    def test_default_pib_cib(self):
+
+        # TODO
+        pass
 
 
 if __name__ == "__main__":

@@ -299,7 +299,8 @@ class NEATProperty(object):
     BASE = 0
 
     def __init__(self, key_val, precedence=OPTIONAL, score=0, banned=None, evaluated=False):
-        self.key = str(key_val[0]).lower()
+        self._key = ''
+        self.key = key_val[0]
         self._value = PropertyValue(key_val[1])
 
         self.precedence = precedence
@@ -322,6 +323,14 @@ class NEATProperty(object):
     @value.setter
     def value(self, value):
         self._value = PropertyValue(value)
+
+    @property
+    def key(self):
+        return self._key
+
+    @key.setter
+    def key(self, value):
+        self._key = str(value).lower()
 
     @property
     def property(self):

@@ -4751,6 +4751,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         // OPTIONAL_STRING_PRESENT( NEAT_TAG_DESTINATION_IP_ADDRESS, dest_addr, has_dest_addr)
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
+
     if (has_stream_id && stream_id < 0) {
         neat_log(ctx, NEAT_LOG_DEBUG, "%s - invalid stream id: Must be 0 or greater", __func__);
         return NEAT_ERROR_BAD_ARGUMENT;
@@ -4771,6 +4772,12 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     }
 #endif // SCTP_MULTISTREAMING
 
+    if (has_pr_method && has_pr_value) {
+#if !defined(SCTP_PRINFO)
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - partial reliability options set but not supported");
+#endif
+    }
+    
     switch (flow->socket->stack) {
     case NEAT_STACK_TCP:
     case NEAT_STACK_MPTCP:
@@ -4833,10 +4840,10 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                 cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
                 sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
                 memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
-                if (stream_id) {
+                if (has_stream_id && stream_id) {
                     sndinfo->snd_sid = stream_id;
                 }
-                if (unordered) {
+                if (has_unordered && unordered) {
                     sndinfo->snd_flags |= SCTP_UNORDERED;
                 }
                 cmsg = (struct cmsghdr *)((caddr_t)cmsg + CMSG_SPACE(sizeof(struct sctp_sndinfo)));
@@ -4848,8 +4855,10 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                 cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_prinfo));
                 prinfo = (struct sctp_prinfo *)CMSG_DATA(cmsg);
                 memset(prinfo, 0, sizeof(struct sctp_prinfo));
-                prinfo->pr_policy = pr_method;
-                prinfo->pr_value = pr_value;
+                if (has_pr_method && has_pr_value) {
+                    prinfo->pr_policy = pr_method;
+                    prinfo->pr_value = pr_value;
+                }
 #endif
 
 #if defined(SCTP_EXPLICIT_EOR)
@@ -4869,13 +4878,26 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                 sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
                 memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
 
-                if (stream_id) {
+                if (has_stream_id && stream_id) {
                     sndrcvinfo->sinfo_stream = stream_id;
                 }
 
-                if (unordered) {
+                if (has_unordered && unordered) {
                     sndrcvinfo->sinfo_flags |= SCTP_UNORDERED;
                 }
+
+#if defined(SCTP_PRINFO)
+                cmsg->cmsg_level = IPPROTO_SCTP;
+                cmsg->cmsg_type = SCTP_PRINFO;
+                cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_prinfo));
+                prinfo = (struct sctp_prinfo *)CMSG_DATA(cmsg);
+                memset(prinfo, 0, sizeof(struct sctp_prinfo));
+
+                if (has_pr_value && has_pr_method) {
+                    prinfo->pr_policy = pr_method;
+                    prinfo->pr_value = pr_value;
+                }
+#endif
 
 #if defined(SCTP_EXPLICIT_EOR)
                 if ((flow->socket->sctp_explicit_eor) && (len == amt)) {

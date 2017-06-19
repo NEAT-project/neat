@@ -4531,7 +4531,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                     memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
                     sndinfo->snd_sid = msg->stream_id;
 
-                    if (unordered) {
+                    if (msg->unordered) {
                         sndinfo->snd_flags |= SCTP_UNORDERED;
                     }
 
@@ -4551,7 +4551,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                     memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
                     sndrcvinfo->sinfo_stream = msg->stream_id;
 
-                    if (unordered) {
+                    if (msg->unordered) {
                         sndrcvinfo->sinfo_flags |= SCTP_UNORDERED;
                     }
 
@@ -4708,28 +4708,36 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     // float priority        = 0.5f;
     // int has_dest_addr     = 0;
     // const char *dest_addr = "";
-
-#if defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
-    struct cmsghdr *cmsg;
-#endif
     struct msghdr msghdr;
     struct iovec iov;
 #if defined(SCTP_SNDINFO)
-    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo) +
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo)) +
 #if defined(SCTP_PRINFO)
-        CMSG_SPACE(sizeof(struct sctp_sndinfo))
+        CMSG_SPACE(sizeof(struct sctp_prinfo))
 #else // defined(SCTP_PRINFO)
         0
 #endif // defined(SCTP_PRINFO)
-        ];
-
+    ];
     struct sctp_sndinfo *sndinfo = NULL;
-    memset(&cmsgbuf, 0, sizeof(cmsgbuf));
-#elif defined (SCTP_SNDRCV)
-    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
+#elif defined(SCTP_SNDRCV)
+    char cmsgbuf[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo)) +
+#if defined(SCTP_PRINFO)
+        CMSG_SPACE(sizeof(struct sctp_prinfo))
+#else // defined(SCTP_PRINFO)
+        0
+#endif // defined(SCTP_PRINFO)
+    ];
     struct sctp_sndrcvinfo *sndrcvinfo;
+#endif //defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
+
+#if defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
+    struct cmsghdr *cmsg;
     memset(&cmsgbuf, 0, sizeof(cmsgbuf));
-#endif
+#if defined(SCTP_PRINFO)
+    struct sctp_prinfo *prinfo;
+#endif // defined(SCTP_PRINFO)
+#endif // defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
+
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -4818,21 +4826,31 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
             if (!flow->security_needed) {
 #if defined(SCTP_SNDINFO)
                 msghdr.msg_control = cmsgbuf;
-                msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo));
+                msghdr.msg_controllen = sizeof(cmsgbuf);
                 cmsg = (struct cmsghdr *)cmsgbuf;
                 cmsg->cmsg_level = IPPROTO_SCTP;
                 cmsg->cmsg_type = SCTP_SNDINFO;
                 cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
                 sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
                 memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
-
                 if (stream_id) {
                     sndinfo->snd_sid = stream_id;
                 }
-
                 if (unordered) {
                     sndinfo->snd_flags |= SCTP_UNORDERED;
                 }
+                cmsg = (struct cmsghdr *)((caddr_t)cmsg + CMSG_SPACE(sizeof(struct sctp_sndinfo)));
+
+
+#if defined(SCTP_PRINFO)
+                cmsg->cmsg_level = IPPROTO_SCTP;
+                cmsg->cmsg_type = SCTP_PRINFO;
+                cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_prinfo));
+                prinfo = (struct sctp_prinfo *)CMSG_DATA(cmsg);
+                memset(prinfo, 0, sizeof(struct sctp_prinfo));
+                prinfo->pr_policy = pr_method;
+                prinfo->pr_value = pr_value;
+#endif
 
 #if defined(SCTP_EXPLICIT_EOR)
                 if ((flow->socket->sctp_explicit_eor) && (len == amt)) {
@@ -4843,7 +4861,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
 #elif defined (SCTP_SNDRCV)
                 msghdr.msg_control = cmsgbuf;
-                msghdr.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
+                msghdr.msg_controllen = sizeof(cmsgbuf);
                 cmsg = (struct cmsghdr *)cmsgbuf;
                 cmsg->cmsg_level = IPPROTO_SCTP;
                 cmsg->cmsg_type = SCTP_SNDRCV;

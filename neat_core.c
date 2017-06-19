@@ -4777,7 +4777,13 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         neat_log(ctx, NEAT_LOG_WARNING, "%s - partial reliability options set but not supported");
 #endif
     }
-    
+
+    if (has_unordered) {
+#if !defined(SCTP_SNDRCV) && !defined(SCTP_SNDINFO)
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - unordered delivery requested but not supported");
+#endif
+    }
+
     switch (flow->socket->stack) {
     case NEAT_STACK_TCP:
     case NEAT_STACK_MPTCP:

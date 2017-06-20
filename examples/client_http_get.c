@@ -70,6 +70,7 @@ struct stat_flow {
     struct timeval tv_last;
     struct timeval tv_delta;
     uint16_t protocol;
+    uv_timer_t timer;
     struct neat_flow *flow;
 };
 

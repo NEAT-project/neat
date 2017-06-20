@@ -322,6 +322,8 @@ neat_free_ctx(struct neat_ctx *nc)
          */
         assert(flow != prev_flow);
 
+        flow->closefx = NULL;   // NOTE: TD: Tried to avoid that the close function gets called on removal of context.
+        
         neat_free_flow(flow);
         prev_flow = flow;
     }
@@ -581,15 +583,17 @@ synchronous_free(neat_flow *flow)
 
     assert(flow);
     assert(flow->socket);
-
+    
     if (!flow->socket->multistream
 #ifdef SCTP_MULTISTREAMING
         || flow->socket->sctp_streams_used == 0
 #endif
     ) {
-// ???        flow->closefx(flow->ctx, flow);
+        if (flow->closefx) {   // NOTE: TD: Tried to avoid that the close function gets called on removal of context.
+            flow->closefx(flow->ctx, flow);
+        }
     }
-
+    
     free((char *)flow->name);
     free((char *)flow->server_pem);
     free((char *)flow->cert_pem);
@@ -6778,6 +6782,7 @@ neat_notify_close(neat_flow *flow)
     }
 
     // this was the last callback - free all ressources
+    // NOTE: TD: This should probably not be called inside the callback function.
     neat_free_flow(flow);
 }
 

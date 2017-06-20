@@ -74,16 +74,12 @@ class NEATPolicy(object):
             else:
                 self.properties.add(PropertyArray.from_dict(p))
 
-
-                # set UID
+        # set UID
         self.uid = policy_dict.get('uid')
         if self.uid is None:
             self.uid = self.__gen_uid()
         else:
             self.uid = str(self.uid).lower()
-
-        # deprecated
-        self.name = policy_dict.get('name', self.uid)
 
     def __gen_uid(self):
         # TODO make UID immutable?
@@ -213,8 +209,7 @@ class PIB(list):
 
         with open(filename, 'w') as f:
             f.write(policy.json())
-
-        logging.info("Policy saved as \"%s\"." % filename)
+            logging.debug("Policy saved as \"%s\"." % filename)
 
         # FIXME register
         self.reload_files()
@@ -333,9 +328,9 @@ class PIB(list):
                         try:
                             updated_candidate = cand + policy_properties
                             updated_candidates.append(updated_candidate)
-                        except ImmutablePropertyError:
+                        except ImmutablePropertyError as e:
                             logging.info(
-                                ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *REJECTED*' + PM.STYLES.FORMAT_END)
+                                ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *CANDIDATE REJECTED*' + PM.STYLES.FORMAT_END + ' (%s)' % str(e))
                             continue
                 else:
                     updated_candidates.append(cand)

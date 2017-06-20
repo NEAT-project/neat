@@ -226,8 +226,6 @@ int linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
     neat_tcp_info->tcpi_snd_cwnd = tcpi.tcpi_snd_cwnd;
     neat_tcp_info->tcpi_advmss = tcpi.tcpi_advmss;
     neat_tcp_info->tcpi_reordering = tcpi.tcpi_reordering;
-    neat_tcp_info->tcpi_rcv_rtt = tcpi.tcpi_rcv_rtt;
-    neat_tcp_info->tcpi_rcv_space = tcpi.tcpi_rcv_space;
     neat_tcp_info->tcpi_total_retrans = tcpi.tcpi_total_retrans;
 
     return RETVAL_SUCCESS;

@@ -6,18 +6,12 @@ import uuid
 DEBUG = True
 UTF = True if sys.stdout.encoding == 'UTF-8' else False
 
-if DEBUG:
-    log_level = logging.DEBUG
-else:
-    log_level = logging.INFO
-
 logging.addLevelName(logging.INFO, 'INF')
 logging.addLevelName(logging.ERROR, 'ERR')
 logging.addLevelName(logging.DEBUG, 'DBG')
 logging.addLevelName(logging.WARN, 'WRN')
 
-logging.basicConfig(format='[%(levelname)s]: %(message)s',
-                    level=log_level)
+logging.basicConfig(format='[%(levelname)s]: %(message)s')
 
 CLIENT_UID = str(uuid.uuid3(uuid.NAMESPACE_OID, str(uuid.getnode())))
 
@@ -28,6 +22,21 @@ SOCK_DIR = os.path.join(os.environ['HOME'], '.neat', '')
 PIB_SOCK_NAME = 'neat_pib_socket'
 CIB_SOCK_NAME = 'neat_cib_socket'
 DOMAIN_SOCK_NAME = 'neat_pm_socket'
+
+
+def update_log_level(level):
+    if level == 0:
+        log_level = logging.ERROR
+    elif level == 3:
+        log_level = logging.DEBUG
+    elif level == 2:
+        log_level = logging.INFO
+    elif level == 1:
+        log_level = logging.WARN
+    else:
+        log_level = logging.ERROR
+
+    logging.getLogger().setLevel(log_level)
 
 
 def update_sock_files():

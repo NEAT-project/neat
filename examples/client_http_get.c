@@ -19,6 +19,7 @@
     -n : number of requests/flows
     -R : receive buffer size in byte
     -v : log level (0 .. 2)
+    -J : Print json stats on receiving data
 
 **********************************************************************/
 
@@ -34,11 +35,12 @@
     } while (0)
 #endif
 
-static int           result                 = 0;
-static uint32_t      config_rcv_buffer_size = 32*1024*1024; // 32MB rcv buffer
-static uint32_t      config_max_flows       = 2000;
-static uint8_t       config_log_level       = 0;
-static uint16_t      config_port            = 80;
+static int           result                  = 0;
+static uint32_t      config_rcv_buffer_size  = 32*1024*1024; // 32MB rcv buffer
+static uint32_t      config_max_flows        = 2000;
+static uint8_t       config_log_level        = 0;
+static uint8_t       config_json_stats       = 0;
+static uint16_t      config_port             = 80;
 static char          request[512];
 static uint32_t      flows_active           = 0;
 static char          *config_property       = "\
@@ -84,6 +86,23 @@ on_error(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
+static void
+print_neat_stats(struct neat_flow_operations *opCB)
+{
+    neat_error_code error;
+
+    char* stats = NULL;
+    error = neat_get_stats(opCB->ctx, &stats);
+    if (error != NEAT_OK){
+        printf("NEAT ERROR: %i\n", (int)error);
+        return;
+    } else if (stats != NULL) {
+        printf("json %s\n", stats);
+    }
+    // Need to free the string allocated by jansson
+    free(stats);
+}
+
 static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
@@ -115,6 +134,11 @@ on_readable(struct neat_flow_operations *opCB)
             fwrite(buffer, sizeof(char), bytes_read, stdout);
         }
     }
+
+    if (config_json_stats){
+        print_neat_stats(opCB);
+    }
+
     return NEAT_OK;
 }
 
@@ -136,6 +160,28 @@ on_writable(struct neat_flow_operations *opCB)
 
     return NEAT_OK;
 }
+
+static void
+print_timer_stats(uv_timer_t *handle)
+{
+    struct stat_flow *stat = handle->data;
+    struct timeval tv_now, tv_delta;
+    double time_elapsed = 0.0;
+    char buffer_filesize_human[32];
+
+    gettimeofday(&tv_now, NULL);
+    timersub(&tv_now, &(stat->tv_delta), &tv_delta);
+    time_elapsed = tv_delta.tv_sec + (double)tv_delta.tv_usec / 1000000.0;
+    filesize_human(8 * (stat->rcv_bytes - stat->rcv_bytes_last) / time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human));
+
+    fprintf(stderr, "%p - %d bytes in %.2fs = %sit/s\n", (void *) stat->flow, stat->rcv_bytes - stat->rcv_bytes_last, time_elapsed, buffer_filesize_human);
+
+    stat->rcv_bytes_last = stat->rcv_bytes;
+    gettimeofday(&(stat->tv_delta), NULL);
+    uv_timer_again(&(stat->timer));
+}
+
+
 
 static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
@@ -241,7 +287,7 @@ main(int argc, char *argv[])
     // request index directory by default
     snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n", "/", argv[argc - 1]);
 
-    while ((arg = getopt(argc, argv, "P:p:R:u:n:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:p:R:u:n:Jv:")) != -1) {
         switch(arg) {
         case 'P':
             if (read_file(optarg, &arg_property) < 0) {
@@ -272,6 +318,12 @@ main(int argc, char *argv[])
                 num_flows = config_max_flows;
             }
             fprintf(stderr, "%s - option - number of flows: %d\n", __func__, num_flows);
+            break;
+        case 'J':
+            config_json_stats = 1;
+            if (config_log_level >= 1) {
+                fprintf(stderr, "%s - option - json stats when reading data enabled\n", __func__);
+            }
             break;
         case 'v':
             config_log_level = atoi(optarg);

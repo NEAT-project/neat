@@ -1,6 +1,6 @@
 # neat_close
+Initiates the closing procedure for a flow.
 
-Close this flow and free all associated data.
 
 ### Syntax
 

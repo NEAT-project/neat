@@ -669,7 +669,7 @@ socket_handle_free_cb(uv_handle_t *handle)
 #endif
 
     } else {
-        synchronous_free(pollable_socket->flow);
+//         synchronous_free(pollable_socket->flow);
     }
 }
 
@@ -754,7 +754,7 @@ neat_free_flow(neat_flow *flow)
             neat_log(ctx, NEAT_LOG_DEBUG, "%s - handle is already closing", __func__);
         }
     } else {
-        synchronous_free(flow);
+//         synchronous_free(flow);
     }
 }
 

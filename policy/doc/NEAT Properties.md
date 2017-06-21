@@ -5,8 +5,9 @@ The NEAT policy system is based around the notion of NEAT properties. NEAT prope
 Each property has a `key` string and `value`. Currently property values can be
 
   1. a **single** boolean, integer, float or string value, e.g., `2`, `true`, or `"TCP"`. 
-  2. a **set** of values `[100, 200, 300, "foo"]`. 
-  3. a numeric **range** `{"start":1, "end":10}`.
+  2. a **set** of values: `[100, 200, 300, "foo"]`. 
+  3. a numeric **range**: `{"start":1, "end":10}`.
+  4. **ANY** value: `null`.
 
 Each property is further associated with a `precedence` which identifies the "importance" of the property. Specifically, the precedence indicates if the property may be modified by the Policy Manager logic or if it is immutable. Currently two property precedence levels are defined in order of decreasing priority:
 
@@ -20,7 +21,6 @@ In the sequel we use the following shorthand notation: we separate the property 
 +  `[transport|TCP]+2`: the transport protocol *must* be "TCP"
 +   `(MTU|1500,2000,9000)`: one of the specified MTU values *should* be chosen if possible
 +   `(capacity|10-1000)+1`: the interface capacity should be within the numeric range specified by the integers
-
 
 ### Property Operators
 
@@ -37,6 +37,29 @@ If the above conditions are not satisfied, the update will fail and invalidate e
 As an example, if the immutable property `[transport|TCP]+2` is requested by an application and this property clashes with the property `[transport|UDP]` in a certain connection candidate, the candidate will be discarded.
 
 
+## JSON Encoding:
 
+The Policy Manager uses JSON to represent NEAT Properties. As an example, the property `[transport|TCP, SCTP]+3` is encoded as follows:
 
+    "transport": {
+       "value": ["TCP", "SCTP"],
+       "precedence": 2,
+       "score": 3
+    }
 
+The property `(latency|1-100)` is encoded as:
+
+    "latency": {
+       "value": {"start":1, "end":10}
+    }
+
+If a property attribute is omitted, the following default values will be used: `"value": null`, `"precedence": 2`, `"score": 0`, `"evaluated": false`.
+A NEATArray containing multiple properties could look like this:
+
+```
+{"remote_ip": {"precedence": 2,"value": "10.54.1.23"}, "port": {"precedence": 2, "value": 8080}, "transport": {"value": "reliable"}, "MTU": {"value": [1500, 9000]}, "low_latency": {"precedence": 1, "value": true}}'
+```
+
+#TODO
+
+If a candidate includes` immutable` properties with undefined scores the NEAT logic is responsible to ensure that these are can be fulfilled (an example of such a property would be security).

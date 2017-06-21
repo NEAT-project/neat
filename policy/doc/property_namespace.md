@@ -8,7 +8,7 @@
 | `high_availabity`   | true/false | true | |
 | `dscp_value` | integer | 0 | |
 
-The properties will be expanded to concrete values using corresponding profiles.
+The properties will be expanded to concrete values using corresponding profiles (see [current defaults](https://github.com/NEAT-project/neat/tree/master/policy/examples/pib)).
 
 
 ## NEAT Property namespace

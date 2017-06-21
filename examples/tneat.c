@@ -393,7 +393,7 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "c:k:l:L:n:p:P:R:T:v:w:")) != -1) {
+    while ((arg = getopt(argc, argv, "c:k:l:Ln:p:P:R:T:v:w:")) != -1) {
         switch(arg) {
             case 'c':
                 cert_file = optarg;

@@ -6876,6 +6876,21 @@ neat_find_flow(neat_ctx *ctx, struct sockaddr_storage *src, struct sockaddr_stor
     return NULL;
 }
 
+neat_error_code
+neat_set_low_watermark(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t watermark) {
+
+#ifdef TCP_NOTSENT_LOWAT
+    if (setsockopt(flow->socket->fd, IPPROTO_TCP, TCP_NOTSENT_LOWAT, &watermark, (socklen_t) sizeof(watermark)) < 0) {
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - cant set TCP_NOTSENT_LOWAT - setsockopt failed", __func__);
+        return NEAT_ERROR_UNABLE;
+    }
+    return NEAT_OK;
+#else
+    neat_log(ctx, NEAT_LOG_WARNING, "%s - cant set TCP_NOTSENT_LOWAT - unsupported", __func__);
+    return NEAT_ERROR_UNABLE;
+#endif
+}
+
 
 
 #ifdef SCTP_MULTISTREAMING

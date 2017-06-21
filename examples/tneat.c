@@ -40,6 +40,7 @@ static uint16_t config_log_level            = 1;
 static uint16_t config_num_flows            = 10;
 static uint16_t config_max_flows            = 100;
 static uint16_t config_max_server_runs      = 0;
+static uint32_t config_low_watermark        = 0;
 static char *config_property = "\
 {\
     \"transport\": [\
@@ -103,16 +104,17 @@ print_usage()
     }
 
     printf("tneat [OPTIONS] [HOST]\n");
+    printf("\t- c \tpath to server certificate (%s)\n", cert_file);
+    printf("\t- k \tpath to server key (%s)\n", key_file);
     printf("\t- l \tsize for each message in byte (%d)\n", config_snd_buffer_size);
+    printf("\t- L \tloop mode - tneat talking to itself\n");
     printf("\t- n \tmax number of messages to send (%d)\n", config_message_count);
     printf("\t- p \tport [receive on|send to] (%d)\n", config_port);
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
     printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime_max);
     printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
-    printf("\t- c \tpath to server certificate (%s)\n", cert_file);
-    printf("\t- k \tpath to server key (%s)\n", key_file);
-    printf("\t- L \tloop mode - tneat talking to itself\n");
+    printf("\t- w \tset low watermark (%d)\n", config_low_watermark);
 }
 
 /*
@@ -295,6 +297,10 @@ on_connected(struct neat_flow_operations *opCB)
     }
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
+    if (config_low_watermark) {
+        neat_set_low_watermark(opCB->ctx, opCB->flow, config_low_watermark);
+    }
+
     return NEAT_OK;
 }
 
@@ -387,76 +393,82 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:c:k:L")) != -1) {
+    while ((arg = getopt(argc, argv, "c:k:l:L:n:p:P:R:T:v:w:")) != -1) {
         switch(arg) {
-        case 'l':
-            config_snd_buffer_size = atoi(optarg);
-            if (config_log_level >= 1) {
-                printf("option - send buffer size: %d\n", config_snd_buffer_size);
-            }
-            break;
-        case 'n':
-            config_message_count = atoi(optarg);
-            if (config_log_level >= 1) {
-                printf("option - message limit: %d\n", config_message_count);
-            }
-            break;
-        case 'p':
-            config_port = atoi(optarg);
-            if (config_log_level >= 1) {
-                printf("option - port: %d\n", config_port);
-            }
-            break;
-        case 'P':
-            if (read_file(optarg, &arg_property) < 0) {
-                fprintf(stderr, "Unable to read properties from %s: %s", optarg, strerror(errno));
-                result = EXIT_FAILURE;
+            case 'c':
+                cert_file = optarg;
+                if (config_log_level >= 1) {
+                    printf("option - server certificate file: %s\n", cert_file);
+                }
+                break;
+            case 'k':
+                key_file = optarg;
+                if (config_log_level >= 1) {
+                    printf("option - server key file: %s\n", key_file);
+                }
+                break;
+            case 'l':
+                config_snd_buffer_size = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - send buffer size: %d\n", config_snd_buffer_size);
+                }
+                break;
+            case 'L':
+                config_mode = NEAT_MODE_LOOP;
+                if (config_log_level >= 1) {
+                    printf("option - LOOP MODE\n");
+                }
+                break;
+            case 'n':
+                config_message_count = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - message limit: %d\n", config_message_count);
+                }
+                break;
+            case 'p':
+                config_port = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - port: %d\n", config_port);
+                }
+                break;
+            case 'P':
+                if (read_file(optarg, &arg_property) < 0) {
+                    fprintf(stderr, "Unable to read properties from %s: %s", optarg, strerror(errno));
+                    result = EXIT_FAILURE;
+                    goto cleanup;
+                }
+                if (config_log_level >= 1) {
+                    printf("option - properties: %s\n", arg_property);
+                }
+                break;
+            case 'R':
+                config_rcv_buffer_size = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - receive buffer size: %d\n", config_rcv_buffer_size);
+                }
+                break;
+            case 'T':
+                config_runtime_max = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - runtime limit: %d\n", config_runtime_max);
+                }
+                break;
+            case 'v':
+                config_log_level = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - log level: %d\n", config_log_level);
+                }
+                break;
+            case 'w':
+                config_low_watermark = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - low watermark: %d\n", config_low_watermark);
+                }
+                break;
+            default:
+                print_usage();
                 goto cleanup;
-            }
-            if (config_log_level >= 1) {
-                printf("option - properties: %s\n", arg_property);
-            }
-            break;
-        case 'R':
-            config_rcv_buffer_size = atoi(optarg);
-            if (config_log_level >= 1) {
-                printf("option - receive buffer size: %d\n", config_rcv_buffer_size);
-            }
-            break;
-        case 'T':
-            config_runtime_max = atoi(optarg);
-            if (config_log_level >= 1) {
-                printf("option - runtime limit: %d\n", config_runtime_max);
-            }
-            break;
-        case 'v':
-            config_log_level = atoi(optarg);
-            if (config_log_level >= 1) {
-                printf("option - log level: %d\n", config_log_level);
-            }
-            break;
-        case 'c':
-            cert_file = optarg;
-            if (config_log_level >= 1) {
-                printf("option - server certificate file: %s\n", cert_file);
-            }
-            break;
-        case 'k':
-            key_file = optarg;
-            if (config_log_level >= 1) {
-                printf("option - server key file: %s\n", key_file);
-            }
-            break;
-        case 'L':
-            config_mode = NEAT_MODE_LOOP;
-            if (config_log_level >= 1) {
-                printf("option - LOOP MODE\n");
-            }
-            break;
-        default:
-            print_usage();
-            goto cleanup;
-            break;
+                break;
         }
     }
 

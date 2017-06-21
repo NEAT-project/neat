@@ -8,6 +8,7 @@ Each entry or *row* of the CIB is comprised of an arbitrary number of *NEAT Prop
 {
     "uid": "eth0",
     "root": true,
+    "expire": -1,
     "priority": 4,
     "properties": {
         "interface": {"value": "eth0", "precedence":2},
@@ -83,7 +84,7 @@ Finally, CIB sources have the option of generating CIB nodes which augment exist
     "uid": "historic info",
     "description": "appended properties to CIB rows matching all match properties.",
     "priority": 10,
-    "timstamp": 1476104788,
+    "expire": 1476104788,
     "link": false,
     "match": [
     	{ "interface": {"value": "eth0"}, 
@@ -94,9 +95,7 @@ Finally, CIB sources have the option of generating CIB nodes which augment exist
         "remote_port": {"value": 8080, "precedence":1},
         "local_port": {"value": 56674, "precedence":1},
         "transport": {"value": "TCP", "precedence":1},
-        "cached": {"value": true, "precedence":2, "score":5},
-        "cache_ttl": {"value": 300, "precedence":1},
-        "cache_status": {"value": "connection_success", "precedence":2, "description":"could be failed, NA, etc."}
+        "__cached": {"value": true, "precedence":2, "score":5}
     }]
 }
 
@@ -105,6 +104,6 @@ Finally, CIB sources have the option of generating CIB nodes which augment exist
 For this example the CIB will match row 1, and insert a **new** row which includes the additional properties.
 
 ```
-3: {"interface": {"value": "eth0", "precedence":2}, "capacity": {"value": 10000, "precedence":2}, "local_ip": {"value": "10.10.2.1", "precedence":2}, "is_wired": {"value": true, "precedence":2}, "MTU": {"value": {"start":50, "end":9000}, "remote_ip": {"value": "8.8.8.8", "precedence":2, "score": 2}, "remote_port": {"value": 8080, "precedence":1}, "local_port": {"value": 56674, "precedence":1}, "transport": {"value": "TCP", "precedence":1}, "cache_ttl": {"value": 300, "precedence":1}, "cached_connection_status": {"value": "success", "precedence":2, "score":5}}
+3: {"interface": {"value": "eth0", "precedence":2}, "capacity": {"value": 10000, "precedence":2}, "local_ip": {"value": "10.10.2.1", "precedence":2}, "is_wired": {"value": true, "precedence":2}, "MTU": {"value": {"start":50, "end":9000}, "remote_ip": {"value": "8.8.8.8", "precedence":2, "score": 2}, "remote_port": {"value": 8080, "precedence":1}, "local_port": {"value": 56674, "precedence":1}, "transport": {"value": "TCP", "precedence":1}, "__cached": {"value": true, "precedence":2, "score":5}}
 
 ```

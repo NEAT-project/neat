@@ -71,6 +71,7 @@ CONTROLLER_ANNOUNCE = 3 * 60
 
 class STYLES(object):
     DARK_GRAY_START = '\033[90m'
+    LIGHT_GRAY_START = '\033[37m'
     BOLD_START = '\033[1m'
     BOLD_END = '\033[21m'
     UNDERLINE_START = '\033[4m'

@@ -481,7 +481,6 @@ class CIB(object):
                     continue
             except ImmutablePropertyError:
                 continue
-
             try:
                 candidate = e + input_properties
                 candidate.cib_node = e.cib_node

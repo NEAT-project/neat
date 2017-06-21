@@ -3,4 +3,7 @@
 
 struct neat_ctx *neat_bsd_init_ctx(struct neat_ctx *nic);
 
+/* Get statistics from BSD TCP_INFO */
+int bsd_get_tcp_info(struct neat_flow * , struct neat_tcp_info *);
+
 #endif

@@ -55,7 +55,7 @@ struct neat_flow_operations {
     void *userData;
 
     neat_error_code status;
-    int stream_id;
+    uint16_t stream_id;
     neat_flow_operations_fx on_connected;
     neat_flow_operations_fx on_error;
     neat_flow_operations_fx on_readable;

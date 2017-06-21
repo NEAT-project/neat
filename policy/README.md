@@ -7,15 +7,14 @@
 To start the policy manager simply run:
 
 ```
-python3.5 ./neatpmd --cib ./example/cib/ --pib ./example/pib
+python3.5 ./neatpmd
 
 ```
 
-in the `neat/policy` directory. The `--cib` and `--pib` options specify the respective locations of the CIB and the PIB repositories.
+in the `neat/policy` directory. See `./neatpmd -h` for more options.
 
 ## NEAT properties
-NEAT properties are essentially `key|value` tuples describing attributes used by the components of the NEAT Policy Manager. See documentation [here](doc/NEAT Properties.md)
-
+NEAT properties are essentially `key|value` tuples describing attributes used by the components of the NEAT Policy Manager. See documentation [here](doc/NEAT%20Properties.md)
 
 ## NEAT Policies
 
@@ -48,7 +47,7 @@ The *N* entries with the largest aggregate score are appended to the candidate l
 
 ## CIB format
 
-[See CIB docs](doc/CIB format.md)
+[See CIB documentation](doc/CIB%20format.md)
 
 
 
@@ -90,7 +89,7 @@ $ cat request.json | socat -d -d STDIO UNIX-CONNECT:$NEAT_PM_SOCKET
 ``` 
 
 
-The PM will output a JSON string containing the list of connection candidates (two of them for the given example) into the Unix socket. 
+The PM will return a JSON string containing the list of connection candidates (two of them for the given example) into the Unix socket. 
 
 ```
 [{"MTU": {"value": {"end": 9000.0, "start": 1500.0}}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10:54:1.23"}, "transport": {"value": "TCP"}}, {"MTU": {"value": {"end": 1500.0, "start": 300.0}}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10:54:2.2"}, "transport": {"value": "UDP"}}]
@@ -98,7 +97,7 @@ The PM will output a JSON string containing the list of connection candidates (t
 
 ## Requirements
 
-The Policy Manager requires Python version 3.5 or higher. The following Python external modules are used: `netifaces`, `aiohttp` (optional for REST API).
+The Policy Manager requires Python version 3.5 or higher. The following Python external modules are used if available: `netifaces` (to autogenerte CIB entries for local interfaces), `aiohttp` (for REST API).
 
 On Debian  like systems these modules can be installed using:
 

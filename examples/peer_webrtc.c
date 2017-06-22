@@ -100,6 +100,17 @@ on_error(struct neat_flow_operations *opCB)
 }
 
 static neat_error_code
+on_parameters(struct neat_flow_operations *opCB)
+{
+    fprintf(stderr, "%s\n", __func__);
+    printf("LocalParameters: %s\n", (char *)opCB->userData);
+    printf("Got local parameters from WebRTC. Now send them to signalling server\n");
+    free(opCB->userData);
+    opCB->userData = NULL;
+    return NEAT_OK;
+}
+
+static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
@@ -454,7 +465,9 @@ main(int argc, char *argv[])
     operation.on_connected = on_connected;
     operation.on_error     = on_error;
     operation.on_close     = on_close;
-    operation.userData     = NULL;
+    operation.on_parameters = on_parameters;
+    char *params = calloc(1, 2048);
+    operation.userData     = params;
 
     if (neat_set_operations(ctx, listening_flow, &operation)) {
         fprintf(stderr, "%s - neat_set_operations failed\n", __func__);

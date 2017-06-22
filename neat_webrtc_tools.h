@@ -2,6 +2,7 @@
 #define NEAT_WEBRTC_TOOLS_H
 
 #include <rawrtc.h>
+#include <jansson.h>
 
 #define PARAMETERS_MAX_LENGTH  8192
 
@@ -248,6 +249,23 @@ void data_channel_helper_create_from_channel(
         struct rawrtc_data_channel* channel,
         struct client* const client,
         void* const arg // nullable
+);
+
+char *set_ice_parameters_string(
+        struct rawrtc_ice_parameters* const parameters
+);
+
+char *set_ice_candidates_string(
+        struct rawrtc_ice_candidates* const parameters
+);
+
+char *set_dtls_parameters_string(
+        struct rawrtc_dtls_parameters* const parameters
+);
+
+char *set_sctp_parameters_string(
+        struct rawrtc_sctp_transport* const transport,
+        struct sctp_parameters* const parameters
 );
 
 int rawrtc_stop_client(struct peer_connection *pc);

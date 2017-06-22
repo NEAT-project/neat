@@ -748,6 +748,228 @@ printf("%s\n", __func__);
 }
 
 /*
+ * Set ICE parameters as string.
+ */
+char *set_ice_parameters_string(
+        struct rawrtc_ice_parameters* const parameters
+) {
+    char* username_fragment;
+    char* password;
+    bool ice_lite;
+    char *param = calloc(1, 512);
+
+    // Get values
+    if (rawrtc_ice_parameters_get_username_fragment(&username_fragment, parameters) != RAWRTC_CODE_SUCCESS)              {
+            printf("Error set_ice_parameters: usename fragment");
+            exit (-1);
+        }
+    if (rawrtc_ice_parameters_get_password(&password, parameters) != RAWRTC_CODE_SUCCESS)              {
+            printf("Error set_ice_parameters: password");
+            exit (-1);
+        }
+    if (rawrtc_ice_parameters_get_ice_lite(&ice_lite, parameters) != RAWRTC_CODE_SUCCESS)              {
+            printf("Error set_ice_parameters: ice lite");
+            exit (-1);
+        }
+    sprintf(param, "\"iceParameters\":{\"usernameFragment\":\"%s\",\"password\":\"%s\",\"iceLite\":%s}",
+        username_fragment, password, (ice_lite ? "true":"false"));
+
+    // Un-reference values
+    rawrtc_mem_deref(password);
+    rawrtc_mem_deref(username_fragment);
+    return (param);
+}
+
+/*
+ * Set ICE candidates as string.
+ */
+char *set_ice_candidates_string(
+        struct rawrtc_ice_candidates* const parameters
+) {
+    size_t i;
+    char *str = calloc(1, 512);
+    char *candidates = calloc(1, 1024);
+
+    sprintf(candidates, "\"iceCandidates\":[");
+
+    // Set ICE candidates
+    for (i = 0; i < parameters->n_candidates; ++i) {
+      //  enum rawrtc_code error;
+        struct rawrtc_ice_candidate* const candidate = parameters->candidates[i];
+        char* foundation;
+        uint32_t priority;
+        char* ip;
+        enum rawrtc_ice_protocol protocol;
+        uint16_t port;
+        enum rawrtc_ice_candidate_type type;
+        enum rawrtc_ice_tcp_candidate_type tcp_type = RAWRTC_ICE_TCP_CANDIDATE_TYPE_ACTIVE;
+        char* related_address = NULL;
+        uint16_t related_port = 0;
+       // char* key;
+
+        if (i > 0) {
+            strcat(candidates, ",");
+        }
+
+        // Get values
+        if (rawrtc_ice_candidate_get_foundation(&foundation, candidate) != RAWRTC_CODE_SUCCESS)              {
+            printf("Error set_ice_candidate: foundation");
+            exit (-1);
+        }
+        if (rawrtc_ice_candidate_get_priority(&priority, candidate) != RAWRTC_CODE_SUCCESS)              {
+            printf("Error set_ice_candidate: priority");
+            exit (-1);
+        }
+        if (rawrtc_ice_candidate_get_ip(&ip, candidate) != RAWRTC_CODE_SUCCESS)              {
+            printf("Error set_ice_candidate: ip");
+            exit (-1);
+        }
+        if (rawrtc_ice_candidate_get_protocol(&protocol, candidate) != RAWRTC_CODE_SUCCESS)              {
+            printf("Error set_ice_candidate: protocol");
+            exit (-1);
+        }
+        if (rawrtc_ice_candidate_get_port(&port, candidate) != RAWRTC_CODE_SUCCESS)              {
+            printf("Error set_ice_candidate: port");
+            exit (-1);
+        }
+        if (rawrtc_ice_candidate_get_type(&type, candidate) != RAWRTC_CODE_SUCCESS)              {
+            printf("Error set_ice_candidate: type");
+            exit (-1);
+        }
+        rawrtc_ice_candidate_get_tcp_type(&tcp_type, candidate);
+        rawrtc_ice_candidate_get_related_address(&related_address, candidate);
+        rawrtc_ice_candidate_get_related_port(&related_port, candidate);
+
+        sprintf(str, "{\"foundation\":\"%s\",\"priority\":%i,\"ip\":\"%s\",\"protocol\":\"%s\",\"port\":%d,\"type\":\"%s\"",
+            foundation, priority, ip, rawrtc_ice_protocol_to_str(protocol), port, rawrtc_ice_candidate_type_to_str(type));
+
+
+        if (protocol == RAWRTC_ICE_PROTOCOL_TCP) {
+            sprintf(str, "%s,\"tcpType\":\"%s\"", str, rawrtc_ice_tcp_candidate_type_to_str(tcp_type));
+        }
+
+        if (related_address) {
+            sprintf(str, "%s,\"relatedAddress\":\"%s\"", str, related_address);
+            printf("Ice Candidate2: %s\n", str);
+        }
+
+        if (related_port) {
+            sprintf(str, "%s,\"relatedPort\":%d", str, related_port);
+        }
+        sprintf(str, "%s}", str);
+        printf("Ice Candidate: %s\n", str);
+
+        strcat(candidates, str);
+        // Un-reference values
+        rawrtc_mem_deref(related_address);
+        rawrtc_mem_deref(ip);
+        rawrtc_mem_deref(foundation);
+    }
+    strcat(candidates, "]");
+
+
+
+
+    return (candidates);
+}
+
+/*
+ * Set DTLS parameters as string.
+ */
+char *set_dtls_parameters_string(
+        struct rawrtc_dtls_parameters* const parameters
+) {
+    enum rawrtc_dtls_role role;
+    struct rawrtc_dtls_fingerprints* fingerprints;
+    size_t i;
+    char *params = calloc(1, 2048);
+    char* str = calloc(1, 512);
+
+    sprintf(params, "\"dtlsParameters\":");
+
+    // Get and set DTLS role
+    if (rawrtc_dtls_parameters_get_role(&role, parameters) != RAWRTC_CODE_SUCCESS)              {
+        printf("Error set_dtls_parameters: get role");
+        exit (-1);
+    }
+    sprintf(params, "%s{\"role\":\"%s\"", params, rawrtc_dtls_role_to_str(role));
+
+    // Get and set fingerprints
+    if (rawrtc_dtls_parameters_get_fingerprints(&fingerprints, parameters) != RAWRTC_CODE_SUCCESS)              {
+        printf("Error set_dtls_parameters: get fingerprints");
+        exit (-1);
+    }
+    strcat(params, ",\"fingerprints\":[");
+    for (i = 0; i < parameters->fingerprints->n_fingerprints; ++i) {
+        struct rawrtc_dtls_fingerprint* const fingerprint =
+                parameters->fingerprints->fingerprints[i];
+        enum rawrtc_certificate_sign_algorithm sign_algorithm;
+        char* value;
+
+        // Get values
+        if (rawrtc_dtls_parameters_fingerprint_get_sign_algorithm(&sign_algorithm, fingerprint) != RAWRTC_CODE_SUCCESS)              {
+        printf("Error set_dtls_parameters: get sign_algorithm");
+        exit (-1);
+    }
+        if (rawrtc_dtls_parameters_fingerprint_get_value(&value, fingerprint) != RAWRTC_CODE_SUCCESS)              {
+        printf("Error set_dtls_parameters: get value");
+        exit (-1);
+    }
+
+        sprintf(str, "{\"algorithm\":\"%s\",\"value\":\"%s\"}",
+            rawrtc_certificate_sign_algorithm_to_str(sign_algorithm),
+            value);
+
+        if (i > 0) {
+            strcat(params, ",");
+        }
+        strcat(params, str);
+
+        // Un-reference values
+        rawrtc_mem_deref(value);
+    }
+    strcat(params, "]}");
+    // Un-reference fingerprints
+    rawrtc_mem_deref(fingerprints);
+
+    return params;
+}
+
+/*
+ * Set SCTP parameters as string.
+ */
+char *set_sctp_parameters_string(
+        struct rawrtc_sctp_transport* const transport,
+        struct sctp_parameters* const parameters
+) {
+    uint64_t max_message_size;
+    uint16_t port;
+    char *params = calloc(1, 1024);
+
+    // Get values
+    if (rawrtc_sctp_capabilities_get_max_message_size(&max_message_size, parameters->capabilities) != RAWRTC_CODE_SUCCESS)              {
+        printf("Error set_sctp_parameters: get max_message_size");
+        exit (-1);
+    }
+    if (rawrtc_sctp_transport_get_port(&port, transport) != RAWRTC_CODE_SUCCESS)              {
+        printf("Error set_sctp_parameters: get port");
+        exit (-1);
+    }
+
+    sprintf(params, "\"sctpParameters\":{\"maxMessageSize\":%lu,\"port\":%d}", max_message_size, port);
+
+    return params;
+    // Set ICE parameters
+ /*   if (rawrtc_odict_entry_add(dict, "maxMessageSize", ODICT_INT, max_message_size) != RAWRTC_CODE_SUCCESS)              {
+        printf("Error set_sctp_parameters: add max_message_size");
+    }
+    if (rawrtc_odict_entry_add(dict, "port", ODICT_INT, port) != RAWRTC_CODE_SUCCESS)              {
+        printf("Error set_sctp_parameters: add array");
+    }*/
+}
+
+
+/*
  * Set ICE parameters in dictionary.
  */
 void set_ice_parameters(

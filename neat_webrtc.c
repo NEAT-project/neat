@@ -13,7 +13,7 @@
 struct rawrtc_flow;
 
 struct rawrtc_ice_gatherer* gatherer;
-
+static int done = 0;
 //static neat_flow *n_flow = NULL;
 
 //static uv_timer_t *timer_handle = NULL;
@@ -198,36 +198,48 @@ printf("%s\n", __func__);
         // Stop transports & close gatherer
     // Clear data channels
     rawrtc_list_flush(&client->data_channels);
-
+printf("%s:%d\n", __func__, __LINE__);
     close_all_channels(client);
-
+printf("%s:%d\n", __func__, __LINE__);
     if (rawrtc_sctp_transport_stop(client->sctp_transport) != RAWRTC_CODE_SUCCESS) {
         printf("Error stopping sctp transport \n");
         exit (-1);
     }
+    printf("%s:%d\n", __func__, __LINE__);
     if (rawrtc_dtls_transport_stop(client->dtls_transport) != RAWRTC_CODE_SUCCESS) {
         printf("Error stopping dtls transport \n");
         exit (-1);
     }
+    printf("%s:%d\n", __func__, __LINE__);
     if (rawrtc_ice_transport_stop(client->ice_transport) != RAWRTC_CODE_SUCCESS) {
         printf("Error stopping ice transport \n");
         exit (-1);
     }
+    printf("%s:%d\n", __func__, __LINE__);
     if (rawrtc_ice_gatherer_close(client->gatherer) != RAWRTC_CODE_SUCCESS) {
         printf("Error closing gatherer\n");
         exit (-1);
     }
-
+printf("%s:%d\n", __func__, __LINE__);
     // Un-reference & close
     parameters_destroy(&client->remote_parameters);
+    printf("%s:%d\n", __func__, __LINE__);
     parameters_destroy(&client->local_parameters);
+    printf("%s:%d\n", __func__, __LINE__);
     client->data_transport = rawrtc_mem_deref(client->data_transport);
+    printf("%s:%d\n", __func__, __LINE__);
     client->sctp_transport = rawrtc_mem_deref(client->sctp_transport);
+    printf("%s:%d\n", __func__, __LINE__);
     client->dtls_transport = rawrtc_mem_deref(client->dtls_transport);
+    printf("%s:%d\n", __func__, __LINE__);
     client->ice_transport = rawrtc_mem_deref(client->ice_transport);
+    printf("%s:%d\n", __func__, __LINE__);
     client->gatherer = rawrtc_mem_deref(client->gatherer);
+    printf("%s:%d\n", __func__, __LINE__);
     client->certificate = rawrtc_mem_deref(client->certificate);
+    printf("%s:%d\n", __func__, __LINE__);
     client->gather_options = rawrtc_mem_deref(client->gather_options);
+    printf("%s:%d\n", __func__, __LINE__);
 }
 
 /*
@@ -275,8 +287,11 @@ void data_channel_close_handler(
             neat_notify_close(client->flows[i]->flow);
         }
     }
-    if (client->n_flows == 0) {
-    printf("close listening flow\n");
+    if (!done && client->n_flows == 0) {
+        done = 1;
+        client_stop(client);
+        rawrtc_close();
+        printf("close listening flow\n");
         neat_notify_close(client->listening_flow);
     }
 }
@@ -501,10 +516,12 @@ printf("%s:%d\n", __func__, __LINE__);
 }
 
 static void print_local_parameters(
-        struct peer_connection *client
+        struct peer_connection *client,
+        char *params
 ) {
     struct odict* dict;
     struct odict* node;
+    char *str = NULL;
 printf("%s:%d\n", __func__, __LINE__);
     // Get local parameters
     client_get_parameters(client);
@@ -540,6 +557,22 @@ printf("%s:%d\n", __func__, __LINE__);
 
     // Un-reference
     rawrtc_mem_deref(dict);
+
+    sprintf(params, "{");
+    str = set_ice_parameters_string(client->local_parameters.ice_parameters);
+    strcat(params, str);
+    str = set_ice_candidates_string(client->local_parameters.ice_candidates);
+    strcat(params, ",");
+    strcat(params, str);
+    str = set_dtls_parameters_string(client->local_parameters.dtls_parameters);
+    strcat(params, ",");
+    strcat(params, str);
+    str = set_sctp_parameters_string(client->sctp_transport, &client->local_parameters.sctp_parameters);
+    strcat(params, ",");
+    strcat(params, str);
+    strcat(params, "}");
+    printf("Laenge params=%lu\n", strlen(params));
+    printf("Local Parameters:\n%s\n", params);
 }
 
 static void ice_gatherer_local_candidate_handler(
@@ -555,7 +588,8 @@ printf("%s: arg=peer_connection\n", __func__);
     // Add to other client as remote candidate (if type enabled)
     // Print local parameters (if last candidate)
     if (!candidate) {
-        print_local_parameters(client);
+        print_local_parameters(client, client->listening_flow->operations->userData);
+        webrtc_io_parameters(client->ctx, client->listening_flow, NEAT_OK);
     }
 }
 
@@ -680,14 +714,6 @@ neat_webrtc_write_to_channel(struct neat_ctx *ctx,
             break;
         }
     }
-  /*  for (i = 0; i < sctp->n_channels; i++) {
-        if (sctp->channels[i] && sctp->channels[i]->state == RAWRTC_DATA_CHANNEL_STATE_OPEN) {
-        printf("send %zu bytes on channel %d \n", buf->end, i);
-            rawrtc_data_channel_send(sctp->channels[i], buf, true);
-            found = 1;
-            break;
-        }
-    }*/
     if (found) {
         printf("data was sent on %s\n", pc->flows[i]->label);
     } else {

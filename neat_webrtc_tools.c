@@ -848,15 +848,17 @@ char *set_ice_candidates_string(
             sprintf(str, "%s,\"tcpType\":\"%s\"", str, rawrtc_ice_tcp_candidate_type_to_str(tcp_type));
         }
 
+        char st[50];
         if (related_address) {
-            sprintf(str, "%s,\"relatedAddress\":\"%s\"", str, related_address);
-            printf("Ice Candidate2: %s\n", str);
+            sprintf(st, ",\"relatedAddress\":\"%s\"", related_address);
+            strcat(str, st);
         }
 
         if (related_port) {
-            sprintf(str, "%s,\"relatedPort\":%d", str, related_port);
+            sprintf(st, ",\"relatedPort\":%d", related_port);
+            strcat(str, st);
         }
-        sprintf(str, "%s}", str);
+        strcat(str, "}");
         printf("Ice Candidate: %s\n", str);
 
         strcat(candidates, str);
@@ -892,7 +894,10 @@ char *set_dtls_parameters_string(
         printf("Error set_dtls_parameters: get role");
         exit (-1);
     }
-    sprintf(params, "%s{\"role\":\"%s\"", params, rawrtc_dtls_role_to_str(role));
+    char st[50];
+    sprintf(st, "{\"role\":\"%s\"", rawrtc_dtls_role_to_str(role));
+    strcat(params, st);
+   // sprintf(params, "%s{\"role\":\"%s\"", params, rawrtc_dtls_role_to_str(role));
 
     // Get and set fingerprints
     if (rawrtc_dtls_parameters_get_fingerprints(&fingerprints, parameters) != RAWRTC_CODE_SUCCESS)              {

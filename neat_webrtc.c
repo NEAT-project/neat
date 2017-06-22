@@ -364,7 +364,7 @@ printf("%s: arg= peer_connection\n", __func__);
     r_flow->flow = newFlow;
     r_flow->state = NEAT_FLOW_OPEN;
     r_flow->label = strdup(channel_helper->label);
-    r_flow->channel = channel;
+    r_flow->channel = rawrtc_mem_ref(channel);
     client->flows[client->n_flows] = r_flow;
     client->n_flows++;
     client->max_flows++;
@@ -431,7 +431,7 @@ printf("%s: arg=peer_connection\n", __func__);
                 }
               //  client->active_flow->peer_connection = client;
                 client->flows[i]->state = NEAT_FLOW_OPEN;
-                client->flows[i]->channel = data_channel_negotiated->channel;
+                client->flows[i]->channel = rawrtc_mem_ref(data_channel_negotiated->channel);
                 client->flows[i]->flow->peer_connection = client;
                 client->flows[i]->flow->operations->label = strdup(client->flows[i]->label);
 

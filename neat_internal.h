@@ -32,9 +32,12 @@
     void (*cleanup)(struct neat_ctx *nc); \
     struct neat_src_addrs src_addrs; \
     struct neat_event_cbs* event_cbs; \
-    uint8_t src_addr_cnt
+    uint8_t src_addr_cnt; \
+    uint8_t src_addr_dump_done; \
+    uint16_t __pad
 
-#define NEAT_MAX_NUM_PROTO 4
+#define NEAT_MAX_NUM_PROTO  4
+#define MAX_LOCAL_ADDR      64
 
 struct neat_event_cb;
 struct neat_addr;
@@ -220,7 +223,7 @@ struct neat_pollable_socket
     struct sockaddr_storage src_sockaddr;
     socklen_t               src_len;
 
-   #define MAX_LOCAL_ADDR             64
+
    struct sockaddr_storage local_addr[MAX_LOCAL_ADDR];
    unsigned int nr_local_addr;
 
@@ -231,6 +234,7 @@ struct neat_pollable_socket
     uint8_t                     multistream;            // multistreaming active
 
     unsigned int                sctp_explicit_eor : 1;
+    unsigned int                sctp_partial_reliability : 1;
     uint16_t                    sctp_streams_available; // available streams
 #ifdef SCTP_MULTISTREAMING
     uint8_t                     sctp_notification_wait; // wait for all notifications
@@ -253,6 +257,7 @@ struct neat_pollable_socket
 struct neat_flow
 {
     // Main socket used for communication, not listening
+    uint8_t state;
     struct neat_pollable_socket *socket;
     TAILQ_HEAD(neat_listen_socket_head, neat_pollable_socket) listen_sockets;
     struct neat_flow_operations *operations; // see ownedByCore flag
@@ -263,7 +268,6 @@ struct neat_flow
     uint16_t port;
     uint8_t qos;
     uint8_t ecn;
-    //uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
@@ -301,17 +305,21 @@ struct neat_flow
     neat_accept_usrsctp_impl acceptusrsctpfx;
 #endif
 
-    unsigned int hefirstConnect         : 1;
-    unsigned int firstWritePending      : 1;
-    unsigned int acceptPending          : 1;
-    unsigned int isPolling              : 1;
-    unsigned int ownedByCore            : 1;
-    unsigned int everConnected          : 1;
-    unsigned int isDraining             : 1;
-    unsigned int isServer               : 1; // i.e. created via accept()
-    unsigned int isSCTPMultihoming      : 1;
-    unsigned int security_needed        : 1;
-    unsigned int isSCTPIdata            : 1;
+    unsigned int hefirstConnect             : 1;
+    unsigned int firstWritePending          : 1;
+    unsigned int acceptPending              : 1;
+    unsigned int isPolling                  : 1;
+    unsigned int ownedByCore                : 1;
+    unsigned int everConnected              : 1;
+    unsigned int isDraining                 : 1;
+    unsigned int isServer                   : 1; // i.e. created via accept()
+    unsigned int isSCTPMultihoming          : 1;
+    unsigned int security_needed            : 1;
+    unsigned int isSCTPIdata                : 1;
+    unsigned int isClosing                  : 1;
+    unsigned int notifyDrainPending         : 1;
+    unsigned int preserveMessageBoundaries  : 1;
+    unsigned int eofSeen                    : 1;
 
     unsigned int streams_requested;
 
@@ -335,7 +343,7 @@ struct neat_flow
     size_t                          multistream_read_queue_size;
 
     neat_flow_states                multistream_state;
-#endif
+#endif // SCTP_MULTISTREAMING
 };
 
 typedef struct neat_flow neat_flow;

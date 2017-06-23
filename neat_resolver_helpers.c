@@ -34,8 +34,7 @@ neat_resolver_helpers_addr_internal(struct sockaddr_storage *addr)
 //Check if node is an IP literal or not. Returns -1 on failure, 0 if not
 //literal, 1 if literal
 int8_t
-neat_resolver_helpers_check_for_literal(uint8_t *family,
-                                        const char *node)
+neat_resolver_helpers_check_for_literal(uint8_t *family, const char *node)
 {
     struct in6_addr dummy_addr;
     int32_t v4_literal = 0, v6_literal = 0;

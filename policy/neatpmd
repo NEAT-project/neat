@@ -4,12 +4,11 @@ import asyncio
 import io
 import json
 import logging
+import os
 import signal
 import sys
 from copy import deepcopy
 from operator import attrgetter
-
-import os
 
 import pmdefaults as PM
 import pmhelper
@@ -40,7 +39,10 @@ parser.add_argument('--rest-ip', type=str, default=None, help='set local managem
 parser.add_argument('--debug', type=bool, default=None, help='enable debugging')
 parser.add_argument('--rest', type=bool, default=None, help='enable REST API')
 parser.add_argument('--bypass', type=bool, default=False, help='enable debugging')
+parser.add_argument('-v', dest='log_level', type=int, default=2, help='set verbosity level')
 args = parser.parse_args()
+
+PM.update_log_level(args.log_level)
 
 if args.cib:
     PM.CIB_DIR = args.cib
@@ -84,6 +86,8 @@ except OSError as e:
 
 
 def process_special_properties(r):
+    # local_endpoint handling
+    # let's try to avoid any other special handling of properties!
     if 'local_endpoint' in r:
         # the local_endpoint property has the format a.b.c.d@eth0 so we need to split it
         local_endpoint = r.get('local_endpoint')
@@ -102,15 +106,6 @@ def process_special_properties(r):
         r.add(interface)
 
         del r['local_endpoint']
-
-    # add some default properties
-    if 'transport' not in r:
-        p = policy.NEATProperty(('transport', 'unknown'), precedence=policy.NEATProperty.OPTIONAL, score=0.0)
-        r.add(p)
-
-    # add hook to trigger default policy profile
-    p = policy.NEATProperty(('default_profile', True), precedence=policy.NEATProperty.OPTIONAL, score=0.0)
-    r.add(p)
 
 
 def cleanup_special_properties(r):
@@ -165,10 +160,18 @@ def process_request(json_str, num_candidates=10):
                 return
         requests.extend(pma.expand())
 
-    # local_endpoint handling
-    # let's try to avoid any other special handling of properties!
     for r in requests:
         process_special_properties(r)
+
+    for r in requests:
+        # FIXME workaround
+        if '__pre_resolve' not in r:
+            logging.warning("skipping pre_resolve PM lookup")
+            # just add tag and return the requests, theses will be processed during the next round
+            for rr in requests:
+                p = policy.NEATProperty(('__pre_resolve', True))
+                rr.add(p)
+            return requests
 
     print('Received %d NEAT requests' % len(requests))
 
@@ -178,10 +181,12 @@ def process_request(json_str, num_candidates=10):
     # --------------------
     for i, request in enumerate(requests):
         print(policy.term_separator("processing request %d/%d" % (i + 1, len(requests)), offset=0, line_char='─'))
-        logging.info("    %s" % request)
+        print("%s" % request)
 
         print('Profile lookup...')
         updated_requests = profiles.lookup(request, tag='(profile)')
+
+        print('    Profile lookup returned %d candidates:' % len(updated_requests))
         for ur in updated_requests:
             logging.debug("updated request %s" % (ur))
 
@@ -199,11 +204,11 @@ def process_request(json_str, num_candidates=10):
 
         print('PIB lookup...')
         for j, candidate in enumerate(cib_candidates):
-            cand_id = 'CIB candidate %s' % (j + 1)
+            cand_id = 'on CIB candidate %s' % (j + 1)
             for c in pib.lookup(candidate, tag=cand_id):
                 if c in candidates: continue
                 candidates.append(c)
-                logging.debug(c)
+        print('    Policy lookup returned %d candidates:' % len(candidates))
 
     # TODO handle 'to_controller' property, wait for controller response
     candidates.sort(key=attrgetter('score'), reverse=True)
@@ -212,10 +217,11 @@ def process_request(json_str, num_candidates=10):
     for candidate in top_candidates:
         cleanup_special_properties(candidate)
 
-    logging.info("%d candidates generated in total." % (len(candidates)))
+    print(policy.term_separator(line_char='─'))
+    print("%d candidates generated" % (len(candidates)))
     print(policy.term_separator('Top %d' % num_candidates))
     for candidate in top_candidates:
-        print(candidate, candidate.score, candidate.meta.get('cib_uids'))
+        print(candidate, 'score: %d|%d' % candidate.score)
 
     # TODO check if candidates contain the minimum src/dst/transport tuple
     print(policy.term_separator())

@@ -1,6 +1,7 @@
 {
     "uid":"reliable_transports",
     "description":"reliable transport protocols profile",
+    "policy_type": "profile",
     "priority": 2,
     "type": "profile",
     "replace_matched": true,

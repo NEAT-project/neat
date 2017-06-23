@@ -1,5 +1,6 @@
 {
     "uid":"mptcp_so",
+    "policy_type": "policy",
     "priority": 100,
     "replace_matched": false,
     "match": {

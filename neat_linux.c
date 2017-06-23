@@ -127,8 +127,11 @@ static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
 
     while (mnl_nlmsg_ok(nl_hdr, numbytes)) {
         if (nl_hdr->nlmsg_type == RTM_NEWADDR ||
-            nl_hdr->nlmsg_type == RTM_DELADDR)
+            nl_hdr->nlmsg_type == RTM_DELADDR) {
             neat_ctx_fail_on_error(nc, neat_linux_handle_addr(nc, nl_hdr));
+        } else if (nl_hdr->nlmsg_type == NLMSG_DONE) {
+            nc->src_addr_dump_done = 1;
+        }
 
         nl_hdr = mnl_nlmsg_next(nl_hdr, &numbytes);
     }
@@ -148,7 +151,7 @@ static void neat_linux_cleanup(struct neat_ctx *nc)
 struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *ctx)
 {
     //TODO: Consider allocator function
-    if ((ctx->mnl_rcv_buf = calloc(MNL_SOCKET_BUFFER_SIZE, 1)) == NULL) {
+    if ((ctx->mnl_rcv_buf = calloc(1, MNL_SOCKET_BUFFER_SIZE)) == NULL) {
         neat_log(ctx, NEAT_LOG_ERROR, "Failed to allocate netlink buffer", __func__);
         return NULL;
     }
@@ -223,8 +226,6 @@ int linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
     neat_tcp_info->tcpi_snd_cwnd = tcpi.tcpi_snd_cwnd;
     neat_tcp_info->tcpi_advmss = tcpi.tcpi_advmss;
     neat_tcp_info->tcpi_reordering = tcpi.tcpi_reordering;
-    neat_tcp_info->tcpi_rcv_rtt = tcpi.tcpi_rcv_rtt;
-    neat_tcp_info->tcpi_rcv_space = tcpi.tcpi_rcv_space;
     neat_tcp_info->tcpi_total_retrans = tcpi.tcpi_total_retrans;
 
     return RETVAL_SUCCESS;

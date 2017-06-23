@@ -5,7 +5,6 @@ LIST(APPEND neat_programs
     client_data.c
     client_http_get.c
     client_http_run_once.c
-    client_https_get.c
     server_chargen.c
     server_daytime.c
     server_discard.c
@@ -14,8 +13,9 @@ LIST(APPEND neat_programs
     tneat.c
     peer.c
     msbench.c
-    minimal_server.c
     minimal_client.c
+    minimal_server.c
+    minimal_server2.c
 )
 
 LIST(APPEND neat_property_examples
@@ -23,9 +23,12 @@ LIST(APPEND neat_property_examples
     prop_datagram.json
     prop_default.json
     prop_sctp.json
+    prop_sctp_dtls.json
     prop_sctp_multihomed.json
     prop_tcp.json
-    prop_sctp_dtls.json
+    prop_tcp_security.json
+    prop_streaming_mode.json
+    prop_message_mode.json
 )
 
 # BUILD EACH PROGRAM
@@ -36,11 +39,9 @@ FOREACH (source_file ${neat_programs})
         ${source_file_we}
         ${source_file}
         util.c
+        picohttpparser.c
     )
     TARGET_LINK_LIBRARIES(${source_file_we} neat)
-    INSTALL(TARGETS             ${source_file_we}
-            RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/libneat
-            BUNDLE DESTINATION  ${CMAKE_INSTALL_LIBDIR}/libneat)
 ENDFOREACH ()
 
 # COPY EXAMPLE PROPERTY FILES

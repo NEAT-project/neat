@@ -11,6 +11,8 @@ import pmdefaults as PM
 from pmdefaults import *
 from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
 
+CIB_EXPIRED = 2
+
 
 class CIBEntryError(Exception):
     pass
@@ -46,13 +48,12 @@ class CIBNode(object):
         # otherwise chain matched CIBs
         self.link = node_dict.get('link', False)
         self.priority = node_dict.get('priority', 0)
-        # TTL for the CIB node
-        self.expire = node_dict.get('expire', None)
+        # TTL for the CIB node: the node is considered invalid after the time specified
+        self.expire = node_dict.get('expire', None) or node_dict.get('expires', None)  # FIXME expires is deprecated
         self.filename = node_dict.get('filename', None)
         self.description = node_dict.get('description', '')
 
         # convert to PropertyMultiArray with NEATProperties
-
         properties = node_dict.get('properties', [])
 
         if not isinstance(properties, list):
@@ -112,7 +113,7 @@ class CIBNode(object):
             # does not expire
             self._expire = value
         elif time.time() > value:
-            raise CIBEntryError('ignoring expired CIB node')
+            raise CIBEntryError('ignoring expired CIB node', CIB_EXPIRED)
         else:
             self._expire = value
 
@@ -124,12 +125,6 @@ class CIBNode(object):
                 del d[k]
             except KeyError:
                 pass
-
-        # for k in ['cib_uids', ]:
-        #     try:
-        #         del d['properties'][k]
-        #     except KeyError:
-        #         pass
 
         s = json.dumps(d, indent=0, sort_keys=True)
         return hashlib.md5(s.encode('utf-8')).hexdigest()
@@ -380,7 +375,10 @@ class CIB(object):
         try:
             cib_node = CIBNode(cs)
         except CIBEntryError as e:
-            logging.error("Unable to load CIB node %s: %s" % (filename, e))
+            if CIB_EXPIRED in e.args:
+                logging.debug("Ignoring CIB node %s: %s" % (filename, e.args[0]))
+                return
+            logging.error("Unable to load CIB node %s: %s" % (filename, e.args[0]))
             return
 
         cib_node.filename = filename
@@ -450,7 +448,7 @@ class CIB(object):
 
         with open(os.path.join(self.cib_dir, '%s' % filename), 'w') as f:
             f.write(slim)
-            logging.info("CIB entry saved as \"%s\"." % filename)
+            logging.debug("CIB entry saved as \"%s\"." % filename)
 
         self.reload_files()
 
@@ -468,6 +466,8 @@ class CIB(object):
 
     def lookup(self, input_properties, candidate_num=5):
         """CIB lookup logic implementation
+
+        Return CIB rows that include *all* required properties from the request PropertyArray
         """
         assert isinstance(input_properties, PropertyArray)
         candidates = [input_properties]
@@ -475,12 +475,12 @@ class CIB(object):
             try:
                 # FIXME better check whether all input properties are included in row - improve matching
                 # ignore optional properties in input request
-                i = PropertyArray(*(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
-                if len(i & e) != len(i):
+                required_pa = PropertyArray(
+                    *(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
+                if len(required_pa & e) != len(required_pa):
                     continue
             except ImmutablePropertyError:
                 continue
-
             try:
                 candidate = e + input_properties
                 candidate.cib_node = e.cib_node

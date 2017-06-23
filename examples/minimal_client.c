@@ -22,8 +22,12 @@ on_readable(struct neat_flow_operations *ops)
     }
 
     neat_close(ops->ctx, ops->flow);
-    neat_stop_event_loop(ops->ctx);
+    return NEAT_OK;
+}
 
+static neat_error_code
+on_close(struct neat_flow_operations *ops) {
+    neat_stop_event_loop(ops->ctx);
     return NEAT_OK;
 }
 
@@ -79,6 +83,7 @@ main(int argc, char *argv[])
     memset(&ops, 0, sizeof(ops));
 
     ops.on_connected = on_connected;
+    ops.on_close = on_close;
     neat_set_operations(ctx, flow, &ops);
 
     neat_set_property(ctx, flow, properties);

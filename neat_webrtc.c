@@ -139,7 +139,6 @@ printf("ice_candidates->n_candidates=%zu\n", ice_candidates->n_candidates);
     client->remote_parameters.dtls_parameters = rawrtc_mem_ref(dtls_parameters);
     memcpy(&client->remote_parameters.sctp_parameters, &sctp_parameters, sizeof(sctp_parameters));
     printf("Applying remote parameters\n");
-    printf("client->remote_parameters.ice_candidates->n_candidates=%zu\n", client->remote_parameters.ice_candidates->n_candidates);
     client_set_parameters(client);
     client_start_transports(client);
 
@@ -156,7 +155,6 @@ out:
 
         // Stop client & bye
         client_stop(client);
-       // uv_timer_stop(timer_handle);
 
         printf("close rawrtc\n");
         rawrtc_close();
@@ -187,6 +185,8 @@ static void close_all_channels(struct peer_connection* const client)
         if (rawrtc_data_channel_close(client->flows[i]->channel) != RAWRTC_CODE_SUCCESS) {
             printf("%s could not be closed \n", client->flows[i]->label);
         }
+        printf("deref channel\n");
+        rawrtc_mem_deref(client->flows[i]->channel);
     }
 }
 
@@ -440,17 +440,18 @@ printf("%s: arg=peer_connection\n", __func__);
             }
         }
     }
-    if (state == RAWRTC_SCTP_TRANSPORT_STATE_CLOSED) {
+ /*   if (state == RAWRTC_SCTP_TRANSPORT_STATE_CLOSED) {
+    printf("max_flows=%d\n", client->max_flows);
         for (int i = (int)client->max_flows - 1; i >= 0; i--) {
-            printf("i=%d state = %d flowState=%d \n", i, client->flows[i]->state, client->flows[i]->flow->state);
+            printf("i=%d state = %d \n", i, client->flows[i]->state);
             printf("%s:%d\n", __func__, __LINE__);
-            neat_notify_close(client->flows[i]->flow);
-            printf("nach neat_notify_close\n");
+                neat_notify_close(client->flows[i]->flow);
+                printf("nach neat_notify_close\n");
             client->n_flows--;
             free(client->flows[i]);
             printf("nach free \n");
         }
-    }
+    }*/
 }
 
 
@@ -886,6 +887,14 @@ neat_set_listening_flow(neat_ctx *ctx, neat_flow *flow)
     flow->state = NEAT_FLOW_OPEN;
     peer.listening_flow = flow;
     peer.ctx = ctx;
+}
+
+neat_error_code neat_send_remote_parameters(struct neat_ctx *ctx, struct neat_flow *flow, char* params)
+//neat_send_remote_parameters(neat_ctx *ctx, neat_flow *flow, char* params)
+{
+    printf("Remote Parameter: %s\n", params);
+    free(params);
+    return NEAT_OK;
 }
 
 

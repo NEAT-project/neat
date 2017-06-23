@@ -35,12 +35,13 @@ wants. A typical first step is to resolve a domain name.
 * `ljansson`
 * `libmnl (linux only)`
 * `libsctp-dev (linux only, for kernel SCTP support)`
+* `swig (for generating Python bindings)`
 
-| OS               | Install Dependencies                                                                 |
-| :--------------- | :----------------------------------------------------------------------------------- |
-| Debian/Ubuntu*   | `apt-get install cmake libuv1-dev libldns-dev libjansson-dev libmnl-dev libsctp-dev` |
-| FreeBSD          | `pkg install cmake libuv ldns jansson`                                               |
-| OS X             | `brew install cmake libuv ldns jansson`                                              |
+| OS               | Install Dependencies                                                                      |
+| :--------------- | :---------------------------------------------------------------------------------------- |
+| Debian/Ubuntu*   | `apt-get install cmake libuv1-dev libldns-dev libjansson-dev libmnl-dev libsctp-dev swig` |
+| FreeBSD          | `pkg install cmake libuv ldns jansson swig30`                                             |
+| OS X             | `brew install cmake libuv ldns jansson swig`                                              |
 \* Ubuntu 15.04 and higher
 
 ## Quickstart :rocket:

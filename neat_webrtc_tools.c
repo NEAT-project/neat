@@ -331,7 +331,7 @@ static void data_channel_helper_destroy(
         void* arg
 ) {
     struct data_channel_helper* const channel = arg;
-
+printf("data_channel_helper_destroy\n");
     // Unset handler argument & handlers of the channel
     if (rawrtc_data_channel_unset_handlers(channel->channel)!= RAWRTC_CODE_SUCCESS) {
         printf("Error unsetting data channel handlers\n");
@@ -869,10 +869,7 @@ char *set_ice_candidates_string(
         rawrtc_mem_deref(foundation);
     }
     strcat(candidates, "]");
-
-
-
-
+    free (str);
     return (candidates);
 }
 
@@ -937,6 +934,7 @@ char *set_dtls_parameters_string(
     strcat(params, "]}");
     // Un-reference fingerprints
     rawrtc_mem_deref(fingerprints);
+    free (str);
 
     return params;
 }
@@ -965,13 +963,6 @@ char *set_sctp_parameters_string(
     sprintf(params, "\"sctpParameters\":{\"maxMessageSize\":%lu,\"port\":%d}", max_message_size, port);
 
     return params;
-    // Set ICE parameters
- /*   if (rawrtc_odict_entry_add(dict, "maxMessageSize", ODICT_INT, max_message_size) != RAWRTC_CODE_SUCCESS)              {
-        printf("Error set_sctp_parameters: add max_message_size");
-    }
-    if (rawrtc_odict_entry_add(dict, "port", ODICT_INT, port) != RAWRTC_CODE_SUCCESS)              {
-        printf("Error set_sctp_parameters: add array");
-    }*/
 }
 
 

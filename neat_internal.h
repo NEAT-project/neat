@@ -661,5 +661,6 @@ void webrtc_io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
 neat_error_code neat_webrtc_write_to_channel(struct neat_ctx *ctx, struct neat_flow *flow,
     const unsigned char *buffer, uint32_t amt, struct neat_tlv optional[], unsigned int opt_count);
 void webrtc_io_parameters(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
+void stop_rawrtc();
 #endif // #if defined(WEBRTC_SUPPORT)
 #endif

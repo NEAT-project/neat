@@ -206,6 +206,7 @@ void neat_stop_event_loop(struct neat_ctx *nc)
     neat_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
 printf("%s\n", __func__);
     uv_stop(nc->loop);
+    printf("nach uv_stop\n");
 }
 
 int neat_get_backend_fd(struct neat_ctx *nc)
@@ -348,6 +349,8 @@ neat_free_ctx(struct neat_ctx *nc)
     neat_security_close(nc);
     neat_log_close(nc);
     free(nc);
+    printf("ctx freed\n");
+    stop_rawrtc();
 }
 
 //The three functions that deal with the NEAT callback API. Nothing very

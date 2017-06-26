@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#if defined(WEBRTC_SUPPORT)
 #include "neat.h"
 #include "neat_internal.h"
 #include "neat_webrtc_tools.h"
@@ -897,5 +898,4 @@ neat_error_code neat_send_remote_parameters(struct neat_ctx *ctx, struct neat_fl
     return NEAT_OK;
 }
 
-
-
+#endif

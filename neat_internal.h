@@ -9,7 +9,10 @@
 #include "neat_queue.h"
 #include "neat_security.h"
 #include "neat_pm_socket.h"
+
+#ifdef WEBRTC_SUPPORT
 #include "neat_webrtc_tools.h"
+#endif
 
 #ifdef __linux__
     #include "neat_linux.h"
@@ -649,6 +652,7 @@ neat_error_code copy_dtls_data(struct neat_pollable_socket *newSocket, struct ne
 neat_error_code neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
 
 /* Declarations for WebRTC */
+#if defined(WEBRTC_SUPPORT)
 void neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t role, const char *channel_name);
 void neat_set_listening_flow(neat_ctx *ctx, neat_flow *flow);
 void webrtc_io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
@@ -657,4 +661,5 @@ void webrtc_io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
 neat_error_code neat_webrtc_write_to_channel(struct neat_ctx *ctx, struct neat_flow *flow,
     const unsigned char *buffer, uint32_t amt, struct neat_tlv optional[], unsigned int opt_count);
 void webrtc_io_parameters(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
+#endif // #if defined(WEBRTC_SUPPORT)
 #endif

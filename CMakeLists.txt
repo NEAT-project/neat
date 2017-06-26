@@ -154,7 +154,7 @@ IF (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "DEBUG")
     # _FORTIFY_SOURCE requires compiling with optimization
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
-endif()
+ENDIF()
 
 OPTION(USRSCTP_SUPPORT "Include usrsctp support" 0)
 IF (USRSCTP_SUPPORT)
@@ -189,7 +189,7 @@ OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 0)
 
 OPTION(SOCKET_API "Include the socket API" 0)
 
-OPTION(WEBRTC_SUPPORT "Include WebRTC support" 1)
+OPTION(WEBRTC_SUPPORT "Include WebRTC support" 0)
 
 # REQUIREMENTS
 #################################################

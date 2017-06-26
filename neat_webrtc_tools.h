@@ -1,6 +1,6 @@
 #ifndef NEAT_WEBRTC_TOOLS_H
 #define NEAT_WEBRTC_TOOLS_H
-
+#if defined(WEBRTC_SUPPORT)
 #include <rawrtc.h>
 #include <jansson.h>
 
@@ -271,4 +271,5 @@ char *set_sctp_parameters_string(
 int rawrtc_stop_client(struct peer_connection *pc);
 
 int rawrtc_close_flow(struct neat_flow *flow, struct peer_connection *pc);
+#endif // #if defined(WEBRTC_SUPPORT)
 #endif

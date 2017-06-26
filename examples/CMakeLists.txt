@@ -16,7 +16,7 @@ LIST(APPEND neat_programs
     minimal_client.c
     minimal_server.c
     minimal_server2.c
-    peer_webrtc.c
+
 )
 
 LIST(APPEND neat_property_examples
@@ -31,6 +31,12 @@ LIST(APPEND neat_property_examples
     prop_streaming_mode.json
     prop_message_mode.json
 )
+
+IF(WEBRTC_SUPPORT)
+    LIST(APPEND neat_programs
+        peer_webrtc.c
+    )
+ENDIF()
 
 # BUILD EACH PROGRAM
 #################################################

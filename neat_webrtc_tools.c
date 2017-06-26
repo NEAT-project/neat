@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#if defined(WEBRTC_SUPPORT)
 
 #include "neat_webrtc_tools.h"
 #include "neat_internal.h"
@@ -1366,7 +1367,4 @@ printf("%s: arg=peer_connection set as arg to data_channel_helper\n", __func__);
     rawrtc_mem_deref(parameters);
 }
 
-
-
-
-
+#endif

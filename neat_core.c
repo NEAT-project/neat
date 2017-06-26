@@ -742,6 +742,19 @@ printf("%s:%d\n", __func__, __LINE__);
     flow->candidate_list = NULL;
 printf("%s:%d\n", __func__, __LINE__);
 
+    // close all listening sockets
+    TAILQ_FOREACH_SAFE(listen_socket, &(flow->listen_sockets), next, listen_socket_temp) {
+        printf("%s:%d\n", __func__, __LINE__);
+        if (!uv_is_closing((uv_handle_t *)listen_socket->handle)) {
+            printf("%s - closing listening handle and waiting for listen_socket_handle_free_cb\n", __func__);
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - closing listening handle and waiting for listen_socket_handle_free_cb", __func__);
+            uv_close((uv_handle_t *)(listen_socket->handle), listen_socket_handle_free_cb);
+        } else {
+            printf("%s - listen handle is already closing\n", __func__);
+            neat_log(ctx, NEAT_LOG_DEBUG, "%s - listen handle is already closing", __func__);
+        }
+    }
+
 
     // close handles for active flow
     if (flow->socket->handle != NULL && flow->socket->handle->type != UV_UNKNOWN_HANDLE
@@ -887,7 +900,6 @@ neat_get_property(neat_ctx *ctx, neat_flow *flow, const char* name, void *ptr, s
 
     return NEAT_OK;
 }
-
 
 int neat_get_stack(neat_ctx* mgr, neat_flow* flow)
 {
@@ -4036,9 +4048,13 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
 
 #if 1
     if (flow->webrtcEnabled) {
+#if defined(WEBRTC_SUPPORT)
         neat_log(ctx, NEAT_LOG_DEBUG, "WEBRTC enabled\n");
         flow->state = NEAT_FLOW_OPEN;
         neat_webrtc_gather_candidates(ctx, flow, port, channel_name);
+#else
+        assert(false);
+#endif
     } else {
         send_properties_to_pm(ctx, flow);
     }
@@ -4451,10 +4467,12 @@ neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+#if defined(WEBRTC_SUPPORT)
     if (flow->webrtcEnabled) {
         neat_set_listening_flow(ctx, flow);
         return NEAT_OK;
     }
+#endif
     if (flow->name) {
         return NEAT_ERROR_BAD_ARGUMENT;
     }
@@ -6574,12 +6592,13 @@ neat_write(struct neat_ctx *ctx,
             unsigned int opt_count)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
-
+#if defined(WEBRTC_SUPPORT)
     if (flow->socket->stack == NEAT_STACK_WEBRTC) {
         flow->notifyDrainPending = 1;
         printf("NEAT_STACK_WEBRTC send %d bytes\n", amt);
         return neat_webrtc_write_to_channel(ctx, flow, buffer, amt, optional, opt_count);
     }
+#endif // #if defined(WEBRTC_SUPPORT)
 
 #ifdef SCTP_MULTISTREAMING
     assert(flow->multistream_reset_out == false);
@@ -6645,10 +6664,15 @@ neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     flow->isClosing = 1;
-printf("neat_shutdown\n");
+
+    printf("neat_shutdown\n");
+
+#if defined(WEBRTC_SUPPORT)
     if (flow->webrtcEnabled) {
         return rawrtc_stop_client(flow->peer_connection);
     }
+#endif
+
     if (flow->isDraining) {
         return NEAT_OK;
     }
@@ -6885,11 +6909,13 @@ neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+#if defined(WEBRTC_SUPPORT)
     if (flow->webrtcEnabled) {
         //return rawrtc_stop_client(flow->peer_connection);
         printf("%s:%d\n", __func__, __LINE__);
         return rawrtc_close_flow(flow, flow->peer_connection);
     }
+#endif
 
 #ifdef SCTP_MULTISTREAMING
     if (flow->socket->multistream && flow->multistream_state == NEAT_FLOW_OPEN) {
@@ -7347,6 +7373,7 @@ neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid)
 
 #endif // SCTP_MULTISTREAMING
 
+#if defined(WEBRTC_SUPPORT)
 void webrtc_io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 {
     flow->socket->usrsctp_socket = flow->peer_connection->sctp_transport->socket;
@@ -7385,3 +7412,4 @@ void webrtc_io_parameters(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
         flow->operations->on_parameters(flow->operations);
     }
 }
+#endif

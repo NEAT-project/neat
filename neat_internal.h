@@ -33,7 +33,9 @@
     void (*cleanup)(struct neat_ctx *nc); \
     struct neat_src_addrs src_addrs; \
     struct neat_event_cbs* event_cbs; \
-    uint8_t src_addr_cnt
+    uint8_t src_addr_cnt; \
+    uint8_t src_addr_dump_done; \
+    uint16_t __pad
 
 #define NEAT_MAX_NUM_PROTO  5
 #define MAX_LOCAL_ADDR      64
@@ -234,6 +236,7 @@ struct neat_pollable_socket
     uint8_t                     multistream;            // multistreaming active
 
     unsigned int                sctp_explicit_eor : 1;
+    unsigned int                sctp_partial_reliability : 1;
     uint16_t                    sctp_streams_available; // available streams
 #ifdef SCTP_MULTISTREAMING
     uint8_t                     sctp_notification_wait; // wait for all notifications

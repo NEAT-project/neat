@@ -1,0 +1,17 @@
+{
+    "uid":"mbp_transport",
+    "description":"select a transport protocol that preserves message boundaries",
+    "priority": 2,
+    "replace_matched": false,
+    "match":{
+        "transport_type": {
+            "value": "message"
+        }
+    },
+    "properties":{
+        "transport": {
+            "value": ["SCTP", "SCTP/UDP", "UDP", UDPLite],
+            "precedence": 2
+        }
+    }
+}

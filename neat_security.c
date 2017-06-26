@@ -44,13 +44,18 @@ neat_security_filter_dtor(struct neat_iofilter *filter)
 }
 
 static neat_error_code
-drain_output(struct neat_ctx *ctx, struct neat_flow *flow,
-             struct neat_iofilter *filter, struct neat_tlv optional[], unsigned int opt_count)
+drain_output(struct neat_ctx *ctx,
+             struct neat_flow *flow,
+             struct neat_iofilter *filter,
+             struct neat_tlv optional[],
+             unsigned int opt_count)
 {
     neat_error_code rv;
     struct security_data *private;
     private = (struct security_data *) filter->userData;
     int didFilterWrite = 0;
+
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!private->outCipherBufferUsed) {
         return NEAT_OK;
@@ -92,6 +97,7 @@ gather_input(struct neat_ctx *ctx, struct neat_flow *flow,
              struct neat_iofilter *filter, struct neat_tlv optional[], unsigned int opt_count)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
     struct security_data *private = (struct security_data *) filter->userData;
     uint32_t actualAmt;
     uint32_t avail = CIPHER_BUFFER_SIZE - private->inCipherBufferUsed;
@@ -112,16 +118,22 @@ gather_input(struct neat_ctx *ctx, struct neat_flow *flow,
     // todo filters!
 }
 static neat_error_code
-neat_security_filter_write(struct neat_ctx *ctx, struct neat_flow *flow,
+neat_security_filter_write(struct neat_ctx *ctx,
+                           struct neat_flow *flow,
                            struct neat_iofilter *filter,
-                           const unsigned char *buffer, uint32_t amt,
-                           struct neat_tlv optional[], unsigned int opt_count);
+                           const unsigned char *buffer,
+                           uint32_t amt,
+                           struct neat_tlv optional[],
+                           unsigned int opt_count);
 static neat_error_code
-neat_security_filter_read(struct neat_ctx *ctx, struct neat_flow *flow,
+neat_security_filter_read(struct neat_ctx *ctx,
+                          struct neat_flow *flow,
                           struct neat_iofilter *filter,
-                          unsigned char *buffer, uint32_t amt,
+                          unsigned char *buffer,
+                          uint32_t amt,
                           uint32_t *actualAmt,
-                          struct neat_tlv optional[], unsigned int opt_count);
+                          struct neat_tlv optional[],
+                          unsigned int opt_count);
 
 static neat_error_code
 neat_security_handshake(struct neat_flow_operations *opCB)
@@ -159,18 +171,25 @@ neat_security_handshake(struct neat_flow_operations *opCB)
 }
 
 static neat_error_code
-handshake(struct neat_ctx *ctx, struct neat_flow *flow,
-          struct neat_iofilter *filter, struct neat_tlv optional[], unsigned int opt_count)
+handshake(struct neat_ctx *ctx,
+          struct neat_flow *flow,
+          struct neat_iofilter *filter,
+          struct neat_tlv optional[],
+          unsigned int opt_count)
 {
     neat_error_code rv;
     struct security_data *private;
     private = (struct security_data *) filter->userData;
+
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
     if (SSL_is_init_finished(private->ssl)) {
         return NEAT_OK;
     }
 
     int err = SSL_do_handshake(private->ssl);
     if (err == 1) {
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - handshake failed", __func__);
         return NEAT_OK;
     }
 
@@ -184,11 +203,13 @@ handshake(struct neat_ctx *ctx, struct neat_flow *flow,
         flow->operations->on_readable = NULL;
         neat_set_operations(ctx, flow, flow->operations);
     } else if (err != SSL_ERROR_NONE) {
-        // ERR_print_errors_fp(stderr);
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - handshake error", __func__);
+        ERR_print_errors_fp(stderr);
         return NEAT_ERROR_SECURITY;
     }
 
     if (SSL_is_init_finished(private->ssl)) {
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - SSL_is_init_finished", __func__);
         return NEAT_OK;
     }
 
@@ -230,10 +251,13 @@ handshake(struct neat_ctx *ctx, struct neat_flow *flow,
 }
 
 static neat_error_code
-neat_security_filter_write(struct neat_ctx *ctx, struct neat_flow *flow,
+neat_security_filter_write(struct neat_ctx *ctx,
+                           struct neat_flow *flow,
                            struct neat_iofilter *filter,
-                           const unsigned char *buffer, uint32_t amt,
-                           struct neat_tlv optional[], unsigned int opt_count)
+                           const unsigned char *buffer,
+                           uint32_t amt,
+                           struct neat_tlv optional[],
+                           unsigned int opt_count)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     neat_error_code rv;
@@ -274,11 +298,14 @@ neat_security_filter_write(struct neat_ctx *ctx, struct neat_flow *flow,
 }
 
 static neat_error_code
-neat_security_filter_read(struct neat_ctx *ctx, struct neat_flow *flow,
+neat_security_filter_read(struct neat_ctx *ctx,
+                          struct neat_flow *flow,
                           struct neat_iofilter *filter,
-                          unsigned char *buffer, uint32_t amt,
+                          unsigned char *buffer,
+                          uint32_t amt,
                           uint32_t *actualAmt,
-                          struct neat_tlv optional[], unsigned int opt_count)
+                          struct neat_tlv optional[],
+                          unsigned int opt_count)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s %d", __func__, *actualAmt);
     struct security_data *private;
@@ -337,6 +364,8 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
 #define client_method() TLSv1_2_client_method()
 #define server_method() TLSv1_2_server_method()
 #endif
+    //ERR_load_crypto_strings();
+    //SSL_load_error_strings();
 
     int isClient = !flow->isServer;
     if (flow->socket->stack == NEAT_STACK_TCP) {
@@ -366,9 +395,13 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
                 return NEAT_ERROR_SECURITY;
             }
 
-            if ((SSL_CTX_use_certificate_file(private->ctx, flow->server_pem, SSL_FILETYPE_PEM) < 0) ||
-                (SSL_CTX_use_PrivateKey_file(private->ctx, flow->server_pem, SSL_FILETYPE_PEM) < 0 )) {
-                neat_log(ctx, NEAT_LOG_ERROR, "unable to use cert or private key");
+            if (SSL_CTX_use_certificate_file(private->ctx, flow->server_pem, SSL_FILETYPE_PEM) != 1) {
+                neat_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_certificate_file : %s", flow->server_pem);
+                ERR_print_errors_fp(stderr);
+                return NEAT_ERROR_SECURITY;
+            }
+            if (SSL_CTX_use_PrivateKey_file(private->ctx, flow->server_pem, SSL_FILETYPE_PEM) != 1) {
+                neat_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_PrivateKey_file : %s", flow->server_pem);
                 return NEAT_ERROR_SECURITY;
             }
         }
@@ -441,75 +474,75 @@ neat_dtls_dtor(struct neat_dtls_data *dtls)
 
 
 void handle_notifications(BIO *bio, void *context, void *buf) {
-	struct sctp_assoc_change *sac;
-	struct sctp_send_failed *ssf;
-	struct sctp_paddr_change *spc;
-	struct sctp_remote_error *sre;
-	union sctp_notification *snp = buf;
-	char addrbuf[INET6_ADDRSTRLEN];
-	const char *ap;
-	union {
-		struct sockaddr_in s4;
-		struct sockaddr_in6 s6;
-		struct sockaddr_storage ss;
-	} addr;
+    struct sctp_assoc_change *sac;
+    struct sctp_send_failed *ssf;
+    struct sctp_paddr_change *spc;
+    struct sctp_remote_error *sre;
+    union sctp_notification *snp = buf;
+    char addrbuf[INET6_ADDRSTRLEN];
+    const char *ap;
+    union {
+    struct sockaddr_in s4;
+    struct sockaddr_in6 s6;
+    struct sockaddr_storage ss;
+    } addr;
 
-	switch (snp->sn_header.sn_type) {
-	case SCTP_ASSOC_CHANGE:
-		sac = &snp->sn_assoc_change;
-		printf("NOTIFICATION: assoc_change: state=%hu, error=%hu, instr=%hu outstr=%hu\n",
-		sac->sac_state, sac->sac_error, sac->sac_inbound_streams, sac->sac_outbound_streams);
-		break;
+    switch (snp->sn_header.sn_type) {
+        case SCTP_ASSOC_CHANGE:
+            sac = &snp->sn_assoc_change;
+            printf("NOTIFICATION: assoc_change: state=%hu, error=%hu, instr=%hu outstr=%hu\n",
+                sac->sac_state, sac->sac_error, sac->sac_inbound_streams, sac->sac_outbound_streams);
+            break;
 
-	case SCTP_PEER_ADDR_CHANGE:
-		spc = &snp->sn_paddr_change;
-		addr.ss = spc->spc_aaddr;
-		if (addr.ss.ss_family == AF_INET) {
-			ap = inet_ntop(AF_INET, &addr.s4.sin_addr, addrbuf, INET6_ADDRSTRLEN);
-		} else {
-			ap = inet_ntop(AF_INET6, &addr.s6.sin6_addr, addrbuf, INET6_ADDRSTRLEN);
-		}
-		printf("NOTIFICATION: intf_change: %s state=%d, error=%d\n", ap, spc->spc_state, spc->spc_error);
-		break;
+        case SCTP_PEER_ADDR_CHANGE:
+            spc = &snp->sn_paddr_change;
+            addr.ss = spc->spc_aaddr;
+            if (addr.ss.ss_family == AF_INET) {
+                ap = inet_ntop(AF_INET, &addr.s4.sin_addr, addrbuf, INET6_ADDRSTRLEN);
+            } else {
+                ap = inet_ntop(AF_INET6, &addr.s6.sin6_addr, addrbuf, INET6_ADDRSTRLEN);
+            }
+            printf("NOTIFICATION: intf_change: %s state=%d, error=%d\n", ap, spc->spc_state, spc->spc_error);
+            break;
 
-	case SCTP_REMOTE_ERROR:
-		sre = &snp->sn_remote_error;
-		printf("NOTIFICATION: remote_error: err=%hu len=%hu\n", ntohs(sre->sre_error), ntohs(sre->sre_length));
-		break;
+        case SCTP_REMOTE_ERROR:
+            sre = &snp->sn_remote_error;
+            printf("NOTIFICATION: remote_error: err=%hu len=%hu\n", ntohs(sre->sre_error), ntohs(sre->sre_length));
+            break;
 
-	case SCTP_SEND_FAILED:
-		ssf = &snp->sn_send_failed;
-		printf("NOTIFICATION: sendfailed: len=%u err=%d\n", ssf->ssf_length, ssf->ssf_error);
-		break;
+        case SCTP_SEND_FAILED:
+            ssf = &snp->sn_send_failed;
+            printf("NOTIFICATION: sendfailed: len=%u err=%d\n", ssf->ssf_length, ssf->ssf_error);
+            break;
 
-	case SCTP_SHUTDOWN_EVENT:
-		printf("NOTIFICATION: shutdown event\n");
-		break;
+        case SCTP_SHUTDOWN_EVENT:
+            printf("NOTIFICATION: shutdown event\n");
+            break;
 
-	case SCTP_ADAPTATION_INDICATION:
-		printf("NOTIFICATION: adaptation event\n");
-		break;
+        case SCTP_ADAPTATION_INDICATION:
+            printf("NOTIFICATION: adaptation event\n");
+            break;
 
-	case SCTP_PARTIAL_DELIVERY_EVENT:
-		printf("NOTIFICATION: partial delivery\n");
-		break;
+        case SCTP_PARTIAL_DELIVERY_EVENT:
+            printf("NOTIFICATION: partial delivery\n");
+            break;
 
 #ifdef SCTP_AUTHENTICATION_EVENT
-	case SCTP_AUTHENTICATION_EVENT:
-		printf("NOTIFICATION: authentication event\n");
-		break;
+        case SCTP_AUTHENTICATION_EVENT:
+            printf("NOTIFICATION: authentication event\n");
+            break;
 #endif
 
 #ifdef SCTP_SENDER_DRY_EVENT
-	case SCTP_SENDER_DRY_EVENT:
-		printf("NOTIFICATION: sender dry event\n");
-		break;
+        case SCTP_SENDER_DRY_EVENT:
+            printf("NOTIFICATION: sender dry event\n");
+            break;
 #endif
 
-	default:
-		printf("NOTIFICATION: unknown type: %hu\n", snp->sn_header.sn_type);
-		break;
-	}
+        default:
+            printf("NOTIFICATION: unknown type: %hu\n", snp->sn_header.sn_type);
+            break;
+    }
 }
 
 static neat_error_code
@@ -523,6 +556,7 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
     if (private->state == DTLS_CONNECTING &&
         ((!opCB->flow->isServer && !SSL_in_connect_init(private->ssl)) ||
         ((opCB->flow->isServer && !SSL_in_accept_init(private->ssl))))) {
+
         neat_log(opCB->ctx, NEAT_LOG_DEBUG, "%s: SSL connection established", __func__);
         private->state = DTLS_CONNECTED;
         opCB->flow->socket->handle->data = opCB->flow->socket;
@@ -562,7 +596,7 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
         tls_init_trust_list(private->ctx);
     } else {
         private->ctx = SSL_CTX_new(DTLS_server_method());
-       // SSL_CTX_set_ecdh_auto(private->ctx, 1);
+        // SSL_CTX_set_ecdh_auto(private->ctx, 1);
 
         if (!(sock->flow->cert_pem)) {
             neat_log(ctx, NEAT_LOG_ERROR, "Server certificate file not set via neat_secure_identity()");
@@ -570,15 +604,18 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
             free(private);
             return NEAT_ERROR_SECURITY;
         }
+
         if (!(sock->flow->key_pem)) {
             neat_log(ctx, NEAT_LOG_ERROR, "Server key file not set via neat_secure_identity()");
             free(dtls);
             free(private);
             return NEAT_ERROR_SECURITY;
         }
+
         int pid = getpid();
-	    if( !SSL_CTX_set_session_id_context(private->ctx, (void*)&pid, sizeof pid) )
-		    perror("SSL_CTX_set_session_id_context");
+        if (!SSL_CTX_set_session_id_context(private->ctx, (void*)&pid, sizeof pid)) {
+            perror("SSL_CTX_set_session_id_context");
+        }
 
         if ((SSL_CTX_use_certificate_chain_file(private->ctx, sock->flow->cert_pem) < 0) ||
                 (SSL_CTX_use_PrivateKey_file(private->ctx, sock->flow->key_pem, SSL_FILETYPE_PEM) < 0 )) {
@@ -720,18 +757,18 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
 neat_error_code neat_secure_identity(neat_ctx *ctx, neat_flow *flow, const char *filename, int pemType)
 {
     switch (pemType) {
-    case NEAT_CERT_PEM:
-        free(flow->cert_pem);
-        flow->cert_pem = strdup(filename);
-        break;
-    case NEAT_KEY_PEM:
-        free(flow->key_pem);
-        flow->key_pem = strdup(filename);
-        break;
-    case NEAT_CERT_KEY_PEM:
-        free(flow->server_pem);
-        flow->server_pem = strdup(filename);
-        break;
+        case NEAT_CERT_PEM:
+            free(flow->cert_pem);
+            flow->cert_pem = strdup(filename);
+            break;
+        case NEAT_KEY_PEM:
+            free(flow->key_pem);
+            flow->key_pem = strdup(filename);
+            break;
+        case NEAT_CERT_KEY_PEM:
+            free(flow->server_pem);
+            flow->server_pem = strdup(filename);
+            break;
     }
     return NEAT_OK;
 }

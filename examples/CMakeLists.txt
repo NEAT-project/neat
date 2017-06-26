@@ -5,7 +5,6 @@ LIST(APPEND neat_programs
     client_data.c
     client_http_get.c
     client_http_run_once.c
-    client_https_get.c
     server_chargen.c
     server_daytime.c
     server_discard.c
@@ -14,6 +13,9 @@ LIST(APPEND neat_programs
     tneat.c
     peer.c
     msbench.c
+    minimal_client.c
+    minimal_server.c
+    minimal_server2.c
     peer_webrtc.c
 )
 

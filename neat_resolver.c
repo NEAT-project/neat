@@ -32,6 +32,8 @@ static void neat_resolver_delete_pairs(struct neat_resolver_request *request,
 static void neat_resolver_mark_pair_del(struct neat_resolver *resolver,
                                         struct neat_resolver_src_dst_addr *pair);
 
+static void neat_resolver_literal_timeout_cb(uv_timer_t *handle);
+
 //NEAT internal callbacks, not very interesting
 static void
 neat_resolver_handle_newaddr(struct neat_ctx *nc, void *p_ptr, void *data)
@@ -47,7 +49,8 @@ neat_resolver_handle_newaddr(struct neat_ctx *nc, void *p_ptr, void *data)
     request_itr = resolver->request_queue.tqh_first;
 
     while (request_itr != NULL) {
-        if (request_itr->family && request_itr->family != src_addr->family) {
+        if ((request_itr->family && request_itr->family != src_addr->family) ||
+            request_itr->is_literal) {
             request_itr = request_itr->next_req.tqe_next;
             continue;
         }
@@ -322,9 +325,10 @@ neat_resolver_populate_results(struct neat_resolver_request *request,
 }
 
 static void
-neat_resolver_timeout_shared(uv_timer_t *handle, uint8_t literal)
+neat_resolver_timeout_shared(uv_timer_t *handle)
 {
     struct neat_resolver_request *request = handle->data;
+    struct neat_ctx *ctx = request->resolver->nc;
     struct neat_resolver_results *result_list;
     uint32_t num_resolved_addrs = 0;
 
@@ -333,17 +337,22 @@ neat_resolver_timeout_shared(uv_timer_t *handle, uint8_t literal)
         return;
 
     //DNS timeout, call DNS callback with timeout error code
-    if (!literal && !request->name_resolved_timeout) {
+    if (!request->is_literal && !request->name_resolved_timeout) {
         request->resolve_cb(NULL, NEAT_RESOLVER_TIMEOUT, request->user_data);
         neat_resolver_request_cleanup(request);
         return;
     }
 
     //There were no addresses available, so return error
-    //TODO: Consider adding a different error
-    if (literal && !request->resolver->nc->src_addr_cnt) {
-        request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
-        neat_resolver_request_cleanup(request);
+    if (request->is_literal && !ctx->src_addr_cnt) {
+        if (ctx->src_addr_dump_done) {
+            request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
+            neat_resolver_request_cleanup(request);
+        } else {
+            uv_timer_start(&(request->timeout_handle),
+                    neat_resolver_literal_timeout_cb, DNS_ADDRESS_TIMEOUT, 0);
+        }
+
         return;
     }
 
@@ -357,7 +366,7 @@ neat_resolver_timeout_shared(uv_timer_t *handle, uint8_t literal)
 
     LIST_INIT(result_list);
 
-    if (literal) {
+    if (request->is_literal) {
         num_resolved_addrs = neat_resolver_literal_populate_results(request,
                                                                     result_list);
     } else {
@@ -386,7 +395,7 @@ neat_resolver_timeout_shared(uv_timer_t *handle, uint8_t literal)
 static void
 neat_resolver_literal_timeout_cb(uv_timer_t *handle)
 {
-    neat_resolver_timeout_shared(handle, 1);
+    neat_resolver_timeout_shared(handle);
 }
 
 //Called when timeout expires. This function will pass the results of the DNS
@@ -394,8 +403,7 @@ neat_resolver_literal_timeout_cb(uv_timer_t *handle)
 static void
 neat_resolver_timeout_cb(uv_timer_t *handle)
 {
-    //neat_log(NEAT_LOG_DEBUG, "%s", __func__);
-    neat_resolver_timeout_shared(handle, 0);
+    neat_resolver_timeout_shared(handle);
 }
 
 //Called when a DNS request has been (i.e., passed to socket). We will send the
@@ -802,20 +810,22 @@ neat_resolver_delete_pairs(struct neat_resolver_request *request,
 //how much we can recycle when we start processing queue
 static void
 neat_start_request(struct neat_resolver *resolver,
-                    struct neat_resolver_request *request,
-                    int8_t is_literal)
+                    struct neat_resolver_request *request)
 {
     struct neat_addr *nsrc_addr = NULL;
 
     //node is a literal, so we will just wait a short while for address list to
     //be populated
-    if (is_literal) {
-        uv_timer_start(&(request->timeout_handle), neat_resolver_literal_timeout_cb, DNS_LITERAL_TIMEOUT, 0);
+    if (request->is_literal) {
+        uv_timer_start(&(request->timeout_handle),
+                neat_resolver_literal_timeout_cb,
+                DNS_LITERAL_TIMEOUT, 0);
         return;
     }
 
     //Start the resolver timeout, this includes fetching addresses
-    uv_timer_start(&(request->timeout_handle), neat_resolver_timeout_cb, resolver->dns_t1, 0);
+    uv_timer_start(&(request->timeout_handle), neat_resolver_timeout_cb,
+            resolver->dns_t1, 0);
 
     //No point starting to query if we don't have any source addresses
     if (!resolver->nc->src_addr_cnt) {
@@ -870,9 +880,8 @@ neat_resolve(struct neat_resolver *resolver,
     }
 
     request = calloc(sizeof(struct neat_resolver_request), 1);
-    if (!request) {
-        return RETVAL_FAILURE;
-    }
+    if (!request)
+      return RETVAL_FAILURE;
 
     request->family = family;
     request->dst_port = htons(port);
@@ -882,16 +891,18 @@ neat_resolve(struct neat_resolver *resolver,
     uv_timer_init(resolver->nc->loop, &(request->timeout_handle));
     request->timeout_handle.data = request;
 
-    is_literal = neat_resolver_helpers_check_for_literal(&(request->family), node);
+    is_literal = neat_resolver_helpers_check_for_literal(&(request->family),
+                                                         node);
 
     if (is_literal < 0) {
         free(request);
         return RETVAL_FAILURE;
     }
 
+    request->is_literal = is_literal;
+
     LIST_INIT(&(request->resolver_pairs));
 
-    //HACK: This is just a hack for testing, will be set based on argument later!
     request->resolve_cb = handle_resolve;
 
     //No need to care about \0, we use calloc ...
@@ -900,7 +911,7 @@ neat_resolve(struct neat_resolver *resolver,
     TAILQ_INSERT_TAIL(&(resolver->request_queue), request, next_req);
 
     //Start request
-    neat_start_request(resolver, request, is_literal);
+    neat_start_request(resolver, request);
 
     return RETVAL_SUCCESS;
 }

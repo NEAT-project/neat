@@ -78,6 +78,7 @@ char
 
         if (i > 8) {
             fprintf(stderr, "%s - YB should be enough - something went wrong\n", __func__);
+            exit(EXIT_FAILURE);
         }
     }
     snprintf(buffer, buffersize, "%.*f %s", i, bytes, units[i]);

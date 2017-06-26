@@ -2,10 +2,10 @@ import bisect
 import hashlib
 import json
 import logging
+import os
+
 import sys
 import time
-
-import os
 
 import pmdefaults as PM
 from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
@@ -74,16 +74,12 @@ class NEATPolicy(object):
             else:
                 self.properties.add(PropertyArray.from_dict(p))
 
-
-                # set UID
+        # set UID
         self.uid = policy_dict.get('uid')
         if self.uid is None:
             self.uid = self.__gen_uid()
         else:
             self.uid = str(self.uid).lower()
-
-        # deprecated
-        self.name = policy_dict.get('name', self.uid)
 
     def __gen_uid(self):
         # TODO make UID immutable?
@@ -111,7 +107,7 @@ class NEATPolicy(object):
         Entries with the smallest number of elements are matched first."""
         return len(self.match)
 
-    def match_query(self, input_properties, strict=True):
+    def match_query(self, input_properties, strict=False):
         """Check if the match properties are completely covered by the properties of a query.
 
         If strict flag is set match only properties with precedences that are higher or equal to the precedence
@@ -213,11 +209,10 @@ class PIB(list):
 
         with open(filename, 'w') as f:
             f.write(policy.json())
-
-        logging.info("Policy saved as \"%s\"." % filename)
+            logging.debug("Policy saved as \"%s\"." % filename)
 
         # FIXME register
-        self.reload()
+        self.reload_files()
 
     def load_policy(self, filename):
         """Load policy.
@@ -244,7 +239,7 @@ class PIB(list):
             pass
             # logging.debug("Policy %s is up-to-date", filename)
 
-    def reload(self):
+    def reload_files(self):
         """
         Reload PIB files
         """
@@ -252,6 +247,8 @@ class PIB(list):
 
         for dir_path, dir_names, filenames in os.walk(self.policy_dir):
             for f in filenames:
+                if not f.endswith(self.file_extension) or f.startswith(('.', '#')):
+                    continue
                 full_name = os.path.join(dir_path, f)
                 current_files.add(full_name)
                 self.load_policy(full_name)
@@ -274,7 +271,7 @@ class PIB(list):
             # logging.debug("Policy match fields for policy %s already registered. " % (policy.uid))
             pass
 
-        # check if a policy with the same UID is already installed and remove it XXX
+        # check if a policy with the same UID is already installed and remove old version if so
         if policy.uid in self.index:
             self.unregister(policy.uid)
 
@@ -286,14 +283,21 @@ class PIB(list):
         self.index[policy.uid] = idx
 
     def unregister(self, policy_uid):
+        """
+        Remove policy from in-memory repository. This does not remove the policy from the file system.
+        """
         idx = self.index[policy_uid]
         del self.policies[idx]
         del self.index[policy_uid]
 
+    def remove(self, policy_uid):
+        self.unregister(policy_uid)
+
     def lookup(self, input_properties, apply=True, tag=None):
         """
-        Look through all installed policies to find the ones which match the properties of the given candidate.
-        If apply is True, append the matched policy properties.
+        Look through all installed policies and apply the ones which match against the properties of the given candidate.
+
+        If apply is False, do not append the matched policy properties (dry run).
 
         Returns all matched policies.
         """
@@ -304,39 +308,35 @@ class PIB(list):
 
         logging.info("matching policies %s" % tag)
         candidates = [input_properties]
+        processed_candidates = []
 
+        # iterate through all policies and apply them to candidate.
         for p in self.policies:
-            if p.match_query(input_properties):
-                tmp_candidates = []
-
-                policy_info = str(p.uid)
-                if hasattr(p, "description"):
-                    policy_info += ' (%s)' % p.description
-
-                if apply:
-                    while candidates:
-                        candidate = candidates.pop()
-                        # if replace_matched is true, remove all matched properties from the candidate
-                        if p.replace_matched:
-                            for key in p.match:
-                                del candidate[key]
-
-                        for policy_properties in p.properties.expand():
-                            try:
-                                new_candidate = candidate + policy_properties
-                            except ImmutablePropertyError:
-                                logging.info(
-                                    ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *REJECTED*' + PM.STYLES.FORMAT_END)
-                                return []
-                            # TODO copy policies from candidate and policy_properties for debugging
-                            #  if hasattr(new_candidate, 'policies'):
-                            #      new_candidate.policies.append(p.uid)
-                            #  else:
-                            #      new_candidate.policies = [p.uid]
-                            tmp_candidates.append(new_candidate)
-                candidates.extend(tmp_candidates)
-
-                logging.info(' ' * 4 + policy_info)
+            policy_info = str(p.uid)
+            if hasattr(p, "description"):
+                policy_info += ' ' + PM.STYLES.DARK_GRAY_START + '(%s)' % p.description + PM.STYLES.FORMAT_END
+            updated_candidates = []
+            for cand in candidates:
+                if p.match_query(cand):
+                    logging.info(' ' * 4 + policy_info)
+                    if not apply:
+                        continue
+                    # if replace_matched attribute is true, remove the matched properties from the candidate
+                    if p.replace_matched:
+                        for key in p.match:
+                            del cand[key]
+                    for policy_properties in p.properties.expand():
+                        try:
+                            updated_candidate = cand + policy_properties
+                            updated_candidates.append(updated_candidate)
+                        except ImmutablePropertyError as e:
+                            logging.info(
+                                ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *CANDIDATE REJECTED*' + PM.STYLES.FORMAT_END + ' (%s)' % str(e))
+                            continue
+                else:
+                    updated_candidates.append(cand)
+            candidates = updated_candidates
+            # TODO copy policies from candidate and policy_properties for debugging
         return candidates
 
     def dump(self):

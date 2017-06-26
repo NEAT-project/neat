@@ -3961,7 +3961,9 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     int group = 0;
     float priority = 0.5f;
     const char *cc_algorithm = NULL;
+#if defined(WEBRTC_SUPPORT)
     const char *channel_name = NULL;
+#endif
     json_t *multihoming = NULL;
     json_t *val = NULL;
     json_t *security = NULL;
@@ -3979,7 +3981,9 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
         OPTIONAL_INTEGER(NEAT_TAG_FLOW_GROUP, group)
         OPTIONAL_FLOAT(NEAT_TAG_PRIORITY, priority)
         OPTIONAL_STRING(NEAT_TAG_CC_ALGORITHM, cc_algorithm)
-        OPTIONAL_STRING(NEAT_TAG_CHANNEL_NAME, channel_name)
+#if defined(WEBRTC_SUPPORT)
+	OPTIONAL_STRING(NEAT_TAG_CHANNEL_NAME, channel_name)
+#endif
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if (stream_count > 1) {

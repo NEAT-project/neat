@@ -4801,6 +4801,8 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif // defined(SCTP_PRINFO)
 #endif // defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
 
+    memset(&msghdr, 0, sizeof(msghdr));
+    memset(&iov, 0, sizeof(iov));
 
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 

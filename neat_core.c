@@ -1669,6 +1669,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                 neat_log(ctx, NEAT_LOG_DEBUG, "%s - new incoming flow - stream_id %d", __func__, stream_id);
 
                 neat_flow *listen_flow = flow->socket->listen_socket->flow;
+                multistream_flow = neat_new_flow(ctx);
 
 
                 multistream_flow->name                      = strdup(listen_flow->name);

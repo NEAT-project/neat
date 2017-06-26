@@ -4594,6 +4594,7 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 }
                 if (!flow->security_needed) {
                     if (rv < 0) {
+                        neat_log(ctx, NEAT_LOG_WARNING, "%s - sending failed - %s", __func__, strerror(errno));
                         if (errno == EWOULDBLOCK) {
                             return NEAT_ERROR_WOULD_BLOCK;
                         } else {
@@ -4964,6 +4965,7 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         neat_log(ctx, NEAT_LOG_DEBUG, "%zd bytes sent", rv);
 #endif
         if (rv < 0 ) {
+            neat_log(ctx, NEAT_LOG_WARNING, "%s - sending failed - %s", __func__, strerror(errno));
             if (errno != EWOULDBLOCK) {
                 return NEAT_ERROR_IO;
             }
@@ -6093,7 +6095,7 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
 
     protocol = neat_stack_to_protocol(neat_base_stack(candidate->pollable_socket->stack));
     if (protocol == 0) {
-        neat_log(candidate->ctx, NEAT_LOG_ERROR, "Stack %d not supported", candidate->pollable_socket->stack);
+        neat_log(candidate->ctx, NEAT_LOG_ERROR, "%s - Stack %d not supported", __func__, candidate->pollable_socket->stack);
         return -1;
     }
 
@@ -6448,7 +6450,7 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx,
 
     protocol = neat_stack_to_protocol(neat_base_stack(listen_socket->stack));
     if (protocol == 0) {
-        neat_log(flow->ctx, NEAT_LOG_ERROR, "Stack %d not supported", listen_socket->stack);
+        neat_log(flow->ctx, NEAT_LOG_ERROR, "%s - Stack %d not supported", __func__, listen_socket->stack);
         return -1;
     }
 
@@ -6879,6 +6881,26 @@ neat_find_flow(neat_ctx *ctx, struct sockaddr_storage *src, struct sockaddr_stor
     return NULL;
 }
 
+neat_error_code
+neat_set_low_watermark(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t watermark) {
+#ifdef TCP_NOTSENT_LOWAT
+    if (neat_base_stack(flow->socket->stack) != NEAT_STACK_TCP || flow->socket->fd == -1) {
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - cannot set TCP_NOTSENT_LOWAT - only supported for TCP", __func__);
+        return NEAT_ERROR_UNABLE;
+    }
+
+    if (setsockopt(flow->socket->fd, IPPROTO_TCP, TCP_NOTSENT_LOWAT, &watermark, (socklen_t) sizeof(watermark)) < 0) {
+        neat_log(ctx, NEAT_LOG_WARNING, "%s - cannot set TCP_NOTSENT_LOWAT - setsockopt failed", __func__);
+        return NEAT_ERROR_UNABLE;
+    }
+
+    neat_log(ctx, NEAT_LOG_INFO, "%s - TCP_NOTSENT_LOWAT set to %d", __func__, watermark);
+    return NEAT_OK;
+#else
+    neat_log(ctx, NEAT_LOG_WARNING, "%s - cannot set TCP_NOTSENT_LOWAT - unsupported", __func__);
+    return NEAT_ERROR_UNABLE;
+#endif
+}
 
 
 #ifdef SCTP_MULTISTREAMING

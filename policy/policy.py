@@ -306,6 +306,7 @@ class NEATProperty(object):
         self.precedence = precedence
         self.score = score
 
+        # TODO implement banned values
         if banned:
             self.banned = [PropertyValue(b) for b in banned]
         else:
@@ -314,7 +315,6 @@ class NEATProperty(object):
         # set if property was compared or updated during a lookup
         self.evaluated = evaluated
 
-        # TODO check if value is in banned list
 
     @property
     def value(self):
@@ -382,7 +382,8 @@ class NEATProperty(object):
         Create a new property by updating the first one with the second. Returns a new NEATProperty object.
         """
 
-        # experimental: reverse comparison order if precedence is zero. Used to specify default policies
+        # experimental: reverse comparison order if precedence is zero.
+        # Used to implement policies with default properties.
         if other.precedence == NEATProperty.BASE:
             new_prop = copy.deepcopy(other)
             new_prop.update(self, evaluate=False)
@@ -423,8 +424,8 @@ class NEATProperty(object):
         value_match = self == other
 
         # property with the higher precedence determines the new property value and new precedence
-        # if both precedences are optional, the other property sets the new property value and new precedence
-        # if both precedences are immutable, we raise an exception if the values differ
+        # if both precedences are optional, the other property determines the new property value and new precedence
+        # if both precedences are immutable, we raise an exception if the property values differ
 
         if value_match:
             self.score += other.score  # TODO adjust scoring
@@ -458,7 +459,8 @@ class NEATProperty(object):
         elif self._value.is_set:
             val_str = ','.join([str(i) for i in self.value])
         elif self.value is None:
-            val_str = ''
+            # empty value matches ANY property value
+            val_str = '*'
         else:
             val_str = str(self._value)
 
@@ -493,7 +495,10 @@ class NEATProperty(object):
         else:
             property_str = '?%s?%s' % (keyval_str, score_str)
 
-        property_str = STYLES.DARK_GRAY_START + property_str + STYLES.FORMAT_END
+        if self.key.startswith('__'):
+            property_str = STYLES.LIGHT_GRAY_START + property_str + STYLES.FORMAT_END
+        else:
+            property_str = STYLES.DARK_GRAY_START + property_str + STYLES.FORMAT_END
 
         return property_str
 

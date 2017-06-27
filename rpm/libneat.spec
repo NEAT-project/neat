@@ -1,5 +1,5 @@
 Name: libneat
-Version: 0.0.1~td157
+Version: 0.0.1~td158
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -131,7 +131,7 @@ Requires: %{name}-socketapi = %{version}-%{release}
 %setup -q
 
 %build
-%cmake -DCMAKE_INSTALL_PREFIX=/usr -DUSRSCTP_SUPPORT=0 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1 .
+%cmake -DCMAKE_INSTALL_PREFIX=/usr -DSOCKET_API=1 -DUSRSCTP_SUPPORT=0 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1 .
 make %{?_smp_mflags}
 
 %install
@@ -157,7 +157,6 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat/client_data
 /usr/lib/libneat/client_http_get
 /usr/lib/libneat/client_http_run_once
-/usr/lib/libneat/client_https_get
 /usr/lib/libneat/msbench
 /usr/lib/libneat/peer
 /usr/lib/libneat/server_chargen

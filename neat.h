@@ -55,7 +55,7 @@ struct neat_flow_operations {
     void *userData;
 
     neat_error_code status;
-    int stream_id;
+    uint16_t stream_id;
     neat_flow_operations_fx on_connected;
     neat_flow_operations_fx on_error;
     neat_flow_operations_fx on_readable;
@@ -164,11 +164,12 @@ NEAT_EXTERN neat_error_code neat_set_checksum_coverage(struct neat_ctx *ctx, str
 // The filename should be a PEM file with both cert and key
 NEAT_EXTERN neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct neat_flow *flow,
                                      const char *filename, int pemType);
-
 NEAT_EXTERN neat_error_code neat_set_qos(struct neat_ctx *ctx,
                     struct neat_flow *flow, uint8_t qos);
 NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
                     struct neat_flow *flow, uint8_t ecn);
+NEAT_EXTERN neat_error_code neat_set_low_watermark(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t watermark);
+
 
 #define NEAT_ERROR_OK               (0)
 #define NEAT_OK                     NEAT_ERROR_OK

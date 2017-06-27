@@ -94,23 +94,16 @@ on_readable(struct neat_flow_operations *opCB)
         }
     }
 
-    if (buffer_filled > 0) {
-        if (config_log_level >= 1) {
-            printf("received data - %d byte\n", buffer_filled);
-        }
-        if (config_log_level >= 2) {
-            fwrite(buffer, sizeof(char), buffer_filled, stdout);
-            printf("\n");
-            fflush(stdout);
-        }
-    } else {
-        if (config_log_level >= 1) {
-            printf("peer disconnected\n");
-        }
-        opCB->on_readable = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_close(opCB->ctx, opCB->flow);
+
+    if (config_log_level >= 1) {
+        printf("received data - %d byte\n", buffer_filled);
     }
+    if (config_log_level >= 2) {
+        fwrite(buffer, sizeof(char), buffer_filled, stdout);
+        printf("\n");
+        fflush(stdout);
+    }
+
     return NEAT_OK;
 }
 

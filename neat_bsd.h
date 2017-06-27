@@ -7,5 +7,4 @@
     int udp6_fd; \
     uv_udp_t uv_route_handle; \
     char *route_buf
-
 #endif

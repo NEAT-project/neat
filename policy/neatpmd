@@ -165,11 +165,11 @@ def process_request(json_str, num_candidates=10):
 
     for r in requests:
         # FIXME workaround
-        if 'pre_resolve' not in r:
+        if '__pre_resolve' not in r:
             logging.warning("skipping pre_resolve PM lookup")
             # just add tag and return the requests, theses will be processed during the next round
             for rr in requests:
-                p = policy.NEATProperty(('pre_resolve', True))
+                p = policy.NEATProperty(('__pre_resolve', True))
                 rr.add(p)
             return requests
 
@@ -185,6 +185,8 @@ def process_request(json_str, num_candidates=10):
 
         print('Profile lookup...')
         updated_requests = profiles.lookup(request, tag='(profile)')
+
+        print('    Profile lookup returned %d candidates:' % len(updated_requests))
         for ur in updated_requests:
             logging.debug("updated request %s" % (ur))
 
@@ -206,7 +208,7 @@ def process_request(json_str, num_candidates=10):
             for c in pib.lookup(candidate, tag=cand_id):
                 if c in candidates: continue
                 candidates.append(c)
-                logging.debug(c)
+        print('    Policy lookup returned %d candidates:' % len(candidates))
 
     # TODO handle 'to_controller' property, wait for controller response
     candidates.sort(key=attrgetter('score'), reverse=True)

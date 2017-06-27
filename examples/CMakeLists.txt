@@ -16,6 +16,7 @@ LIST(APPEND neat_programs
     minimal_client.c
     minimal_server.c
     minimal_server2.c
+    signaling.c
 )
 
 LIST(APPEND neat_property_examples

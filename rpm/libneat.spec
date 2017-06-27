@@ -165,6 +165,9 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat/server_echo
 /usr/lib/libneat/server_http
 /usr/lib/libneat/tneat
+/usr/lib/libneat/minimal_client
+/usr/lib/libneat/minimal_server
+/usr/lib/libneat/minimal_server2
 
 %files socketapi
 %defattr(-,root,root,-)

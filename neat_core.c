@@ -2122,8 +2122,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 #ifdef MPTCP_SUPPORT
         if (candidate->pollable_socket->stack == NEAT_STACK_MPTCP) {
             int mptcp_enabled = 0;
-            unsigned int len = sizeof(mptcp_enabled);
-            getsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_enabled, &len);
+            unsigned int len_mp = sizeof(mptcp_enabled);
+            getsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_enabled, &len_mp);
 
             if (!mptcp_enabled) {
                 uv_poll_stop(handle);

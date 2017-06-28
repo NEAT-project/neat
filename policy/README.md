@@ -58,7 +58,7 @@ The *N* entries with the largest aggregate score are appended to the candidate l
 To start the policy manager run:
 
 ```
-$ python3.5 ./neatpmd --cib ./example/cib/ --pib ./example/pib
+$ python3.5 ./neatpmd --cib ./examples/cib/ --pib ./examples/pib
 
 ```
 

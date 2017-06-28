@@ -22,7 +22,7 @@ static char *config_property = "{\
 }";
 
 static uint32_t rcv_buffer_level = 0;
-static uint32_t snd_buffer_level = 0;
+//static uint32_t snd_buffer_level = 0;
 
 static unsigned char *signaling_buffer_rcv = NULL;
 static unsigned char *signaling_buffer_snd= NULL;

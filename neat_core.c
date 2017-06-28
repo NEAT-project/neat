@@ -181,7 +181,7 @@ neat_init_ctx()
         free(nc->loop);
         free(nc);
     }
-    printf("neat_init_ctx ctx=%p loop=%p\n", (void *)ctx, (void *)ctx->loop);
+   // printf("neat_init_ctx ctx=%p loop=%p\n", (void *)ctx, (void *)ctx->loop);
     return ctx;
 }
 

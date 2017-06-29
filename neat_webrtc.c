@@ -94,6 +94,10 @@ static void client_start_transports(
     printf("sctp_transport=%p\n", (void *)client->sctp_transport);
 }
 
+static void parse_remote_parameters_extern(unsigned char *buffer, uint32_t buffer_length) {
+
+}
+
 
 static void parse_remote_parameters(
         int flags,
@@ -888,14 +892,6 @@ neat_set_listening_flow(neat_ctx *ctx, neat_flow *flow)
     flow->state = NEAT_FLOW_OPEN;
     peer.listening_flow = flow;
     peer.ctx = ctx;
-}
-
-neat_error_code neat_send_remote_parameters(struct neat_ctx *ctx, struct neat_flow *flow, char* params)
-//neat_send_remote_parameters(neat_ctx *ctx, neat_flow *flow, char* params)
-{
-    printf("Remote Parameter: %s\n", params);
-    free(params);
-    return NEAT_OK;
 }
 
 #endif

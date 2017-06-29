@@ -22,7 +22,7 @@ static neat_error_code signaling_on_readable(struct neat_flow_operations *opCB);
 static neat_error_code signaling_on_writable(struct neat_flow_operations *opCB);
 
 neat_error_code
-neat_signaling_init(struct neat_ctx *ctx, struct neat_signaling_context *sctx) {
+neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_signaling_context *sctx) {
     fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
 
     memset(sctx, 0, sizeof(struct neat_signaling_context));
@@ -38,6 +38,7 @@ neat_signaling_init(struct neat_ctx *ctx, struct neat_signaling_context *sctx) {
     sctx->ops.on_connected      = signaling_on_connected;
     sctx->ops.on_close          = signaling_on_close;
     sctx->log_level             = 2;
+    sctx->webrtc_flow           = flow;
 
     if (neat_set_operations(ctx, sctx->flow, &(sctx->ops))) {
         fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
@@ -89,6 +90,7 @@ signaling_on_readable(struct neat_flow_operations *opCB)
     // data is available to read
     neat_error_code code;
     struct neat_signaling_context *sctx = opCB->userData;
+    char *remote = NULL;
     fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
 
     if (sctx->log_level >= 2) {
@@ -109,7 +111,7 @@ signaling_on_readable(struct neat_flow_operations *opCB)
         }
     }
 
-    if (sctx->state == NEAT_SIGNALING_STATE_WAITING &&  sctx->buffer_rcv_level == 8) {
+    if (sctx->state == NEAT_SIGNALING_STATE_WAITING && sctx->buffer_rcv_level == 8) {
         if (strncmp((const char *) &(sctx->buffer_rcv), "READY###", 8)) {
             fprintf(stderr, "%s - something went wrong\n", __func__);
             exit(EXIT_FAILURE);
@@ -123,6 +125,9 @@ signaling_on_readable(struct neat_flow_operations *opCB)
             sctx->ops.on_writable = signaling_on_writable;
             neat_set_operations(sctx->ctx, sctx->flow, &(sctx->ops));
         }
+    } else if (sctx->state == NEAT_SIGNALING_STATE_READY) {
+        remote = strdup((char *) &(sctx->buffer_rcv));
+        neat_send_remote_parameters(sctx->ctx, sctx->flow, remote);
     }
 
 
@@ -130,8 +135,8 @@ signaling_on_readable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s - received %d bytes\n", __func__, sctx->buffer_rcv_level);
     }
 
-    fwrite(sctx->buffer_rcv, sizeof(char), sctx->buffer_rcv_level, stdout);
-    fflush(stdout);
+    //fwrite(sctx->buffer_rcv, sizeof(char), sctx->buffer_rcv_level, stdout);
+    //fflush(stdout);
 
     return NEAT_OK;
 }

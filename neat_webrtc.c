@@ -897,7 +897,9 @@ neat_set_listening_flow(neat_ctx *ctx, neat_flow *flow)
 neat_error_code neat_send_remote_parameters(struct neat_ctx *ctx, struct neat_flow *flow, char* params)
 //neat_send_remote_parameters(neat_ctx *ctx, neat_flow *flow, char* params)
 {
+    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
     printf("Remote Parameter: %s\n", params);
+    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
     free(params);
     return NEAT_OK;
 }

@@ -14,6 +14,7 @@ typedef enum {
 struct neat_signaling_context {
     struct neat_ctx *ctx;
     struct neat_flow *flow;
+    struct neat_flow *webrtc_flow;
     struct neat_flow_operations ops;
     uint8_t log_level;
     unsigned char buffer_rcv[BUFFER_SIZE];
@@ -23,7 +24,7 @@ struct neat_signaling_context {
     uint8_t state;
 };
 
-neat_error_code neat_signaling_init(struct neat_ctx *ctx, struct neat_signaling_context *sctx);
+neat_error_code neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_signaling_context *sctx);
 neat_error_code neat_signaling_send(struct neat_signaling_context *sctx, unsigned char* buffer, uint32_t buffer_length);
 
 #endif /* ifndef WEBRTC_SIGNALING_H */

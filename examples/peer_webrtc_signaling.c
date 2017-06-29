@@ -109,7 +109,7 @@ on_parameters(struct neat_flow_operations *opCB)
     printf("LocalParameters: %s\n", (char *)opCB->userData);
     printf("Got local parameters from WebRTC. Now send them to signalling server\n");
 
-    neat_signaling_send(&sctx, opCB->userData, strlen(opCB->userData));
+    neat_signaling_send(&sctx, opCB->userData, strlen(opCB->userData) + 1);
 
     free(opCB->userData);
     opCB->userData = NULL;
@@ -369,6 +369,9 @@ main(int argc, char *argv[])
 
     struct neat_flow *flows[config_max_flows];
     struct neat_flow_operations ops[config_max_flows];
+    // create listening flow for accepted new data channels
+    struct neat_flow *listening_flow;
+    struct neat_flow_operations operation;
 
     int arg, result;
     char *arg_property = config_property;
@@ -447,8 +450,6 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-    neat_signaling_init(ctx, &sctx);
-
     if (config_log_level == 0) {
         neat_log_level(ctx, NEAT_LOG_ERROR);
     } else if (config_log_level == 1){
@@ -460,9 +461,7 @@ main(int argc, char *argv[])
     options[0].tag = NEAT_TAG_CHANNEL_NAME;
     options[0].type = NEAT_TYPE_STRING;
 
-    // create listening flow for accepted new data channels
-    struct neat_flow *listening_flow;
-    struct neat_flow_operations operation;
+
     if ((listening_flow = neat_new_flow(ctx)) == NULL) {
         fprintf(stderr, "%s - neat_new_flow failed\n", __func__);
         result = EXIT_FAILURE;
@@ -534,6 +533,8 @@ printf("neat_accept returned\n");
            // flows_active++;
         }
     }
+
+    neat_signaling_init(ctx, listening_flow, &sctx);
 
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);

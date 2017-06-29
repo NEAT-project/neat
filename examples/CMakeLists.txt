@@ -35,6 +35,7 @@ LIST(APPEND neat_property_examples
 IF(WEBRTC_SUPPORT)
     LIST(APPEND neat_programs
         peer_webrtc.c
+        peer_webrtc_signaling.c
     )
 ENDIF()
 
@@ -47,6 +48,7 @@ FOREACH (source_file ${neat_programs})
         ${source_file}
         util.c
         picohttpparser.c
+        webrtc_signaling.c
     )
     TARGET_LINK_LIBRARIES(${source_file_we} neat)
 ENDFOREACH ()

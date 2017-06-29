@@ -94,7 +94,72 @@ static void client_start_transports(
     printf("sctp_transport=%p\n", (void *)client->sctp_transport);
 }
 
-static void parse_remote_parameters_extern(unsigned char *buffer, uint32_t buffer_length) {
+static void parse_param_from_signaling_server(struct neat_ctx *ctx, struct neat_flow *flow, char* params)
+{
+    struct peer_connection* const client = &peer;
+    struct odict* dict = NULL;
+    struct odict* node = NULL;
+    struct rawrtc_ice_parameters* ice_parameters = NULL;
+    struct rawrtc_ice_candidates* ice_candidates = NULL;
+    struct rawrtc_dtls_parameters* dtls_parameters = NULL;
+    struct sctp_parameters sctp_parameters;
+    (void) flags;
+printf("%s\n", __func__);
+    // Get dict from JSON
+    error = get_json_buffer(&dict, params);
+    if (error) {
+        goto out;
+    }
+
+    // Decode JSON
+    error |= dict_get_entry(&node, dict, "iceParameters", ODICT_OBJECT, true);
+    error |= get_ice_parameters(&ice_parameters, node);
+    error |= dict_get_entry(&node, dict, "iceCandidates", ODICT_ARRAY, true);
+    error |= get_ice_candidates(&ice_candidates, node, arg);
+    error |= dict_get_entry(&node, dict, "dtlsParameters", ODICT_OBJECT, true);
+    error |= get_dtls_parameters(&dtls_parameters, node);
+    error |= dict_get_entry(&node, dict, "sctpParameters", ODICT_OBJECT, true);
+    error |= get_sctp_parameters(&sctp_parameters, node);
+
+    // Ok?
+    if (error) {
+        printf("Invalid remote parameters\n");
+        if (sctp_parameters.capabilities) {
+            rawrtc_mem_deref(sctp_parameters.capabilities);
+        }
+        goto out;
+    }
+printf("ice_candidates->n_candidates=%zu\n", ice_candidates->n_candidates);
+    // Set parameters & start transports
+    client->remote_parameters.ice_parameters = rawrtc_mem_ref(ice_parameters);
+    client->remote_parameters.ice_candidates = rawrtc_mem_ref(ice_candidates);
+    client->remote_parameters.dtls_parameters = rawrtc_mem_ref(dtls_parameters);
+    memcpy(&client->remote_parameters.sctp_parameters, &sctp_parameters, sizeof(sctp_parameters));
+    printf("Applying remote parameters\n");
+    client_set_parameters(client);
+    client_start_transports(client);
+
+out:
+    // Un-reference
+    rawrtc_mem_deref(dtls_parameters);
+    rawrtc_mem_deref(ice_candidates);
+    rawrtc_mem_deref(ice_parameters);
+    rawrtc_mem_deref(dict);
+
+    // Exit?
+    if (error == RAWRTC_CODE_NO_VALUE) {
+        printf("Exiting\n");
+
+        // Stop client & bye
+        client_stop(client);
+
+        printf("close rawrtc\n");
+        rawrtc_close();
+        printf("rawrtc_closed\n");
+        for (int i = 0; i < (int)client->n_flows; i++) {
+            neat_close(client->ctx, client->flows[i]->flow);
+        }
+    }
 
 }
 
@@ -895,11 +960,11 @@ neat_set_listening_flow(neat_ctx *ctx, neat_flow *flow)
 }
 
 neat_error_code neat_send_remote_parameters(struct neat_ctx *ctx, struct neat_flow *flow, char* params)
-//neat_send_remote_parameters(neat_ctx *ctx, neat_flow *flow, char* params)
 {
     printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
     printf("Remote Parameter: %s\n", params);
     printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
+    parse_param_from_signaling_server(ctx, flow, params);
     free(params);
     return NEAT_OK;
 }

@@ -592,7 +592,7 @@ static void print_local_parameters(
 ) {
     struct odict* dict;
     struct odict* node;
-    char *str = NULL;
+    char *str = calloc(1, 2048);
 printf("%s:%d\n", __func__, __LINE__);
     // Get local parameters
     client_get_parameters(client);
@@ -630,20 +630,21 @@ printf("%s:%d\n", __func__, __LINE__);
     rawrtc_mem_deref(dict);
 
     sprintf(params, "{");
-    str = set_ice_parameters_string(client->local_parameters.ice_parameters);
+    set_ice_parameters_string(client->local_parameters.ice_parameters, str);
     strcat(params, str);
-    str = set_ice_candidates_string(client->local_parameters.ice_candidates);
+    set_ice_candidates_string(client->local_parameters.ice_candidates, str);
     strcat(params, ",");
     strcat(params, str);
-    str = set_dtls_parameters_string(client->local_parameters.dtls_parameters);
+    set_dtls_parameters_string(client->local_parameters.dtls_parameters, str);
     strcat(params, ",");
     strcat(params, str);
-    str = set_sctp_parameters_string(client->sctp_transport, &client->local_parameters.sctp_parameters);
+    set_sctp_parameters_string(client->sctp_transport, &client->local_parameters.sctp_parameters, str);
     strcat(params, ",");
     strcat(params, str);
     strcat(params, "}");
     printf("Laenge params=%lu\n", strlen(params));
     printf("Local Parameters:\n%s\n", params);
+    free (str);
 }
 
 static void ice_gatherer_local_candidate_handler(

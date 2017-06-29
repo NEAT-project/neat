@@ -256,21 +256,21 @@ void data_channel_helper_create_from_channel(
         void* const arg // nullable
 );
 
-char *set_ice_parameters_string(
-        struct rawrtc_ice_parameters* const parameters
+void set_ice_parameters_string(
+        struct rawrtc_ice_parameters* const parameters, char *str
 );
 
-char *set_ice_candidates_string(
-        struct rawrtc_ice_candidates* const parameters
+void set_ice_candidates_string(
+        struct rawrtc_ice_candidates* const parameters, char *str
 );
 
-char *set_dtls_parameters_string(
-        struct rawrtc_dtls_parameters* const parameters
+void set_dtls_parameters_string(
+        struct rawrtc_dtls_parameters* const parameters, char *str
 );
 
-char *set_sctp_parameters_string(
+void set_sctp_parameters_string(
         struct rawrtc_sctp_transport* const transport,
-        struct sctp_parameters* const parameters
+        struct sctp_parameters* const parameters, char *str
 );
 
 int rawrtc_stop_client(struct peer_connection *pc);

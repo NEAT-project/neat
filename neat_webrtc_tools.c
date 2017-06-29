@@ -772,13 +772,12 @@ printf("%s\n", __func__);
 /*
  * Set ICE parameters as string.
  */
-char *set_ice_parameters_string(
-        struct rawrtc_ice_parameters* const parameters
+void set_ice_parameters_string(
+        struct rawrtc_ice_parameters* const parameters, char *str
 ) {
     char* username_fragment;
     char* password;
     bool ice_lite;
-    char *param = calloc(1, 512);
 
     // Get values
     if (rawrtc_ice_parameters_get_username_fragment(&username_fragment, parameters) != RAWRTC_CODE_SUCCESS)              {
@@ -793,24 +792,22 @@ char *set_ice_parameters_string(
             printf("Error set_ice_parameters: ice lite");
             exit (-1);
         }
-    sprintf(param, "\"iceParameters\":{\"usernameFragment\":\"%s\",\"password\":\"%s\",\"iceLite\":%s}",
+    sprintf(str, "\"iceParameters\":{\"usernameFragment\":\"%s\",\"password\":\"%s\",\"iceLite\":%s}",
         username_fragment, password, (ice_lite ? "true":"false"));
 
     // Un-reference values
     rawrtc_mem_deref(password);
     rawrtc_mem_deref(username_fragment);
-    return (param);
 }
 
 /*
  * Set ICE candidates as string.
  */
-char *set_ice_candidates_string(
-        struct rawrtc_ice_candidates* const parameters
+void set_ice_candidates_string(
+        struct rawrtc_ice_candidates* const parameters, char *candidates
 ) {
     size_t i;
     char *str = calloc(1, 512);
-    char *candidates = calloc(1, 1024);
 
     sprintf(candidates, "\"iceCandidates\":[");
 
@@ -890,24 +887,18 @@ char *set_ice_candidates_string(
         rawrtc_mem_deref(foundation);
     }
     strcat(candidates, "]");
-
-
-
-
-    return (candidates);
 }
 
 /*
  * Set DTLS parameters as string.
  */
-char *set_dtls_parameters_string(
-        struct rawrtc_dtls_parameters* const parameters
+void set_dtls_parameters_string(
+        struct rawrtc_dtls_parameters* const parameters, char *params
 ) {
     enum rawrtc_dtls_role role;
     struct rawrtc_dtls_fingerprints* fingerprints;
     size_t i;
-    char *params = calloc(1, 2048);
-    char* str = calloc(1, 512);
+    char *str = calloc(1, 512);
 
     sprintf(params, "\"dtlsParameters\":");
 
@@ -934,14 +925,14 @@ char *set_dtls_parameters_string(
         char* value;
 
         // Get values
-        if (rawrtc_dtls_parameters_fingerprint_get_sign_algorithm(&sign_algorithm, fingerprint) != RAWRTC_CODE_SUCCESS)              {
-        printf("Error set_dtls_parameters: get sign_algorithm");
-        exit (-1);
-    }
-        if (rawrtc_dtls_parameters_fingerprint_get_value(&value, fingerprint) != RAWRTC_CODE_SUCCESS)              {
-        printf("Error set_dtls_parameters: get value");
-        exit (-1);
-    }
+        if (rawrtc_dtls_parameters_fingerprint_get_sign_algorithm(&sign_algorithm, fingerprint) != RAWRTC_CODE_SUCCESS) {
+            printf("Error set_dtls_parameters: get sign_algorithm");
+            exit (-1);
+        }
+        if (rawrtc_dtls_parameters_fingerprint_get_value(&value, fingerprint) != RAWRTC_CODE_SUCCESS) {
+            printf("Error set_dtls_parameters: get value");
+            exit (-1);
+        }
 
         sprintf(str, "{\"algorithm\":\"%s\",\"value\":\"%s\"}",
             rawrtc_certificate_sign_algorithm_to_str(sign_algorithm),
@@ -958,20 +949,17 @@ char *set_dtls_parameters_string(
     strcat(params, "]}");
     // Un-reference fingerprints
     rawrtc_mem_deref(fingerprints);
-
-    return params;
 }
 
 /*
  * Set SCTP parameters as string.
  */
-char *set_sctp_parameters_string(
+void set_sctp_parameters_string(
         struct rawrtc_sctp_transport* const transport,
-        struct sctp_parameters* const parameters
+        struct sctp_parameters* const parameters, char *str
 ) {
     uint64_t max_message_size;
     uint16_t port;
-    char *params = calloc(1, 1024);
 
     // Get values
     if (rawrtc_sctp_capabilities_get_max_message_size(&max_message_size, parameters->capabilities) != RAWRTC_CODE_SUCCESS)              {
@@ -983,16 +971,7 @@ char *set_sctp_parameters_string(
         exit (-1);
     }
 
-    sprintf(params, "\"sctpParameters\":{\"maxMessageSize\":%lu,\"port\":%d}", max_message_size, port);
-
-    return params;
-    // Set ICE parameters
- /*   if (rawrtc_odict_entry_add(dict, "maxMessageSize", ODICT_INT, max_message_size) != RAWRTC_CODE_SUCCESS)              {
-        printf("Error set_sctp_parameters: add max_message_size");
-    }
-    if (rawrtc_odict_entry_add(dict, "port", ODICT_INT, port) != RAWRTC_CODE_SUCCESS)              {
-        printf("Error set_sctp_parameters: add array");
-    }*/
+    sprintf(str, "\"sctpParameters\":{\"maxMessageSize\":%lu,\"port\":%d}", max_message_size, port);
 }
 
 

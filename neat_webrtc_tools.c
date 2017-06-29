@@ -409,6 +409,27 @@ void default_data_channel_open_handler(
 }
 
 /*
+ * Parse buffer containing parameters it to a dictionary.
+ */
+enum rawrtc_code get_json_buffer(
+        struct odict** const dictp, // de-referenced
+        char *buffer
+) {
+    length = strlen(buffer);
+
+    // Exit?
+    if (length == 1 && buffer[0] == '\n') {
+        return RAWRTC_CODE_NO_VALUE;
+    }
+
+    // Decode JSON
+    if (rawrtc_json_decode_odict(dictp, 16, buffer, length, 3) != RAWRTC_CODE_SUCCESS) {
+        return RAWRTC_CODE_NO_VALUE;
+    }
+    return RAWRTC_CODE_SUCCESS;
+}
+
+/*
  * Get JSON from stdin and parse it to a dictionary.
  */
 enum rawrtc_code get_json_stdin(

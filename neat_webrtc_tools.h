@@ -171,6 +171,11 @@ enum rawrtc_code get_json_stdin(
         struct odict** const dictp // de-referenced
 );
 
+enum rawrtc_code get_json_buffer(
+        struct odict** const dictp, // de-referenced
+        char *buffer
+);
+
 enum rawrtc_code dict_get_entry(
         void* const valuep,
         struct odict* const parent,

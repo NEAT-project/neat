@@ -251,12 +251,14 @@ printf("%s\n", __func__);
 
 static void close_all_channels(struct peer_connection* const client)
 {
-    for (int i = 0; i < (int)client->n_flows; i++) {
-        if (rawrtc_data_channel_close(client->flows[i]->channel) != RAWRTC_CODE_SUCCESS) {
-            printf("%s could not be closed \n", client->flows[i]->label);
+    printf("%s\n", __func__);
+    for (int i = 0; i < (int)client->max_flows; i++) {
+        if (client->flows[i]->state != NEAT_FLOW_CLOSED) {
+            if (rawrtc_data_channel_close(client->flows[i]->channel) != RAWRTC_CODE_SUCCESS) {
+                printf("%s could not be closed \n", client->flows[i]->label);
+            }
+            rawrtc_mem_deref(client->flows[i]->channel);
         }
-        printf("deref channel\n");
-        rawrtc_mem_deref(client->flows[i]->channel);
     }
 }
 
@@ -268,48 +270,37 @@ printf("%s\n", __func__);
         // Stop transports & close gatherer
     // Clear data channels
     rawrtc_list_flush(&client->data_channels);
-printf("%s:%d\n", __func__, __LINE__);
+
     close_all_channels(client);
-printf("%s:%d\n", __func__, __LINE__);
+
+
     if (rawrtc_sctp_transport_stop(client->sctp_transport) != RAWRTC_CODE_SUCCESS) {
         printf("Error stopping sctp transport \n");
         exit (-1);
     }
-    printf("%s:%d\n", __func__, __LINE__);
     if (rawrtc_dtls_transport_stop(client->dtls_transport) != RAWRTC_CODE_SUCCESS) {
         printf("Error stopping dtls transport \n");
         exit (-1);
     }
-    printf("%s:%d\n", __func__, __LINE__);
     if (rawrtc_ice_transport_stop(client->ice_transport) != RAWRTC_CODE_SUCCESS) {
         printf("Error stopping ice transport \n");
         exit (-1);
     }
-    printf("%s:%d\n", __func__, __LINE__);
     if (rawrtc_ice_gatherer_close(client->gatherer) != RAWRTC_CODE_SUCCESS) {
         printf("Error closing gatherer\n");
         exit (-1);
     }
-printf("%s:%d\n", __func__, __LINE__);
+
     // Un-reference & close
     parameters_destroy(&client->remote_parameters);
-    printf("%s:%d\n", __func__, __LINE__);
     parameters_destroy(&client->local_parameters);
-    printf("%s:%d\n", __func__, __LINE__);
     client->data_transport = rawrtc_mem_deref(client->data_transport);
-    printf("%s:%d\n", __func__, __LINE__);
     client->sctp_transport = rawrtc_mem_deref(client->sctp_transport);
-    printf("%s:%d\n", __func__, __LINE__);
     client->dtls_transport = rawrtc_mem_deref(client->dtls_transport);
-    printf("%s:%d\n", __func__, __LINE__);
     client->ice_transport = rawrtc_mem_deref(client->ice_transport);
-    printf("%s:%d\n", __func__, __LINE__);
     client->gatherer = rawrtc_mem_deref(client->gatherer);
-    printf("%s:%d\n", __func__, __LINE__);
     client->certificate = rawrtc_mem_deref(client->certificate);
-    printf("%s:%d\n", __func__, __LINE__);
     client->gather_options = rawrtc_mem_deref(client->gather_options);
-    printf("%s:%d\n", __func__, __LINE__);
 }
 
 /*
@@ -414,6 +405,7 @@ printf("%s: arg= peer_connection\n", __func__);
     newFlow->state = NEAT_FLOW_OPEN;
 
     newFlow->operations = calloc (1, sizeof(struct neat_flow_operations));
+    printf("newFlow->operations = %p\n", (void *)newFlow->operations);
     if (newFlow->operations == NULL) {
         neat_io_error(client->ctx, newFlow, NEAT_ERROR_OUT_OF_MEMORY);
         return;
@@ -429,6 +421,7 @@ printf("%s: arg= peer_connection\n", __func__);
     newFlow->operations->userData       = client->listening_flow->operations->userData;
     newFlow->peer_connection            = client;
     newFlow->webrtcEnabled              = true;
+    newFlow->ownedByCore                = 1;
     newFlow->operations->label = strdup(channel_helper->label);
     struct rawrtc_flow* r_flow = calloc(1, sizeof(struct rawrtc_flow));
     r_flow->flow = newFlow;
@@ -724,14 +717,6 @@ static void client_init(
         neat_log(pc->ctx, NEAT_LOG_DEBUG, "SCTP transport created successfully");
     }
 
-    // Get SCTP capabilities
- /*   if (rawrtc_sctp_transport_get_capabilities(&local->sctp_capabilities) != RAWRTC_CODE_SUCCESS) {
-        neat_log(n_flow->ctx, NEAT_LOG_ERROR, "Error getting SCTP capabilities");
-        exit (-1);
-    } else {
-        neat_log(n_flow->ctx, NEAT_LOG_DEBUG, "Got SCTP capabilities successfully");
-    }*/
-
         // Get data transport
     if (rawrtc_sctp_transport_get_data_transport(
             &pc->data_transport, pc->sctp_transport) != RAWRTC_CODE_SUCCESS) {
@@ -783,6 +768,7 @@ neat_webrtc_write_to_channel(struct neat_ctx *ctx,
             printf("send %zu bytes on %s \n", buf->end, pc->flows[i]->label);
             rawrtc_data_channel_send(pc->flows[i]->channel, buf, true);
             found = 1;
+            rawrtc_mem_deref(buf);
             break;
         }
     }

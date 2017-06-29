@@ -887,6 +887,7 @@ void set_ice_candidates_string(
         rawrtc_mem_deref(foundation);
     }
     strcat(candidates, "]");
+    free (str);
 }
 
 /*
@@ -949,6 +950,7 @@ void set_dtls_parameters_string(
     strcat(params, "]}");
     // Un-reference fingerprints
     rawrtc_mem_deref(fingerprints);
+    free (str);
 }
 
 /*

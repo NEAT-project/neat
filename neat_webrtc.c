@@ -97,13 +97,14 @@ static void client_start_transports(
 static void parse_param_from_signaling_server(struct neat_ctx *ctx, struct neat_flow *flow, char* params)
 {
     struct peer_connection* const client = &peer;
+    enum rawrtc_code error;
     struct odict* dict = NULL;
     struct odict* node = NULL;
     struct rawrtc_ice_parameters* ice_parameters = NULL;
     struct rawrtc_ice_candidates* ice_candidates = NULL;
     struct rawrtc_dtls_parameters* dtls_parameters = NULL;
     struct sctp_parameters sctp_parameters;
-    (void) flags;
+
 printf("%s\n", __func__);
     // Get dict from JSON
     error = get_json_buffer(&dict, params);
@@ -115,7 +116,7 @@ printf("%s\n", __func__);
     error |= dict_get_entry(&node, dict, "iceParameters", ODICT_OBJECT, true);
     error |= get_ice_parameters(&ice_parameters, node);
     error |= dict_get_entry(&node, dict, "iceCandidates", ODICT_ARRAY, true);
-    error |= get_ice_candidates(&ice_candidates, node, arg);
+    error |= get_ice_candidates(&ice_candidates, node, (void *)client);
     error |= dict_get_entry(&node, dict, "dtlsParameters", ODICT_OBJECT, true);
     error |= get_dtls_parameters(&dtls_parameters, node);
     error |= dict_get_entry(&node, dict, "sctpParameters", ODICT_OBJECT, true);
@@ -162,7 +163,6 @@ out:
     }
 
 }
-
 
 static void parse_remote_parameters(
         int flags,
@@ -968,7 +968,5 @@ neat_error_code neat_send_remote_parameters(struct neat_ctx *ctx, struct neat_fl
     free(params);
     return NEAT_OK;
 }
-
-
 
 #endif

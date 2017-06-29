@@ -415,7 +415,7 @@ enum rawrtc_code get_json_buffer(
         struct odict** const dictp, // de-referenced
         char *buffer
 ) {
-    length = strlen(buffer);
+    size_t length = strlen(buffer);
 
     // Exit?
     if (length == 1 && buffer[0] == '\n') {

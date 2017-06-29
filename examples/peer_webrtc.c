@@ -104,7 +104,6 @@ on_parameters(struct neat_flow_operations *opCB)
 {
     fprintf(stderr, "%s\n", __func__);
     char *remote = NULL;
-    printf("LocalParameters: %s\n", (char *)opCB->userData);
     printf("Got local parameters from WebRTC. Now send them to signalling server\n");
     remote = strdup((char *)opCB->userData);
     if (neat_send_remote_parameters(opCB->ctx, opCB->flow, remote) != NEAT_OK) {

@@ -187,7 +187,7 @@ OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 0)
 
 OPTION(SOCKET_API "Include the socket API" 0)
 
-OPTION(WEBRTC_SUPPORT "Include WebRTC support" 0)
+OPTION(WEBRTC_SUPPORT "Include WebRTC support" 1)
 
 
 # REQUIREMENTS

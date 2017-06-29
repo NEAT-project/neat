@@ -55,13 +55,16 @@ void default_ice_gatherer_error_handler(
  */
 void default_ice_gatherer_state_change_handler(
         enum rawrtc_ice_gatherer_state const state, // read-only
-        void* const arg // will be casted to `struct client*`
+        void* const arg // will be casted to `struct peer_connection*`
 ) {
-    struct client* const client = arg;
+    struct peer_connection* const client = arg;
     printf("%s state=%d\n", __func__, state);
     char const * const state_name = rawrtc_ice_gatherer_state_to_name(state);
     (void) arg;
     printf("(%s) ICE gatherer state: %s\n", client->name, state_name);
+    if (state == RAWRTC_ICE_GATHERER_CLOSED) {
+        rawrtc_mem_deref(client->gatherer);
+    }
 }
 
 /*

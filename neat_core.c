@@ -615,8 +615,12 @@ printf("%s:%d\n", __func__, __LINE__);
     printf("%s:%d\n", __func__, __LINE__);
         neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s - NOT neat_resolver_free_results", __func__);
     }
-
+printf("flow->ownedByCore=%d\n", flow->ownedByCore);
     if (flow->ownedByCore) {
+    printf("free operations %p\n", (void *)flow->operations);
+#if defined(WEBRTC_SUPPORT)
+        free(flow->operations->label);
+#endif
         free(flow->operations);
     }
 

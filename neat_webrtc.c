@@ -240,6 +240,8 @@ static void parameters_destroy(
 ) {
 printf("%s\n", __func__);
     // Un-reference
+    parameters->ice_parameters->username_fragment = rawrtc_mem_deref(parameters->ice_parameters->username_fragment);
+    parameters->ice_parameters->password = rawrtc_mem_deref(parameters->ice_parameters->password);
     parameters->ice_parameters = rawrtc_mem_deref(parameters->ice_parameters);
     parameters->ice_candidates = rawrtc_mem_deref(parameters->ice_candidates);
     parameters->dtls_parameters = rawrtc_mem_deref(parameters->dtls_parameters);
@@ -257,7 +259,7 @@ static void close_all_channels(struct peer_connection* const client)
             if (rawrtc_data_channel_close(client->flows[i]->channel) != RAWRTC_CODE_SUCCESS) {
                 printf("%s could not be closed \n", client->flows[i]->label);
             }
-            rawrtc_mem_deref(client->flows[i]->channel);
+            rawrtc_mem_deref (client->flows[i]->channel);
         }
     }
 }
@@ -294,10 +296,20 @@ printf("%s\n", __func__);
     // Un-reference & close
     parameters_destroy(&client->remote_parameters);
     parameters_destroy(&client->local_parameters);
+
     client->data_transport = rawrtc_mem_deref(client->data_transport);
+
+    client->sctp_transport->channels = rawrtc_mem_deref(client->sctp_transport->channels);
     client->sctp_transport = rawrtc_mem_deref(client->sctp_transport);
+
+    rawrtc_list_flush(&client->dtls_transport->certificates);
+    client->dtls_transport->socket = rawrtc_mem_deref(client->dtls_transport->socket);
+    client->dtls_transport->context = rawrtc_mem_deref(client->dtls_transport->context);
     client->dtls_transport = rawrtc_mem_deref(client->dtls_transport);
+
+    client->ice_transport->dtls_transport = rawrtc_mem_deref(client->ice_transport->dtls_transport);
     client->ice_transport = rawrtc_mem_deref(client->ice_transport);
+
     client->gatherer = rawrtc_mem_deref(client->gatherer);
     client->certificate = rawrtc_mem_deref(client->certificate);
     client->gather_options = rawrtc_mem_deref(client->gather_options);
@@ -503,18 +515,6 @@ printf("%s: arg=peer_connection\n", __func__);
             }
         }
     }
- /*   if (state == RAWRTC_SCTP_TRANSPORT_STATE_CLOSED) {
-    printf("max_flows=%d\n", client->max_flows);
-        for (int i = (int)client->max_flows - 1; i >= 0; i--) {
-            printf("i=%d state = %d \n", i, client->flows[i]->state);
-            printf("%s:%d\n", __func__, __LINE__);
-                neat_notify_close(client->flows[i]->flow);
-                printf("nach neat_notify_close\n");
-            client->n_flows--;
-            free(client->flows[i]);
-            printf("nach free \n");
-        }
-    }*/
 }
 
 

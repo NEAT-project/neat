@@ -1343,7 +1343,9 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
 
 #ifdef NEAT_SCTP_DTLS
     if (flow->security_needed && neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+#if !defined(USRSCTP_SUPPORT)
         socklen_t len;
+#endif // !defined(USRSCTP_SUPPORT)
         int ret = 0;
         struct security_data *private = (struct security_data *) flow->socket->dtls_data->userData;
 
@@ -2122,8 +2124,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 #ifdef MPTCP_SUPPORT
         if (candidate->pollable_socket->stack == NEAT_STACK_MPTCP) {
             int mptcp_enabled = 0;
-            unsigned int len = sizeof(mptcp_enabled);
-            getsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_enabled, &len);
+            unsigned int len_mp = sizeof(mptcp_enabled);
+            getsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_enabled, &len_mp);
 
             if (!mptcp_enabled) {
                 uv_poll_stop(handle);
@@ -3738,7 +3740,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
 {
     int rc = NEAT_ERROR_OUT_OF_MEMORY;
     struct ifaddrs *ifaddrs = NULL;
-    json_t *array = NULL, *endpoints = NULL, *properties = NULL, *domains = NULL, *address, *port;
+    json_t *array = NULL, *endpoints = NULL, *properties = NULL, *domains = NULL, *address, *port, *req_type;
     const char *home_dir;
     const char *socket_path;
     char socket_path_buf[128];
@@ -3857,6 +3859,15 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
     json_object_set(properties, "port", port);
     json_decref(port);
 
+    
+    req_type = json_pack("{s:s}", "value", "pre-resolve");
+    if (req_type == NULL)
+        goto end;
+
+    json_object_set(properties, "__request_type", req_type);
+    json_decref(req_type);
+
+    
     if ((domains = json_array()) == NULL)
         goto end;
 

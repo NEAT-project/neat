@@ -102,8 +102,14 @@ signaling_handle_buffer(struct neat_signaling_context *sctx) {
 
     while (sctx->buffer_rcv_level >= 4) {
 
+
+
         payload_length_network = (uint32_t *) &(sctx->buffer_rcv);
         payload_length = ntohl(*payload_length_network);
+
+        fprintf(stderr, "#######################################\n");
+        fprintf(stderr, "buffer_rcv_level : %d\n", sctx->buffer_rcv_level);
+    	fprintf(stderr, "payload_length : %d\n", payload_length);
 
 
         if ((payload_length + 4) > (sctx->buffer_rcv_level)) {
@@ -126,11 +132,18 @@ signaling_handle_buffer(struct neat_signaling_context *sctx) {
             }
         } else if (sctx->state == NEAT_SIGNALING_STATE_READY) {
             remote = strdup((char *) &(sctx->buffer_rcv) + 4);
-            neat_send_remote_parameters(sctx->ctx, sctx->flow, remote);
-        }
 
-        memmove(sctx->buffer_rcv, sctx->buffer_rcv + payload_length + 4, payload_length + 4);
-        sctx->buffer_rcv_level -= payload_length + 4;
+
+            fprintf(stderr, "a - %s\n", (char *) (&(sctx->buffer_rcv) + 4));
+            fprintf(stderr, "b - %s\n", remote);
+
+            neat_send_remote_parameters(sctx->ctx, sctx->flow, remote);
+
+
+        }
+		sctx->buffer_rcv_level -= payload_length + 4;
+        memmove(sctx->buffer_rcv, sctx->buffer_rcv + payload_length + 4, sctx->buffer_rcv_level);
+
     }
 
     return NEAT_OK;

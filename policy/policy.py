@@ -130,7 +130,6 @@ class PropertyValue(object):
                 value = math.inf
         return value
 
-
     @value.setter
     def value(self, value):
 
@@ -314,7 +313,6 @@ class NEATProperty(object):
 
         # set if property was compared or updated during a lookup
         self.evaluated = evaluated
-
 
     @property
     def value(self):
@@ -575,6 +573,24 @@ class PropertyArray(dict):
         return '├─' + j.join(str_list) + '─┤'
 
 
+def __merge_properties(properties):
+    """
+    Merge list of properties into a list for adding into MultiArray. If several properties with identical key exit,
+    they will be added into a joint list.
+    """
+    keys = {i.key for i in properties}
+    new_property_list = []
+    single_property_pa = PropertyArray()
+
+    for k in keys:
+        pa_list = [PropertyArray(p) for p in properties if p.key == k]
+        if len(pa_list)==1:
+            single_property_pa.add(pa_list[0][k])
+        else:
+            new_property_list.append(pa_list)
+    return new_property_list + [single_property_pa]
+
+
 class PropertyMultiArray(list):
     def __init__(self, *properties):
         # FIXME this needs improvement
@@ -603,7 +619,7 @@ class PropertyMultiArray(list):
         for pa_product in itertools.product(*self):
             pa = PropertyArray()
             for p in pa_product:
-                tmp = copy.deepcopy(p) # FIXME otherwise method alters the properties
+                tmp = copy.deepcopy(p)  # FIXME otherwise method alters the properties
                 pa.add(*tmp.values())
             expanded_pas.append(pa)
         return expanded_pas

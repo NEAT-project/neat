@@ -24,8 +24,8 @@ static char *config_property = "{\
 static uint32_t rcv_buffer_level = 0;
 //static uint32_t snd_buffer_level = 0;
 
-static unsigned char *signaling_buffer_rcv = NULL;
-static unsigned char *signaling_buffer_snd= NULL;
+static unsigned char *signaling_buffer_rcv  = NULL;
+static unsigned char *signaling_buffer_snd  = NULL;
 
 static neat_error_code on_all_written(struct neat_flow_operations *opCB);
 

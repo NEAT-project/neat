@@ -62,22 +62,67 @@ neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_si
 
 neat_error_code
 neat_signaling_send(struct neat_signaling_context *sctx, unsigned char* buffer, uint32_t buffer_length) {
+    uint32_t *payload_length = (uint32_t *) &(sctx->buffer_rcv);
 
-    fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
+    if (sctx->buffer_snd_level > 0) {
+        fprintf(stderr, "%s - sctx->buffer_snd_level > 0 - we have unsent data! FIX LOGIC!\n", __func__);
+        exit(EXIT_FAILURE);
+    }
 
     if (buffer_length > BUFFER_SIZE) {
         fprintf(stderr, "%s - buffer_length > BUFFER_SIZE\n", __func__);
-        return NEAT_ERROR_MESSAGE_TOO_BIG;
+        exit(EXIT_FAILURE);
     }
 
-    fprintf(stderr, "%s - SIGNALING OUT (%d):\n%s\n", __func__, buffer_length, buffer);
-
-    memcpy(&(sctx->buffer_snd), buffer, buffer_length);
-    sctx->buffer_snd_level = buffer_length;
+    memcpy(sctx->buffer_snd + 4, buffer, buffer_length);
+    sctx->buffer_snd_level = buffer_length + 4;
+    *payload_length = htonl(buffer_length);
 
     if (sctx->state == NEAT_SIGNALING_STATE_READY) {
         sctx->ops.on_writable = signaling_on_writable;
         neat_set_operations(sctx->ctx, sctx->flow, &(sctx->ops));
+    }
+
+    return NEAT_OK;
+}
+
+static neat_error_code
+signaling_handle_buffer(struct neat_signaling_context *sctx) {
+    char *remote = NULL;
+    uint32_t payload_length = 0;
+    uint32_t *payload_length_network = NULL;
+
+    while (sctx->buffer_rcv_level >= 4) {
+
+        payload_length_network = (uint32_t *) &(sctx->buffer_rcv);
+        payload_length = ntohl(*payload_length_network);
+
+
+        if ((payload_length + 4) > (sctx->buffer_rcv_level)) {
+            fprintf(stderr, "%s - message not complete yet - %d/%d\n", __func__, payload_length + 4, sctx->buffer_rcv_level);
+            return NEAT_ERROR_UNABLE;
+        }
+
+        if (sctx->state == NEAT_SIGNALING_STATE_WAITING && payload_length == 8) {
+            if (strncmp((const char *) &(sctx->buffer_rcv) + 4, "READY###", 8)) {
+                fprintf(stderr, "%s - something went wrong - A\n", __func__);
+                exit(EXIT_FAILURE);
+            }
+
+            sctx->state = NEAT_SIGNALING_STATE_READY;
+            fprintf(stderr, "%s - Signaling ready\n", __func__);
+
+            if (sctx->buffer_snd_level) {
+                sctx->ops.on_writable = signaling_on_writable;
+                neat_set_operations(sctx->ctx, sctx->flow, &(sctx->ops));
+            }
+        } else if (sctx->state == NEAT_SIGNALING_STATE_READY) {
+            remote = strdup((char *) &(sctx->buffer_rcv) + 4);
+            neat_send_remote_parameters(sctx->ctx, sctx->flow, remote);
+        }
+
+        memmove(sctx->buffer_rcv, sctx->buffer_rcv + payload_length + 4, payload_length + 4);
+        sctx->buffer_rcv_level -= payload_length + 4;
     }
 
     return NEAT_OK;
@@ -90,14 +135,16 @@ signaling_on_readable(struct neat_flow_operations *opCB)
     // data is available to read
     neat_error_code code;
     struct neat_signaling_context *sctx = opCB->userData;
-    char *remote = NULL;
+
+    uint32_t recv_length;
+
     fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
 
     if (sctx->log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_read(opCB->ctx, opCB->flow, (unsigned char *) &(sctx->buffer_rcv), BUFFER_SIZE, &(sctx->buffer_rcv_level), NULL, 0);
+    code = neat_read(opCB->ctx, opCB->flow, (unsigned char *) &(sctx->buffer_rcv) + sctx->buffer_rcv_level, BUFFER_SIZE, &recv_length, NULL, 0);
     if (code != NEAT_OK) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             if (sctx->log_level >= 1) {
@@ -111,29 +158,13 @@ signaling_on_readable(struct neat_flow_operations *opCB)
         }
     }
 
-    if (sctx->state == NEAT_SIGNALING_STATE_WAITING && sctx->buffer_rcv_level == 8) {
-        if (strncmp((const char *) &(sctx->buffer_rcv), "READY###", 8)) {
-            fprintf(stderr, "%s - something went wrong\n", __func__);
-            exit(EXIT_FAILURE);
-        }
-
-        fprintf(stderr, "%s - Signaling ready\n", __func__);
-        sctx->state = NEAT_SIGNALING_STATE_READY;
-
-
-        if (sctx->buffer_snd_level) {
-            sctx->ops.on_writable = signaling_on_writable;
-            neat_set_operations(sctx->ctx, sctx->flow, &(sctx->ops));
-        }
-    } else if (sctx->state == NEAT_SIGNALING_STATE_READY) {
-        remote = strdup((char *) &(sctx->buffer_rcv));
-        neat_send_remote_parameters(sctx->ctx, sctx->flow, remote);
-    }
-
+    sctx->buffer_rcv_level += recv_length;
 
     if (sctx->log_level >= 1) {
         fprintf(stderr, "%s - received %d bytes\n", __func__, sctx->buffer_rcv_level);
     }
+
+    signaling_handle_buffer(sctx);
 
     //fwrite(sctx->buffer_rcv, sizeof(char), sctx->buffer_rcv_level, stdout);
     //fflush(stdout);

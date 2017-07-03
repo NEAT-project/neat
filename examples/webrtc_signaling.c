@@ -24,16 +24,16 @@ static neat_error_code signaling_on_writable(struct neat_flow_operations *opCB);
 
 struct neat_signaling_context *
 neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t room) {
-    fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
-
     struct neat_signaling_context *sctx = calloc(1, sizeof(struct neat_signaling_context));
 
+    fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
+
     sctx->ctx = ctx;
-    if ((sctx->flow = neat_new_flow(ctx)) == NULL) {
+
+    if ((sctx->flow = neat_new_flow(sctx->ctx)) == NULL) {
         fprintf(stderr, "%s - neat_new_flow failed\n", __func__);
         exit(EXIT_FAILURE);
     }
-
 
     sctx->ops.userData          = sctx;
     sctx->ops.on_connected      = signaling_on_connected;
@@ -42,19 +42,19 @@ neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t room)
     sctx->webrtc_flow           = flow;
     sctx->room                  = room;
 
-    if (neat_set_operations(ctx, sctx->flow, &(sctx->ops))) {
+    if (neat_set_operations(sctx->ctx, sctx->flow, &(sctx->ops))) {
         fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
         exit(EXIT_FAILURE);
     }
 
     // set properties
-    if (neat_set_property(ctx, sctx->flow, config_property)) {
+    if (neat_set_property(sctx->ctx, sctx->flow, config_property)) {
         fprintf(stderr, "%s - neat_set_property failed\n", __func__);
         exit(EXIT_FAILURE);
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_open(ctx, sctx->flow, "neat.nplab.de", 5000, NULL, 0) != NEAT_OK) {
+    if (neat_open(sctx->ctx, sctx->flow, "neat.nplab.de", 5001, NULL, 0) != NEAT_OK) {
         fprintf(stderr, "Could not open flow\n");
         exit(EXIT_FAILURE);
     }
@@ -64,13 +64,19 @@ neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t room)
 
 neat_error_code
 neat_signaling_free(struct neat_signaling_context *sctx) {
+
+    fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
+
     neat_close(sctx->ctx, sctx->flow);
+    free(sctx);
     return NEAT_OK;
 }
 
 neat_error_code
 neat_signaling_send(struct neat_signaling_context *sctx, unsigned char* buffer, uint32_t buffer_length) {
     uint32_t *payload_length = (uint32_t *) &(sctx->buffer_snd);
+
+    fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
 
     if (sctx->buffer_snd_level > 0) {
         fprintf(stderr, "%s - sctx->buffer_snd_level > 0 - we have unsent data! FIX LOGIC!\n", __func__);
@@ -99,6 +105,8 @@ signaling_handle_buffer(struct neat_signaling_context *sctx) {
     char *remote = NULL;
     uint32_t payload_length = 0;
     uint32_t *payload_length_network = NULL;
+
+    fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
 
     while (sctx->buffer_rcv_level >= 4) {
 
@@ -187,13 +195,20 @@ signaling_on_writable(struct neat_flow_operations *opCB)
     neat_error_code code;
     struct neat_signaling_context *sctx = opCB->userData;
     fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
+    uint32_t room;
 
     if (sctx->log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
+    if (sctx->state == NEAT_SIGNALING_STATE_READY) {
+        code = neat_write(opCB->ctx, opCB->flow, (unsigned char *) &(sctx->buffer_snd), sctx->buffer_snd_level, NULL, 0);
+    } else {
+        room = htonl(sctx->room);
+        code = neat_write(opCB->ctx, opCB->flow, (unsigned char *) &room, sizeof(room), NULL, 0);
+    }
 
-    code = neat_write(opCB->ctx, opCB->flow, (unsigned char *) &(sctx->buffer_snd), sctx->buffer_snd_level, NULL, 0);
+
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
         //return on_error(opCB);
@@ -226,6 +241,7 @@ signaling_on_connected(struct neat_flow_operations *opCB)
 {
     fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
     opCB->on_readable = signaling_on_readable;
+    opCB->on_writable = signaling_on_writable;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     return NEAT_OK;

@@ -534,7 +534,7 @@ printf("neat_accept returned\n");
         }
     }
 
-    sctx = neat_signaling_init(ctx, listening_flow, 10);
+    sctx = neat_signaling_init(ctx, listening_flow, atoi(argv[optind]));
 
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
@@ -542,6 +542,9 @@ printf("neat_accept returned\n");
     // cleanup
 cleanup:
 printf("cleanup\n");
+
+    neat_signaling_free(sctx);
+
     if (config_log_level >= 1) {
         printf("freeing ctx bye bye!\n");
     }

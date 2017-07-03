@@ -22,9 +22,11 @@ struct neat_signaling_context {
     uint32_t buffer_rcv_level;
     uint32_t buffer_snd_level;
     uint8_t state;
+    uint32_t room;
 };
 
-neat_error_code neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_signaling_context *sctx);
+struct neat_signaling_context* neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t room);
 neat_error_code neat_signaling_send(struct neat_signaling_context *sctx, unsigned char* buffer, uint32_t buffer_length);
+neat_error_code neat_signaling_free(struct neat_signaling_context *sctx);
 
 #endif /* ifndef WEBRTC_SIGNALING_H */

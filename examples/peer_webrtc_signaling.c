@@ -55,7 +55,7 @@ static char          *config_property        = "\
 }";
 
 static uint32_t flows_active = 0;
-static struct neat_signaling_context sctx;
+static struct neat_signaling_context *sctx;
 
 struct tneat_flow_direction {
     unsigned char *buffer;
@@ -109,7 +109,7 @@ on_parameters(struct neat_flow_operations *opCB)
     printf("LocalParameters: %s\n", (char *)opCB->userData);
     printf("Got local parameters from WebRTC. Now send them to signalling server\n");
 
-    neat_signaling_send(&sctx, opCB->userData, strlen(opCB->userData) + 1);
+    neat_signaling_send(sctx, opCB->userData, strlen(opCB->userData) + 1);
 
     free(opCB->userData);
     opCB->userData = NULL;
@@ -534,7 +534,7 @@ printf("neat_accept returned\n");
         }
     }
 
-    neat_signaling_init(ctx, listening_flow, &sctx);
+    sctx = neat_signaling_init(ctx, listening_flow, 10);
 
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);

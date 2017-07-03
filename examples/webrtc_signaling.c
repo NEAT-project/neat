@@ -22,11 +22,11 @@ static neat_error_code signaling_on_close(struct neat_flow_operations *opCB);
 static neat_error_code signaling_on_readable(struct neat_flow_operations *opCB);
 static neat_error_code signaling_on_writable(struct neat_flow_operations *opCB);
 
-neat_error_code
-neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_signaling_context *sctx) {
+struct neat_signaling_context *
+neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t room) {
     fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
 
-    memset(sctx, 0, sizeof(struct neat_signaling_context));
+    struct neat_signaling_context *sctx = calloc(1, sizeof(struct neat_signaling_context));
 
     sctx->ctx = ctx;
     if ((sctx->flow = neat_new_flow(ctx)) == NULL) {
@@ -40,6 +40,7 @@ neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_si
     sctx->ops.on_close          = signaling_on_close;
     sctx->log_level             = 2;
     sctx->webrtc_flow           = flow;
+    sctx->room                  = room;
 
     if (neat_set_operations(ctx, sctx->flow, &(sctx->ops))) {
         fprintf(stderr, "%s - neat_set_operations failed\n", __func__);
@@ -58,12 +59,18 @@ neat_signaling_init(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_si
         exit(EXIT_FAILURE);
     }
 
+    return sctx;
+}
+
+neat_error_code
+neat_signaling_free(struct neat_signaling_context *sctx) {
+    neat_close(sctx->ctx, sctx->flow);
     return NEAT_OK;
 }
 
 neat_error_code
 neat_signaling_send(struct neat_signaling_context *sctx, unsigned char* buffer, uint32_t buffer_length) {
-    uint32_t *payload_length = (uint32_t *) &(sctx->buffer_rcv);
+    uint32_t *payload_length = (uint32_t *) &(sctx->buffer_snd);
 
     if (sctx->buffer_snd_level > 0) {
         fprintf(stderr, "%s - sctx->buffer_snd_level > 0 - we have unsent data! FIX LOGIC!\n", __func__);

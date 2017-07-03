@@ -12,7 +12,7 @@ in the `neat/policy` directory. See `./neatpmd -h` for more options.
 
 ## NEAT properties
 
-NEAT properties are essentially `key|value` tuples describing attributes used by the components of the NEAT Policy Manager. In addition properties contain meta attributes such as a score denoting the importance or weight of the property. The syntax and behaviour of NEAT properties is documented [here](doc/NEAT_properties.md)
+NEAT properties are the basic building block of the NEAT Policy Manager. Properties are essentially `key|value` tuples used to describe any entity referenced by the components of the PM. These include user requirements passed through the NEAT API, features enforced by policies as well as information about supported protocols and network characteristics maintained in the CIB. Properties contain meta attributes such as a score denoting the importance or weight of the property and a precedence, indicating whether a property is mandatory or optional. The syntax and behaviour of NEAT properties is documented [here](doc/NEAT_properties.md).
 
 
 ## NEAT Policies
@@ -38,7 +38,7 @@ Each NEAT request is processed in three steps:
 
 1. **Profile Lookup**: the purpose of this step is to expand high-level properties (e.g., `low_lateny`) to concrete, system-specific properties. This is accomplished using so-called *profiles* which use the same format as policies. The PM performs a lookup in which each request is iteratively compared against all profile entries installed in the PIB. 
 
-  Whenever any subset of the request properties triggers a profile (*match*), the corresponding profile properties are appended to the request (*update*). The updated request becomes a candidate for subsequent lookup steps. Note, that each profile match may yield multiple candidates as an output. Similarly, candidates may be eliminated if any of the profile properties contradict properties in the input.
+   Whenever any subset of the request properties triggers a profile (*match*), the corresponding profile properties are appended to the request (*update*). The updated request becomes a candidate for subsequent lookup steps. Note, that each profile match may yield multiple candidates as an output. Similarly, candidates may be eliminated if any of the profile properties contradict properties in the input.
  
 2. **CIB Lookup**: this lookup acts as a filter on the candidate list, either eliminating candidates or updating their properties, using information collected about the system, its connected networks and supported features. Each candidate from the profiles lookup is compared against all *rows* of the CIB table. The lookup returns *N* candidates with the largest aggregate score.
 
@@ -60,7 +60,6 @@ To start the policy manager run:
 
 ```
 $ python3.5 ./neatpmd --cib ./examples/cib/ --pib ./examples/pib
-
 ```
 
 in the `neat/policy` directory. The `--cib` and `--pib` options specify the respective locations of the CIB and the PIB. By default the PM will create a Unix domain socket located at `~/.neat/neat_pm_socket`, where it will listen for JSON strings containing application requests, and it will output the list of generated candidates. The directory for the domain socket may be overridden using the `--sock` option.
@@ -69,7 +68,7 @@ We can test `neatpmd` using the `socat` utility:
 
 ```
 $ NEAT_PM_SOCKET=~/.neat/neat_pm_socket
-$ JSON='{"transport": {"value": "TCP"}, "MTU": {"value": [1500, Infinity]}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10.54.1.23"}}'
+$ JSON='[{"transport": {"value": "TCP"}, "MTU": {"value": [1500, Infinity]}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10.54.1.23"}}]'
 $ echo $JSON | socat -d -d STDIO UNIX-CONNECT:$NEAT_PM_SOCKET
 ``` 
 

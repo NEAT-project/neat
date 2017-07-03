@@ -3740,7 +3740,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
 {
     int rc = NEAT_ERROR_OUT_OF_MEMORY;
     struct ifaddrs *ifaddrs = NULL;
-    json_t *array = NULL, *endpoints = NULL, *properties = NULL, *domains = NULL, *address, *port;
+    json_t *array = NULL, *endpoints = NULL, *properties = NULL, *domains = NULL, *address, *port, *req_type;
     const char *home_dir;
     const char *socket_path;
     char socket_path_buf[128];
@@ -3859,6 +3859,15 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
     json_object_set(properties, "port", port);
     json_decref(port);
 
+    
+    req_type = json_pack("{s:s}", "value", "pre-resolve");
+    if (req_type == NULL)
+        goto end;
+
+    json_object_set(properties, "__request_type", req_type);
+    json_decref(req_type);
+
+    
     if ((domains = json_array()) == NULL)
         goto end;
 

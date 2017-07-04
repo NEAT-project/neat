@@ -57,16 +57,16 @@ struct peer_connection {
     struct rawrtc_dtls_transport* dtls_transport;
     struct rawrtc_sctp_transport* sctp_transport;
     struct rawrtc_data_transport* data_transport;
-    struct rawrtc_list data_channels;
+  //  struct rawrtc_list data_channels;
     struct parameters local_parameters;
     struct parameters remote_parameters;
     size_t n_flows;   // number of active flows
     size_t max_flows; // highest index-1 that is occupied in the flows array
+    int ready_to_close;
     struct rawrtc_flow** flows;
     struct neat_flow *listening_flow;
     struct neat_ctx *ctx;
 };
-
 
 
 void default_ice_gatherer_state_change_handler(
@@ -171,6 +171,11 @@ enum rawrtc_code get_json_stdin(
         struct odict** const dictp // de-referenced
 );
 
+enum rawrtc_code get_json_buffer(
+        struct odict** const dictp, // de-referenced
+        char *buffer
+);
+
 enum rawrtc_code dict_get_entry(
         void* const valuep,
         struct odict* const parent,
@@ -251,21 +256,21 @@ void data_channel_helper_create_from_channel(
         void* const arg // nullable
 );
 
-char *set_ice_parameters_string(
-        struct rawrtc_ice_parameters* const parameters
+void set_ice_parameters_string(
+        struct rawrtc_ice_parameters* const parameters, char *str
 );
 
-char *set_ice_candidates_string(
-        struct rawrtc_ice_candidates* const parameters
+void set_ice_candidates_string(
+        struct rawrtc_ice_candidates* const parameters, char *str
 );
 
-char *set_dtls_parameters_string(
-        struct rawrtc_dtls_parameters* const parameters
+void set_dtls_parameters_string(
+        struct rawrtc_dtls_parameters* const parameters, char *str
 );
 
-char *set_sctp_parameters_string(
+void set_sctp_parameters_string(
         struct rawrtc_sctp_transport* const transport,
-        struct sctp_parameters* const parameters
+        struct sctp_parameters* const parameters, char *str
 );
 
 int rawrtc_stop_client(struct peer_connection *pc);

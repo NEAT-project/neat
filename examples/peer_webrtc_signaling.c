@@ -1,6 +1,7 @@
-#include <neat.h>
 #include "util.h"
+#include "webrtc_signaling.h"
 
+#include <neat.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -54,6 +55,7 @@ static char          *config_property        = "\
 }";
 
 static uint32_t flows_active = 0;
+static struct neat_signaling_context *sctx;
 
 struct tneat_flow_direction {
     unsigned char *buffer;
@@ -103,12 +105,12 @@ static neat_error_code
 on_parameters(struct neat_flow_operations *opCB)
 {
     fprintf(stderr, "%s\n", __func__);
-   /* char *remote = NULL;
+
+    printf("LocalParameters: %s\n", (char *)opCB->userData);
     printf("Got local parameters from WebRTC. Now send them to signalling server\n");
-    remote = strdup((char *)opCB->userData);
-    if (neat_send_remote_parameters(opCB->ctx, opCB->flow, remote) != NEAT_OK) {
-        free(remote);
-    }*/
+
+    neat_signaling_send(sctx, opCB->userData, strlen(opCB->userData) + 1);
+
     free(opCB->userData);
     opCB->userData = NULL;
     return NEAT_OK;
@@ -367,6 +369,9 @@ main(int argc, char *argv[])
 
     struct neat_flow *flows[config_max_flows];
     struct neat_flow_operations ops[config_max_flows];
+    // create listening flow for accepted new data channels
+    struct neat_flow *listening_flow;
+    struct neat_flow_operations operation;
 
     int arg, result;
     char *arg_property = config_property;
@@ -456,9 +461,7 @@ main(int argc, char *argv[])
     options[0].tag = NEAT_TAG_CHANNEL_NAME;
     options[0].type = NEAT_TYPE_STRING;
 
-    // create listening flow for accepted new data channels
-    struct neat_flow *listening_flow;
-    struct neat_flow_operations operation;
+
     if ((listening_flow = neat_new_flow(ctx)) == NULL) {
         fprintf(stderr, "%s - neat_new_flow failed\n", __func__);
         result = EXIT_FAILURE;
@@ -531,12 +534,17 @@ printf("neat_accept returned\n");
         }
     }
 
+    sctx = neat_signaling_init(ctx, listening_flow, atoi(argv[optind]));
+
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
     // cleanup
 cleanup:
 printf("cleanup\n");
+
+    neat_signaling_free(sctx);
+
     if (config_log_level >= 1) {
         printf("freeing ctx bye bye!\n");
     }

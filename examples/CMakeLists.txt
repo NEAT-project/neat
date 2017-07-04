@@ -34,6 +34,8 @@ LIST(APPEND neat_property_examples
 IF(WEBRTC_SUPPORT)
     LIST(APPEND neat_programs
         peer_webrtc.c
+        peer_webrtc_signaling.c
+	signaling.c
     )
 ENDIF()
 
@@ -46,8 +48,12 @@ FOREACH (source_file ${neat_programs})
         ${source_file}
         util.c
         picohttpparser.c
+        webrtc_signaling.c
     )
     TARGET_LINK_LIBRARIES(${source_file_we} neat)
+    INSTALL(TARGETS             ${source_file_we}
+            RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/libneat
+            BUNDLE DESTINATION  ${CMAKE_INSTALL_LIBDIR}/libneat)
 ENDFOREACH ()
 
 # COPY EXAMPLE PROPERTY FILES

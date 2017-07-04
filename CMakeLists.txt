@@ -3,7 +3,7 @@ PROJECT(libneat)
 
 set(BUILD_MAJOR "0")
 set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td151")
+set(BUILD_PATCH "1~td161")
 set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 # INSTALLATION_DIRECTORIES
@@ -75,8 +75,6 @@ LIST(APPEND neat_sources
     neat_pm_socket.c
     neat_unix_json_socket.c
     tls-trust.c
-    neat_webrtc.c
-    neat_webrtc_tools.c
 )
 
 # OS DEPENDENT
@@ -91,9 +89,9 @@ ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     MESSAGE(${CMAKE_SYSTEM_NAME} " supported")
     LIST(APPEND neat_headers neat_bsd.h)
     LIST(APPEND neat_sources neat_bsd.c)
-    SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include" "/usr/home/ruengeler/rawrtc/build/prefix/include")
-    SET(CMAKE_LIBRARY_PATH "/usr/local/lib" "/usr/home/ruengeler/install/lib" "/usr/home/ruengeler/rawrtc/build/prefix/lib")
-    INCLUDE_DIRECTORIES("/usr/local/include" "/usr/home/ruengeler/install/include" "/usr/home/ruengeler/rawrtc/build/prefix/include")
+    SET(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
+    SET(CMAKE_LIBRARY_PATH "/usr/local/lib")
+    INCLUDE_DIRECTORIES("/usr/local/include")
 
 ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     MESSAGE(${CMAKE_SYSTEM_NAME} " supported")
@@ -189,7 +187,8 @@ OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 0)
 
 OPTION(SOCKET_API "Include the socket API" 0)
 
-OPTION(WEBRTC_SUPPORT "Include WebRTC support" 0)
+OPTION(WEBRTC_SUPPORT "Include WebRTC support" 1)
+
 
 # REQUIREMENTS
 #################################################
@@ -236,8 +235,6 @@ IF (OPENSSL_SUPPORT)
     ENDIF()
 ENDIF()
 
-#ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
-
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     FIND_LIBRARY(MNL_LIB mnl)
     CHECK_INCLUDE_FILE(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
@@ -262,14 +259,21 @@ ELSE()
 ENDIF()
 
 IF (WEBRTC_SUPPORT)
-CHECK_INCLUDE_FILE(rawrtc.h HAVE_RAWRTC_H)
-FIND_LIBRARY(RAWRTC_LIB rawrtc)
-IF (NOT HAVE_RAWRTC_H OR NOT RAWRTC_LIB)
-    MESSAGE(FATAL_ERROR "rawrtc.h not found - rawrtc installed?")
-ELSE()
-    MESSAGE(STATUS "rawrtc found: " ${RAWRTC_LIB})
-    ADD_DEFINITIONS(-DWEBRTC_SUPPORT)
-ENDIF()
+    SET(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${RAWRTC_PREFIX}/include)
+    SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${RAWRTC_PREFIX}/lib)
+    INCLUDE_DIRECTORIES(${INCLUDE_DIRECTORIES} ${RAWRTC_PREFIX}/include)
+
+    CHECK_INCLUDE_FILE(rawrtc.h HAVE_RAWRTC_H)
+    FIND_LIBRARY(RAWRTC_LIB rawrtc)
+
+    IF (NOT HAVE_RAWRTC_H OR NOT RAWRTC_LIB)
+        MESSAGE(WARNING "rawrtc.h not found - rawrtc installed?")
+        SET(WEBRTC_SUPPORT 0)
+    ELSE()
+        MESSAGE(STATUS "rawrtc found: " ${RAWRTC_LIB})
+        ADD_DEFINITIONS(-DWEBRTC_SUPPORT)
+        LIST(APPEND neat_sources neat_webrtc.c neat_webrtc_tools.c)
+    ENDIF()
 ENDIF()
 
 CHECK_INCLUDE_FILE(netinet/sctp.h HAVE_NETINET_SCTP_H)
@@ -323,12 +327,20 @@ LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}
     ${JANSSON_LIB}
-   # /usr/home/ruengeler/install/lib/libssl.so
-   # /usr/home/ruengeler/install/lib/libcrypto.so
-   # ${OPENSSL_SSL_LIBRARY}
-   # ${OPENSSL_CRYPTO_LIBRARY}
-    ${RAWRTC_LIB}
     )
+
+IF (OPENSSL_SUPPORT)
+    LIST(APPEND neat_libs
+        ${OPENSSL_SSL_LIBRARY}
+        ${OPENSSL_CRYPTO_LIBRARY}
+        )
+ENDIF()
+
+IF (WEBRTC_SUPPORT)
+    LIST(APPEND neat_libs
+        ${RAWRTC_LIB}
+    )
+ENDIF()
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     LIST(APPEND neat_libs ${MNL_LIB})

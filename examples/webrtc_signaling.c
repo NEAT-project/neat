@@ -117,7 +117,7 @@ signaling_handle_buffer(struct neat_signaling_context *sctx) {
 
         fprintf(stderr, "#######################################\n");
         fprintf(stderr, "buffer_rcv_level : %d\n", sctx->buffer_rcv_level);
-    	fprintf(stderr, "payload_length : %d\n", payload_length);
+        fprintf(stderr, "payload_length : %d\n", payload_length);
 
 
         if ((payload_length + 4) > (sctx->buffer_rcv_level)) {
@@ -142,7 +142,7 @@ signaling_handle_buffer(struct neat_signaling_context *sctx) {
             remote = strdup((char *) &(sctx->buffer_rcv) + 4);
 
 
-            fprintf(stderr, "a - %s\n", (char *) (&(sctx->buffer_rcv) + 4));
+            //fprintf(stderr, "a - %s\n", (char *) (&(sctx->buffer_rcv) + 4));
             fprintf(stderr, "b - %s\n", remote);
 
             neat_send_remote_parameters(sctx->ctx, sctx->flow, remote);

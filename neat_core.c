@@ -354,8 +354,6 @@ neat_free_ctx(struct neat_ctx *nc)
     neat_security_close(nc);
     neat_log_close(nc);
     free(nc);
-    printf("ctx freed\n");
-    stop_rawrtc();
 }
 
 //The three functions that deal with the NEAT callback API. Nothing very
@@ -7353,9 +7351,9 @@ void webrtc_io_readable(neat_ctx *ctx, neat_flow *flow, neat_error_code code, vo
     }
      memcpy(flow->readBuffer + flow->readBufferSize, buffer, size);
      flow->readBufferSize += size;
-    if (flow->operations->on_readable) {
+    if (flow->operations.on_readable) {
         READYCALLBACKSTRUCT;
-        flow->operations->on_readable(flow->operations);
+        flow->operations.on_readable(&flow->operations);
     }
 }
 
@@ -7367,9 +7365,9 @@ void webrtc_io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 void webrtc_io_parameters(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 {
     int stream_id   = -1;
-    if (flow->operations->on_parameters) {
+    if (flow->operations.on_parameters) {
         READYCALLBACKSTRUCT;
-        flow->operations->on_parameters(flow->operations);
+        flow->operations.on_parameters(&flow->operations);
     }
 }
 #endif

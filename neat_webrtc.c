@@ -56,8 +56,7 @@ void transport_upcall_handler(
         if (events == SCTP_EVENT_WRITE) {
             for (int i = 0; i < (int)client->max_flows; i++) {
                 if (client->flows[i]->state == NEAT_FLOW_OPEN &&
-                client->flows[i]->flow->operations &&
-                client->flows[i]->flow->operations->on_writable) {
+                client->flows[i]->flow->operations.on_writable) {
                     webrtc_io_writable(client->ctx, client->flows[i]->flow, NEAT_OK);
                 }
             }
@@ -398,31 +397,23 @@ void data_channel_handler(
     struct neat_flow *newFlow = neat_new_flow(client->ctx);
     newFlow->state = NEAT_FLOW_OPEN;
 
-    newFlow->operations = calloc (1, sizeof(struct neat_flow_operations));
-
-    if (newFlow->operations == NULL) {
-        neat_io_error(client->ctx, newFlow, NEAT_ERROR_OUT_OF_MEMORY);
-        return;
-    }
-
-    newFlow->operations->on_connected   = client->listening_flow->operations->on_connected;
-    newFlow->operations->on_readable    = client->listening_flow->operations->on_readable;
-    newFlow->operations->on_writable    = client->listening_flow->operations->on_writable;
-    newFlow->operations->on_close       = client->listening_flow->operations->on_close;
-    newFlow->operations->on_error       = client->listening_flow->operations->on_error;
-    newFlow->operations->ctx            = client->ctx;
-    newFlow->operations->flow           = client->listening_flow;
-    newFlow->operations->userData       = client->listening_flow->operations->userData;
-    newFlow->operations->label = strdup(channel_helper->label);
+    newFlow->operations.on_connected   = client->listening_flow->operations.on_connected;
+    newFlow->operations.on_readable    = client->listening_flow->operations.on_readable;
+    newFlow->operations.on_writable    = client->listening_flow->operations.on_writable;
+    newFlow->operations.on_close       = client->listening_flow->operations.on_close;
+    newFlow->operations.on_error       = client->listening_flow->operations.on_error;
+    newFlow->operations.ctx            = client->ctx;
+    newFlow->operations.flow           = client->listening_flow;
+    newFlow->operations.userData       = client->listening_flow->operations.userData;
+    newFlow->operations.label          = channel_helper->label;
 
     newFlow->peer_connection            = client;
     newFlow->webrtcEnabled              = true;
-    newFlow->ownedByCore                = 1;
-    newFlow->operations->label = strdup(channel_helper->label);
+
     struct rawrtc_flow* r_flow = calloc(1, sizeof(struct rawrtc_flow));
     r_flow->flow = newFlow;
     r_flow->state = NEAT_FLOW_OPEN;
-    r_flow->label = strdup(channel_helper->label);
+    r_flow->label = channel_helper->label;
     r_flow->channel = rawrtc_mem_ref(channel);
     r_flow->channel->transport = rawrtc_mem_ref(channel->transport);
     r_flow->channel->transport_arg = rawrtc_mem_ref(channel->transport_arg);
@@ -470,7 +461,7 @@ static void sctp_transport_state_change_handler(
                 struct rawrtc_data_channel_parameters* channel_parameters;
                 struct data_channel_helper* data_channel_negotiated;
 
-                if (client->flows[i]->flow->operations && client->flows[i]->flow->operations->on_connected) {
+                if (client->flows[i]->flow->operations.on_connected) {
                     client->flows[i]->flow->peer_connection = client;
                     webrtc_io_connected(client->ctx, client->flows[i]->flow, NEAT_OK);
                 }
@@ -508,7 +499,7 @@ static void sctp_transport_state_change_handler(
                 client->flows[i]->state = NEAT_FLOW_OPEN;
                 client->flows[i]->channel = rawrtc_mem_ref(data_channel_negotiated->channel);
                 client->flows[i]->flow->peer_connection = client;
-                client->flows[i]->flow->operations->label = strdup(client->flows[i]->label);
+            client->flows[i]->flow->operations.label = client->flows[i]->label;
 
                 // Un-reference
                 rawrtc_mem_deref(channel_parameters);
@@ -643,7 +634,7 @@ static void ice_gatherer_local_candidate_handler(
     // Print local parameters (if last candidate)
     if (!candidate) {
     //    print_local_parameters(client,  NULL);
-        print_local_parameters(client, client->listening_flow->operations->userData);
+        print_local_parameters(client, client->listening_flow->operations.userData);
         webrtc_io_parameters(client->ctx, client->listening_flow, NEAT_OK);
     }
 }

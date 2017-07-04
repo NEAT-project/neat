@@ -195,13 +195,13 @@ handshake(struct neat_ctx *ctx,
 
     err = SSL_get_error(private->ssl, err);
     if (err == SSL_ERROR_WANT_READ) {
-        flow->operations->on_readable = neat_security_handshake;
-        flow->operations->on_writable = NULL;
-        neat_set_operations(ctx, flow, flow->operations);
+        flow->operations.on_readable = neat_security_handshake;
+        flow->operations.on_writable = NULL;
+        neat_set_operations(ctx, flow, &flow->operations);
     } else if (err == SSL_ERROR_WANT_WRITE) {
-        flow->operations->on_writable = neat_security_handshake;
-        flow->operations->on_readable = NULL;
-        neat_set_operations(ctx, flow, flow->operations);
+        flow->operations.on_writable = neat_security_handshake;
+        flow->operations.on_readable = NULL;
+        neat_set_operations(ctx, flow, &flow->operations);
     } else if (err != SSL_ERROR_NONE) {
         neat_log(ctx, NEAT_LOG_WARNING, "%s - handshake error", __func__);
         ERR_print_errors_fp(stderr);
@@ -243,8 +243,8 @@ handshake(struct neat_ctx *ctx,
             private->inCipherBufferUsed = 0;
             private->inCipherBufferSent = 0;
         }
-        flow->operations->on_writable = neat_security_handshake;
-        neat_set_operations(ctx, flow, flow->operations);
+        flow->operations.on_writable = neat_security_handshake;
+        neat_set_operations(ctx, flow, &flow->operations);
     }
 
     return NEAT_ERROR_WOULD_BLOCK;
@@ -429,15 +429,15 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
 
         SSL_do_handshake(private->ssl);
 
-        private->pushed_on_readable = flow->operations->on_readable;
-        private->pushed_on_writable = flow->operations->on_writable;
-        private->pushed_on_connected = flow->operations->on_connected;
+        private->pushed_on_readable = flow->operations.on_readable;
+        private->pushed_on_writable = flow->operations.on_writable;
+        private->pushed_on_connected = flow->operations.on_connected;
 
         // these will eventually be popped back onto the stack when tls is setup
-        flow->operations->on_writable = neat_security_handshake;
-        flow->operations->on_readable = NULL;
-        flow->operations->on_connected = NULL;
-        neat_set_operations(ctx, flow, flow->operations);
+        flow->operations.on_writable = neat_security_handshake;
+        flow->operations.on_readable = NULL;
+        flow->operations.on_connected = NULL;
+        neat_set_operations(ctx, flow, &flow->operations);
 
         flow->socket->handle->data = flow->socket;
         if (isClient) {
@@ -561,10 +561,10 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
         private->state = DTLS_CONNECTED;
         opCB->flow->socket->handle->data = opCB->flow->socket;
         opCB->flow->firstWritePending = 0;
-        opCB->flow->operations->on_readable = private->pushed_on_readable;
-        opCB->flow->operations->on_writable = private->pushed_on_writable;
-        opCB->flow->operations->on_connected = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB->flow->operations);
+        opCB->flow->operations.on_readable = private->pushed_on_readable;
+        opCB->flow->operations.on_writable = private->pushed_on_writable;
+        opCB->flow->operations.on_connected = NULL;
+        neat_set_operations(opCB->ctx, opCB->flow, &opCB->flow->operations);
         uvpollable_cb(opCB->flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
     }
 
@@ -659,9 +659,9 @@ neat_dtls_connect(neat_ctx *ctx, neat_flow *flow)
         return NEAT_OK;
     }
 
-    private->pushed_on_readable = flow->operations->on_readable;
-    private->pushed_on_writable = flow->operations->on_writable;
-    private->pushed_on_connected = flow->operations->on_connected;
+    private->pushed_on_readable = flow->operations.on_readable;
+    private->pushed_on_writable = flow->operations.on_writable;
+    private->pushed_on_connected = flow->operations.on_connected;
 
     SSL_load_error_strings();
   /*  BIO_dgram_sctp_notification_cb(private->dtlsBIO, &handle_notifications, (void*) private->ssl);*/
@@ -676,14 +676,14 @@ neat_dtls_connect(neat_ctx *ctx, neat_flow *flow)
     SSL_do_handshake(private->ssl);
 
     // these will eventually be popped back onto the stack when dtls is setup
-    flow->operations->on_writable = neat_dtls_handshake;
+    flow->operations.on_writable = neat_dtls_handshake;
     if (flow->isServer) {
-        flow->operations->on_readable = neat_dtls_handshake;
+        flow->operations.on_readable = neat_dtls_handshake;
     } else {
-        flow->operations->on_readable = NULL;
+        flow->operations.on_readable = NULL;
     }
-    flow->operations->on_connected = NULL;
-    neat_set_operations(ctx, flow, flow->operations);
+    flow->operations.on_connected = NULL;
+    neat_set_operations(ctx, flow, &flow->operations);
 
     flow->socket->handle->data = flow->socket;
 

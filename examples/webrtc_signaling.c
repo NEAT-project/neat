@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <errno.h>
 
+#ifdef WEBRTC_SUPPORT
 static char *config_property = "{\
     \"transport\": [\
         {\
@@ -240,3 +241,4 @@ signaling_on_close(struct neat_flow_operations *opCB)
 
     return NEAT_OK;
 }
+#endif

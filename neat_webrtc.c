@@ -435,7 +435,7 @@ static void dtls_transport_state_change_handler(
     // Print state
     default_dtls_transport_state_change_handler(state, arg);
 
-    if (client->role == ICE_ROLE_CONTROLLING && client->ready_to_close == 1) {
+    if (client->role == RAWRTC_ICE_ROLE_CONTROLLING && client->ready_to_close == 1) {
         client_stop(client);
         rawrtc_close();
         neat_notify_close(client->listening_flow);

@@ -62,11 +62,11 @@ struct peer_connection {
     struct parameters remote_parameters;
     size_t n_flows;   // number of active flows
     size_t max_flows; // highest index-1 that is occupied in the flows array
+    int ready_to_close;
     struct rawrtc_flow** flows;
     struct neat_flow *listening_flow;
     struct neat_ctx *ctx;
 };
-
 
 
 void default_ice_gatherer_state_change_handler(

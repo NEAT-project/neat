@@ -49,18 +49,29 @@ void transport_upcall_handler(
         int flags
 ) {
     printf("%s\n", __func__);
-    int event = webrtc_upcall_handler(socket, arg, flags);
-    printf("after webrtc_upcall_handler: event=%d arg=rawrtc_sctp_transport=%p\n", event, (void *)arg);
-    if (event == SCTP_EVENT_WRITE) {
-        struct rawrtc_sctp_transport* const transport = arg;
-        printf("arg of rawrtc_sctp_transport = peer_connection %p\n", (void *)transport->arg);
-        struct peer_connection* const client = transport->arg;
-        printf("n_flows=%zu\n", client->n_flows);
-        for (int i = 0; i < (int)client->max_flows; i++) {
-            if (client->flows[i]->state == NEAT_FLOW_OPEN && client->flows[i]->flow->operations && client->flows[i]->flow->operations->on_writable) {
-                webrtc_io_writable(client->ctx, client->flows[i]->flow, NEAT_OK);
+    int events = -1;
+    int ignore_events = 0;
+
+    events = webrtc_upcall_handler(socket, arg, flags, ignore_events);
+
+    while (events) {
+        if (events == SCTP_EVENT_WRITE) {
+            struct rawrtc_sctp_transport* const transport = arg;
+            printf("arg of rawrtc_sctp_transport = peer_connection %p\n", (void *)transport->arg);
+            struct peer_connection* const client = transport->arg;
+            printf("n_flows=%zu\n", client->n_flows);
+            for (int i = 0; i < (int)client->max_flows; i++) {
+                if (client->flows[i]->state == NEAT_FLOW_OPEN &&
+                client->flows[i]->flow->operations &&
+                client->flows[i]->flow->operations->on_writable) {
+                    printf("call webrtc_io_writable for flow %d\n", 1);
+                    webrtc_io_writable(client->ctx, client->flows[i]->flow, NEAT_OK);
+                }
             }
         }
+        ignore_events |= events;
+        events = webrtc_upcall_handler(socket, arg, flags, ignore_events);
+        events &= ~ignore_events;
     }
 }
 
@@ -233,12 +244,13 @@ out:
             neat_close(client->ctx, client->flows[i]->flow);
         }
     }
+    rawrtc_fd_close(STDIN_FILENO);
 }
 
 static void parameters_destroy(
         struct parameters* const parameters
 ) {
-printf("%s\n", __func__);
+printf("%s: %p\n", __func__, (void *)parameters);
     // Un-reference
     parameters->ice_parameters->username_fragment = rawrtc_mem_deref(parameters->ice_parameters->username_fragment);
     parameters->ice_parameters->password = rawrtc_mem_deref(parameters->ice_parameters->password);
@@ -256,11 +268,15 @@ static void close_all_channels(struct peer_connection* const client)
     printf("%s\n", __func__);
     for (int i = 0; i < (int)client->max_flows; i++) {
         if (client->flows[i]->state != NEAT_FLOW_CLOSED) {
+        printf("Channel %s should be closed\n",  client->flows[i]->label);
             if (rawrtc_data_channel_close(client->flows[i]->channel) != RAWRTC_CODE_SUCCESS) {
                 printf("%s could not be closed \n", client->flows[i]->label);
             }
-            rawrtc_mem_deref (client->flows[i]->channel);
         }
+        printf("dereferencing channel %d\n", i);
+        rawrtc_mem_deref(client->flows[i]->channel->parameters);
+        free (client->flows[i]->label);
+        free (client->flows[i]);
     }
 }
 
@@ -271,48 +287,62 @@ static void client_stop(
 printf("%s\n", __func__);
         // Stop transports & close gatherer
     // Clear data channels
+printf("%s:%d\n", __func__, __LINE__);
     rawrtc_list_flush(&client->data_channels);
-
-    close_all_channels(client);
+printf("%s:%d\n", __func__, __LINE__);
+   // close_all_channels(client);
+printf("%s:%d\n", __func__, __LINE__);
 
 
     if (rawrtc_sctp_transport_stop(client->sctp_transport) != RAWRTC_CODE_SUCCESS) {
         printf("Error stopping sctp transport \n");
         exit (-1);
     }
+printf("%s:%d\n", __func__, __LINE__);
     if (rawrtc_dtls_transport_stop(client->dtls_transport) != RAWRTC_CODE_SUCCESS) {
         printf("Error stopping dtls transport \n");
         exit (-1);
     }
+printf("%s:%d\n", __func__, __LINE__);
     if (rawrtc_ice_transport_stop(client->ice_transport) != RAWRTC_CODE_SUCCESS) {
         printf("Error stopping ice transport \n");
         exit (-1);
     }
+printf("%s:%d\n", __func__, __LINE__);
     if (rawrtc_ice_gatherer_close(client->gatherer) != RAWRTC_CODE_SUCCESS) {
         printf("Error closing gatherer\n");
         exit (-1);
     }
-
+printf("%s:%d\n", __func__, __LINE__);
     // Un-reference & close
     parameters_destroy(&client->remote_parameters);
+printf("%s:%d\n", __func__, __LINE__);
     parameters_destroy(&client->local_parameters);
-
+printf("%s:%d\n", __func__, __LINE__);
     client->data_transport = rawrtc_mem_deref(client->data_transport);
-
+printf("%s:%d\n", __func__, __LINE__);
     client->sctp_transport->channels = rawrtc_mem_deref(client->sctp_transport->channels);
+printf("%s:%d\n", __func__, __LINE__);
     client->sctp_transport = rawrtc_mem_deref(client->sctp_transport);
-
+printf("%s:%d\n", __func__, __LINE__);
     rawrtc_list_flush(&client->dtls_transport->certificates);
+printf("%s:%d\n", __func__, __LINE__);
     client->dtls_transport->socket = rawrtc_mem_deref(client->dtls_transport->socket);
+    printf("%s:%d\n", __func__, __LINE__);
     client->dtls_transport->context = rawrtc_mem_deref(client->dtls_transport->context);
+printf("%s:%d\n", __func__, __LINE__);
     client->dtls_transport = rawrtc_mem_deref(client->dtls_transport);
-
+printf("%s:%d\n", __func__, __LINE__);
     client->ice_transport->dtls_transport = rawrtc_mem_deref(client->ice_transport->dtls_transport);
+printf("%s:%d\n", __func__, __LINE__);
     client->ice_transport = rawrtc_mem_deref(client->ice_transport);
-
+printf("%s:%d\n", __func__, __LINE__);
     client->gatherer = rawrtc_mem_deref(client->gatherer);
+printf("%s:%d\n", __func__, __LINE__);
     client->certificate = rawrtc_mem_deref(client->certificate);
+printf("%s:%d\n", __func__, __LINE__);
     client->gather_options = rawrtc_mem_deref(client->gather_options);
+printf("%s:%d\n", __func__, __LINE__);
 }
 
 /*
@@ -349,23 +379,30 @@ void data_channel_close_handler(
     struct peer_connection* const client = (struct peer_connection *)channel->client;
 
     default_data_channel_close_handler(arg);
-    printf("%s for channel with label %s\n", __func__, channel->label);
-
+   // printf("%s for channel with label %s\n", __func__, channel->label);
+printf("max_flows=%d\n", (int)client->max_flows);
     for (int i = 0; i < (int)client->max_flows; i++) {
     printf("%s: label=%s state=%d\n", __func__, client->flows[i]->label, client->flows[i]->state);
-        if ((client->flows[i]->state != NEAT_FLOW_CLOSED) && (!strcmp(client->flows[i]->label, channel->label))) {
-            client->flows[i]->state = NEAT_FLOW_CLOSED;
-            client->n_flows--;
-            printf("call neat_notify_close for %s\n", client->flows[i]->label);
-            neat_notify_close(client->flows[i]->flow);
+        if (client->flows[i]->state != NEAT_FLOW_CLOSED) {
+            if (!strcmp(client->flows[i]->label, channel->label)) {
+                client->flows[i]->state = NEAT_FLOW_CLOSED;
+                client->n_flows--;
+                printf("call neat_notify_close for %s\n", client->flows[i]->label);
+                neat_notify_close(client->flows[i]->flow);
+            }
         }
     }
     if (!done && client->n_flows == 0) {
         done = 1;
-        client_stop(client);
-        rawrtc_close();
-        printf("close listening flow\n");
-        neat_notify_close(client->listening_flow);
+        printf("all flows closed: Client should be stopped  now\n");
+        client->ready_to_close = 1;
+      //  if (client->role == ICE_ROLE_CONTROLLED) {
+            client->ready_to_close = 1;
+            client_stop(client);
+            rawrtc_close();
+            printf("close listening flow\n");
+            neat_notify_close(client->listening_flow);
+       // }
     }
 }
 
@@ -443,10 +480,29 @@ printf("%s: arg= peer_connection\n", __func__);
     client->flows[client->n_flows] = r_flow;
     client->n_flows++;
     client->max_flows++;
-
+printf("max_flows now %zu\n", client->max_flows);
     webrtc_io_connected(client->ctx, newFlow, NEAT_OK);
        // client->active_flow->peer_connection = client;
 }
+
+static void dtls_transport_state_change_handler(
+    enum rawrtc_dtls_transport_state const state, // read-only
+        void* const arg // will be casted to `struct client*`
+) {
+printf("%s\n", __func__);
+    struct peer_connection* const client = arg;
+printf("%s: arg=peer_connection\n", __func__);
+    // Print state
+    default_dtls_transport_state_change_handler(state, arg);
+
+    if (client->role == ICE_ROLE_CONTROLLING && client->ready_to_close == 1) {
+        client_stop(client);
+        rawrtc_close();
+        printf("close listening flow\n");
+        neat_notify_close(client->listening_flow);
+    }
+}
+
 
 
 static void sctp_transport_state_change_handler(
@@ -462,7 +518,7 @@ printf("%s: arg=peer_connection\n", __func__);
     // Open?
     if (state == RAWRTC_SCTP_TRANSPORT_STATE_CONNECTED) {
       //  client->active_flow->state = NEAT_FLOW_OPEN;
-
+printf("max_flows=%d\n", (int)client->max_flows);
         for (int i = 0; i < (int)client->max_flows; i++) {
             if (client->flows[i]->state == NEAT_FLOW_WAITING) {
                 struct rawrtc_data_channel_parameters* channel_parameters;
@@ -790,11 +846,13 @@ neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t peer_role
     enum rawrtc_ice_role role;
     char* const stun_google_com_urls[] = {"stun:stun.l.google.com:19302",
                                           "stun:stun1.l.google.com:19302"};
+    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 printf("flow=%p, flow->name=%s\n", (void *)flow, flow->name);
 
     if (peer.max_flows == 0) {
 	    peer.ice_candidate_types = ice_candidate_types;
 	    peer.n_ice_candidate_types = n_ice_candidate_types;
+	    peer.ready_to_close = 0;
 
         struct rawrtc_flow* r_flow = calloc(1, sizeof(struct rawrtc_flow));
         r_flow->flow = flow;
@@ -804,11 +862,10 @@ printf("flow=%p, flow->name=%s\n", (void *)flow, flow->name);
         peer.flows[peer.max_flows] = r_flow;
         peer.n_flows++;
         peer.max_flows++;
+        printf("max_flows now %zu\n", peer.max_flows);
        // peer.active_flow = flow;
         peer.ctx = flow->ctx;
         peer.remote_host = strdup(flow->name);
-
-        neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
         if (peer_role == 0) {
             role = RAWRTC_ICE_ROLE_CONTROLLING;
@@ -897,16 +954,19 @@ printf("%d\n", __LINE__);
                     neat_log(peer.ctx, NEAT_LOG_DEBUG, "Created data channel successfully");
                 }
                 r_flow->channel = data_channel_negotiated->channel;
+                data_channel_negotiated->label = rawrtc_mem_deref(data_channel_negotiated->label);
                // peer.active_flow = flow;
 
             } else {
                 r_flow->state = NEAT_FLOW_WAITING;
+                printf("r_flow->state = NEAT_FLOW_WAITING\n");
             }
             flow->peer_connection = &peer;
             r_flow->flow = flow;
             peer.flows[peer.max_flows] = r_flow;
             peer.n_flows++;
             peer.max_flows++;
+            printf("max_flows now %zu\n", peer.max_flows);
         }
     }
 }
@@ -925,6 +985,7 @@ int
 rawrtc_close_flow(neat_flow *flow, struct peer_connection *pc)
 {
 printf("%s\n", __func__);
+printf("max_flows=%d\n", (int)pc->max_flows);
     for (int i = 0; i < (int)pc->max_flows; i++) {
         if (pc->flows[i]->flow == flow) {
             if (rawrtc_data_channel_close(pc->flows[i]->channel) != RAWRTC_CODE_SUCCESS) {

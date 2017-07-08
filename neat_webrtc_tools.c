@@ -317,7 +317,7 @@ void data_channel_helper_create(
         printf("no memory!");
         return;
     }
-
+printf("%s:%p, data_channel_helper_destroy\n", __func__, (void *)channel);
     // Set fields
     channel->client = (struct client *)client;
     channel->arg = client;
@@ -334,7 +334,7 @@ static void data_channel_helper_destroy(
         void* arg
 ) {
     struct data_channel_helper* const channel = arg;
-
+printf("%s: %p\n", __func__, (void *)arg);
     // Unset handler argument & handlers of the channel
     if (rawrtc_data_channel_unset_handlers(channel->channel)!= RAWRTC_CODE_SUCCESS) {
         printf("Error unsetting data channel handlers\n");
@@ -464,9 +464,10 @@ static void dtls_fingerprints_destroy(
 ) {
     struct rawrtc_dtls_fingerprints* const fingerprints = arg;
     size_t i;
-
+printf("%s: %p\n", __func__, (void *)arg);
     // Un-reference each item
     for (i = 0; i < fingerprints->n_fingerprints; ++i) {
+    printf("deref %p\n", (void *)fingerprints->fingerprints[i]);
         rawrtc_mem_deref(fingerprints->fingerprints[i]);
     }
 }
@@ -565,7 +566,7 @@ static void ice_candidates_destroy(
 ) {
     struct rawrtc_ice_candidates* const candidates = arg;
     size_t i;
-
+printf("%s: %p\n", __func__, (void *)arg);
     // Un-reference each item
     for (i = 0; i < candidates->n_candidates; ++i) {
         rawrtc_mem_deref(candidates->candidates[i]);
@@ -598,7 +599,7 @@ enum rawrtc_code get_ice_candidates(
         printf("No memory to allocate ICE candidates array");
     }
     candidates->n_candidates = 0;
-
+printf("%s:%p, ice_candidates_destroy\n", __func__, (void *)candidates);
     // Get ICE candidates
     for (le = rawrtc_list_head(&dict->lst); le != NULL; le = le->next) {
         struct odict* const node = ((struct odict_entry*) le->data)->u.odict;
@@ -699,7 +700,7 @@ printf("%s\n", __func__);
         printf("No memory to allocate DTLS fingerprint array");
     }
     fingerprints->n_fingerprints = n;
-
+printf("%s:%p, dtls_fingerprints_destroy, n=%zu\n", __func__, (void *)fingerprints, n);
     // Get role
     error |= dict_get_entry(&role_str, dict, "role", ODICT_STRING, true);
     error |= rawrtc_str_to_dtls_role(&role, role_str);
@@ -1333,7 +1334,7 @@ printf("%s: arg=peer_connection set as arg to data_channel_helper\n", __func__);
         printf("RAWRTC_CODE_NO_MEMORY\n");
         return;
     }
-
+printf("%s:%p, data_channel_helper_destroy\n", __func__, (void *)channel_helper);
     // Get parameters
     if (rawrtc_data_channel_get_parameters(&parameters, channel) != RAWRTC_CODE_SUCCESS)              {
             printf("Could not get channel parameters");

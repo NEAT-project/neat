@@ -55,6 +55,9 @@
 #include "neat_bsd_internal.h"
 #endif
 
+#define TFO_MAX_PACKET_SIZE_IPV4 1460
+#define TFO_MAX_PACKET_SIZE_IPV6 1440
+
 static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
 static neat_error_code neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 static int neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
@@ -715,6 +718,15 @@ neat_free_flow(neat_flow *flow)
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     LIST_REMOVE(flow, next_flow);
+
+    if (flow->tfoBuffer) {
+        free(flow->tfoBuffer);
+        flow->tfoBuffer = NULL;
+    }
+    if (flow->tfoOptions) {
+        free(flow->tfoOptions);
+        flow->tfoOptions = NULL;
+    }
 
 #if defined(USRSCTP_SUPPORT)
     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
@@ -2183,6 +2195,21 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
             json_incref(candidate->properties);
             json_decref(flow->properties);
             flow->properties = candidate->properties;
+        }
+
+        // Check for TFO data
+        if (flow->tfoBufferWritten) {
+            assert(flow->tfoBufferWritten >= candidate->tfoDataSent);
+            flow->tfoBufferWritten -= candidate->tfoDataSent;
+            if (flow->tfoBufferWritten) {
+                neat_write(ctx, flow, flow->tfoBuffer + candidate->tfoDataSent,
+                           flow->tfoBufferWritten, flow->tfoOptions,
+                           flow->tfoOptionsCount);
+            }
+            free(flow->tfoBuffer);
+            flow->tfoBuffer = NULL;
+            free(flow->tfoOptions);
+            flow->tfoOptions = NULL;
         }
 
         flow->everConnected = 1;
@@ -3914,6 +3941,16 @@ neat_error_code
 neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
           struct neat_tlv optional[], unsigned int opt_count)
 {
+    uint32_t written;
+    return neat_open_with_data(ctx, flow, name, port, optional, opt_count, NULL, 0, &written);
+}
+
+neat_error_code
+neat_open_with_data(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
+                    struct neat_tlv optional[], unsigned int opt_count,
+                    const unsigned char *buffer, uint32_t amt, uint32_t *written)
+{
+    *written = 0;
     int stream_count = 0;
     int group = 0;
     float priority = 0.5f;
@@ -4000,6 +4037,19 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
             return NEAT_ERROR_OUT_OF_MEMORY;
         }
     }
+
+#ifdef __linux__
+    if (buffer && amt && !flow->security_needed) {
+        *written = (amt > TFO_MAX_PACKET_SIZE_IPV4) ? TFO_MAX_PACKET_SIZE_IPV4 : amt;
+        flow->tfoBuffer = malloc(*written);
+        memcpy(flow->tfoBuffer, buffer, *written);
+        flow->tfoBufferWritten = *written;
+        size_t s = opt_count * sizeof(struct neat_tlv);
+        flow->tfoOptions = malloc(s);
+        memcpy(flow->tfoOptions, optional, s);
+        flow->tfoOptionsCount = opt_count;
+    }
+#endif
 
 #if 1
     send_properties_to_pm(ctx, flow);
@@ -5605,10 +5655,44 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     }
 #endif
 
+    int n = 0;
+    int usingTFO = 0;
+    retval = -1;
+#ifdef  __linux__
+    if ((candidate->pollable_socket->stack == NEAT_STACK_TCP) &&
+        candidate->pollable_socket->flow->tfoBufferWritten) {
+        usingTFO = 1;
+        int tfoLen = candidate->pollable_socket->flow->tfoBufferWritten;
+        if ((candidate->pollable_socket->family != AF_INET) &&
+            (tfoLen > TFO_MAX_PACKET_SIZE_IPV6)) {
+            tfoLen = TFO_MAX_PACKET_SIZE_IPV6;
+        }
+
+        n = sendto(candidate->pollable_socket->fd,
+                   candidate->pollable_socket->flow->tfoBuffer,
+                   tfoLen,
+                   MSG_FASTOPEN,
+                   (struct sockaddr *) &(candidate->pollable_socket->dst_sockaddr),
+                   slen);
+        if (n > 0) {
+            candidate->tfoDataSent = n;
+        } else if (errno == EOPNOTSUPP) { // TCP Fast Open is turned off.
+            usingTFO = 0;
+        }
+    }
+    if (!usingTFO) {
+        retval = connect(candidate->pollable_socket->fd,
+                         (struct sockaddr *) &(candidate->pollable_socket->dst_sockaddr),
+                         slen);
+    }
+#else
+
     retval = connect(candidate->pollable_socket->fd,
                      (struct sockaddr *) &(candidate->pollable_socket->dst_sockaddr),
                      slen);
-    if (retval && errno != EINPROGRESS) {
+#endif
+
+    if (((!usingTFO && retval) || (n == -1)) && errno != EINPROGRESS) {
         neat_log(ctx, NEAT_LOG_DEBUG,
                  "%s: Connect failed for fd %d connect error (%d): %s",
                  __func__,

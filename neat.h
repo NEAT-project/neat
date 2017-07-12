@@ -138,6 +138,10 @@ NEAT_EXTERN neat_error_code neat_get_stats(struct neat_ctx *ctx, char **neat_sta
 NEAT_EXTERN neat_error_code neat_open(struct neat_ctx *mgr, struct neat_flow *flow,
                           const char *name, uint16_t port,
                           struct neat_tlv optional[], unsigned int opt_count);
+NEAT_EXTERN neat_error_code neat_open_with_data(struct neat_ctx *mgr, struct neat_flow *flow,
+                          const char *name, uint16_t port,
+                          struct neat_tlv optional[], unsigned int opt_count,
+                          const unsigned char *buffer, uint32_t amt, uint32_t *written);
 NEAT_EXTERN neat_error_code neat_read(struct neat_ctx *ctx, struct neat_flow *flow,
                           unsigned char *buffer, uint32_t amt, uint32_t *actualAmt,
                           struct neat_tlv optional[], unsigned int opt_count);

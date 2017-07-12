@@ -343,6 +343,11 @@ struct neat_flow
 
     neat_flow_states                multistream_state;
 #endif // SCTP_MULTISTREAMING
+
+    unsigned char   *tfoBuffer;      // buffer for tcp fast open.
+    size_t           tfoBufferWritten; // amount of data in the tfo buffer.
+    struct neat_tlv *tfoOptions;
+    uint32_t         tfoOptionsCount;
 };
 
 typedef struct neat_flow neat_flow;
@@ -440,6 +445,7 @@ struct neat_he_candidate {
     json_t *properties;
     struct neat_ctx *ctx;
     struct sock_opts_head sock_opts;
+    uint32_t tfoDataSent;
     uint8_t to_be_removed;
     TAILQ_ENTRY(neat_he_candidate) next;
     TAILQ_ENTRY(neat_he_candidate) resolution_list;

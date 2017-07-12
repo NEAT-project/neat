@@ -61,6 +61,7 @@ static char          *config_property       = "\
     }\
 }";
 static unsigned char *buffer                 = NULL;
+int useTFO = 0;
 
 struct stat_flow {
     uint32_t rcv_bytes;
@@ -187,19 +188,15 @@ print_timer_stats(uv_timer_t *handle)
 static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
-    struct stat_flow *stat = opCB->userData;
-
     // now we can start writing
     if (config_log_level >= 1) {
         fprintf(stderr, "%s - connection established\n", __func__);
     }
 
-    gettimeofday(&(stat->tv_first), NULL);
-    gettimeofday(&(stat->tv_last), NULL);
-    gettimeofday(&(stat->tv_delta), NULL);
-
     opCB->on_readable = on_readable;
-    opCB->on_writable = on_writable;
+    if (!useTFO) {
+      opCB->on_writable = on_writable;
+    }
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     return NEAT_OK;
@@ -288,7 +285,7 @@ main(int argc, char *argv[])
     // request index directory by default
     snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n", "/", argv[argc - 1]);
 
-    while ((arg = getopt(argc, argv, "P:p:R:u:n:Jv:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:p:R:u:n:Jv:t")) != -1) {
         switch(arg) {
         case 'P':
             if (read_file(optarg, &arg_property) < 0) {
@@ -331,6 +328,10 @@ main(int argc, char *argv[])
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - log level: %d\n", __func__, config_log_level);
             }
+            break;
+        case 't':
+            useTFO = 1;
+            fprintf(stderr, "%s - option - tcp fast open turned on\n", __func__);
             break;
         default:
             fprintf(stderr, "usage: client_http_get [OPTIONS] HOST\n");
@@ -387,13 +388,31 @@ main(int argc, char *argv[])
         ops[i].userData = stat;
         neat_set_operations(ctx, flows[i], &(ops[i]));
 
+        gettimeofday(&(stat->tv_first), NULL);
+        gettimeofday(&(stat->tv_last), NULL);
+        gettimeofday(&(stat->tv_delta), NULL);
+
         // wait for on_connected or on_error to be invoked
-        if (neat_open(ctx, flows[i], argv[argc - 1], config_port, NULL, 0) != NEAT_OK) {
-            fprintf(stderr, "Could not open flow\n");
-            result = EXIT_FAILURE;
+        if (!useTFO) {
+            if (neat_open(ctx, flows[i], argv[argc - 1], config_port, NULL, 0) != NEAT_OK) {
+                fprintf(stderr, "Could not open flow\n");
+                result = EXIT_FAILURE;
+            } else {
+                fprintf(stderr, "Opened flow %p\n", (void *)flows[i]);
+                flows_active++;
+            }
         } else {
-            fprintf(stderr, "Opened flow %p\n", (void *)flows[i]);
-            flows_active++;
+            uint32_t written = 0;
+            if (neat_open_with_data(ctx, flows[i], argv[argc - 1], config_port, NULL, 0,
+                                    (const unsigned char *)request, strlen(request),
+                                    &written) != NEAT_OK) {
+                fprintf(stderr, "Could not open flow\n");
+                result = EXIT_FAILURE;
+            } else {
+                fprintf(stderr, "Opened flow %p and %d bites written for tcp fast open\n",
+                        (void *)flows[i], written);
+                flows_active++;
+            }
         }
     }
 

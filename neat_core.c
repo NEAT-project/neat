@@ -4038,7 +4038,7 @@ neat_open_with_data(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t p
         }
     }
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     if (buffer && amt && !flow->security_needed) {
         *written = (amt > TFO_MAX_PACKET_SIZE_IPV4) ? TFO_MAX_PACKET_SIZE_IPV4 : amt;
         flow->tfoBuffer = malloc(*written);
@@ -5658,7 +5658,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     int n = 0;
     int usingTFO = 0;
     retval = -1;
-#ifdef  __linux__
+#if defined(__linux__) || defined(__APPLE__)
     if ((candidate->pollable_socket->stack == NEAT_STACK_TCP) &&
         candidate->pollable_socket->flow->tfoBufferWritten) {
         usingTFO = 1;
@@ -5667,7 +5667,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             (tfoLen > TFO_MAX_PACKET_SIZE_IPV6)) {
             tfoLen = TFO_MAX_PACKET_SIZE_IPV6;
         }
-
+#if defined(__linux__)
         n = sendto(candidate->pollable_socket->fd,
                    candidate->pollable_socket->flow->tfoBuffer,
                    tfoLen,
@@ -5679,6 +5679,27 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         } else if (errno == EOPNOTSUPP) { // TCP Fast Open is turned off.
             usingTFO = 0;
         }
+#else
+        sa_endpoints_t endpoints;
+        endpoints.sae_srcif = 0;
+        endpoints.sae_srcaddr = NULL;
+        endpoints.sae_srcaddrlen = 0;
+        endpoints.sae_dstaddr = (struct sockaddr *) &(candidate->pollable_socket->dst_sockaddr);
+        endpoints.sae_dstaddrlen = slen;
+        struct iovec iov[1];
+        iov[0].iov_base = candidate->pollable_socket->flow->tfoBuffer;
+        iov[0].iov_len = tfoLen;
+        size_t written = 0;
+        retval = connectx(candidate->pollable_socket->fd, &endpoints, SAE_ASSOCID_ANY,
+                          CONNECT_DATA_IDEMPOTENT, iov, 1, &written, NULL);
+        // We imitate linux regarding values.
+        if (!retval) {
+            candidate->tfoDataSent = n = written;
+        }
+        if (retval) {
+            n = -1;
+        }
+#endif
     }
     if (!usingTFO) {
         retval = connect(candidate->pollable_socket->fd,

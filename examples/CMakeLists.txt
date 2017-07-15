@@ -14,6 +14,7 @@ LIST(APPEND neat_programs
     peer.c
     http_client_multihomed.c
     dscp_test.c
+    tneat_fg.c
 )
 
 LIST(APPEND neat_property_examples

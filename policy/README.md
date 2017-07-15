@@ -12,14 +12,16 @@ in the `neat/policy` directory. See `./neatpmd -h` for more options.
 
 ## NEAT properties
 
-NEAT properties are the basic building block of the NEAT Policy Manager. Properties are essentially `key|value` tuples used to describe any entity referenced by the components of the PM. These include user requirements passed through the NEAT API, features enforced by policies as well as information about supported protocols and network characteristics maintained in the CIB. Properties contain meta attributes such as a score denoting the importance or weight of the property and a precedence, indicating whether a property is mandatory or optional. The syntax and behaviour of NEAT properties is documented [here](doc/NEAT_properties.md).
+NEAT properties are the basic building block of the NEAT Policy Manager. Properties are essentially `key|value` pairs used to label or describe any entity referenced by the components of the PM. These include user requirements passed through the NEAT API, features enforced by policies as well as information about supported protocols and network characteristics maintained in the CIB. 
+
+Properties also contain meta attributes such as a `score` denoting the importance or weight of the property and a `precedence`, indicating whether a property is mandatory or optional. The syntax and behaviour of NEAT properties is documented [here](doc/NEAT_properties.md).
 
 
 ## NEAT Policies
 
 Policies are based around NEAT properties. In addition to some metadata, each policy contains the following attributes:
 
-+ `match`: object containing a set of properties which trigger the policy. A policy is triggered only if *all* of these properties are contained within (i.e., match) the input candidate. An empty or missing match object will match *any* candidate.
++ `match`: object containing a set of properties which trigger the policy. A policy is triggered (or "matches") only if *all* of these properties are contained within the input candidate. An empty or missing match object will match *any* candidate.
 + `properties`: object containing a set of properties which should be applied to the connection candidate (if feasible given the property precedences).
 
 NEAT profiles are functionally identical to NEAT policies but are applied earlier in the Policy Manager workflow.

@@ -260,7 +260,7 @@ struct neat_flow
     uint8_t state;
     struct neat_pollable_socket *socket;
     TAILQ_HEAD(neat_listen_socket_head, neat_pollable_socket) listen_sockets;
-    struct neat_flow_operations *operations; // see ownedByCore flag
+    struct neat_flow_operations operations;
     const char *name;
     char *server_pem;
     char *cert_pem;
@@ -309,7 +309,6 @@ struct neat_flow
     unsigned int firstWritePending          : 1;
     unsigned int acceptPending              : 1;
     unsigned int isPolling                  : 1;
-    unsigned int ownedByCore                : 1;
     unsigned int everConnected              : 1;
     unsigned int isDraining                 : 1;
     unsigned int isServer                   : 1; // i.e. created via accept()

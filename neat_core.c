@@ -5372,10 +5372,6 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
     switch (candidate->pollable_socket->stack) {
     case NEAT_STACK_TCP:
-        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable) < 0)) {
-            neat_log(ctx, NEAT_LOG_WARNING, "%s - Call to setsockopt(TCP_NODELAY) failed", __func__);
-        }
-
 #if defined(__FreeBSD__) && defined(FLOW_GROUPS)
         group = candidate->pollable_socket->flow->group;
         if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, 8192 /* Group ID */, &group, sizeof(group)) != 0) {
@@ -5708,10 +5704,6 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat
     }
 
     switch (listen_socket->stack) {
-    case NEAT_STACK_TCP:
-        if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(int)) != 0)
-            neat_log(ctx, NEAT_LOG_DEBUG, "Unable to set socket option IPPROTO_TCP:TCP_NODELAY");
-        break;
     case NEAT_STACK_SCTP_UDP:
 #if defined(__FreeBSD__)
         {

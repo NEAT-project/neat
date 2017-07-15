@@ -12,8 +12,10 @@ def on_readable(ops):
     return NEAT_OK
 
 def on_writable(ops):
+    print("Called on_writable")
     message = "Hello, this is NEAT!"
-    neat_write(ops.ctx, ops.flow, message, 20, None, 0)
+    input("Break!") # Prevent infinite loop
+    neat_write(ops.ctx, ops.flow, message, 20, None, 0) # Fails also without this line, but this seems to make it even worse
     return NEAT_OK
 
 def on_all_written(ops):

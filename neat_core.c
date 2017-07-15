@@ -1679,7 +1679,9 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                 return NEAT_ERROR_UNABLE;
             }
 
-            multistream_message->buffer = realloc(multistream_buffer, n);
+            if (n > 0) {
+                multistream_message->buffer = realloc(multistream_buffer, n);
+            }
             multistream_message->buffer_size = n;
 
             TAILQ_INSERT_TAIL(&multistream_flow->multistream_read_queue, multistream_message, message_next);

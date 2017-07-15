@@ -7152,7 +7152,7 @@ neat_sctp_handle_reset_stream(struct neat_pollable_socket *socket, struct sctp_s
                 // outgoing stream open, report incoming stream closed : neat_read should return 0
                 if (flow->operations.on_readable) {
                     READYCALLBACKSTRUCT;
-                    flow->operations.on_readable(flow->operations);
+                    flow->operations.on_readable(&flow->operations);
                 }
             }
         }

@@ -11,11 +11,13 @@
 
     tneat [OPTIONS] [HOST]
     -l : message length in byte (client)
-    -n : number off messages to send (client)
+    -n : number of messages to send (client)
     -p : port
     -P : neat properties
     -R : receive buffer in byte (server)
-    -T : max runtime (client)
+    -T : max runtime in secs (client)
+    -w : flow priority 
+    -g : flow group 
     -v : log level (0 .. 2)
 
 **********************************************************************/

@@ -117,9 +117,7 @@ int main(int argc, char** argv)
          if(r <= 0) {
             if(r < 0) {
                perror("nsa_read() call failed");
-               exit(1);
             }
-            exit(1);
          }
          for(size_t i = 0; i < (size_t)r; i++) {
             if(command[cmdpos] == '\r') {

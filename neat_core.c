@@ -4566,7 +4566,11 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 
                 msghdr.msg_flags = 0;
                 if (flow->socket->fd != -1) {
+#ifndef MSG_NOSIGNAL
                     rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+#else
+                    rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, MSG_NOSIGNAL);
+#endif
                 } else {
 #if defined(USRSCTP_SUPPORT)
                     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
@@ -4685,7 +4689,6 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     size_t len;
     int atomic;
     neat_error_code code = NEAT_OK;
-    int flags = 0;
 #ifdef NEAT_SCTP_DTLS
     struct security_data *private = NULL;
 #endif
@@ -4925,12 +4928,11 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
 
 #ifndef MSG_NOSIGNAL
-                flags = 0;
-#else   // MSG_NOSIGNAL
-                flags = MSG_NOSIGNAL;
-#endif  // MSG_NOSIGNAL
+                rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+#else
+                rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, MSG_NOSIGNAL);
+#endif
 
-                rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, flags);
 #ifdef NEAT_SCTP_DTLS
             }
 #endif
@@ -7233,7 +7235,13 @@ neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid)
 #endif
 
     msghdr.msg_flags = 0;
+    
+#ifndef MSG_NOSIGNAL
     rv = sendmsg(socket->fd, (const struct msghdr *)&msghdr, 0);
+#else
+    rv = sendmsg(socket->fd, (const struct msghdr *)&msghdr, MSG_NOSIGNAL);
+#endif
+    
     if (rv < 0) {
         if (errno == EWOULDBLOCK) {
             //neat_log(NEAT_LOG_ERROR, "%s - NEAT_LOG_ERROR - %s", __func__, strerror(errno));

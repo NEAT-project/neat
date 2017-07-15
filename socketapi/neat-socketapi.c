@@ -211,7 +211,7 @@ int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags,
    if(neatSocket->ns_flow != NULL) {
       if(addrcnt >= 1) {
          if(copy_options(&neatSocket->ns_options, &neatSocket->ns_optcount,
-                        opt, optcnt) < 0) {
+                         opt, optcnt) < 0) {
             return(-1);
          }
          neatSocket->ns_port = get_port(addrs);
@@ -512,8 +512,44 @@ int nsa_getsockopt(int sockfd, int level,
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
-      errno = EOPNOTSUPP;
-      return(-1);
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      pthread_mutex_lock(&neatSocket->ns_mutex);
+      
+      int result = -1;
+      if(level == SOL_SOCKET) {
+         switch(optname) {
+            case SO_RCVBUF:
+               if(*optlen >= (socklen_t)sizeof(int)) {
+                  *((int*)optval) = 1024*1024;
+                  *optlen         = sizeof(int);
+                  result = 0;
+               }
+               else {
+                  errno = EINVAL;
+               }
+             break;
+            case SO_SNDBUF:
+               if(*optlen >= (socklen_t)sizeof(int)) {
+                  *((int*)optval) = 1024*1024;
+                  *optlen         = sizeof(int);
+                  result = 0;
+               }
+               else {
+                  errno = EINVAL;
+               }
+             break;
+            default:
+               errno = EOPNOTSUPP;
+             break;
+         }
+      }
+      else {
+         errno = EOPNOTSUPP;
+      }
+
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);      
+      return(result);
    }
    else {
       return(getsockopt(neatSocket->ns_socket_sd, level, optname, optval, optlen));
@@ -527,8 +563,42 @@ int nsa_setsockopt(int sockfd, int level,
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
-      errno = EOPNOTSUPP;
-      return(-1);
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      pthread_mutex_lock(&neatSocket->ns_mutex);
+      
+      int result = -1;
+      if(level == SOL_SOCKET) {
+         switch(optname) {
+            case SO_RCVBUF:
+               if(optlen >= (socklen_t)sizeof(int)) {
+//                ... = *((int*)optval);
+                  result = 0;
+               }
+               else {
+                  errno = EINVAL;
+               }
+             break;
+            case SO_SNDBUF:
+               if(optlen >= (socklen_t)sizeof(int)) {
+//                ... = *((int*)optval);
+                  result = 0;
+               }
+               else {
+                  errno = EINVAL;
+               }
+             break;
+            default:
+               errno = EOPNOTSUPP;
+             break;
+         }
+      }
+      else {
+         errno = EOPNOTSUPP;
+      }
+
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);      
+      return(result);
    }
    else {
       return(setsockopt(neatSocket->ns_socket_sd, level, optname, optval, optlen));

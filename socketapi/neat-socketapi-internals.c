@@ -126,7 +126,7 @@ struct neat_socketapi_internals* nsa_initialize()
       if(gSocketAPIInternals->nsi_socket_identifier_bitmap != NULL) {
          gSocketAPIInternals->nsi_neat_context = neat_init_ctx();
          if(gSocketAPIInternals->nsi_neat_context != NULL) {
-            neat_log_level(gSocketAPIInternals->nsi_neat_context, NEAT_LOG_ERROR);   /* This may be improved ... */
+            neat_log_level(gSocketAPIInternals->nsi_neat_context, NEAT_LOG_DEBUG);   /* This may be improved ... */
 
             /* ====== Map stdin, stdout, stderr file descriptors ========= */
             assert(nsa_map_socket(STDOUT_FILENO, STDOUT_FILENO) == STDOUT_FILENO);

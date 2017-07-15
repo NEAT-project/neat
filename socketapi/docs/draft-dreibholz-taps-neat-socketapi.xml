@@ -61,6 +61,16 @@ NEAT Sockets API
 
 <section title="Initialisation and Clean-Up">
 
+<section title="nsa_init()">
+<t>nsa_init() is used to explicitly initialise the NEAT Sockets API. In the usual case, however, the NEAT Sockets API is automatically initialized when creating a NEAT socket. Explicit initialisation may only be necessary in a multi-threaded program, in order to avoid parallel initialisation calls.</t>
+<t>Function Prototype:</t>
+<figure><artwork>
+int nsa_init()
+</artwork></figure>
+<t>Return Value:</t>
+<t>nsa_init() returns the new NEAT socket descriptor, or -1 in case of error. The error code will be set in the errno variable.</t>
+</section>
+   
 <section title="nsa_cleanup()">
 <t>nsa_cleanup() is used to free all resources allocated by NEAT. Note, that the NEAT Sockets API is automatically initialized when creating a NEAT socket.</t>
 <t>Function Prototype:</t>

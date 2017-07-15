@@ -186,7 +186,7 @@ int main(int argc, char** argv)
       }
       if(result < 0) {
          cerr << "INFO: nsa_write() failed: " << strerror(errno) << endl;
-   }
+      }
       cout << "Command completed." << endl;
 
 

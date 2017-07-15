@@ -8,7 +8,7 @@
 %{
 static __thread PyObject *callback;
 static neat_error_code dispatcher(struct neat_flow_operations *ops) {
-    PyObject *pyops = SWIG_NewPointerObj(SWIG_as_voidptr(ops), SWIGTYPE_p_neat_flow_operations, SWIG_POINTER_NEW |  0 );
+    PyObject *pyops = SWIG_NewPointerObj(SWIG_as_voidptr(ops), SWIGTYPE_p_neat_flow_operations, 0 |  0 );
     PyObject *res = PyObject_CallFunctionObjArgs(callback, pyops, NULL);
     unsigned long long val = PyLong_AsUnsignedLongLong(res);
     return (neat_error_code)(val);

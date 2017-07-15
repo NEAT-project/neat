@@ -1639,11 +1639,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                 multistream_flow->everConnected             = 1;
                 multistream_flow->socket                    = socket;
                 multistream_flow->ctx                       = ctx;
-                multistream_flow->ownedByCore               = 1;
                 multistream_flow->isServer                  = 1;
-                multistream_flow->operations                = calloc(1, sizeof(struct neat_flow_operations));
-                if (!multistream_flow->operations)
-                    return READ_WITH_ERROR;
                 multistream_flow->operations.on_connected  = listen_flow->operations.on_connected;
                 multistream_flow->operations.on_readable   = listen_flow->operations.on_readable;
                 multistream_flow->operations.on_writable   = listen_flow->operations.on_writable;
@@ -1652,15 +1648,15 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                 multistream_flow->operations.ctx           = ctx;
                 multistream_flow->operations.flow          = multistream_flow;
                 multistream_flow->operations.userData      = listen_flow->operations.userData;
-                multistream_flow->multistream_id            = stream_id;
-                multistream_flow->multistream_state         = NEAT_FLOW_OPEN;
+                multistream_flow->multistream_id           = stream_id;
+                multistream_flow->multistream_state        = NEAT_FLOW_OPEN;
 
                 LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, multistream_flow, multistream_next_flow);
 
                 socket->sctp_streams_used++;
                 free(multistream_buffer);
 
-                multistream_flow->operations.on_connected(multistream_flow->operations);
+                multistream_flow->operations.on_connected(&multistream_flow->operations);
 
                 return READ_OK;
             }
@@ -1690,7 +1686,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
 
             if (multistream_flow->operations.on_readable) {
                 READYCALLBACKSTRUCT;
-                multistream_flow->operations.on_readable(multistream_flow->operations);
+                multistream_flow->operations.on_readable(&multistream_flow->operations);
             }
             return READ_OK;
 
@@ -3845,7 +3841,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
     json_object_set(properties, "port", port);
     json_decref(port);
 
-    
+
     req_type = json_pack("{s:s}", "value", "pre-resolve");
     if (req_type == NULL)
         goto end;
@@ -3853,7 +3849,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
     json_object_set(properties, "__request_type", req_type);
     json_decref(req_type);
 
-    
+
     if ((domains = json_array()) == NULL)
         goto end;
 

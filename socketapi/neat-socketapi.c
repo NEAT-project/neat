@@ -65,6 +65,14 @@ int nsa_unmap_socket(int neatSD)
 }
 
 
+/* ###### Initialise ##################################################### */
+int nsa_init()
+{
+   const bool success = (nsa_initialize() != NULL);
+   return(!success);
+}
+
+
 /* ###### NEAT socket() implementation ################################### */
 int nsa_socket(int domain, int type, int protocol, const char* properties)
 {

@@ -65,6 +65,14 @@ int nsa_unmap_socket(int neatSD)
 }
 
 
+/* ###### Initialise ##################################################### */
+int nsa_init()
+{
+   const bool success = (nsa_initialize() != NULL);
+   return((success == true) ? 0 : -1);
+}
+
+
 /* ###### NEAT socket() implementation ################################### */
 int nsa_socket(int domain, int type, int protocol, const char* properties)
 {
@@ -432,6 +440,7 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             }
 
             if(TAILQ_FIRST(&neatSocket->ns_accept_list) == NULL) {
+               neatSocket->ns_flags &= ~NSAF_READABLE;
                es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
             }
         }

@@ -680,9 +680,9 @@ int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
 /* ###### NEAT open() implementation ##################################### */
 int nsa_open(const char* pathname, int flags, mode_t mode)
 {
-   int fd = open(pathname, flags, mode);
+   const int fd = open(pathname, flags, mode);
    if(fd >= 0) {
-      int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, 0);
+      const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
       if(newFD >= 0) {
          return(newFD);
       }
@@ -696,9 +696,9 @@ int nsa_open(const char* pathname, int flags, mode_t mode)
 /* ###### NEAT creat() implementation #################################### */
 int nsa_creat(const char* pathname, mode_t mode)
 {
-   int fd = creat(pathname, mode);
+   const int fd = creat(pathname, mode);
    if(fd >= 0) {
-      int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, 0);
+      const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
       if(newFD >= 0) {
          return(newFD);
       }

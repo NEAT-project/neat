@@ -20,6 +20,7 @@
  */
 
 #include <iostream>
+#include <regex>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -54,8 +55,8 @@ static const char* properties = "{\
 
 int main(int argc, char** argv)
 {
-   if(argc < 4) {
-      cerr << "Usage: " << argv[0] << " [Remote Host] [Remote Service] [File]" << endl;
+   if(argc < 2) {
+      cerr << "Usage: " << argv[0] << " [URL] [Output File]" << endl;
       exit(1);
    }
 
@@ -107,13 +108,30 @@ int main(int argc, char** argv)
    freeaddrinfo(ainfo);
 #endif
 
+   // ====== Dissect URL =====================================================
+   std::string url = string(argv[1]);
+   std::regex  ex("(http|https)://([^/ :]+):?([^/ ]*)(.*)");
+   std::cmatch what;
+   if(!regex_match(url.c_str(), what, ex)) {
+      cerr << "ERROR: Invalid URL " << argv[1] << "!" << endl;
+      exit(1);
+   }
+   const string protocol = string(what[1].first, what[1].second);
+   const string server   = string(what[2].first, what[2].second);
+   const string port     = string(what[3].first, what[3].second);
+   const string path     = string(what[4].first, what[4].second);
+   uint16_t portNumber   = atoi(port.c_str());
+   if(portNumber == 0) {
+      portNumber = 80;
+   }
+
    // ====== Connect to remote node ==========================================
    int sd = nsa_socket(0, 0, 0, properties);
    if(sd <= 0) {
       perror("nsa_socket() call failed");
       exit(1);
    }
-   if(nsa_connectn(sd, argv[1], atoi(argv[2]), NULL, NULL, 0) < 0) {
+   if(nsa_connectn(sd, server.c_str(), portNumber, NULL, NULL, 0) < 0) {
       perror("nsa_connect() call failed");
       exit(1);
    }
@@ -123,7 +141,7 @@ int main(int argc, char** argv)
    char httpGet[1024];
    snprintf((char*)&httpGet, sizeof(httpGet),
             "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n",
-            argv[3], argv[1]);
+            path.c_str(), server.c_str());
 
    ansiStyle(cout, COLOR_CYAN, COLOR_DEFAULT, ATTR_INTENSIVE);
    cout << httpGet;
@@ -134,9 +152,19 @@ int main(int argc, char** argv)
       exit(1);
    }
 
+   // ====== Output file =====================================================
+   int fd = -1;
+   if(argc >= 3) {
+      fd = nsa_open(argv[2], O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR);
+      if(fd < 0) {
+         perror("Unable to create output file");
+         exit(1);
+      }
+   }
 
    // ====== Receive reply ===================================================
    cout << "Request sent. Waiting for answer..." << endl;
+   bool success = false;
    for(;;) {
       char str[65536];
 
@@ -147,17 +175,35 @@ int main(int argc, char** argv)
       }
       else if(received == 0) {
          // Connection closed without error.
+         success = true;
          break;
       }
       else {
-         ansiStyle(cout, COLOR_BLUE, COLOR_DEFAULT, ATTR_INTENSIVE);
-         safePrint(cout, str, received);
-         ansiReset(cout);
+         if(fd >= 0) {
+            const ssize_t written = nsa_write(fd, str, received);
+            if(written != received) {
+               perror("Failed to write output");
+               break;
+            }
+         }
+         else {
+            ansiStyle(cout, COLOR_BLUE, COLOR_DEFAULT, ATTR_INTENSIVE);
+            safePrint(cout, str, received);
+            ansiReset(cout);            
+         }
       }
    }
 
 
    // ====== Clean up ========================================================
+   if(fd >= 0) {
+      nsa_close(fd);
+      if(!success) {
+         if(unlink(argv[2]) == 0) {
+            cerr << "Removed incomplete output file." << endl;
+         }
+      }
+   }
    nsa_close(sd);
    nsa_cleanup();
 

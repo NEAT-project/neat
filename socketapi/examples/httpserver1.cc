@@ -31,18 +31,18 @@
 
 #include <neat-socketapi.h>
 
-
 #include "ansistyle.h"
 #include "safeprint.h"
-
-
-using namespace std;
 
 
 static const char* properties = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"MPTCP\",\
             \"precedence\": 1\
         },\
         {\
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
 {
    // ====== Handle command-line arguments ==================================
    if(argc < 2) {
-      cerr << "Usage: " << argv[0] << " [Port]" << endl;
+      std::cerr << "Usage: " << argv[0] << " [Port]" << std::endl;
       exit(1);
    }
    uint16_t port = atoi(argv[1]);
@@ -78,7 +78,7 @@ int main(int argc, char** argv)
    if(nsa_listen(sd, 10) < 0) {
       perror("nsa_listen() call failed");
    }
-   cout << "Waiting for requests on port " << port << " ..." << endl;
+   std::cout << "Waiting for requests on port " << port << " ..." << std::endl;
 
 
    // ====== Handle requests ================================================
@@ -101,11 +101,11 @@ int main(int argc, char** argv)
                               (char*)&remoteService, sizeof(remoteService),
                               NI_NUMERICHOST);
       if(error != 0) {
-         cerr << "ERROR: getnameinfo() failed: " << gai_strerror(error) << endl;
+         std::cerr << "ERROR: getnameinfo() failed: " << gai_strerror(error) << std::endl;
          exit(1);
       }
-      cout << "Got connection from "
-           << remoteHost << ", service " << remoteService << ":" << endl;
+      std::cout << "Got connection from "
+                << remoteHost << ", service " << remoteService << ":" << std::endl;
 
 
       // ====== Get command =================================================
@@ -117,9 +117,7 @@ int main(int argc, char** argv)
          if(r <= 0) {
             if(r < 0) {
                perror("nsa_read() call failed");
-               exit(1);
             }
-            exit(1);
          }
          for(size_t i = 0; i < (size_t)r; i++) {
             if(command[cmdpos] == '\r') {
@@ -131,9 +129,9 @@ int main(int argc, char** argv)
          }
       }
 
-      cout << "Command: ";
-      safePrint(cout, command, cmdpos);
-      cout << endl;
+      std::cout << "Command: ";
+      safePrint(std::cout, command, cmdpos);
+      std::cout << std::endl;
 
 
       // ====== Execute HTTP GET command ====================================
@@ -149,8 +147,8 @@ int main(int argc, char** argv)
          }
 
          if(fileName[0] != '.') {   // No access to top-level directories!
-            cout << "Trying to upload file \"" << fileName << "\"..." << endl;
-            ifstream is(fileName.c_str(), ios::binary);
+            std::cout << "Trying to upload file \"" << fileName << "\"..." << std::endl;
+            std::ifstream is(fileName.c_str(), std::ios::binary);
             if(is.good()) {
                const char* status = "HTTP/1.0 200 OK\r\n"
                                     "X-Frame-Options: SAMEORIGIN\r\n"
@@ -161,33 +159,33 @@ int main(int argc, char** argv)
                result = nsa_write(newSD, status, strlen(status));
 
                char str[256];
-               streamsize s = is.rdbuf()->sgetn(str, sizeof(str));
+               std::streamsize s = is.rdbuf()->sgetn(str, sizeof(str));
                while((s > 0) && (result > 0)) {
                   result = nsa_write(newSD, str, s);
                   s = is.rdbuf()->sgetn(str, sizeof(str));
                }
             }
             else {
-               cout << "File not found!" << endl;
+               std::cout << "File not found!" << std::endl;
                const char* status = "HTTP/1.0 404 Not Found\r\n\r\n404 Not Found\r\n";
                result = nsa_write(newSD, status, strlen(status));
             }
          }
          else {
-            cout << "Request for . or .. not acceptable!" << endl;
+            std::cout << "Request for . or .. not acceptable!" << std::endl;
             const char* status = "HTTP/1.0 406 Not Acceptable\r\n\r\n406 Not Acceptable\r\n";
             result = nsa_write(newSD, status, strlen(status));
          }
       }
       else {
-         cout << "Bad request!" << endl;
+         std::cout << "Bad request!" << std::endl;
          const char* status = "HTTP/1.0 400 Bad Request\r\n\r\n400 Bad Request\r\n";
          result = nsa_write(newSD, status, strlen(status));
       }
       if(result < 0) {
-         cerr << "INFO: nsa_write() failed: " << strerror(errno) << endl;
-   }
-      cout << "Command completed." << endl;
+         std::cerr << "INFO: nsa_write() failed: " << strerror(errno) << std::endl;
+      }
+      std::cout << "Command completed." << std::endl;
 
 
       // ====== Shutdown connection =========================================
@@ -199,6 +197,6 @@ int main(int argc, char** argv)
    nsa_close(sd);
    nsa_cleanup();
 
-   cout << endl << "Terminated!" << endl;
+   std::cout << std::endl << "Terminated!" << std::endl;
    return(0);
 }

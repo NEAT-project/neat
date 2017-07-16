@@ -42,6 +42,10 @@ static const char* properties = "{\
             \"precedence\": 1\
         },\
         {\
+            \"value\": \"MPTCP\",\
+            \"precedence\": 1\
+        },\
+        {\
             \"value\": \"TCP\",\
             \"precedence\": 1\
         }\

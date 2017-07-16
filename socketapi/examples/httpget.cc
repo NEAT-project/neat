@@ -31,18 +31,18 @@
 
 #include <neat-socketapi.h>
 
-
 #include "ansistyle.h"
 #include "safeprint.h"
-
-
-using namespace std;
 
 
 static const char* properties = "{\
     \"transport\": [\
         {\
             \"value\": \"SCTP\",\
+            \"precedence\": 1\
+        },\
+        {\
+            \"value\": \"MPTCP\",\
             \"precedence\": 1\
         },\
         {\
@@ -56,7 +56,7 @@ static const char* properties = "{\
 int main(int argc, char** argv)
 {
    if(argc < 2) {
-      cerr << "Usage: " << argv[0] << " [URL] [Output File]" << endl;
+      std::cerr << "Usage: " << argv[0] << " [URL] [Output File]" << std::endl;
       exit(1);
    }
 
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
    ainfohint.ai_protocol = IPPROTO_TCP;
    int error = getaddrinfo(argv[1], argv[2], &ainfohint, &ainfo);
    if(error != 0) {
-      cerr << "ERROR: getaddrinfo() failed: " << gai_strerror(error) << endl;
+      std::cerr << "ERROR: getaddrinfo() failed: " << gai_strerror(error) << std::endl;
       exit(1);
    }
 
@@ -93,11 +93,11 @@ int main(int argc, char** argv)
                        (char*)&remoteService, sizeof(remoteService),
                        NI_NUMERICHOST);
    if(error != 0) {
-      cerr << "ERROR: getnameinfo() failed: " << gai_strerror(error) << endl;
+      std::cerr << "ERROR: getnameinfo() failed: " << gai_strerror(error) << std::endl;
       exit(1);
    }
-   cout << "Connecting to remote address "
-        << remoteHost << ", service " << remoteService << "..." << endl;
+   std::cout << "Connecting to remote address "
+             << remoteHost << ", service " << remoteService << "..." << std::endl;
 
 
    // ====== Connect to remote node ==========================================
@@ -109,17 +109,17 @@ int main(int argc, char** argv)
 #endif
 
    // ====== Dissect URL =====================================================
-   std::string url = string(argv[1]);
+   std::string url = std::string(argv[1]);
    std::regex  ex("(http|https)://([^/ :]+):?([^/ ]*)(.*)");
    std::cmatch what;
    if(!regex_match(url.c_str(), what, ex)) {
-      cerr << "ERROR: Invalid URL " << argv[1] << "!" << endl;
+      std::cerr << "ERROR: Invalid URL " << argv[1] << "!" << std::endl;
       exit(1);
    }
-   const string protocol = string(what[1].first, what[1].second);
-   const string server   = string(what[2].first, what[2].second);
-   const string port     = string(what[3].first, what[3].second);
-   const string path     = string(what[4].first, what[4].second);
+   const std::string protocol = std::string(what[1].first, what[1].second);
+   const std::string server   = std::string(what[2].first, what[2].second);
+   const std::string port     = std::string(what[3].first, what[3].second);
+   const std::string path     = std::string(what[4].first, what[4].second);
    uint16_t portNumber   = atoi(port.c_str());
    if(portNumber == 0) {
       portNumber = 80;
@@ -137,16 +137,16 @@ int main(int argc, char** argv)
    }
 
    // ====== Request webpage =================================================
-   cout << "Connected! Sending HTTP GET..." << endl;
+   std::cout << "Connected! Sending HTTP GET..." << std::endl;
    char httpGet[1024];
    snprintf((char*)&httpGet, sizeof(httpGet),
             "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n",
             path.c_str(), server.c_str());
 
-   ansiStyle(cout, COLOR_CYAN, COLOR_DEFAULT, ATTR_INTENSIVE);
-   cout << httpGet;
-   ansiReset(cout);
-   cout.flush();
+   ansiStyle(std::cout, COLOR_CYAN, COLOR_DEFAULT, ATTR_INTENSIVE);
+   std::cout << httpGet;
+   ansiReset(std::cout);
+   std::cout.flush();
    if(nsa_write(sd, httpGet, strlen(httpGet)) < 0) {
       perror("nsa_write() call failed");
       exit(1);
@@ -163,7 +163,7 @@ int main(int argc, char** argv)
    }
 
    // ====== Receive reply ===================================================
-   cout << "Request sent. Waiting for answer..." << endl;
+   std::cout << "Request sent. Waiting for answer..." << std::endl;
    bool success = false;
    for(;;) {
       char str[65536];
@@ -187,9 +187,9 @@ int main(int argc, char** argv)
             }
          }
          else {
-            ansiStyle(cout, COLOR_BLUE, COLOR_DEFAULT, ATTR_INTENSIVE);
-            safePrint(cout, str, received);
-            ansiReset(cout);            
+            ansiStyle(std::cout, COLOR_BLUE, COLOR_DEFAULT, ATTR_INTENSIVE);
+            safePrint(std::cout, str, received);
+            ansiReset(std::cout);
          }
       }
    }
@@ -200,13 +200,13 @@ int main(int argc, char** argv)
       nsa_close(fd);
       if(!success) {
          if(unlink(argv[2]) == 0) {
-            cerr << "Removed incomplete output file." << endl;
+            std::cerr << "Removed incomplete output file." << std::endl;
          }
       }
    }
    nsa_close(sd);
    nsa_cleanup();
 
-   cout << endl << "Terminated!" << endl;
+   std::cout << std::endl << "Terminated!" << std::endl;
    return(0);
 }

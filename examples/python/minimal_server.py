@@ -19,9 +19,8 @@ def on_readable(ops):
 
 def on_writable(ops):
     try:
-        #message = ctypes.create_string_buffer("Hello, this is NEAT!")
         message = "Hello, this is NEAT!"
-        neat_write(ops.ctx, ops.flow, message, 20, None, 0) # Fails also without this line, but this seems to make it even worse
+        neat_write(ops.ctx, ops.flow, message, 20, None, 0)
     except SystemError as e:
         print("System Error!")
         print(e)

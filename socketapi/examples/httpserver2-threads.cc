@@ -32,13 +32,9 @@
 
 #include <neat-socketapi.h>
 
-
 #include "thread.h"
 #include "ansistyle.h"
 #include "safeprint.h"
-
-
-using namespace std;
 
 
 static const char* properties = "{\
@@ -78,18 +74,18 @@ ServiceThread::ServiceThread(int sd)
    static unsigned int IDCounter = 0;
    ID         = ++IDCounter;
    SocketDesc = sd;
-   cout << "Starting thread " << ID << "..." << endl;
+   std::cout << "Starting thread " << ID << "..." << std::endl;
    start();
 }
 
 ServiceThread::~ServiceThread()
 {
-   cout << "Stopping thread " << ID << "..." << endl;
+   std::cout << "Stopping thread " << ID << "..." << std::endl;
    if(SocketDesc >= 0) {
       nsa_close(SocketDesc);
    }
    waitForFinish();
-   cout << "Thread " << ID << " has been stopped." << endl;
+   std::cout << "Thread " << ID << " has been stopped." << std::endl;
 }
 
 void ServiceThread::run()
@@ -102,7 +98,7 @@ void ServiceThread::run()
       const ssize_t r = nsa_read(SocketDesc, &command[cmdpos], sizeof(command) - cmdpos);
       if(r <= 0) {
          if(r < 0) {
-            cout << "Thread " << ID << ": Connection aborted - " << strerror(errno) << endl;
+            std::cout << "Thread " << ID << ": Connection aborted - " << strerror(errno) << std::endl;
          }
          nsa_close(SocketDesc);
          SocketDesc = -1;
@@ -118,9 +114,9 @@ void ServiceThread::run()
       }
    }
 
-   cout << "Command: ";
-   safePrint(cout, command, cmdpos);
-   cout << endl;
+   std::cout << "Command: ";
+   safePrint(std::cout, command, cmdpos);
+   std::cout << std::endl;
 
    // ====== Execute HTTP GET command =======================================
    ssize_t result = 0;
@@ -135,9 +131,9 @@ void ServiceThread::run()
       }
 
       if(fileName[0] != '.') {   // No access to top-level directories!
-         cout << "Thread " << ID << ": Trying to upload file \""
-              << fileName << "\"..." << endl;
-         ifstream is(fileName.c_str(), ios::binary);
+         std::cout << "Thread " << ID << ": Trying to upload file \""
+                   << fileName << "\"..." << std::endl;
+         std::ifstream is(fileName.c_str(), std::ios::binary);
          if(is.good()) {
             const char* status = "HTTP/1.0 200 OK\r\n"
                                  "X-Frame-Options: SAMEORIGIN\r\n"
@@ -148,32 +144,32 @@ void ServiceThread::run()
             result = nsa_write(SocketDesc, status, strlen(status));
 
             char str[8192];
-            streamsize s = is.rdbuf()->sgetn(str, sizeof(str));
+            std::streamsize s = is.rdbuf()->sgetn(str, sizeof(str));
             while((s > 0) && (result > 0)) {
                result = nsa_write(SocketDesc, str, s);
                s = is.rdbuf()->sgetn(str, sizeof(str));
             }
          }
          else {
-            cout << "Thread " << ID << ": File <" << fileName << "> not found!" << endl;
+            std::cout << "Thread " << ID << ": File <" << fileName << "> not found!" << std::endl;
             const char* status = "HTTP/1.0 404 Not Found\r\n\r\n404 Not Found\r\n";
             result = nsa_write(SocketDesc, status, strlen(status));
          }
       }
       else {
-         cout << "Thread " << ID << ": Request for . or .. not acceptable!" << endl;
+         std::cout << "Thread " << ID << ": Request for . or .. not acceptable!" << std::endl;
          const char* status = "HTTP/1.0 406 Not Acceptable\r\n\r\n406 Not Acceptable\r\n";
          result = nsa_write(SocketDesc, status, strlen(status));
       }
    }
    else {
-      cout << "Thread " << ID << ": Bad request!" << endl;
+      std::cout << "Thread " << ID << ": Bad request!" << std::endl;
       const char* status = "HTTP/1.0 400 Bad Request\r\n\r\n400 Bad Request\r\n";
       result = nsa_write(SocketDesc, status, strlen(status));
    }
 
    if(result < 0) {
-      cerr << "INFO: nsa_write() failed: " << strerror(errno) << endl;
+      std::cerr << "INFO: nsa_write() failed: " << strerror(errno) << std::endl;
    }
 
    // ====== Shutdown connection ============================================
@@ -283,7 +279,7 @@ int main(int argc, char** argv)
 {
    // ====== Handle command-line arguments ==================================
    if(argc < 2) {
-      cerr << "Usage: " << argv[0] << " [Port]" << endl;
+      std::cerr << "Usage: " << argv[0] << " [Port]" << std::endl;
       exit(1);
    }
    uint16_t port = atoi(argv[1]);
@@ -304,7 +300,7 @@ int main(int argc, char** argv)
    if(nsa_listen(ServerSocket, 10) < 0) {
       perror("nsa_listen() call failed");
    }
-   cout << "Waiting for requests on port " << port << " ..." << endl;
+   std::cout << "Waiting for requests on port " << port << " ..." << std::endl;
 
    // ====== Install SIGINT handler =========================================
    signal(SIGINT, &intHandler);
@@ -332,11 +328,11 @@ int main(int argc, char** argv)
                               (char*)&remoteService, sizeof(remoteService),
                               NI_NUMERICHOST);
       if(error != 0) {
-         cerr << "ERROR: getnameinfo() failed: " << gai_strerror(error) << endl;
+         std::cerr << "ERROR: getnameinfo() failed: " << gai_strerror(error) << std::endl;
          exit(1);
       }
-      cout << "Got connection from "
-           << remoteHost << ", service " << remoteService << ":" << endl;
+      std::cout << "Got connection from "
+                << remoteHost << ", service " << remoteService << ":" << std::endl;
 
 
       // ====== Start new service thread ====================================
@@ -351,6 +347,6 @@ int main(int argc, char** argv)
    }
    nsa_cleanup();
 
-   cout << endl << "Terminated!" << endl;
+   std::cout << std::endl << "Terminated!" << std::endl;
    return(0);
 }

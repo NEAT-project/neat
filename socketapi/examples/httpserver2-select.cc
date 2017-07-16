@@ -32,12 +32,8 @@
 
 #include <neat-socketapi.h>
 
-
 #include "ansistyle.h"
 #include "safeprint.h"
-
-
-using namespace std;
 
 
 static const char* properties = "{\
@@ -70,9 +66,9 @@ void handleHTTPCommand(int sd, const unsigned int id, char* command)
       }
 
       if(fileName[0] != '.') {   // No access to top-level directories!
-         cout << "Client " << id << ": Trying to upload file \""
-              << fileName << "\"..." << endl;
-         ifstream is(fileName.c_str(), ios::binary);
+         std::cout << "Client " << id << ": Trying to upload file \""
+                   << fileName << "\"..." << std::endl;
+         std::ifstream is(fileName.c_str(), std::ios::binary);
          if(is.good()) {
             const char* status = "HTTP/1.0 200 OK\r\n"
                                  "X-Frame-Options: SAMEORIGIN\r\n"
@@ -83,32 +79,32 @@ void handleHTTPCommand(int sd, const unsigned int id, char* command)
             result = nsa_write(sd, status, strlen(status));
 
             char str[8192];
-            streamsize s = is.rdbuf()->sgetn(str, sizeof(str));
+            std::streamsize s = is.rdbuf()->sgetn(str, sizeof(str));
             while((s > 0) && (result > 0)) {
                result = nsa_write(sd, str, s);
                s = is.rdbuf()->sgetn(str, sizeof(str));
             }
          }
          else {
-            cout << "Client " << id << ": File <" << fileName << "> not found!" << endl;
+            std::cout << "Client " << id << ": File <" << fileName << "> not found!" << std::endl;
             const char* status = "HTTP/1.0 404 Not Found\r\n\r\n404 Not Found\r\n";
             result = nsa_write(sd, status, strlen(status));
          }
       }
       else {
-         cout << "Client " << id << ": Request for . or .. not acceptable!" << endl;
+         std::cout << "Client " << id << ": Request for . or .. not acceptable!" << std::endl;
          const char* status = "HTTP/1.0 406 Not Acceptable\r\n\r\n406 Not Acceptable\r\n";
          result = nsa_write(sd, status, strlen(status));
       }
    }
    else {
-      cout << "Client " << id << ": Bad request!" << endl;
+      std::cout << "Client " << id << ": Bad request!" << std::endl;
       const char* status = "HTTP/1.0 400 Bad Request\r\n\r\n400 Bad Request\r\n";
       result = nsa_write(sd, status, strlen(status));
    }
 
    if(result < 0) {
-      cerr << "INFO: nsa_write() failed: " << strerror(errno) << endl;
+      std::cerr << "INFO: nsa_write() failed: " << strerror(errno) << std::endl;
    }
 }
 
@@ -170,7 +166,7 @@ void ClientList::add(const int socketDescriptor)
    entry->ID               = ++IDCounter;
    FirstClient              = entry;
 
-   cout << "New client " << entry->ID << endl;
+   std::cout << "New client " << entry->ID << std::endl;
 }
 
 void ClientList::remove(const int socketDescriptor)
@@ -186,7 +182,7 @@ void ClientList::remove(const int socketDescriptor)
             prev->Next = entry->Next;
          }
          entry->SocketDescriptor = -1;
-         cout << "Removing client " << entry->ID << endl;
+         std::cout << "Removing client " << entry->ID << std::endl;
          delete entry;
          return;
       }
@@ -201,7 +197,7 @@ int ClientList::getEvents(fd_set* readSet)
    int n = 0;
    while(entry != NULL) {
       FD_SET(entry->SocketDescriptor, readSet);
-      n = max(n, entry->SocketDescriptor);
+      n = std::max(n, entry->SocketDescriptor);
       entry = entry->Next;
    }
    return(n);
@@ -235,9 +231,9 @@ void ClientList::handleEvent(ClientList::ClientListEntry* entry)
             if(entry->Command[i] == '\r') {
                entry->Command[i] = 0x00;
 
-               cout << "Command: ";
-               safePrint(cout, entry->Command, i);
-               cout << endl;
+               std::cout << "Command: ";
+               safePrint(std::cout, entry->Command, i);
+               std::cout << std::endl;
 
                handleHTTPCommand(entry->SocketDescriptor, entry->ID,
                                  entry->Command);
@@ -273,7 +269,7 @@ int main(int argc, char** argv)
 {
    // ====== Handle command-line arguments ==================================
    if(argc < 2) {
-      cerr << "Usage: " << argv[0] << " [Port]" << endl;
+      std::cerr << "Usage: " << argv[0] << " [Port]" << std::endl;
       exit(1);
    }
    uint16_t port = atoi(argv[1]);
@@ -294,7 +290,7 @@ int main(int argc, char** argv)
    if(nsa_listen(sd, 10) < 0) {
       perror("nsa_listen() call failed");
    }
-   cout << "Waiting for requests on port " << port << " ..." << endl;
+   std::cout << "Waiting for requests on port " << port << " ..." << std::endl;
 
    // ====== Install SIGINT handler =========================================
    signal(SIGINT, &intHandler);
@@ -308,7 +304,7 @@ int main(int argc, char** argv)
 
       int n = clientList.getEvents(&readSet);
       FD_SET(sd, &readSet);
-      n = max(n, sd);
+      n = std::max(n, sd);
 
       timeval timeout;
       timeout.tv_sec  = 1;
@@ -334,11 +330,11 @@ int main(int argc, char** argv)
                                     (char*)&remoteService, sizeof(remoteService),
                                     NI_NUMERICHOST);
             if(error != 0) {
-               cerr << "ERROR: getnameinfo() failed: " << gai_strerror(error) << endl;
+               std::cerr << "ERROR: getnameinfo() failed: " << gai_strerror(error) << std::endl;
                exit(1);
             }
-            cout << "Got connection from "
-                 << remoteHost << ", service " << remoteService << ":" << endl;
+            std::cout << "Got connection from "
+                      << remoteHost << ", service " << remoteService << ":" << std::endl;
 
 
             // ====== Start new service thread ==============================
@@ -355,6 +351,6 @@ int main(int argc, char** argv)
    }
    nsa_cleanup();
 
-   cout << endl << "Terminated!" << endl;
+   std::cout << std::endl << "Terminated!" << std::endl;
    return 0;
 }

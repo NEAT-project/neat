@@ -241,6 +241,8 @@ static neat_error_code on_connected(struct neat_flow_operations* ops)
       if(newSD >= 0) {
          struct neat_socket* newSocket = nsa_get_socket_for_descriptor(newSD);
          assert(newSocket != NULL);
+         
+         newSocket->ns_acceptor = neatSocket;
 
          neat_set_operations(gSocketAPIInternals->nsi_neat_context,
                              newSocket->ns_flow, &newSocket->ns_flow_ops);
@@ -593,6 +595,12 @@ void nsa_close_internal(struct neat_socket* neatSocket)
 
    pthread_mutex_lock(&neatSocket->ns_mutex);
 
+   /* ====== Remove this socket from accepting socket ==================== */
+   if(neatSocket->ns_acceptor != NULL) {
+      TAILQ_REMOVE(&neatSocket->ns_acceptor->ns_accept_list, neatSocket, ns_accept_node);
+      neatSocket->ns_acceptor = NULL;
+   }
+   
    /* ====== Close accepted sockets first ================================ */
    struct neat_socket* acceptedSocket;
    while( (acceptedSocket = TAILQ_FIRST(&neatSocket->ns_accept_list)) != NULL ) {
@@ -699,7 +707,7 @@ int nsa_wait_for_event(struct neat_socket* neatSocket,
 {
    struct pollfd ufds[1];
    ufds[0].fd     = neatSocket->ns_descriptor;
-   ufds[0].events = POLLIN;
+   ufds[0].events = eventMask;
    int result = nsa_poll((struct pollfd*)&ufds, 1, timeout);
    if((result > 0) && (ufds[0].revents & eventMask)) {
       return(ufds[0].revents);

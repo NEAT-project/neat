@@ -5227,7 +5227,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #endif
     protocol = neat_stack_to_protocol(neat_base_stack(candidate->pollable_socket->stack));
     if (protocol == 0) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Stack %d not supported", candidate->pollable_socket->stack);
+        neat_log(ctx, NEAT_LOG_INFO, "Stack %d not supported", candidate->pollable_socket->stack);
         return -1;
     }
     if ((candidate->pollable_socket->fd =
@@ -5674,7 +5674,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat
 
     protocol = neat_stack_to_protocol(neat_base_stack(listen_socket->stack));
     if (protocol == 0) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Stack %d not supported", listen_socket->stack);
+        neat_log(ctx, NEAT_LOG_INFO, "Stack %d not supported", listen_socket->stack);
         return -1;
     }
 
@@ -6080,7 +6080,7 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
 
     protocol = neat_stack_to_protocol(neat_base_stack(candidate->pollable_socket->stack));
     if (protocol == 0) {
-        neat_log(candidate->ctx, NEAT_LOG_ERROR, "%s - Stack %d not supported", __func__, candidate->pollable_socket->stack);
+        neat_log(candidate->ctx, NEAT_LOG_INFO, "%s - Stack %d not supported", __func__, candidate->pollable_socket->stack);
         return -1;
     }
 
@@ -6435,7 +6435,7 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx,
 
     protocol = neat_stack_to_protocol(neat_base_stack(listen_socket->stack));
     if (protocol == 0) {
-        neat_log(flow->ctx, NEAT_LOG_ERROR, "%s - Stack %d not supported", __func__, listen_socket->stack);
+        neat_log(flow->ctx, NEAT_LOG_INFO, "%s - Stack %d not supported", __func__, listen_socket->stack);
         return -1;
     }
 

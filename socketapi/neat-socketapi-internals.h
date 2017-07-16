@@ -97,6 +97,7 @@ struct neat_socket
    int                                ns_listen_backlog;
    TAILQ_ENTRY(neat_socket)           ns_accept_node;   // Node to handle *this* socket as accepted socekt
    TAILQ_HEAD(slisthead, neat_socket) ns_accept_list;   // Sockets accepted by this socket
+   struct neat_socket*                ns_acceptor;
 
    /* ====== Signals and notification queue ============================== */
    struct event_signal                ns_read_signal;

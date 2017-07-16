@@ -1,12 +1,13 @@
 /* NEAT declarations for SWIG */
 %module neat
 %include "stdint.i" /* Convert uint16_t correctly */
+%include "typemaps.i"
 %{
 #include "neat.h"
 %}
 
 %{
-static __thread struct {
+static struct {
     PyObject *on_connected;
     PyObject *on_error;
     PyObject *on_readable;
@@ -21,7 +22,12 @@ static __thread struct {
 static neat_error_code dispatcher(struct neat_flow_operations *ops, PyObject *pyfunc) {
     PyObject *pyops = SWIG_NewPointerObj(SWIG_as_voidptr(ops), SWIGTYPE_p_neat_flow_operations, 0 |  0 );
     PyObject *res = PyObject_CallFunctionObjArgs(pyfunc, pyops, NULL);
-    unsigned long long val = PyLong_AsUnsignedLongLong(res);
+    unsigned long val = PyLong_AsUnsignedLong(res);
+    /* DEBUG
+    const char* pyfunc_r = PyString_AsString(PyObject_Repr(pyfunc));
+    const char* pyops_r = PyString_AsString(PyObject_Repr(pyops));
+    printf("Dispatcher returned: %ld for function %s with ops %s\n", val, pyfunc_r, pyops_r);
+    */
     return (neat_error_code)(val);
 }
 
@@ -62,6 +68,10 @@ static neat_error_code disp_on_close(struct neat_flow_operations *ops) {
     }
     $1 = disp_$1_name;
     py_callbacks.$1_name = $input;
+}
+
+%typemap(in) const unsigned char *buffer {
+    $1 = (unsigned char*) PyString_AsString($input);
 }
 
 %include "neat.h"

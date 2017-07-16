@@ -7,15 +7,33 @@
 
 from neat import *
 import sys
+import os
+import ctypes
 
 def on_readable(ops):
+    bytes_read = 0
+    buffer = ctypes.create_string_buffer(32)
+    if (neat_read(ops.ctx, ops.flow, buffer, 31, bytes_read, None, 0) == NEAT_OK):
+        print("Read {} bytes:\n{}".format(bytes_read, buffer))
     return NEAT_OK
 
 def on_writable(ops):
-    print("Called on_writable")
-    message = "Hello, this is NEAT!"
-    input("Break!") # Prevent infinite loop
-    neat_write(ops.ctx, ops.flow, message, 20, None, 0) # Fails also without this line, but this seems to make it even worse
+    try:
+        #message = ctypes.create_string_buffer("Hello, this is NEAT!")
+        message = "Hello, this is NEAT!"
+        neat_write(ops.ctx, ops.flow, message, 20, None, 0) # Fails also without this line, but this seems to make it even worse
+    except SystemError as e:
+        print("System Error!")
+        print(e)
+        os._exit(-1)
+    except TypeError as e:
+        print("Type Error!")
+        print(e)
+        os._exit(-1)
+    except:
+        print("Unexpected exception!")
+        print(sys.exc_info()[0])
+        os._exit(-1)
     return NEAT_OK
 
 def on_all_written(ops):
@@ -34,6 +52,7 @@ if __name__ == "__main__":
     flow = neat_new_flow(ctx)
     ops  = neat_flow_operations()
 
+    ops.on_readable = on_readable
     ops.on_connected = on_connected
     neat_set_operations(ctx, flow, ops)
 

@@ -390,7 +390,7 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 
          pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
          pthread_mutex_lock(&neatSocket->ns_mutex);
-
+      
          if(neatSocket->ns_flags & NSAF_LISTENING) {
             /* ====== Accept new socket ================================== */
             struct neat_socket* newSocket = TAILQ_FIRST(&neatSocket->ns_accept_list);
@@ -421,6 +421,8 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             /* ====== Remove new socket from accept queue ================ */
             if(newSocket) {
                TAILQ_REMOVE(&neatSocket->ns_accept_list, newSocket, ns_accept_node);
+               newSocket->ns_acceptor = NULL;
+
                result = newSocket->ns_descriptor;
 
                /* ====== Fill in peer address ============================ */

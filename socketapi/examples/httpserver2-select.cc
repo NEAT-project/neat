@@ -71,7 +71,7 @@ void handleHTTPCommand(int sd, const unsigned int id, char* command)
       if(fileName[0] != '.') {   // No access to top-level directories!
          std::cout << "Client " << id << ": Trying to upload file \""
                    << fileName << "\"..." << std::endl;
-         int fd = nsa_open(fileName.c_str(), 0,0);
+         int fd = nsa_open(fileName.c_str(), 0, 0);
          if(fd >= 0) {
             const char* status = "HTTP/1.0 200 OK\r\n"
                                  "X-Frame-Options: SAMEORIGIN\r\n"

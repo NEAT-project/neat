@@ -699,7 +699,7 @@ int nsa_wait_for_event(struct neat_socket* neatSocket,
 {
    struct pollfd ufds[1];
    ufds[0].fd     = neatSocket->ns_descriptor;
-   ufds[0].events = POLLIN;
+   ufds[0].events = eventMask;
    int result = nsa_poll((struct pollfd*)&ufds, 1, timeout);
    if((result > 0) && (ufds[0].revents & eventMask)) {
       return(ufds[0].revents);

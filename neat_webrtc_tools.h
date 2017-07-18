@@ -57,7 +57,7 @@ struct peer_connection {
     struct rawrtc_dtls_transport* dtls_transport;
     struct rawrtc_sctp_transport* sctp_transport;
     struct rawrtc_data_transport* data_transport;
-    struct rawrtc_list data_channels;
+  //  struct rawrtc_list data_channels;
     struct parameters local_parameters;
     struct parameters remote_parameters;
     size_t n_flows;   // number of active flows

@@ -13,7 +13,6 @@ void default_ice_transport_state_change_handler(
         enum rawrtc_ice_transport_state const state,
         void* const arg // will be casted to `struct client*`
 ) {
-printf("%s\n", __func__);
     struct client* const client = arg;
     char const * const state_name = rawrtc_ice_transport_state_to_name(state);
     (void) arg;
@@ -30,7 +29,7 @@ void default_ice_gatherer_local_candidate_handler(
 ) {
     struct client* const client = arg;
     (void) candidate; (void) arg;
-    printf("%s\n", __func__);
+
     print_ice_candidate(candidate, url, client);
 }
 
@@ -46,7 +45,6 @@ void default_ice_gatherer_error_handler(
 ) {
     struct client* const client = arg;
     (void) host_candidate; (void) error_code; (void) arg;
-    printf("%s\n", __func__);
     printf("(%s) ICE gatherer error, URL: %s, reason: %s\n", client->name, url, error_text);
 }
 
@@ -58,13 +56,9 @@ void default_ice_gatherer_state_change_handler(
         void* const arg // will be casted to `struct peer_connection*`
 ) {
     struct peer_connection* const client = arg;
-    printf("%s state=%d\n", __func__, state);
     char const * const state_name = rawrtc_ice_gatherer_state_to_name(state);
     (void) arg;
     printf("(%s) ICE gatherer state: %s\n", client->name, state_name);
-    if (state == RAWRTC_ICE_GATHERER_CLOSED) {
-        rawrtc_mem_deref(client->gatherer);
-    }
 }
 
 /*
@@ -89,7 +83,7 @@ void print_ice_candidate(
         char* related_address = NULL;
         uint16_t related_port = 0;
         bool is_enabled = false;
-printf("%s\n", __func__);
+
         // Get candidate information
         if (rawrtc_ice_candidate_get_foundation(&foundation, candidate) != RAWRTC_CODE_SUCCESS) {
             printf("Error rawrtc_ice_candidate_get_foundation\n");
@@ -167,14 +161,12 @@ bool ice_candidate_type_enabled(
 ) {
     char const* const type_str = rawrtc_ice_candidate_type_to_str(type);
     size_t i;
-printf("%s\n", __func__);
-printf("type string=%s\n", type_str);
+
     // All enabled?
     if (client) {
         if (client->n_ice_candidate_types == 0) {
             return true;
         }
-        printf("n_ice_candidate_types=%zu\n", client->n_ice_candidate_types);
         // Specifically enabled?
         for (i = 0; i < client->n_ice_candidate_types; ++i) {
             if (strcmp(client->ice_candidate_types[i], type_str) == 0) {
@@ -196,10 +188,8 @@ void add_to_other_if_ice_candidate_type_enabled(
         struct rawrtc_ice_candidate* const candidate,
         struct rawrtc_ice_transport* const transport
 ) {
-printf("%s\n", __func__);
     if (candidate) {
         enum rawrtc_ice_candidate_type type;
-printf("%s: candidate=%p transport=%p\n", __func__, (void *)candidate, (void *)transport);
         // Get ICE candidate type
         if (rawrtc_ice_candidate_get_type(&type, candidate) != RAWRTC_CODE_SUCCESS) {
             printf("Error getting ice candidate type\n");
@@ -214,7 +204,6 @@ printf("%s: candidate=%p transport=%p\n", __func__, (void *)candidate, (void *)t
             }
         }
     } else {
-    printf("no local candidate\n");
         // Last candidate is always being added
         if (rawrtc_ice_transport_add_remote_candidate(transport, candidate) != RAWRTC_CODE_SUCCESS) {
             printf("Error adding last remote candidate\n");
@@ -231,7 +220,6 @@ void default_ice_transport_candidate_pair_change_handler(
         struct rawrtc_ice_candidate* const remote, // read-only
         void* const arg // will be casted to `struct client*`
 ) {
-printf("%s\n", __func__);
     struct client* const client = arg;
     (void) local; (void) remote;
     printf("(%s) ICE transport candidate pair change\n", client->name);
@@ -244,7 +232,6 @@ void default_dtls_transport_state_change_handler(
         enum rawrtc_dtls_transport_state const state, // read-only
         void* const arg // will be casted to `struct client*`
 ) {
-printf("%s\n", __func__);
     struct client* const client = arg;
     char const * const state_name = rawrtc_dtls_transport_state_to_name(state);
     printf("(%s) DTLS transport state change: %s\n", client->name, state_name);
@@ -257,7 +244,6 @@ void default_dtls_transport_error_handler(
         /* TODO: error.message (probably from OpenSSL) */
         void* const arg // will be casted to `struct client*`
 ) {
-printf("%s\n", __func__);
     struct client* const client = arg;
     // TODO: Print error message
     printf("(%s) DTLS transport error: %s\n", client->name, "???");
@@ -270,7 +256,6 @@ void default_sctp_transport_state_change_handler(
         enum rawrtc_sctp_transport_state const state,
         void* const arg // will be casted to `struct client*`
 ) {
-printf("%s:arg=struct client\n", __func__);
     struct client* const client = arg;
     char const * const state_name = rawrtc_sctp_transport_state_to_name(state);
     printf("(%s) SCTP transport state change: %s\n", client->name, state_name);
@@ -283,7 +268,6 @@ void default_data_channel_handler(
         struct rawrtc_data_channel* const channel, // read-only, MUST be referenced when used
         void* const arg // will be casted to `struct client*`
 ) {
-printf("%s:arg=struct client\n", __func__);
     struct client* const client = arg;
     struct rawrtc_data_channel_parameters* parameters;
    // enum rawrtc_code const ignore[] = {RAWRTC_CODE_NO_VALUE};
@@ -317,7 +301,6 @@ void data_channel_helper_create(
         printf("no memory!");
         return;
     }
-printf("%s:%p, data_channel_helper_destroy\n", __func__, (void *)channel);
     // Set fields
     channel->client = (struct client *)client;
     channel->arg = client;
@@ -334,7 +317,6 @@ static void data_channel_helper_destroy(
         void* arg
 ) {
     struct data_channel_helper* const channel = arg;
-printf("%s: %p\n", __func__, (void *)arg);
     // Unset handler argument & handlers of the channel
     if (rawrtc_data_channel_unset_handlers(channel->channel)!= RAWRTC_CODE_SUCCESS) {
         printf("Error unsetting data channel handlers\n");
@@ -345,7 +327,7 @@ printf("%s: %p\n", __func__, (void *)arg);
     rawrtc_list_unlink(&channel->le);
 
     // Un-reference
-    rawrtc_mem_deref(channel->arg);
+   // rawrtc_mem_deref(channel->arg);
     rawrtc_mem_deref(channel->label);
     rawrtc_mem_deref(channel->channel);
 }
@@ -394,7 +376,6 @@ void default_data_channel_message_handler(
     struct data_channel_helper* const channel = arg;
     struct client* const client = channel->client;
     (void) flags;
-    printf("%s: arg=data_channel_helper\n", __func__);
     printf("(%s) Incoming message for data channel %s: %zu bytes\n",
                  client->name, channel->label, rawrtc_mbuf_get_left(buffer));
 }
@@ -405,7 +386,6 @@ void default_data_channel_message_handler(
 void default_data_channel_open_handler(
         void* const arg // will be casted to `struct data_channel_helper*`
 ) {
-    printf("%s: arg=data_channel_helper\n", __func__);
     struct data_channel_helper* const channel = arg;
     struct client* const client = channel->client;
     printf("(%s) Data channel open: %s\n", client->name, channel->label);
@@ -464,10 +444,9 @@ static void dtls_fingerprints_destroy(
 ) {
     struct rawrtc_dtls_fingerprints* const fingerprints = arg;
     size_t i;
-printf("%s: %p\n", __func__, (void *)arg);
+
     // Un-reference each item
     for (i = 0; i < fingerprints->n_fingerprints; ++i) {
-    printf("deref %p\n", (void *)fingerprints->fingerprints[i]);
         rawrtc_mem_deref(fingerprints->fingerprints[i]);
     }
 }
@@ -548,7 +527,7 @@ enum rawrtc_code get_ice_parameters(
     char* username_fragment;
     char* password;
     bool ice_lite;
-printf("%s\n", __func__);
+
     // Get ICE parameters
     error |= dict_get_entry(&username_fragment, dict, "usernameFragment", ODICT_STRING, true);
     error |= dict_get_entry(&password, dict, "password", ODICT_STRING, true);
@@ -566,7 +545,7 @@ static void ice_candidates_destroy(
 ) {
     struct rawrtc_ice_candidates* const candidates = arg;
     size_t i;
-printf("%s: %p\n", __func__, (void *)arg);
+
     // Un-reference each item
     for (i = 0; i < candidates->n_candidates; ++i) {
         rawrtc_mem_deref(candidates->candidates[i]);
@@ -599,7 +578,7 @@ enum rawrtc_code get_ice_candidates(
         printf("No memory to allocate ICE candidates array");
     }
     candidates->n_candidates = 0;
-printf("%s:%p, ice_candidates_destroy\n", __func__, (void *)candidates);
+
     // Get ICE candidates
     for (le = rawrtc_list_head(&dict->lst); le != NULL; le = le->next) {
         struct odict* const node = ((struct odict_entry*) le->data)->u.odict;
@@ -643,16 +622,12 @@ printf("%s:%p, ice_candidates_destroy\n", __func__, (void *)candidates);
         if (error) {
             goto out;
         }
-printf("get_ice_candidates: vor print\n");
         // Print ICE candidate
         print_ice_candidate(candidate, NULL, client);
-printf("get_ice_candidates: nach print\n");
         // Store if ICE candidate type enabled
         if (ice_candidate_type_enabled(client, type)) {
-        printf("type is enabled\n");
             candidates->candidates[candidates->n_candidates++] = candidate;
         } else {
-        printf("type is not enabled\n");
             rawrtc_mem_deref(candidate);
         }
     }
@@ -664,7 +639,6 @@ out:
         // Set pointer
         *candidatesp = candidates;
     }
-    printf("num candidates=%zu\n", (*candidatesp)->n_candidates);
     return error;
 }
 
@@ -684,7 +658,7 @@ enum rawrtc_code get_dtls_parameters(
     struct odict* node;
     struct le* le;
     size_t i;
-printf("%s\n", __func__);
+
     // Get fingerprints array and length
     error = dict_get_entry(&node, dict, "fingerprints", ODICT_ARRAY, true);
     if (error) {
@@ -700,7 +674,7 @@ printf("%s\n", __func__);
         printf("No memory to allocate DTLS fingerprint array");
     }
     fingerprints->n_fingerprints = n;
-printf("%s:%p, dtls_fingerprints_destroy, n=%zu\n", __func__, (void *)fingerprints, n);
+
     // Get role
     error |= dict_get_entry(&role_str, dict, "role", ODICT_STRING, true);
     error |= rawrtc_str_to_dtls_role(&role, role_str);
@@ -729,14 +703,12 @@ printf("%s:%p, dtls_fingerprints_destroy, n=%zu\n", __func__, (void *)fingerprin
             goto out;
         }
     }
-
     // Create DTLS parameters
     error = rawrtc_dtls_parameters_create(
             &parameters, role, fingerprints->fingerprints, fingerprints->n_fingerprints);
 
 out:
     rawrtc_mem_deref(fingerprints);
-
     if (error) {
         rawrtc_mem_deref(parameters);
     } else {
@@ -755,7 +727,7 @@ enum rawrtc_code get_sctp_parameters(
 ) {
     enum rawrtc_code error;
     uint64_t max_message_size;
-printf("%s\n", __func__);
+
     // Get maximum message size
     error = dict_get_entry(&max_message_size, dict, "maxMessageSize", ODICT_INT, true);
     if (error) {
@@ -1235,7 +1207,6 @@ enum rawrtc_code get_ice_role(
         uint8_t role
       //  char const* const str
 ) {
-printf("%s\n", __func__);
     // Get ICE role
   //  switch (str[0]) {
   	switch (role) {
@@ -1326,7 +1297,7 @@ void data_channel_helper_create_from_channel(
     enum rawrtc_code error;
     struct rawrtc_data_channel_parameters* parameters;
     char* label;
-printf("%s: arg=peer_connection set as arg to data_channel_helper\n", __func__);
+
     // Allocate
     struct data_channel_helper* const channel_helper =
             rawrtc_mem_zalloc(sizeof(*channel_helper), data_channel_helper_destroy);
@@ -1334,7 +1305,6 @@ printf("%s: arg=peer_connection set as arg to data_channel_helper\n", __func__);
         printf("RAWRTC_CODE_NO_MEMORY\n");
         return;
     }
-printf("%s:%p, data_channel_helper_destroy\n", __func__, (void *)channel_helper);
     // Get parameters
     if (rawrtc_data_channel_get_parameters(&parameters, channel) != RAWRTC_CODE_SUCCESS)              {
             printf("Could not get channel parameters");
@@ -1368,7 +1338,6 @@ printf("%s:%p, data_channel_helper_destroy\n", __func__, (void *)channel_helper)
 
     // Set pointer
     *channel_helperp = channel_helper;
-
     // Un-reference & done
     rawrtc_mem_deref(parameters);
 }

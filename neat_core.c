@@ -1,5 +1,8 @@
 #include <sys/types.h>
 #include <netinet/in.h>
+#if defined(USRSCTP_SUPPORT)
+#include <usrsctp.h>
+#else
 #if defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
 #ifdef __linux__
 #include <netinet/sctp.h>
@@ -8,6 +11,7 @@
 #include <netinet/udplite.h>
 #endif // __linux__
 #endif // defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
+#endif
 
 #include <assert.h>
 #include <stdbool.h>

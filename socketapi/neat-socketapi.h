@@ -211,6 +211,7 @@ extern "C" {
 #endif
 
 /* ====== Initialisation and Clean-Up ==================================== */
+int nsa_init();
 void nsa_cleanup();
 int nsa_map_socket(int systemSD, int neatSD);
 int nsa_unmap_socket(int neatSD);

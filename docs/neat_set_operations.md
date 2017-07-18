@@ -51,6 +51,8 @@ struct neat_flow_operations
 };
 ```
 
+The information in the **ops** struct will be copied by NEAT.
+
 ### Examples
 
 ```c

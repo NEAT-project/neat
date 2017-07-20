@@ -182,7 +182,7 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
          if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
             /* The socket has been closed -> return 0, since socket was good
              * before. The next call to nsa_recvmsg() will return with EBADF. */
-            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);            
+            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
             return(0);
          }
 

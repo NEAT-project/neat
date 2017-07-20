@@ -275,7 +275,7 @@ int nsa_connectn(int                 sockfd,
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
       return(nsa_connectx_internal(neatSocket,
-                                   name, port, id, opt, optcnt)); 
+                                   name, port, id, opt, optcnt));
    }
    else {
       errno = ENOTSUP;
@@ -408,7 +408,7 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 
          pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
          pthread_mutex_lock(&neatSocket->ns_mutex);
-      
+
          if(neatSocket->ns_flags & NSAF_LISTENING) {
             /* ====== Accept new socket ================================== */
             struct neat_socket* newSocket = TAILQ_FIRST(&neatSocket->ns_accept_list);
@@ -535,7 +535,7 @@ int nsa_getsockopt(int sockfd, int level,
    if(neatSocket->ns_flow != NULL) {
       pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
       pthread_mutex_lock(&neatSocket->ns_mutex);
-      
+
       int result = -1;
       if(level == SOL_SOCKET) {
          switch(optname) {
@@ -569,7 +569,7 @@ int nsa_getsockopt(int sockfd, int level,
       }
 
       pthread_mutex_unlock(&neatSocket->ns_mutex);
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);      
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
       return(result);
    }
    else {
@@ -586,7 +586,7 @@ int nsa_setsockopt(int sockfd, int level,
    if(neatSocket->ns_flow != NULL) {
       pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
       pthread_mutex_lock(&neatSocket->ns_mutex);
-      
+
       int result = -1;
       if(level == SOL_SOCKET) {
          switch(optname) {
@@ -618,7 +618,7 @@ int nsa_setsockopt(int sockfd, int level,
       }
 
       pthread_mutex_unlock(&neatSocket->ns_mutex);
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);      
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
       return(result);
    }
    else {
@@ -663,7 +663,7 @@ int nsa_set_secure_identity(int sockfd, const char* pem)
       // Security in the NEAT Core API is currently broken!
       // It will not work here as well ...
       assert(false);
-/*      
+/*
       switch(result) {
          case NEAT_OK:
             return(0);
@@ -671,7 +671,7 @@ int nsa_set_secure_identity(int sockfd, const char* pem)
       }
 */
       errno = ENOENT;   /* Unexpected error from NEAT Core */
-      return(-1);      
+      return(-1);
    }
    errno = EOPNOTSUPP;
    return(-1);
@@ -772,7 +772,7 @@ int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
 int nsa_open(const char* pathname, int flags, mode_t mode)
 {
    const int fd = open(pathname, flags, mode);
-   if(fd >= 0) {      
+   if(fd >= 0) {
       pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
       int       result;
@@ -785,7 +785,7 @@ int nsa_open(const char* pathname, int flags, mode_t mode)
          close(fd);
          result = -1;
       }
-      
+
       pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
       return(result);
    }
@@ -797,7 +797,7 @@ int nsa_open(const char* pathname, int flags, mode_t mode)
 int nsa_creat(const char* pathname, mode_t mode)
 {
    const int fd = creat(pathname, mode);
-   if(fd >= 0) {      
+   if(fd >= 0) {
       pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
       int       result;
@@ -810,7 +810,7 @@ int nsa_creat(const char* pathname, mode_t mode)
          close(fd);
          result = -1;
       }
-      
+
       pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
       return(result);
    }

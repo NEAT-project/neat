@@ -785,7 +785,6 @@ int nsa_open(const char* pathname, int flags, mode_t mode)
          close(fd);
          result = -1;
       }
-
       pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
       return(result);
    }
@@ -810,7 +809,6 @@ int nsa_creat(const char* pathname, mode_t mode)
          close(fd);
          result = -1;
       }
-
       pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
       return(result);
    }

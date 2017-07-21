@@ -428,10 +428,8 @@ static void on_rate_hint(struct neat_flow_operations* ops, uint32_t new_rate)
 int nsa_socket_internal(int domain, int type, int protocol,
                         int customFD, struct neat_flow* flow, int requestedSD)
 {
-   struct neat_socket* neatSocket;
-
    /* ====== Handle different internal types ============================= */
-   neatSocket = (struct neat_socket*)calloc(1, sizeof(struct neat_socket));
+   struct neat_socket* neatSocket = (struct neat_socket*)calloc(1, sizeof(struct neat_socket));
    if(neatSocket == NULL) {
       errno = ENOMEM;
       return(-1);
@@ -590,9 +588,7 @@ int nsa_connectx_internal(struct neat_socket* neatSocket,
 /* ###### NEAT close() implementation internals ########################## */
 void nsa_close_internal(struct neat_socket* neatSocket)
 {
-   /* NOTE: gSocketAPIInternals->nsi_socket_set_mutex must already
-    *       be obtained when calling nsa_close_internal()! */
-
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
    pthread_mutex_lock(&neatSocket->ns_mutex);
 
    /* ====== Remove this socket from accepting socket ==================== */
@@ -626,6 +622,7 @@ void nsa_close_internal(struct neat_socket* neatSocket)
       rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
    }
    ibm_free_id(gSocketAPIInternals->nsi_socket_identifier_bitmap, neatSocket->ns_descriptor);
+   assert(nsa_get_socket_for_descriptor(neatSocket->ns_descriptor) == NULL);
    neatSocket->ns_descriptor = -1;
 
    if(neatSocket->ns_options) {
@@ -640,6 +637,7 @@ void nsa_close_internal(struct neat_socket* neatSocket)
    pthread_mutex_unlock(&neatSocket->ns_mutex);
    pthread_mutex_destroy(&neatSocket->ns_mutex);
    free(neatSocket);
+   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 }
 
 

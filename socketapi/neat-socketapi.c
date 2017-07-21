@@ -54,7 +54,10 @@
 /* ###### Map system socket into NEAT socket descriptor space ############ */
 int nsa_map_socket(int systemSD, int neatSD)
 {
-   return(nsa_socket_internal(0, 0, 0, systemSD, NULL, neatSD));
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   const int result = nsa_socket_internal(0, 0, 0, systemSD, NULL, neatSD);
+   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   return(result);
 }
 
 
@@ -112,23 +115,30 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
 /* ###### NEAT close() implementation #################################### */
 int nsa_close(int sockfd)
 {
-   GET_NEAT_SOCKET(sockfd)
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-   if(neatSocket->ns_flow != NULL) {
-      pthread_mutex_lock(&neatSocket->ns_mutex);
-      rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
-      pthread_mutex_unlock(&neatSocket->ns_mutex);
-      neat_close(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow);
+   struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(sockfd);
+   int                 result     = 0;
+   if(neatSocket != NULL) {
+      if(neatSocket->ns_flow != NULL) {
+         pthread_mutex_lock(&neatSocket->ns_mutex);
+         rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
+         pthread_mutex_unlock(&neatSocket->ns_mutex);
+         neat_close(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow);
 
-      /* Finally, finish the main loop's waiting, in order to let it
-       * process the closing request. */
-      nsa_notify_main_loop();
+         /* Finally, finish the main loop's waiting, in order to let it
+         * process the closing request. */
+         nsa_notify_main_loop();
+      }
+      else {
+         nsa_close_internal(neatSocket);
+      }
    }
    else {
-      nsa_close_internal(neatSocket);
+      errno  = EBADF;
+      result = -1;
    }
    pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-   return(0);
+   return(result);
 }
 
 
@@ -762,13 +772,22 @@ int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
 int nsa_open(const char* pathname, int flags, mode_t mode)
 {
    const int fd = open(pathname, flags, mode);
-   if(fd >= 0) {
+   if(fd >= 0) {      
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
+      int       result;
       const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
       if(newFD >= 0) {
-         return(newFD);
+         result = newFD;
       }
-      errno = ENOMEM;
-      close(fd);
+      else {
+         errno = ENOMEM;
+         close(fd);
+         result = -1;
+      }
+      
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      return(result);
    }
    return(-1);
 }
@@ -778,13 +797,22 @@ int nsa_open(const char* pathname, int flags, mode_t mode)
 int nsa_creat(const char* pathname, mode_t mode)
 {
    const int fd = creat(pathname, mode);
-   if(fd >= 0) {
+   if(fd >= 0) {      
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+
+      int       result;
       const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
       if(newFD >= 0) {
-         return(newFD);
+         result = newFD;
       }
-      errno = ENOMEM;
-      close(fd);
+      else {
+         errno = ENOMEM;
+         close(fd);
+         result = -1;
+      }
+      
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      return(result);
    }
    return(-1);
 }
@@ -809,10 +837,12 @@ int nsa_pipe(int fds[2])
 {
    int sysFDs[2];
    if(pipe((int*)&sysFDs) == 0) {
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
       fds[0] = nsa_socket_internal(0, 0, 0, sysFDs[0], NULL, 0);
       if(fds[0] >= 0) {
          fds[1] = nsa_socket_internal(0, 0, 0, sysFDs[1], NULL, 0);
          if(fds[1] >= 0) {
+            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
             return(0);
          }
          nsa_close(fds[0]);
@@ -821,6 +851,7 @@ int nsa_pipe(int fds[2])
       errno = ENOMEM;
       close(sysFDs[0]);
       close(sysFDs[1]);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
    }
    return(-1);
 }

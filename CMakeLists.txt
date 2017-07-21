@@ -187,6 +187,14 @@ OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 1)
 
 OPTION(SOCKET_API "Include the socket API" 0)
 
+OPTION(SANITIZER_ADDRESS "Compile with address sanitizer" 0)
+
+OPTION(SANITIZER_MEMORY "Compile with memory sanitizer" 0)
+
+IF (SANITIZER_ADDRESS AND SANITIZER_MEMORY)
+    MESSAGE(FATAL_ERROR "Can not compile with both sanitizer options")
+ENDIF()
+
 # REQUIREMENTS
 #################################################
 CHECK_INCLUDE_FILE(uv.h HAVE_SYS_UV_H)
@@ -296,6 +304,17 @@ IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
     # _FORTIFY_SOURCE requires compiling with optimization
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
+ENDIF()
+
+IF (SANITIZER_ADDRESS)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=address -O1 -fno-omit-frame-pointer -g -Wno-address-of-packed-member")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -O1 -fno-omit-frame-pointer -g -Wno-address-of-packed-member")
+ENDIF()
+
+IF (SANITIZER_MEMORY)
+    # maybe add "-fPIE -pie" here
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=memory -fno-omit-frame-pointer -g -Wno-address-of-packed-member -fsanitize-memory-track-origins")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -g -Wno-address-of-packed-member -fsanitize-memory-track-origins")
 ENDIF()
 
 # LIBRARIES

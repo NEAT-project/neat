@@ -59,7 +59,7 @@ static uint32_t flows_active    = 0;
 static uint32_t server_runs     = 0;
 static char *cert_file          = NULL;
 static char *key_file           = NULL;
-static char *loop_hostname      = "localhost";
+static char *loop_hostname      = "127.0.0.1";
 
 /*
     macro - tvp-uvp=vvp

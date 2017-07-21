@@ -20,7 +20,6 @@
  */
 
 #include <iostream>
-#include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -102,11 +101,11 @@ int main(int argc, char** argv)
                               NI_NUMERICHOST);
       if(error != 0) {
          std::cerr << "ERROR: getnameinfo() failed: " << gai_strerror(error) << std::endl;
-         exit(1);
       }
-      std::cout << "Got connection from "
-                << remoteHost << ", service " << remoteService << ":" << std::endl;
-
+      else {
+         std::cout << "Got connection from "
+                   << remoteHost << ", service " << remoteService << ":" << std::endl;
+      }
 
       // ====== Get command =================================================
       char   command[8192];
@@ -148,8 +147,8 @@ int main(int argc, char** argv)
 
          if(fileName[0] != '.') {   // No access to top-level directories!
             std::cout << "Trying to upload file \"" << fileName << "\"..." << std::endl;
-            std::ifstream is(fileName.c_str(), std::ios::binary);
-            if(is.good()) {
+            int fd = nsa_open(fileName.c_str(), 0, 0);
+            if(fd >= 0) {
                const char* status = "HTTP/1.0 200 OK\r\n"
                                     "X-Frame-Options: SAMEORIGIN\r\n"
                                     "X-XSS-Protection: 1; mode=block\r\n"
@@ -159,10 +158,10 @@ int main(int argc, char** argv)
                result = nsa_write(newSD, status, strlen(status));
 
                char str[256];
-               std::streamsize s = is.rdbuf()->sgetn(str, sizeof(str));
+               ssize_t s = nsa_read(fd, str, sizeof(str));
                while((s > 0) && (result > 0)) {
                   result = nsa_write(newSD, str, s);
-                  s = is.rdbuf()->sgetn(str, sizeof(str));
+                  s = nsa_read(fd, str, sizeof(str));
                }
             }
             else {

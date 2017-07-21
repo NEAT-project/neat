@@ -1,0 +1,3 @@
+#!/bin/sh
+
+make -j8 && while [ true ] ; do ./httpget http://127.0.0.1:8888/test.html ; done

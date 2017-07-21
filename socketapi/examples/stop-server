@@ -1,0 +1,3 @@
+#!/bin/sh
+
+ps ax | grep httpserver | grep valgrind | awk '{ print $1 }' | xargs -r kill

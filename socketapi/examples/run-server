@@ -1,0 +1,2 @@
+#!/bin/sh
+make -j8 && ./debug.memcheck ./httpserver2-threads 8888

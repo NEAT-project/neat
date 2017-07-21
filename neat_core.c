@@ -322,6 +322,16 @@ neat_free_ctx(struct neat_ctx *nc)
          */
         assert(flow != prev_flow);
 
+        /* NEAT is shutting down. Make sure that close callback is called here,
+         * since there is no main loop any more. */
+        if (!flow->socket->multistream
+#ifdef SCTP_MULTISTREAMING
+            || flow->socket->sctp_streams_used == 0
+#endif
+        ) {
+            flow->closefx(flow->ctx, flow);
+        }
+
         neat_free_flow(flow);
         prev_flow = flow;
     }
@@ -581,14 +591,6 @@ synchronous_free(neat_flow *flow)
 
     assert(flow);
     assert(flow->socket);
-
-    if (!flow->socket->multistream
-#ifdef SCTP_MULTISTREAMING
-        || flow->socket->sctp_streams_used == 0
-#endif
-    ) {
-        flow->closefx(flow->ctx, flow);
-    }
 
     free((char *)flow->name);
     free((char *)flow->server_pem);
@@ -7235,13 +7237,13 @@ neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid)
 #endif
 
     msghdr.msg_flags = 0;
-    
+
 #ifndef MSG_NOSIGNAL
     rv = sendmsg(socket->fd, (const struct msghdr *)&msghdr, 0);
 #else
     rv = sendmsg(socket->fd, (const struct msghdr *)&msghdr, MSG_NOSIGNAL);
 #endif
-    
+
     if (rv < 0) {
         if (errno == EWOULDBLOCK) {
             //neat_log(NEAT_LOG_ERROR, "%s - NEAT_LOG_ERROR - %s", __func__, strerror(errno));

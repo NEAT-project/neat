@@ -322,6 +322,16 @@ neat_free_ctx(struct neat_ctx *nc)
          */
         assert(flow != prev_flow);
 
+        /* NEAT is shutting down. Make sure that close callback is called here,
+         * since there is no main loop any more. */
+        if (!flow->socket->multistream
+#ifdef SCTP_MULTISTREAMING
+            || flow->socket->sctp_streams_used == 0
+#endif
+        ) {
+            flow->closefx(flow->ctx, flow);
+        }
+
         neat_free_flow(flow);
         prev_flow = flow;
     }
@@ -581,14 +591,6 @@ synchronous_free(neat_flow *flow)
 
     assert(flow);
     assert(flow->socket);
-
-    if (!flow->socket->multistream
-#ifdef SCTP_MULTISTREAMING
-        || flow->socket->sctp_streams_used == 0
-#endif
-    ) {
-        flow->closefx(flow->ctx, flow);
-    }
 
     free((char *)flow->name);
     free((char *)flow->server_pem);
@@ -4566,7 +4568,11 @@ neat_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
 
                 msghdr.msg_flags = 0;
                 if (flow->socket->fd != -1) {
+#ifndef MSG_NOSIGNAL
                     rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+#else
+                    rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, MSG_NOSIGNAL);
+#endif
                 } else {
 #if defined(USRSCTP_SUPPORT)
                     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
@@ -4685,7 +4691,6 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     size_t len;
     int atomic;
     neat_error_code code = NEAT_OK;
-    int flags = 0;
 #ifdef NEAT_SCTP_DTLS
     struct security_data *private = NULL;
 #endif
@@ -4925,12 +4930,11 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
 
 #ifndef MSG_NOSIGNAL
-                flags = 0;
-#else   // MSG_NOSIGNAL
-                flags = MSG_NOSIGNAL;
-#endif  // MSG_NOSIGNAL
+                rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, 0);
+#else
+                rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, MSG_NOSIGNAL);
+#endif
 
-                rv = sendmsg(flow->socket->fd, (const struct msghdr *)&msghdr, flags);
 #ifdef NEAT_SCTP_DTLS
             }
 #endif
@@ -5225,7 +5229,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #endif
     protocol = neat_stack_to_protocol(neat_base_stack(candidate->pollable_socket->stack));
     if (protocol == 0) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Stack %d not supported", candidate->pollable_socket->stack);
+        neat_log(ctx, NEAT_LOG_INFO, "Stack %d not supported", candidate->pollable_socket->stack);
         return -1;
     }
     if ((candidate->pollable_socket->fd =
@@ -5672,7 +5676,7 @@ neat_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat
 
     protocol = neat_stack_to_protocol(neat_base_stack(listen_socket->stack));
     if (protocol == 0) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Stack %d not supported", listen_socket->stack);
+        neat_log(ctx, NEAT_LOG_INFO, "Stack %d not supported", listen_socket->stack);
         return -1;
     }
 
@@ -6078,7 +6082,7 @@ neat_connect_via_usrsctp(struct neat_he_candidate *candidate)
 
     protocol = neat_stack_to_protocol(neat_base_stack(candidate->pollable_socket->stack));
     if (protocol == 0) {
-        neat_log(candidate->ctx, NEAT_LOG_ERROR, "%s - Stack %d not supported", __func__, candidate->pollable_socket->stack);
+        neat_log(candidate->ctx, NEAT_LOG_INFO, "%s - Stack %d not supported", __func__, candidate->pollable_socket->stack);
         return -1;
     }
 
@@ -6433,7 +6437,7 @@ neat_listen_via_usrsctp(struct neat_ctx *ctx,
 
     protocol = neat_stack_to_protocol(neat_base_stack(listen_socket->stack));
     if (protocol == 0) {
-        neat_log(flow->ctx, NEAT_LOG_ERROR, "%s - Stack %d not supported", __func__, listen_socket->stack);
+        neat_log(flow->ctx, NEAT_LOG_INFO, "%s - Stack %d not supported", __func__, listen_socket->stack);
         return -1;
     }
 
@@ -7233,7 +7237,13 @@ neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid)
 #endif
 
     msghdr.msg_flags = 0;
+
+#ifndef MSG_NOSIGNAL
     rv = sendmsg(socket->fd, (const struct msghdr *)&msghdr, 0);
+#else
+    rv = sendmsg(socket->fd, (const struct msghdr *)&msghdr, MSG_NOSIGNAL);
+#endif
+
     if (rv < 0) {
         if (errno == EWOULDBLOCK) {
             //neat_log(NEAT_LOG_ERROR, "%s - NEAT_LOG_ERROR - %s", __func__, strerror(errno));

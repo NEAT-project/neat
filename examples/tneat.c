@@ -55,10 +55,11 @@ static char *config_property = "\
     ]\
 }";
 
-static uint32_t flows_active = 0;
-static uint32_t server_runs = 0;
-static char *cert_file = NULL;
-static char *key_file = NULL;
+static uint32_t flows_active    = 0;
+static uint32_t server_runs     = 0;
+static char *cert_file          = NULL;
+static char *key_file           = NULL;
+static char *loop_hostname      = "localhost";
 
 /*
     macro - tvp-uvp=vvp
@@ -387,6 +388,7 @@ main(int argc, char *argv[])
 
     int arg, result;
     char *arg_property = config_property;
+    char *remote_addr = NULL;
 
     memset(&ops_client, 0, sizeof(ops_client));
     memset(&op_server, 0, sizeof(op_server));
@@ -521,8 +523,14 @@ main(int argc, char *argv[])
             ops_client[i].userData = &result; // allow on_error to modify the result variable
             neat_set_operations(ctx, flows_client[i], &(ops_client[i]));
 
+            if (config_mode == NEAT_MODE_LOOP) {
+                remote_addr = loop_hostname;
+            } else {
+                remote_addr = argv[optind];
+            }
+
             // wait for on_connected or on_error to be invoked
-            if (neat_open(ctx, flows_client[i], argv[optind], config_port, NULL, 0) != NEAT_OK) {
+            if (neat_open(ctx, flows_client[i], remote_addr, config_port, NULL, 0) != NEAT_OK) {
                 fprintf(stderr, "Could not open flow\n");
                 exit(EXIT_FAILURE);
             }

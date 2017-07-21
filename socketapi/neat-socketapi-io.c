@@ -33,6 +33,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <errno.h>
 #include <assert.h>
@@ -112,7 +113,7 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
       }
       if(result == NEAT_ERROR_WOULD_BLOCK) {
          neatSocket->ns_flags &= ~NSAF_WRITABLE;
-         es_has_fired(&neatSocket->ns_write_signal); /* Clear write signal */
+         es_has_fired(&neatSocket->ns_write_signal);   /* Clear write signal */
          nsa_set_socket_event_on_write(neatSocket, true);
       }
       pthread_mutex_unlock(&neatSocket->ns_mutex);
@@ -234,14 +235,20 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
 /* ###### NEAT write() implementation #################################### */
 ssize_t nsa_write(int fd, const void* buf, size_t len)
 {
-   struct iovec  iov = { (char*)buf, len };
-   struct msghdr msg = {
-      NULL, 0,
-      &iov, 1,
-      NULL, 0,
-      0
-   };
-   return(nsa_sendmsg(fd, &msg, 0));
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      struct iovec  iov = { (char*)buf, len };
+      struct msghdr msg = {
+         NULL, 0,
+         &iov, 1,
+         NULL, 0,
+         0
+      };
+      return(nsa_sendmsg(fd, &msg, 0));
+   }
+   else {
+      return(write(neatSocket->ns_socket_sd, buf, len));
+   }
 }
 
 
@@ -294,14 +301,20 @@ ssize_t nsa_sendv(int sockfd, struct iovec* iov, int iovcnt,
 /* ###### NEAT read() implementation ##################################### */
 ssize_t nsa_read(int fd, void* buf, size_t len)
 {
-   struct iovec  iov = { (char*)buf, len };
-   struct msghdr msg = {
-      NULL, 0,
-      &iov, 1,
-      NULL, 0,
-      0
-   };
-   return(nsa_recvmsg(fd, &msg, 0));
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      struct iovec  iov = { (char*)buf, len };
+      struct msghdr msg = {
+         NULL, 0,
+         &iov, 1,
+         NULL, 0,
+         0
+      };
+      return(nsa_recvmsg(fd, &msg, 0));
+   }
+   else {
+      return(read(neatSocket->ns_socket_sd, buf, len));
+   }
 }
 
 

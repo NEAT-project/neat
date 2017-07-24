@@ -21,6 +21,14 @@
 #ifdef USRSCTP_SUPPORT
     #include "neat_usrsctp.h"
     #include <usrsctp.h>
+
+    struct usr_internal {
+        uint16_t num_ctx;
+        int s4_fd;
+        int us4_fd;
+        int s6_fd;
+        int us6_fd;
+    } usr_intern;
 #else // USRSCTP_SUPPORT
     #define NEAT_INTERNAL_USRSCTP
 #endif // USRSCTP_SUPPORT

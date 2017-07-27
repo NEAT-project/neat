@@ -1,5 +1,8 @@
 #include <sys/types.h>
 #include <netinet/in.h>
+#if defined(USRSCTP_SUPPORT)
+#include <usrsctp.h>
+#else
 #if defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
 #ifdef __linux__
 #include <netinet/sctp.h>
@@ -8,6 +11,7 @@
 #include <netinet/udplite.h>
 #endif // __linux__
 #endif // defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
+#endif
 
 #include <assert.h>
 #include <stdbool.h>
@@ -167,6 +171,9 @@ neat_init_ctx()
                    1000 * NEAT_ADDRESS_LIFETIME_TIMEOUT);
     neat_security_init(nc);
 #if defined(USRSCTP_SUPPORT)
+    if (usr_intern.num_ctx == 0) {
+        neat_usrsctp_init(nc);
+    }
     neat_usrsctp_init_ctx(nc);
 #endif
 #if defined(__linux__)
@@ -180,6 +187,9 @@ neat_init_ctx()
         free(nc->loop);
         free(nc);
     }
+#if defined(USRSCTP_SUPPORT)
+    usr_intern.num_ctx++;
+#endif
     return ctx;
 }
 
@@ -322,6 +332,16 @@ neat_free_ctx(struct neat_ctx *nc)
          */
         assert(flow != prev_flow);
 
+        /* NEAT is shutting down. Make sure that close callback is called here,
+         * since there is no main loop any more. */
+        if (!flow->socket->multistream
+#ifdef SCTP_MULTISTREAMING
+            || flow->socket->sctp_streams_used == 0
+#endif
+        ) {
+            flow->closefx(flow->ctx, flow);
+        }
+
         neat_free_flow(flow);
         prev_flow = flow;
     }
@@ -342,6 +362,9 @@ neat_free_ctx(struct neat_ctx *nc)
     neat_security_close(nc);
     neat_log_close(nc);
     free(nc);
+#if defined(USRSCTP_SUPPORT)
+    usr_intern.num_ctx--;
+#endif
 }
 
 //The three functions that deal with the NEAT callback API. Nothing very
@@ -582,14 +605,6 @@ synchronous_free(neat_flow *flow)
     assert(flow);
     assert(flow->socket);
 
-    if (!flow->socket->multistream
-#ifdef SCTP_MULTISTREAMING
-        || flow->socket->sctp_streams_used == 0
-#endif
-    ) {
-        flow->closefx(flow->ctx, flow);
-    }
-
     free((char *)flow->name);
     free((char *)flow->server_pem);
     free((char *)flow->cert_pem);
@@ -618,6 +633,13 @@ synchronous_free(neat_flow *flow)
 #endif
     ) {
         free(flow->socket->handle);
+#if defined(USRSCTP_SUPPORT)
+    if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+        if (flow->socket->usrsctp_socket) {
+            usrsctp_close(flow->socket->usrsctp_socket);
+        }
+    }
+#endif
         free(flow->socket);
     }
 
@@ -886,7 +908,7 @@ neat_error_code neat_set_operations(neat_ctx *ctx, neat_flow *flow,
 
 #if defined(USRSCTP_SUPPORT)
     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-        handle_upcall(flow->socket->usrsctp_socket, flow->socket, 0);
+     //   handle_upcall(flow->socket->usrsctp_socket, flow->socket, 0);
         return NEAT_OK;
     }
 #endif
@@ -2194,7 +2216,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         flow->isPolling = 1;
 
-	    send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
+        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
 
         if (flow->security_needed) {
             if (flow->socket->stack == NEAT_STACK_TCP) {
@@ -6380,6 +6402,11 @@ handle_upcall(struct socket *sock, void *arg, int flags)
     ctx = flow->ctx;
     events = usrsctp_get_events(sock);
 
+    if (events == -1) {
+        neat_log(flow->ctx, NEAT_LOG_DEBUG, "Bad file descriptor");
+        return;
+    }
+
     if ((events & SCTP_EVENT_READ) && flow->acceptPending) {
         do_accept(ctx, flow, pollable_socket);
         return;
@@ -7235,13 +7262,13 @@ neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid)
 #endif
 
     msghdr.msg_flags = 0;
-    
+
 #ifndef MSG_NOSIGNAL
     rv = sendmsg(socket->fd, (const struct msghdr *)&msghdr, 0);
 #else
     rv = sendmsg(socket->fd, (const struct msghdr *)&msghdr, MSG_NOSIGNAL);
 #endif
-    
+
     if (rv < 0) {
         if (errno == EWOULDBLOCK) {
             //neat_log(NEAT_LOG_ERROR, "%s - NEAT_LOG_ERROR - %s", __func__, strerror(errno));

@@ -2216,7 +2216,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         flow->isPolling = 1;
 
-	    send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
+        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
 
         if (flow->security_needed) {
             if (flow->socket->stack == NEAT_STACK_TCP) {

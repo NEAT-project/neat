@@ -255,7 +255,7 @@ struct neat_pollable_socket
 
     struct neat_pollable_socket *listen_socket;
 
-	struct neat_dtls_data *dtls_data;
+    struct neat_dtls_data *dtls_data;
 
     uv_poll_t *handle;
 

@@ -2,7 +2,8 @@
 
 """
     This file is a ported version of the C example bundled with NEAT.
-    Note that the NEAT bindings currently require Python 3.
+    Note that the NEAT bindings currently require Python 2.7 or larger.
+    Python 3 will not work.
 """
 
 from neat import *

@@ -2,12 +2,12 @@
 
 """
     This file is a ported version of the C example bundled with NEAT.
-    Note that the NEAT bindings currently require Python 3.
+    Note that the NEAT bindings currently require Python 2.7 or larger.
+    Python 3 will not work.
 """
 
 from neat import *
 import sys
-import os
 import ctypes
 
 def on_readable(ops):
@@ -18,21 +18,8 @@ def on_readable(ops):
     return NEAT_OK
 
 def on_writable(ops):
-    try:
-        message = "Hello, this is NEAT!"
-        neat_write(ops.ctx, ops.flow, message, 20, None, 0)
-    except SystemError as e:
-        print("System Error!")
-        print(e)
-        os._exit(-1)
-    except TypeError as e:
-        print("Type Error!")
-        print(e)
-        os._exit(-1)
-    except:
-        print("Unexpected exception!")
-        print(sys.exc_info()[0])
-        os._exit(-1)
+    message = "Hello, this is NEAT!"
+    neat_write(ops.ctx, ops.flow, message, 20, None, 0)
     return NEAT_OK
 
 def on_all_written(ops):

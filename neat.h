@@ -1,9 +1,12 @@
 #ifndef NEAT_H
 #define NEAT_H
 
+// Avoid additional includes for SWIG
+#ifndef SWIG
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <uv.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,7 +15,12 @@ extern "C" {
 // TODO: this __attribute__ feature supposedly works with both clang and
 // modern gcc compilers. Could be moved to a cmake test for better
 // portability.
+#ifndef SWIG
 #define NEAT_EXTERN __attribute__ ((__visibility__ ("default")))
+#else
+// SWIG doesnt like the above definition
+#define NEAT_EXTERN extern
+#endif
 
 //Maps directly to libuv contants
 typedef enum {

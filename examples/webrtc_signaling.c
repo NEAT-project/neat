@@ -149,7 +149,7 @@ signaling_handle_buffer(struct neat_signaling_context *sctx) {
 
 
         }
-	sctx->buffer_rcv_level -= payload_length + 4;
+        sctx->buffer_rcv_level -= payload_length + 4;
         memmove(sctx->buffer_rcv, sctx->buffer_rcv + payload_length + 4, sctx->buffer_rcv_level);
 
     }

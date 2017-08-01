@@ -950,7 +950,7 @@ void set_sctp_parameters_string(
         exit (-1);
     }
 
-    sprintf(str, "\"sctpParameters\":{\"maxMessageSize\":%lu,\"port\":%d}", max_message_size, port);
+    sprintf(str, "\"sctpParameters\":{\"maxMessageSize\":%llu,\"port\":%d}", max_message_size, port);
 }
 
 

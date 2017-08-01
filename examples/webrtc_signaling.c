@@ -94,7 +94,8 @@ neat_signaling_send(struct neat_signaling_context *sctx, unsigned char* buffer, 
 
     if (sctx->state == NEAT_SIGNALING_STATE_READY) {
         sctx->ops.on_writable = signaling_on_writable;
-        neat_set_operations(sctx->ctx, sctx->flow, &(sctx->ops));
+        sctx->ops.on_readable = signaling_on_readable;
+	neat_set_operations(sctx->ctx, sctx->flow, &(sctx->ops));
     }
 
     return NEAT_OK;
@@ -109,9 +110,6 @@ signaling_handle_buffer(struct neat_signaling_context *sctx) {
     fprintf(stderr, ">>>>>>>> SIGNALING %s\n", __func__);
 
     while (sctx->buffer_rcv_level >= 4) {
-
-
-
         payload_length_network = (uint32_t *) &(sctx->buffer_rcv);
         payload_length = ntohl(*payload_length_network);
 
@@ -135,7 +133,9 @@ signaling_handle_buffer(struct neat_signaling_context *sctx) {
             fprintf(stderr, "%s - Signaling ready\n", __func__);
 
             if (sctx->buffer_snd_level) {
-                sctx->ops.on_writable = signaling_on_writable;
+                fprintf(stderr, "%s - send buffer filled, start writing\n", __func__);
+		sctx->ops.on_writable = signaling_on_writable;
+		sctx->ops.on_readable = signaling_on_readable;
                 neat_set_operations(sctx->ctx, sctx->flow, &(sctx->ops));
             }
         } else if (sctx->state == NEAT_SIGNALING_STATE_READY) {
@@ -149,11 +149,11 @@ signaling_handle_buffer(struct neat_signaling_context *sctx) {
 
 
         }
-		sctx->buffer_rcv_level -= payload_length + 4;
+	sctx->buffer_rcv_level -= payload_length + 4;
         memmove(sctx->buffer_rcv, sctx->buffer_rcv + payload_length + 4, sctx->buffer_rcv_level);
 
     }
-
+    fprintf(stderr, "%s - >>>>>>>>>>>>>>>>>  return NEAT_OK\n", __func__);
     return NEAT_OK;
 }
 

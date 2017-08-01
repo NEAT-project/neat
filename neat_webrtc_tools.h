@@ -3,6 +3,7 @@
 #if defined(WEBRTC_SUPPORT)
 #include <rawrtc.h>
 #include <jansson.h>
+#include <inttypes.h>
 
 #define PARAMETERS_MAX_LENGTH  8192
 

@@ -6,7 +6,7 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
-#ifdef NEAT_SCTP_DTLS
+#if defined(NEAT_SCTP_DTLS) && !defined(USRSCTP_SUPPORT)
 #include <netinet/sctp.h>
 #endif
 #include "neat.h"
@@ -472,7 +472,7 @@ neat_dtls_dtor(struct neat_dtls_data *dtls)
     }
 }
 
-
+#if !defined(USRSCTP_SUPPORT)
 void handle_notifications(BIO *bio, void *context, void *buf) {
     struct sctp_assoc_change *sac;
     struct sctp_send_failed *ssf;
@@ -544,6 +544,7 @@ void handle_notifications(BIO *bio, void *context, void *buf) {
             break;
     }
 }
+#endif
 
 static neat_error_code
 neat_dtls_handshake(struct neat_flow_operations *opCB)

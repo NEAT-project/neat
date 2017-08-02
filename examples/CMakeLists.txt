@@ -1,6 +1,8 @@
 # PROGRAMS LIST
 #################################################
 LIST(APPEND neat_programs
+    client_dtls_echo.c
+    server_dtls_echo.c
     client.c
     client_data.c
     client_http_get.c

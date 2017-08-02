@@ -384,8 +384,10 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
 
         if (isClient) {
             private->ctx = SSL_CTX_new(client_method());
-            SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
-            tls_init_trust_list(private->ctx);
+            if (!flow->skipCertVerification) {
+                SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
+                tls_init_trust_list(private->ctx);
+            }
         } else {
             private->ctx = SSL_CTX_new(server_method());
            // SSL_CTX_set_ecdh_auto(private->ctx, 1); Linux compiler complains
@@ -410,7 +412,7 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
         SSL_CTX_set_cipher_list(private->ctx, "DEFAULT:-RC4");
         private->ssl = SSL_new(private->ctx);
 
-        if (isClient) {
+        if (!flow->skipCertVerification && isClient) {
             // authenticate the server.. todo an option to skip
             X509_VERIFY_PARAM *param = SSL_get0_param(private->ssl);
             X509_VERIFY_PARAM_set1_host(param, flow->name, 0);
@@ -443,6 +445,84 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
         if (isClient) {
             uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
         }
+        return NEAT_OK;
+    }
+
+    if (flow->socket->stack == NEAT_STACK_UDP) {
+        struct security_data *private = calloc (1, sizeof (struct security_data));
+        if (!private)
+            return NEAT_ERROR_OUT_OF_MEMORY;
+        struct neat_iofilter *filter = insert_neat_iofilter(ctx, flow);
+        if (!filter) {
+            free(private);
+            return NEAT_ERROR_OUT_OF_MEMORY;
+        }
+        filter->userData = private;
+        filter->dtor = neat_security_filter_dtor;
+        filter->writefx = neat_security_filter_write;
+        filter->readfx = neat_security_filter_read;
+
+        if (isClient) {
+            private->ctx = SSL_CTX_new(DTLS_client_method());
+            if (!flow->skipCertVerification) {
+                SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
+                tls_init_trust_list(private->ctx);
+            }
+        } else {
+            private->ctx = SSL_CTX_new(DTLS_server_method());
+           // SSL_CTX_set_ecdh_auto(private->ctx, 1); Linux compiler complains
+
+            if (!flow->server_pem) {
+                neat_log(ctx, NEAT_LOG_ERROR, "PEM file not set via neat_secure_identity()");
+                return NEAT_ERROR_SECURITY;
+            }
+
+            if (SSL_CTX_use_certificate_file(private->ctx, flow->server_pem, SSL_FILETYPE_PEM) != 1) {
+                neat_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_certificate_file : %s", flow->server_pem);
+                ERR_print_errors_fp(stderr);
+                return NEAT_ERROR_SECURITY;
+            }
+            if (SSL_CTX_use_PrivateKey_file(private->ctx, flow->server_pem, SSL_FILETYPE_PEM) != 1) {
+                neat_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_PrivateKey_file : %s", flow->server_pem);
+                return NEAT_ERROR_SECURITY;
+            }
+        }
+        // let's disable ssl3 and rc4 as they don't really meet the security bar
+        SSL_CTX_set_options(private->ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+        SSL_CTX_set_cipher_list(private->ctx, "DEFAULT:-RC4");
+        private->ssl = SSL_new(private->ctx);
+
+        if (!flow->skipCertVerification && isClient) {
+            // authenticate the server.. todo an option to skip
+            X509_VERIFY_PARAM *param = SSL_get0_param(private->ssl);
+            X509_VERIFY_PARAM_set1_host(param, flow->name, 0);
+            // support Server Name Indication (SNI)
+            SSL_set_tlsext_host_name(private->ssl, flow->name);
+        }
+
+        private->inputBIO = BIO_new(BIO_s_mem());
+        private->outputBIO = BIO_new(BIO_s_mem());
+        SSL_set_bio(private->ssl, private->inputBIO, private->outputBIO);
+        if (isClient) {
+            SSL_set_connect_state(private->ssl);
+        } else {
+            SSL_set_accept_state(private->ssl);
+        }
+
+        SSL_do_handshake(private->ssl);
+
+        private->pushed_on_readable = flow->operations.on_readable;
+        private->pushed_on_writable = flow->operations.on_writable;
+        private->pushed_on_connected = flow->operations.on_connected;
+
+        // these will eventually be popped back onto the stack when tls is setup
+        flow->operations.on_writable = neat_security_handshake;
+        flow->operations.on_readable = NULL;
+        flow->operations.on_connected = NULL;
+        neat_set_operations(ctx, flow, &flow->operations);
+
+        flow->socket->handle->data = flow->socket;
+
         return NEAT_OK;
     }
 

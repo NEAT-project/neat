@@ -35,12 +35,13 @@ wants. A typical first step is to resolve a domain name.
 * `ljansson`
 * `libmnl (linux only)`
 * `libsctp-dev (linux only, for kernel SCTP support)`
+* `swig (for generating Python bindings)`
 
-| OS               | Install Dependencies                                                                 |
-| :--------------- | :----------------------------------------------------------------------------------- |
-| Debian/Ubuntu*   | `apt-get install cmake libuv1-dev libldns-dev libjansson-dev libmnl-dev libsctp-dev` |
-| FreeBSD          | `pkg install cmake libuv ldns jansson`                                               |
-| OS X             | `brew install cmake libuv ldns jansson`                                              |
+| OS               | Install Dependencies                                                                      |
+| :--------------- | :---------------------------------------------------------------------------------------- |
+| Debian/Ubuntu*   | `apt-get install cmake libuv1-dev libldns-dev libjansson-dev libmnl-dev libsctp-dev swig` |
+| FreeBSD          | `pkg install cmake libuv ldns jansson swig30`                                             |
+| OS X             | `brew install cmake libuv ldns jansson swig`                                              |
 \* Ubuntu 15.04 and higher
 
 ## Quickstart :rocket:
@@ -52,6 +53,11 @@ $ cmake --build .
 ```
 This will generate makefiles and compile the library and the samples.
 You will find the shared and the static library in the `build` directory and the samples in `build/examples` directory.
+Note, that Python bindings are currently considered experimental and, therefore, have to be activated deliberately.
+To do so, change the first cmake call above to:
+```shell
+$ cmake .. -DSWIG_PYTHON=1
+```
 
 For an easy introduction to NEAT, have a look at our [tutorial](http://neat.readthedocs.io/en/latest/tutorial.html).
 

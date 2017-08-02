@@ -1,5 +1,8 @@
 #include <sys/types.h>
 #include <netinet/in.h>
+#if defined(USRSCTP_SUPPORT)
+#include <usrsctp.h>
+#else
 #if defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
 #ifdef __linux__
 #include <netinet/sctp.h>
@@ -8,6 +11,7 @@
 #include <netinet/udplite.h>
 #endif // __linux__
 #endif // defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
+#endif
 
 #include <assert.h>
 #include <stdbool.h>
@@ -167,6 +171,9 @@ neat_init_ctx()
                    1000 * NEAT_ADDRESS_LIFETIME_TIMEOUT);
     neat_security_init(nc);
 #if defined(USRSCTP_SUPPORT)
+    if (usr_intern.num_ctx == 0) {
+        neat_usrsctp_init(nc);
+    }
     neat_usrsctp_init_ctx(nc);
 #endif
 #if defined(__linux__)
@@ -180,6 +187,9 @@ neat_init_ctx()
         free(nc->loop);
         free(nc);
     }
+#if defined(USRSCTP_SUPPORT)
+    usr_intern.num_ctx++;
+#endif
     return ctx;
 }
 
@@ -199,8 +209,9 @@ neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
 void neat_stop_event_loop(struct neat_ctx *nc)
 {
     //neat_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
-
-    uv_stop(nc->loop);
+    if (nc && nc->loop) {
+        uv_stop(nc->loop);
+    }
 }
 
 int neat_get_backend_fd(struct neat_ctx *nc)
@@ -352,6 +363,9 @@ neat_free_ctx(struct neat_ctx *nc)
     neat_security_close(nc);
     neat_log_close(nc);
     free(nc);
+#if defined(USRSCTP_SUPPORT)
+    usr_intern.num_ctx--;
+#endif
 }
 
 //The three functions that deal with the NEAT callback API. Nothing very
@@ -620,6 +634,13 @@ synchronous_free(neat_flow *flow)
 #endif
     ) {
         free(flow->socket->handle);
+#if defined(USRSCTP_SUPPORT)
+    if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+        if (flow->socket->usrsctp_socket) {
+            usrsctp_close(flow->socket->usrsctp_socket);
+        }
+    }
+#endif
         free(flow->socket);
     }
 
@@ -888,7 +909,7 @@ neat_error_code neat_set_operations(neat_ctx *ctx, neat_flow *flow,
 
 #if defined(USRSCTP_SUPPORT)
     if (neat_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-        handle_upcall(flow->socket->usrsctp_socket, flow->socket, 0);
+     //   handle_upcall(flow->socket->usrsctp_socket, flow->socket, 0);
         return NEAT_OK;
     }
 #endif
@@ -1892,13 +1913,24 @@ install_security(struct neat_he_candidate *candidate)
 {
     struct neat_flow *flow = candidate->pollable_socket->flow;
     json_t *security = NULL, *val = NULL;
+    json_t *noVerify = NULL, *noVerifyVal = NULL;
     struct neat_ctx *ctx = flow->ctx;
 
     if ((security = json_object_get(candidate->properties, "security")) != NULL &&
         (val = json_object_get(security, "value")) != NULL &&
         json_typeof(val) == JSON_TRUE)
     {
+        assert(!flow->skipCertVerification);
+        if (!flow->isServer &&
+            (noVerify = json_object_get(candidate->properties, "verification")) != NULL &&
+            (noVerifyVal = json_object_get(noVerify, "value")) != NULL &&
+            json_typeof(noVerifyVal) == JSON_FALSE) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "Flow disables cert verification");
+            flow->skipCertVerification = 1;
+        }
+
         neat_log(ctx, NEAT_LOG_DEBUG, "Flow required security");
+
         if (neat_security_install(flow->ctx, flow) != NEAT_OK) {
             neat_log(ctx, NEAT_LOG_ERROR, "neat_security_install failed");
             neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
@@ -2196,10 +2228,10 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         flow->isPolling = 1;
 
-	    send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
+        send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
 
         if (flow->security_needed) {
-            if (flow->socket->stack == NEAT_STACK_TCP) {
+            if (flow->socket->stack == NEAT_STACK_TCP || flow->socket->stack == NEAT_STACK_UDP) {
                 if (!install_security(candidate)) {
                     // Transfer this handle to the "main" polling callback
                     // TODO: Consider doing this in some other way that directly calling
@@ -2627,6 +2659,12 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                 return NULL;
             } else {
 
+                if (newFlow->security_needed) {
+                    neat_log(ctx, NEAT_LOG_DEBUG, "UDP Server Security");
+                    if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
+                        neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
+                    }
+                }
                 optval = 1;
                 setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
                 setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
@@ -2704,7 +2742,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 
             newFlow->acceptPending = 0;
 
-            // xxx patrick?
             if ((newFlow->security_needed) && (newFlow->socket->stack == NEAT_STACK_TCP)) {
                 neat_log(ctx, NEAT_LOG_DEBUG, "TCP Server Security");
                 if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
@@ -6381,6 +6418,11 @@ handle_upcall(struct socket *sock, void *arg, int flags)
 
     ctx = flow->ctx;
     events = usrsctp_get_events(sock);
+
+    if (events == -1) {
+        neat_log(flow->ctx, NEAT_LOG_DEBUG, "Bad file descriptor");
+        return;
+    }
 
     if ((events & SCTP_EVENT_READ) && flow->acceptPending) {
         do_accept(ctx, flow, pollable_socket);

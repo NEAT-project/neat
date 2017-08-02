@@ -21,6 +21,14 @@
 #ifdef USRSCTP_SUPPORT
     #include "neat_usrsctp.h"
     #include <usrsctp.h>
+
+    struct usr_internal {
+        uint16_t num_ctx;
+        int s4_fd;
+        int us4_fd;
+        int s6_fd;
+        int us6_fd;
+    } usr_intern;
 #else // USRSCTP_SUPPORT
     #define NEAT_INTERNAL_USRSCTP
 #endif // USRSCTP_SUPPORT
@@ -247,7 +255,7 @@ struct neat_pollable_socket
 
     struct neat_pollable_socket *listen_socket;
 
-	struct neat_dtls_data *dtls_data;
+    struct neat_dtls_data *dtls_data;
 
     uv_poll_t *handle;
 
@@ -319,6 +327,7 @@ struct neat_flow
     unsigned int notifyDrainPending         : 1;
     unsigned int preserveMessageBoundaries  : 1;
     unsigned int eofSeen                    : 1;
+    unsigned int skipCertVerification       : 1;
 
     unsigned int streams_requested;
 

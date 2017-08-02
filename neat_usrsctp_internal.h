@@ -6,4 +6,8 @@ struct neat_ctx *neat_usrsctp_init_ctx(struct neat_ctx *nic);
 
 void neat_usrsctp_close_sockflow(struct neat_flow *fl);
 
+void neat_usrsctp_cleanup(struct neat_ctx *ctx);
+
+void neat_usrsctp_init(struct neat_ctx *ctx);
+
 #endif

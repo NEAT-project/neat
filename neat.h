@@ -1,9 +1,12 @@
 #ifndef NEAT_H
 #define NEAT_H
 
+// Avoid additional includes for SWIG
+#ifndef SWIG
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <uv.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,7 +15,12 @@ extern "C" {
 // TODO: this __attribute__ feature supposedly works with both clang and
 // modern gcc compilers. Could be moved to a cmake test for better
 // portability.
+#ifndef SWIG
 #define NEAT_EXTERN __attribute__ ((__visibility__ ("default")))
+#else
+// SWIG doesnt like the above definition
+#define NEAT_EXTERN extern
+#endif
 
 //Maps directly to libuv contants
 typedef enum {
@@ -112,19 +120,6 @@ struct neat_tlv {
         char *string;
         float real;
     } value;
-};
-
-// Flags to use for neat_flow_init()
-#define NEAT_PRESERVE_MSG_BOUNDARIES    (1 << 0)
-#define NEAT_USE_SECURE_INTERFACE       (1 << 1)
-
-struct neat_flow_security {
-    int security; // 1 = secure connection required, 2 = secure connection optional
-    int verification; // 1 = required, 2 = optional
-    const char* certificate; // filename for certificate
-    const char* key; // filename for key
-    const char** tls_versions; // list of tls versions available to use
-    const char** ciphers; // list of ciphers available to use
 };
 
 NEAT_EXTERN struct neat_flow *neat_new_flow(struct neat_ctx *ctx);

@@ -209,8 +209,9 @@ neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
 void neat_stop_event_loop(struct neat_ctx *nc)
 {
     //neat_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
-
-    uv_stop(nc->loop);
+    if (nc && nc->loop) {
+        uv_stop(nc->loop);
+    }
 }
 
 int neat_get_backend_fd(struct neat_ctx *nc)
@@ -1912,13 +1913,24 @@ install_security(struct neat_he_candidate *candidate)
 {
     struct neat_flow *flow = candidate->pollable_socket->flow;
     json_t *security = NULL, *val = NULL;
+    json_t *noVerify = NULL, *noVerifyVal = NULL;
     struct neat_ctx *ctx = flow->ctx;
 
     if ((security = json_object_get(candidate->properties, "security")) != NULL &&
         (val = json_object_get(security, "value")) != NULL &&
         json_typeof(val) == JSON_TRUE)
     {
+        assert(!flow->skipCertVerification);
+        if (!flow->isServer &&
+            (noVerify = json_object_get(candidate->properties, "verification")) != NULL &&
+            (noVerifyVal = json_object_get(noVerify, "value")) != NULL &&
+            json_typeof(noVerifyVal) == JSON_FALSE) {
+            neat_log(ctx, NEAT_LOG_DEBUG, "Flow disables cert verification");
+            flow->skipCertVerification = 1;
+        }
+
         neat_log(ctx, NEAT_LOG_DEBUG, "Flow required security");
+
         if (neat_security_install(flow->ctx, flow) != NEAT_OK) {
             neat_log(ctx, NEAT_LOG_ERROR, "neat_security_install failed");
             neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
@@ -2219,7 +2231,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
 
         if (flow->security_needed) {
-            if (flow->socket->stack == NEAT_STACK_TCP) {
+            if (flow->socket->stack == NEAT_STACK_TCP || flow->socket->stack == NEAT_STACK_UDP) {
                 if (!install_security(candidate)) {
                     // Transfer this handle to the "main" polling callback
                     // TODO: Consider doing this in some other way that directly calling
@@ -2647,6 +2659,12 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                 return NULL;
             } else {
 
+                if (newFlow->security_needed) {
+                    neat_log(ctx, NEAT_LOG_DEBUG, "UDP Server Security");
+                    if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {
+                        neat_io_error(flow->ctx, flow, NEAT_ERROR_SECURITY);
+                    }
+                }
                 optval = 1;
                 setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
                 setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
@@ -2724,7 +2742,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 
             newFlow->acceptPending = 0;
 
-            // xxx patrick?
             if ((newFlow->security_needed) && (newFlow->socket->stack == NEAT_STACK_TCP)) {
                 neat_log(ctx, NEAT_LOG_DEBUG, "TCP Server Security");
                 if (neat_security_install(newFlow->ctx, newFlow) != NEAT_OK) {

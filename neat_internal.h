@@ -327,6 +327,7 @@ struct neat_flow
     unsigned int notifyDrainPending         : 1;
     unsigned int preserveMessageBoundaries  : 1;
     unsigned int eofSeen                    : 1;
+    unsigned int skipCertVerification       : 1;
 
     unsigned int streams_requested;
 

@@ -187,6 +187,22 @@ OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 1)
 
 OPTION(SOCKET_API "Include the socket API" 0)
 
+OPTION(SWIG_PYTHON "Include SWIG Python bindings" 0)
+IF (SWIG_PYTHON)
+    FIND_PACKAGE(SWIG REQUIRED)
+    INCLUDE(${SWIG_USE_FILE})
+    FIND_PACKAGE(PythonLibs 2.7 REQUIRED)
+    INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
+
+    INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
+
+    SET(CMAKE_SWIG_FLAGS "")
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}  -Wno-error=shadow -Wno-error=pedantic")
+
+    #SET_SOURCE_FILES_PROPERTIES(neat_swig.i PROPERTIES CPLUSPLUS ON)
+    SET_SOURCE_FILES_PROPERTIES(neat_swig.i PROPERTIES SWIG_FLAGS "-includeall")
+ENDIF()
+
 # REQUIREMENTS
 #################################################
 CHECK_INCLUDE_FILE(uv.h HAVE_SYS_UV_H)
@@ -289,8 +305,9 @@ ENDIF()
 
 # COMPILER FLAGS
 #################################################
-SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
+# -Wno-array-bounds is unfortunate, but caused by https://bugs.llvm.org/show_bug.cgi?id=20144
+SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unused-command-line-argument -Wno-unreachable-code -Wno-parentheses-equality -Wno-array-bounds")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unused-command-line-argument -Wno-unreachable-code -Wno-parentheses-equality")
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
@@ -325,6 +342,11 @@ set_target_properties(neat PROPERTIES
 ADD_LIBRARY(neat-static STATIC ${neat_sources})
 
 TARGET_LINK_LIBRARIES (neat ${neat_libs})
+
+IF (SWIG_PYTHON)
+    SWIG_ADD_MODULE(neat python neat_swig.i ${neat_sources})
+    SWIG_LINK_LIBRARIES(neat ${neat_libs} ${PYTHON_LIBRARIES})
+ENDIF()
 
 # INSTALL
 #################################################

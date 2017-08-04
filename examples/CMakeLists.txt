@@ -36,6 +36,7 @@ IF(WEBRTC_SUPPORT)
         peer_webrtc.c
         peer_webrtc_signaling.c
 	signaling.c
+        webrtcPi.c
     )
 ENDIF()
 

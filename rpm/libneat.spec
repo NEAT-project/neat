@@ -168,6 +168,8 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat/minimal_client
 /usr/lib/libneat/minimal_server
 /usr/lib/libneat/minimal_server2
+/usr/lib/libneat/client_dtls_echo
+/usr/lib/libneat/server_dtls_echo
 
 %files socketapi
 %defattr(-,root,root,-)

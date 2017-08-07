@@ -6,3 +6,5 @@ usr/lib/libneat/server_daytime
 usr/lib/libneat/server_discard
 usr/lib/libneat/server_echo
 usr/lib/libneat/tneat
+usr/lib/client_dtls_echo
+usr/lib/server_dtls_echo

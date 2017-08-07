@@ -2694,6 +2694,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                 neat_free_flow(newFlow);
                 return NULL;
             } else {
+                optval = 1;
                 setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
                 setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 

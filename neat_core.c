@@ -256,15 +256,16 @@ static void neat_walk_cb(uv_handle_t *handle, void *ctx)
 {
     neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+    // Bug fix (karlgrin, 170323).
+    if ((handle == NULL) || (handle->data == NULL))
+        return;
+
     //HACK: Can't stop the IDLE handle used by resolver. Should probably do
     //something more advanced in case we use other idle handles
     if (handle->type == UV_IDLE) {
         neat_log(ctx, NEAT_LOG_DEBUG, "%s - handle->type == UV_IDLE - skipping", __func__);
         return;
     }
-
-    // Bug fix (karlgrin, 170323).
-    if ((handle == NULL) || (handle->data == NULL)) return;
 
     if (!uv_is_closing(handle)) {
         // If this assert triggers, then some handle is not being closed

@@ -4360,6 +4360,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
 
         handle = calloc(1, sizeof(*handle));
         if (handle == NULL) {
+            free(listen_socket);
             return NEAT_ERROR_OUT_OF_MEMORY;
         }
         listen_socket->handle = handle;

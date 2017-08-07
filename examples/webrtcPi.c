@@ -188,58 +188,54 @@ on_writable(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
     int n = 0;
-  //  struct rgb *color = calloc(1, sizeof(struct rgb));
+    char buf[256];
+    int trunc = 0, ok = 0;
 
 printf("peer_webrtc: on_writable\n");
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
-printf("%d\n", __LINE__);
     // record first send call
     if (tnf->snd.calls == 0) {
         gettimeofday(&(tnf->snd.tv_first), NULL);
     }
 
-printf("%d\n", __LINE__);
-    // set callbacks
-printf("%d\n", __LINE__);
-
     do {
-        n = read(pipeFd, tnf->data_buffer + tnf->data_buffer_length, 11 - tnf->data_buffer_length);
+        trunc = 0;
+        ok = 0;
+        n = read(pipeFd, buf, sizeof(buf));
         if (n > 0) {
+            if (buf[n - 1] == '\0') {
+                printf("line of %d bytes read\n", n);
+                ok = 1;
+            } else {
+                printf("line was truncated to %d bytes\n", n);
+                trunc = 1;
+            }
+            memcpy(tnf->data_buffer + tnf->data_buffer_length, buf, n);
             tnf->data_buffer_length += n;
         }
-    } while (tnf->data_buffer_length < 11);
+    } while (trunc == 1 || (n == -1 && errno == EAGAIN));
 
     fprintf(stderr, "read() got %d bytes, buffered data: %d\n", n, tnf->data_buffer_length);
 
-
-
-    if (tnf->data_buffer_length < 11) {
-	    fprintf(stderr, "read less than 11 bytes, exit\n");
-	    return NEAT_OK;
-    } else if (tnf->data_buffer_length > 11) {
-	    fprintf(stderr, "this should not happen\n");
-	    exit(EXIT_FAILURE);
-    } else {
+    if (ok == 1) {
+    printf("reset data_buffer\n");
         tnf->data_buffer_length = 0;
-	    tnf->data_buffer[11] = 0;
     }
 
     opCB->on_writable = NULL;
     opCB->on_all_written = on_all_written;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-printf("%d\n", __LINE__);
     printf("RGB: %s\n", tnf->data_buffer);
-printf("%d\n", __LINE__);
+
     // increase stats
     tnf->snd.calls++;
     tnf->snd.bytes += config_snd_buffer_size;
     gettimeofday(&(tnf->snd.tv_last), NULL);
-//printf("Laenge str=%d\n", strlen(tnf->data_buffer));
-printf("%d\n", __LINE__);
+
     if (config_log_level >= 2) {
         printf("%s: neat_write - # %u - %d byte\n", opCB->label, tnf->snd.calls, strlen((const char *)tnf->data_buffer));
         if (config_log_level >= 4) {
@@ -248,14 +244,12 @@ printf("%d\n", __LINE__);
             printf("\n");
         }
     }
-printf("%d\n", __LINE__);
-    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *)tnf->data_buffer, 11, NULL, 0);
-printf("%d\n", __LINE__);
+
+    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *)tnf->data_buffer, strlen((const char *)tnf->data_buffer), NULL, 0);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: code %d\n", __func__, (int)code);
         return on_error(opCB);
     }
-  //  }
     return NEAT_OK;
 }
 

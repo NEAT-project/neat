@@ -2798,7 +2798,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
     json_array_foreach(json, i, value) {
         neat_protocol_stack_type stack;
         const char *interface = NULL, *local_ip  = NULL, *remote_ip = NULL, *transport = NULL;
-        char dummy[sizeof(struct sockaddr_storage)];
+        char dummy[sizeof(struct in6_addr)];
         struct neat_he_candidate *candidate;
 
         const char *so_key=NULL, *so_prefix = "SO/";
@@ -2910,7 +2910,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
             candidate->pollable_socket->src_len = sizeof(struct sockaddr_in6);
             candidate->pollable_socket->dst_len = sizeof(struct sockaddr_in6);
 
-            memcpy(&((struct sockaddr_in6*) &candidate->pollable_socket->dst_sockaddr)->sin6_addr, dummy, sizeof(struct sockaddr_in6));
+            memcpy(&((struct sockaddr_in6*) &candidate->pollable_socket->dst_sockaddr)->sin6_addr, dummy, sizeof(struct in6_addr));
             ((struct sockaddr*) &candidate->pollable_socket->dst_sockaddr)->sa_family = AF_INET6;
             ((struct sockaddr_in6*) &candidate->pollable_socket->dst_sockaddr)->sin6_port = htons(candidate->pollable_socket->port);
 
@@ -2923,7 +2923,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
             candidate->pollable_socket->src_len = sizeof(struct sockaddr_in);
             candidate->pollable_socket->dst_len = sizeof(struct sockaddr_in);
 
-            memcpy(&((struct sockaddr_in*) &candidate->pollable_socket->dst_sockaddr)->sin_addr, dummy, sizeof(struct sockaddr_in));
+            memcpy(&((struct sockaddr_in*) &candidate->pollable_socket->dst_sockaddr)->sin_addr, dummy, sizeof(struct in_addr));
             ((struct sockaddr*) &candidate->pollable_socket->dst_sockaddr)->sa_family = AF_INET;
             ((struct sockaddr_in*) &candidate->pollable_socket->dst_sockaddr)->sin_port = htons(candidate->pollable_socket->port);
 

@@ -6857,7 +6857,7 @@ neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
         }
 
         neat_close_socket(ctx, flow);
-
+        return NEAT_OK;
 #ifdef SCTP_MULTISTREAMING
     }
 #endif

@@ -61,6 +61,8 @@ struct tneat_flow {
     struct tneat_flow_direction snd;
     unsigned char data_buffer[256];
     uint32_t data_buffer_length;
+    unsigned char stored_data_buffer[256];
+    uint32_t stored_data_buffer_length;
 };
 
 struct rgb {
@@ -179,6 +181,16 @@ printf("sndCalls=%d message_count=%d time=%f config_runtime_max=%d\n", tnf->snd.
     return NEAT_OK;
 }
 
+void print_data_buffer(char *buffer, int len)
+{
+    int i;
+    printf("buffer= ");
+    for (i = 0; i < len; i++) {
+        printf("%c", buffer[i]);
+    }
+    printf("\n");
+}
+
 /*
     send *config_message_size* chars to peer
 */
@@ -189,7 +201,7 @@ on_writable(struct neat_flow_operations *opCB)
     neat_error_code code;
     int n = 0;
     char buf[256];
-    int trunc = 0, ok = 0;
+    unsigned int trunc = 0, i = 0, ok = 0, j = 0;
 
 printf("peer_webrtc: on_writable\n");
     if (config_log_level >= 2) {
@@ -201,24 +213,74 @@ printf("peer_webrtc: on_writable\n");
         gettimeofday(&(tnf->snd.tv_first), NULL);
     }
 
-    do {
-        trunc = 0;
+    if (tnf->stored_data_buffer_length > 0) {
+      //  print_data_buffer((char *)tnf->stored_data_buffer, tnf->stored_data_buffer_length);
+        j = 0;
         ok = 0;
-        n = read(pipeFd, buf, sizeof(buf));
-        if (n > 0) {
-            if (buf[n - 1] == '\0') {
-                printf("line of %d bytes read\n", n);
-                ok = 1;
+        for (i = 0; i < tnf->stored_data_buffer_length; i++) {
+            if (ok == 0) {
+                tnf->data_buffer[tnf->data_buffer_length + i] = tnf->stored_data_buffer[i];
+                if (tnf->stored_data_buffer[i] == '\0') {
+                    ok = 1;
+                    tnf->data_buffer_length += i;
+                }
             } else {
-                printf("line was truncated to %d bytes\n", n);
-                trunc = 1;
+                tnf->stored_data_buffer[j] =  tnf->stored_data_buffer[i];
+                j++;
+                if (j == tnf->stored_data_buffer_length) {
+                    trunc = 1;
+                }
             }
-            memcpy(tnf->data_buffer + tnf->data_buffer_length, buf, n);
-            tnf->data_buffer_length += n;
         }
-    } while (trunc == 1 || (n == -1 && errno == EAGAIN));
+        tnf->stored_data_buffer_length = j;
+        printf("%d stored_data_buffer\n", __LINE__);
+        print_data_buffer((char *)tnf->stored_data_buffer, tnf->stored_data_buffer_length);
+        if (ok == 0) {
+            tnf->data_buffer_length += i;
+            tnf->stored_data_buffer_length = tnf->data_buffer_length;
+            memcpy(tnf->stored_data_buffer, tnf->data_buffer, tnf->data_buffer_length);
+            tnf->data_buffer_length = 0;
+        }
+    }
 
-    fprintf(stderr, "read() got %d bytes, buffered data: %d\n", n, tnf->data_buffer_length);
+    if (ok == 0) {
+        do {
+            n = read(pipeFd, buf, sizeof(buf));
+            if (n > 0) {
+                j = 0;
+                if (tnf->stored_data_buffer_length > 0) {
+                    memcpy(tnf->data_buffer, tnf->stored_data_buffer, tnf->stored_data_buffer_length);
+                    tnf->data_buffer_length = tnf->stored_data_buffer_length;
+                    tnf->stored_data_buffer_length = 0;
+                   // print_data_buffer((char *)tnf->data_buffer, tnf->data_buffer_length);
+                }
+                for (i = 0; i < (unsigned int) n; i++) {
+                    if (ok == 0) {
+                        tnf->data_buffer[tnf->data_buffer_length + i] = buf[i];
+                        if (buf[i] == '\0') {
+                            ok = 1;
+                            tnf->data_buffer_length += i;
+                        }
+                    } else {
+                        tnf->stored_data_buffer[tnf->stored_data_buffer_length + j] = buf[i];
+                        j++;
+                        if (j == (unsigned int)n) {
+                           trunc = 1;
+                        }
+                    }
+                }
+                tnf->stored_data_buffer_length = j;
+                if (ok == 0) {
+                    tnf->data_buffer_length += i;
+                    memcpy(tnf->stored_data_buffer, tnf->data_buffer, tnf->data_buffer_length);
+                    tnf->data_buffer_length = 0;
+                }
+            }
+        } while ((ok == 0 && trunc == 1) || (n == -1 && errno == EAGAIN));
+    }
+
+
+    fprintf(stderr, "read() got %u bytes, data_buffer: %s\n", strlen((const char *)tnf->data_buffer) + 1, tnf->data_buffer);
 
     if (ok == 1) {
     printf("reset data_buffer\n");
@@ -229,15 +291,15 @@ printf("peer_webrtc: on_writable\n");
     opCB->on_all_written = on_all_written;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-    printf("RGB: %s\n", tnf->data_buffer);
+    printf("%d: %s\n", i, tnf->data_buffer);
 
     // increase stats
     tnf->snd.calls++;
-    tnf->snd.bytes += config_snd_buffer_size;
+    tnf->snd.bytes += strlen((const char *)tnf->data_buffer);
     gettimeofday(&(tnf->snd.tv_last), NULL);
 
     if (config_log_level >= 2) {
-        printf("%s: neat_write - # %u - %d byte\n", opCB->label, tnf->snd.calls, strlen((const char *)tnf->data_buffer));
+        printf("%s:i=%d neat_write - # %u - %d byte\n", opCB->label, i, tnf->snd.calls, strlen((const char *)tnf->data_buffer));
         if (config_log_level >= 4) {
             printf("neat_write - content\n");
             //fwrite(data_buffer_0, sizeof(char), strlen(str), stdout);
@@ -250,6 +312,7 @@ printf("peer_webrtc: on_writable\n");
         fprintf(stderr, "%s - neat_write error: code %d\n", __func__, (int)code);
         return on_error(opCB);
     }
+
     return NEAT_OK;
 }
 
@@ -299,6 +362,7 @@ on_connected(struct neat_flow_operations *opCB)
     tnf->snd.bytes = 0;
     tnf->rcv.calls = 0;
     tnf->rcv.bytes = 0;
+    tnf->stored_data_buffer_length = 0;
 
     // set callbacks
     opCB->on_readable = on_readable;

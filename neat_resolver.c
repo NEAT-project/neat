@@ -739,8 +739,7 @@ neat_resolver_create_pairs(struct neat_addr *src_addr,
             calloc(sizeof(struct neat_resolver_src_dst_addr), 1);
 
         if (!resolver_pair) {
-            //neat_log(NEAT_LOG_ERROR, "%s - Failed to allocate memory for resolver pair", __func__);
-            continue;
+            return RETVAL_FAILURE;
         }
 
         resolver_pair->request = request;

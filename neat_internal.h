@@ -549,9 +549,7 @@ LIST_HEAD(neat_resolver_pairs, neat_resolver_src_dst_addr);
 struct neat_event_cb {
     //So far we only support one type of callback. p_ptr is data in this
     //cb-struct, data is decided by callback type
-    //TODO: Return something else than void? Do we ever want to for example stop
-    //processing?
-    void (*event_cb)(struct neat_ctx *nc, void *p_ptr, void *data);
+    int (*event_cb)(struct neat_ctx *nc, void *p_ptr, void *data);
     void *data;
     LIST_ENTRY(neat_event_cb) next_cb;
 };

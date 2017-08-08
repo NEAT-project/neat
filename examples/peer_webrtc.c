@@ -103,6 +103,7 @@ static neat_error_code
 on_parameters(struct neat_flow_operations *opCB)
 {
     fprintf(stderr, "%s\n", __func__);
+    printf("LocalParameters: %s\n", (char *)opCB->userData);
    /* char *remote = NULL;
     printf("Got local parameters from WebRTC. Now send them to signalling server\n");
     remote = strdup((char *)opCB->userData);
@@ -150,10 +151,10 @@ printf("peer_webrtc: on_readable\n");
 
         if (config_log_level >= 2) {
             printf("%s: neat_read - # %u - %d byte\n", opCB->label, tnf->rcv.calls, buffer_filled);
-            if (config_log_level >= 4) {
+          //  if (config_log_level >= 4) {
                 fwrite(tnf->rcv.buffer, sizeof(char), buffer_filled, stdout);
                 printf("\n");
-            }
+           // }
         }
     // peer disconnected
     }

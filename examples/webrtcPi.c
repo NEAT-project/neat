@@ -299,7 +299,7 @@ printf("peer_webrtc: on_writable\n");
     gettimeofday(&(tnf->snd.tv_last), NULL);
 
     if (config_log_level >= 2) {
-        printf("%s:i=%d neat_write - # %u - %d byte\n", opCB->label, i, tnf->snd.calls, strlen((const char *)tnf->data_buffer));
+        printf("%s: neat_write - # %u - %lu byte\n", opCB->label, tnf->snd.calls, strlen((const char *)tnf->data_buffer));
         if (config_log_level >= 4) {
             printf("neat_write - content\n");
             //fwrite(data_buffer_0, sizeof(char), strlen(str), stdout);

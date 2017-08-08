@@ -5390,12 +5390,8 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                        SOL_SOCKET,
                        SO_BINDTODEVICE,
                        if_name,
-                       strlen(if_name)) < 0) {
-            //Not a critical error
-            neat_log(ctx, NEAT_LOG_WARNING,
-                     "Could not bind fd %d socket to interface %s",
-                     candidate->pollable_socket->fd, if_name);
-        }
+                       strlen(if_name)) < 0)
+            ; // Not a critical error, ignore
     }
 #endif
 

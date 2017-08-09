@@ -5390,8 +5390,9 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
                        SOL_SOCKET,
                        SO_BINDTODEVICE,
                        if_name,
-                       strlen(if_name)) < 0)
-            ; // Not a critical error, ignore
+                       strlen(if_name)) < 0) {
+            // Not a critical error, ignore
+        }
     }
 #endif
 

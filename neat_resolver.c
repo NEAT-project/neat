@@ -35,16 +35,17 @@ static void neat_resolver_mark_pair_del(struct neat_resolver *resolver,
 static void neat_resolver_literal_timeout_cb(uv_timer_t *handle);
 
 //NEAT internal callbacks, not very interesting
-static void
+static int
 neat_resolver_handle_newaddr(struct neat_ctx *nc, void *p_ptr, void *data)
 {
     struct neat_resolver *resolver = p_ptr;
     struct neat_resolver_request *request_itr;
     struct neat_addr *src_addr = data;
+    int pairs = 0;
 
     //Ignore addresses that are deprecated
     if (src_addr->family == AF_INET6 && !src_addr->u.v6.ifa_pref)
-        return;
+        return RETVAL_FAILURE;
 
     request_itr = resolver->request_queue.tqh_first;
 
@@ -55,12 +56,14 @@ neat_resolver_handle_newaddr(struct neat_ctx *nc, void *p_ptr, void *data)
             continue;
         }
 
-        neat_resolver_create_pairs(src_addr, request_itr);
+        if(neat_resolver_create_pairs(src_addr, request_itr) == RETVAL_SUCCESS)
+            pairs++;
         request_itr = request_itr->next_req.tqe_next;
     }
+    return pairs ? RETVAL_SUCCESS : RETVAL_FAILURE;
 }
 
-static void
+static int
 neat_resolver_handle_deladdr(struct neat_ctx *nic, void *p_ptr, void *data)
 {
     struct neat_resolver *resolver = p_ptr;
@@ -86,7 +89,7 @@ neat_resolver_handle_deladdr(struct neat_ctx *nic, void *p_ptr, void *data)
         neat_resolver_delete_pairs(request_itr, src_addr);
         request_itr = request_itr->next_req.tqe_next;
     }
-
+    return RETVAL_SUCCESS;
 }
 
 //libuv-specific callbacks
@@ -719,10 +722,11 @@ neat_resolver_create_pair(struct neat_ctx *ctx,
 //servers, try to create src/dst pair and send query
 static uint8_t
 neat_resolver_create_pairs(struct neat_addr *src_addr,
-                            struct neat_resolver_request *request)
+                           struct neat_resolver_request *request)
 {
     struct neat_resolver_src_dst_addr *resolver_pair;
     struct neat_resolver_server *server_itr;
+    int successes = 0;
 
     //After adding support for restart, we can end up here without a domain
     //name. There is not point continuing if we have no domain name to resolve
@@ -759,10 +763,11 @@ neat_resolver_create_pairs(struct neat_addr *src_addr,
             //printf("Will lookup %s\n", resolver->domain_name);
             LIST_INSERT_HEAD(&(request->resolver_pairs), resolver_pair,
                     next_pair);
+            successes++;
         }
     }
 
-    return RETVAL_SUCCESS;
+    return successes ? RETVAL_SUCCESS : RETVAL_FAILURE;
 }
 
 //Called when we get a NEAT_DELADDR message. Go though all resolve pairs and
@@ -807,29 +812,32 @@ neat_resolver_delete_pairs(struct neat_resolver_request *request,
 
 //This one will (at least for now) be used to start the first quest. Lets see
 //how much we can recycle when we start processing queue
-static void
+static int
 neat_start_request(struct neat_resolver *resolver,
                     struct neat_resolver_request *request)
 {
     struct neat_addr *nsrc_addr = NULL;
+    int successes = 0;
 
     //node is a literal, so we will just wait a short while for address list to
     //be populated
     if (request->is_literal) {
-        uv_timer_start(&(request->timeout_handle),
-                neat_resolver_literal_timeout_cb,
-                DNS_LITERAL_TIMEOUT, 0);
-        return;
+        if(uv_timer_start(&(request->timeout_handle),
+                          neat_resolver_literal_timeout_cb,
+                          DNS_LITERAL_TIMEOUT, 0))
+            return RETVAL_FAILURE;
+        return RETVAL_SUCCESS;
     }
 
     //Start the resolver timeout, this includes fetching addresses
-    uv_timer_start(&(request->timeout_handle), neat_resolver_timeout_cb,
-            resolver->dns_t1, 0);
+    if(uv_timer_start(&(request->timeout_handle), neat_resolver_timeout_cb,
+                      resolver->dns_t1, 0))
+        return RETVAL_FAILURE;
 
     //No point starting to query if we don't have any source addresses
     if (!resolver->nc->src_addr_cnt) {
         //neat_log(NEAT_LOG_ERROR, "%s - No available src addresses", __func__);
-        return;
+        return RETVAL_FAILURE;
     }
 
     //Iterate through src addresses, create udp sockets and start requesting
@@ -844,8 +852,11 @@ neat_start_request(struct neat_resolver *resolver,
 
         //TODO: Potential place to filter based on policy
 
-        neat_resolver_create_pairs(nsrc_addr, request);
+        if(neat_resolver_create_pairs(nsrc_addr, request) == RETVAL_SUCCESS)
+            successes++;
     }
+
+    return successes ? RETVAL_SUCCESS : RETVAL_FAILURE;
 }
 
 //Public NEAT resolver functions
@@ -910,9 +921,7 @@ neat_resolve(struct neat_resolver *resolver,
     TAILQ_INSERT_TAIL(&(resolver->request_queue), request, next_req);
 
     //Start request
-    neat_start_request(resolver, request);
-
-    return RETVAL_SUCCESS;
+    return neat_start_request(resolver, request);
 }
 
 //Initialize the resolver. Set up callbacks etc.

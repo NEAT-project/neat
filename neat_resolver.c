@@ -25,7 +25,7 @@
 #include "neat_resolver_helpers.h"
 
 static uint8_t neat_resolver_create_pairs(struct neat_addr *src_addr,
-                                          struct neat_resolver_request *request)  __attribute__((warn_unused_result));
+                                          struct neat_resolver_request *request);
 static void neat_resolver_delete_pairs(struct neat_resolver_request *request,
                                        struct neat_addr *addr_to_delete);
 

@@ -5386,12 +5386,12 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
 #ifdef __linux__
     if (if_indextoname(candidate->if_idx, if_name)) {
-        if (setsockopt(candidate->pollable_socket->fd,
-                       SOL_SOCKET,
-                       SO_BINDTODEVICE,
-                       if_name,
-                       strlen(if_name)) < 0)
-            ; // Not a critical error, ignore
+        // Not a critical error if it fails, ignore
+        (void)setsockopt(candidate->pollable_socket->fd,
+                         SOL_SOCKET,
+                         SO_BINDTODEVICE,
+                         if_name,
+                         strlen(if_name));
     }
 #endif
 

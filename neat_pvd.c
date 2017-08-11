@@ -448,15 +448,17 @@ neat_pvd_dns_ptr_recv_cb(uv_udp_t *handle,
         LIST_INSERT_HEAD(&(async_query->pvd->queries), async_query_new, next_query);
         async_query_new->pvd = async_query->pvd;
 
-        neat_pvd_dns_async(dns_query->loop,
-                           async_query_new,
-                           dns_query->dns_addr,
-                           dns_query->src_addr,
-                           pkt,
-                           neat_pvd_dns_alloc_cb,
-                           neat_pvd_dns_recv_cb,
-                           neat_pvd_dns_sent_cb,
-                           dns_query->pvd_result);
+        if (neat_pvd_dns_async(dns_query->loop,
+                               async_query_new,
+                               dns_query->dns_addr,
+                               dns_query->src_addr,
+                               pkt,
+                               neat_pvd_dns_alloc_cb,
+                               neat_pvd_dns_recv_cb,
+                               neat_pvd_dns_sent_cb,
+                               dns_query->pvd_result)) {
+            // return error somehow
+        }
     }
 
     ldns_rr_list_deep_free(pvd_ptr_list);
@@ -464,14 +466,14 @@ neat_pvd_dns_ptr_recv_cb(uv_udp_t *handle,
     free(dns_query);
 }
 
-static void
+static int
 neat_pvd_handle_newaddr(struct neat_ctx *ctx,
                         void *p_ptr,
                         void *data)
 {
     if (LIST_EMPTY(&(ctx->resolver->server_list))) {
         // No DNS servers
-        return;
+        return RETVAL_FAILURE;
     }
 
     struct neat_resolver_server *dns_server;
@@ -480,18 +482,18 @@ neat_pvd_handle_newaddr(struct neat_ctx *ctx,
     char *reverse_ip            = compute_reverse_ip(src_addr);
 
     if (!reverse_ip)
-        return;
+        return RETVAL_FAILURE;
 
     if (strlen(reverse_ip) == 0) {
         free(reverse_ip);
-        return;
+        return RETVAL_FAILURE;
     }
 
     if ((pvd_result = (struct pvd_result *) malloc(sizeof(struct pvd_result))) == NULL) {
         free(reverse_ip);
         neat_log(ctx, NEAT_LOG_ERROR,
                 "%s: can't allocate buffer");
-        return;
+        return RETVAL_FAILURE;
     }
 
     LIST_INIT(&(pvd_result->pvds));
@@ -511,7 +513,7 @@ neat_pvd_handle_newaddr(struct neat_ctx *ctx,
                     "%s: can't allocate buffer");
             free(reverse_ip);
             free(pvd_result);
-            return;
+            return RETVAL_FAILURE;
         }
         dns_query->loop                 = ctx->loop;
         dns_query->src_addr             = src_addr;
@@ -528,7 +530,7 @@ neat_pvd_handle_newaddr(struct neat_ctx *ctx,
             free(reverse_ip);
             free(pvd_result);
             neat_log(ctx, NEAT_LOG_ERROR, "%s - Could not create DNS packet", __func__);
-            return;
+            return RETVAL_FAILURE;
         }
 
         struct pvd_async_query *async_query;
@@ -538,7 +540,7 @@ neat_pvd_handle_newaddr(struct neat_ctx *ctx,
             free(pvd_result);
             neat_log(ctx, NEAT_LOG_ERROR,
                     "%s: can't allocate buffer");
-            return;
+            return RETVAL_FAILURE;
         }
         async_query->pvd = ctx->pvd;
         LIST_INSERT_HEAD(&(ctx->pvd->queries), async_query, next_query);
@@ -553,11 +555,14 @@ neat_pvd_handle_newaddr(struct neat_ctx *ctx,
                                neat_pvd_dns_sent_cb,
                                dns_query) != 0) {
             free(dns_query);
+            return RETVAL_FAILURE;
         }
     }
     free(reverse_ip);
 
     LIST_INSERT_HEAD(&(ctx->pvd->results), pvd_result, next_result);
+
+    return RETVAL_SUCCESS;
 }
 
 struct neat_pvd *

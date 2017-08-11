@@ -243,7 +243,10 @@ IF (OPENSSL_SUPPORT)
                     ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
                 ENDIF()
             ENDIF()
-
+            if (OPENSSL_ROOT_DIR)
+                # if a custom dir was set, specify the include path too
+                SET(CMAKE_C_FLAGS "-I${OPENSSL_ROOT_DIR}/include")
+            ENDIF()
         ENDIF()
     ENDIF()
 ENDIF()

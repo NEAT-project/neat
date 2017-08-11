@@ -147,8 +147,6 @@ make install DESTDIR=%{buildroot}
 
 %files devel
 /usr/include/neat.h
-/usr/include/neat_linux.h
-/usr/include/neat_queue.h
 /usr/lib/libneat-static.a
 /usr/lib/libneat[^\-]*so
 

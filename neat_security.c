@@ -55,7 +55,7 @@ drain_output(struct neat_ctx *ctx,
     private = (struct security_data *) filter->userData;
     int didFilterWrite = 0;
 
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (!private->outCipherBufferUsed) {
         return NEAT_OK;
@@ -83,7 +83,7 @@ drain_output(struct neat_ctx *ctx,
             return rv;
         }
     }
-    neat_log(ctx, NEAT_LOG_DEBUG, "wrote out %d cipher text to transport",
+    nt_log(ctx, NEAT_LOG_DEBUG, "wrote out %d cipher text to transport",
              private->outCipherBufferUsed);
 
     // wrote it all.
@@ -96,7 +96,7 @@ static neat_error_code
 gather_input(struct neat_ctx *ctx, struct neat_flow *flow,
              struct neat_iofilter *filter, struct neat_tlv optional[], unsigned int opt_count)
 {
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     struct security_data *private = (struct security_data *) filter->userData;
     uint32_t actualAmt;
@@ -106,7 +106,7 @@ gather_input(struct neat_ctx *ctx, struct neat_flow *flow,
     }
     neat_error_code rv = flow->readfx(ctx, flow, private->inCipherBuffer + private->inCipherBufferUsed,
                                       avail, &actualAmt, optional, opt_count);
-    neat_log(ctx, NEAT_LOG_DEBUG, "read in %d cipher text from transport (%u)",
+    nt_log(ctx, NEAT_LOG_DEBUG, "read in %d cipher text from transport (%u)",
              (rv == NEAT_OK) ? actualAmt : 0, rv);
     if (rv == NEAT_OK && actualAmt) {
         private->inCipherBufferUsed += actualAmt;
@@ -138,12 +138,12 @@ neat_security_filter_read(struct neat_ctx *ctx,
 static neat_error_code
 neat_security_handshake(struct neat_flow_operations *opCB)
 {
-    neat_log(opCB->ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(opCB->ctx, NEAT_LOG_DEBUG, "%s", __func__);
     neat_error_code rv = neat_write(opCB->ctx, opCB->flow, NULL, 0, NULL, 0);
     if (rv == NEAT_ERROR_WOULD_BLOCK) {
         return rv;
     }
-    // neat_log(NEAT_LOG_DEBUG, "%s handshake not blocking", __func__);
+    // nt_log(NEAT_LOG_DEBUG, "%s handshake not blocking", __func__);
     for (struct neat_iofilter *filter = opCB->flow->iofilters;
          filter; filter = filter->next) {
         if (filter->writefx == neat_security_filter_write ||
@@ -165,7 +165,7 @@ neat_security_handshake(struct neat_flow_operations *opCB)
         }
     }
     if (rv != NEAT_OK) {
-        neat_io_error(opCB->ctx, opCB->flow, rv);
+        nt_io_error(opCB->ctx, opCB->flow, rv);
     }
     return rv;
 }
@@ -181,7 +181,7 @@ handshake(struct neat_ctx *ctx,
     struct security_data *private;
     private = (struct security_data *) filter->userData;
 
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (SSL_is_init_finished(private->ssl)) {
         return NEAT_OK;
@@ -189,7 +189,7 @@ handshake(struct neat_ctx *ctx,
 
     int err = SSL_do_handshake(private->ssl);
     if (err == 1) {
-        neat_log(ctx, NEAT_LOG_WARNING, "%s - handshake failed", __func__);
+        nt_log(ctx, NEAT_LOG_WARNING, "%s - handshake failed", __func__);
         return NEAT_OK;
     }
 
@@ -203,13 +203,13 @@ handshake(struct neat_ctx *ctx,
         flow->operations.on_readable = NULL;
         neat_set_operations(ctx, flow, &flow->operations);
     } else if (err != SSL_ERROR_NONE) {
-        neat_log(ctx, NEAT_LOG_WARNING, "%s - handshake error", __func__);
+        nt_log(ctx, NEAT_LOG_WARNING, "%s - handshake error", __func__);
         ERR_print_errors_fp(stderr);
         return NEAT_ERROR_SECURITY;
     }
 
     if (SSL_is_init_finished(private->ssl)) {
-        neat_log(ctx, NEAT_LOG_WARNING, "%s - SSL_is_init_finished", __func__);
+        nt_log(ctx, NEAT_LOG_WARNING, "%s - SSL_is_init_finished", __func__);
         return NEAT_OK;
     }
 
@@ -259,7 +259,7 @@ neat_security_filter_write(struct neat_ctx *ctx,
                            struct neat_tlv optional[],
                            unsigned int opt_count)
 {
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     neat_error_code rv;
     struct security_data *private;
     private = (struct security_data *) filter->userData;
@@ -307,7 +307,7 @@ neat_security_filter_read(struct neat_ctx *ctx,
                           struct neat_tlv optional[],
                           unsigned int opt_count)
 {
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s %d", __func__, *actualAmt);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s %d", __func__, *actualAmt);
     struct security_data *private;
     private = (struct security_data *) filter->userData;
     neat_error_code rv;
@@ -329,10 +329,10 @@ neat_security_filter_read(struct neat_ctx *ctx,
         return NEAT_ERROR_SECURITY;
     }
     int amtRead = SSL_read(private->ssl, buffer, amt);
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s read %d", __func__, amtRead);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s read %d", __func__, amtRead);
     if (amtRead < 0) {
         int err = SSL_get_error(private->ssl, amtRead);
-        neat_log(ctx, NEAT_LOG_DEBUG, "%s err %d", __func__, err);
+        nt_log(ctx, NEAT_LOG_DEBUG, "%s err %d", __func__, err);
         if (err != SSL_ERROR_NONE && err != SSL_ERROR_WANT_READ &&
             err != SSL_ERROR_WANT_WRITE && err != SSL_ERROR_ZERO_RETURN &&
             err != SSL_ERROR_SYSCALL) {
@@ -349,7 +349,7 @@ void tls_init_trust_list(SSL_CTX *ctx);
 neat_error_code
 neat_security_install(neat_ctx *ctx, neat_flow *flow)
 {
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     // todo list
     // sctp client (via dtls over sctp)
@@ -393,17 +393,17 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
            // SSL_CTX_set_ecdh_auto(private->ctx, 1); Linux compiler complains
 
             if (!flow->server_pem) {
-                neat_log(ctx, NEAT_LOG_ERROR, "PEM file not set via neat_secure_identity()");
+                nt_log(ctx, NEAT_LOG_ERROR, "PEM file not set via neat_secure_identity()");
                 return NEAT_ERROR_SECURITY;
             }
 
             if (SSL_CTX_use_certificate_file(private->ctx, flow->server_pem, SSL_FILETYPE_PEM) != 1) {
-                neat_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_certificate_file : %s", flow->server_pem);
+                nt_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_certificate_file : %s", flow->server_pem);
                 ERR_print_errors_fp(stderr);
                 return NEAT_ERROR_SECURITY;
             }
             if (SSL_CTX_use_PrivateKey_file(private->ctx, flow->server_pem, SSL_FILETYPE_PEM) != 1) {
-                neat_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_PrivateKey_file : %s", flow->server_pem);
+                nt_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_PrivateKey_file : %s", flow->server_pem);
                 return NEAT_ERROR_SECURITY;
             }
         }
@@ -473,17 +473,17 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
            // SSL_CTX_set_ecdh_auto(private->ctx, 1); Linux compiler complains
 
             if (!flow->server_pem) {
-                neat_log(ctx, NEAT_LOG_ERROR, "PEM file not set via neat_secure_identity()");
+                nt_log(ctx, NEAT_LOG_ERROR, "PEM file not set via neat_secure_identity()");
                 return NEAT_ERROR_SECURITY;
             }
 
             if (SSL_CTX_use_certificate_file(private->ctx, flow->server_pem, SSL_FILETYPE_PEM) != 1) {
-                neat_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_certificate_file : %s", flow->server_pem);
+                nt_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_certificate_file : %s", flow->server_pem);
                 ERR_print_errors_fp(stderr);
                 return NEAT_ERROR_SECURITY;
             }
             if (SSL_CTX_use_PrivateKey_file(private->ctx, flow->server_pem, SSL_FILETYPE_PEM) != 1) {
-                neat_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_PrivateKey_file : %s", flow->server_pem);
+                nt_log(ctx, NEAT_LOG_ERROR, "unable to use SSL_CTX_use_PrivateKey_file : %s", flow->server_pem);
                 return NEAT_ERROR_SECURITY;
             }
         }
@@ -629,7 +629,7 @@ void handle_notifications(BIO *bio, void *context, void *buf) {
 static neat_error_code
 neat_dtls_handshake(struct neat_flow_operations *opCB)
 {
-    neat_log(opCB->ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(opCB->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     struct security_data *private;
     private = (struct security_data *) opCB->flow->socket->dtls_data->userData;
@@ -638,7 +638,7 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
         ((!opCB->flow->isServer && !SSL_in_connect_init(private->ssl)) ||
         ((opCB->flow->isServer && !SSL_in_accept_init(private->ssl))))) {
 
-        neat_log(opCB->ctx, NEAT_LOG_DEBUG, "%s: SSL connection established", __func__);
+        nt_log(opCB->ctx, NEAT_LOG_DEBUG, "%s: SSL connection established", __func__);
         private->state = DTLS_CONNECTED;
         opCB->flow->socket->handle->data = opCB->flow->socket;
         opCB->flow->firstWritePending = 0;
@@ -654,9 +654,9 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
 
 
 neat_error_code
-neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
+nt_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 {
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     struct security_data *private = calloc (1, sizeof (struct security_data));
     struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
@@ -680,14 +680,14 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
         // SSL_CTX_set_ecdh_auto(private->ctx, 1);
 
         if (!(sock->flow->cert_pem)) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Server certificate file not set via neat_secure_identity()");
+            nt_log(ctx, NEAT_LOG_ERROR, "Server certificate file not set via neat_secure_identity()");
             free(dtls);
             free(private);
             return NEAT_ERROR_SECURITY;
         }
 
         if (!(sock->flow->key_pem)) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Server key file not set via neat_secure_identity()");
+            nt_log(ctx, NEAT_LOG_ERROR, "Server key file not set via neat_secure_identity()");
             free(dtls);
             free(private);
             return NEAT_ERROR_SECURITY;
@@ -700,7 +700,7 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 
         if ((SSL_CTX_use_certificate_chain_file(private->ctx, sock->flow->cert_pem) < 0) ||
                 (SSL_CTX_use_PrivateKey_file(private->ctx, sock->flow->key_pem, SSL_FILETYPE_PEM) < 0 )) {
-            neat_log(ctx, NEAT_LOG_ERROR, "unable to use cert or private key");
+            nt_log(ctx, NEAT_LOG_ERROR, "unable to use cert or private key");
             free (dtls);
             free (private);
             return NEAT_ERROR_SECURITY;
@@ -714,7 +714,7 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
         private->ssl = SSL_new(private->ctx);
         private->dtlsBIO = BIO_new_dgram_sctp(sock->fd, BIO_CLOSE);
         if (private->dtlsBIO == NULL) {
-            neat_log(ctx, NEAT_LOG_ERROR, "BIO could not be created. Is AUTH enabled?");
+            nt_log(ctx, NEAT_LOG_ERROR, "BIO could not be created. Is AUTH enabled?");
             free (dtls);
             free (private);
             return NEAT_ERROR_SECURITY;
@@ -730,9 +730,9 @@ neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 }
 
 neat_error_code
-neat_dtls_connect(neat_ctx *ctx, neat_flow *flow)
+nt_dtls_connect(neat_ctx *ctx, neat_flow *flow)
 {
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     struct security_data *private = (struct security_data *) flow->socket->dtls_data->userData;
 
@@ -792,13 +792,13 @@ copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_sock
 #endif
 
 void
-neat_security_init(neat_ctx *ctx)
+nt_security_init(neat_ctx *ctx)
 {
     SSL_library_init();
 }
 
 void
-neat_security_close(neat_ctx *ctx)
+nt_security_close(neat_ctx *ctx)
 {
     FIPS_mode_set(0);
     CRYPTO_set_locking_callback(NULL);
@@ -817,19 +817,19 @@ neat_security_close(neat_ctx *ctx)
 
 #ifndef NEAT_USETLS
 void
-neat_security_init(neat_ctx *ctx)
+nt_security_init(neat_ctx *ctx)
 {
 }
 
 void
-neat_security_close(neat_ctx *ctx)
+nt_security_close(neat_ctx *ctx)
 {
 }
 
 neat_error_code
 neat_security_install(neat_ctx *ctx, neat_flow *flow)
 {
-    neat_log(ctx, NEAT_LOG_ERROR, "Library compiled without security support");
+    nt_log(ctx, NEAT_LOG_ERROR, "Library compiled without security support");
     return NEAT_ERROR_SECURITY;
 }
 

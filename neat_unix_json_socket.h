@@ -33,11 +33,11 @@ struct neat_ipc_context {
     size_t json_nesting_count;
 };
 
-neat_error_code neat_unix_json_socket_open(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_ipc_context *context, const char *path, connected_callback conn_cb, reply_callback reply_cb, error_callback err_cb, void *data);
-neat_error_code neat_unix_json_send(struct neat_ipc_context *context, const char *buffer, written_callback on_written, error_callback on_error);
-neat_error_code neat_unix_json_start_read(struct neat_ipc_context *context);
-neat_error_code neat_unix_json_shutdown(struct neat_ipc_context *context);
-void neat_unix_json_close(struct neat_ipc_context *context, close_callback cb, void *data);
+neat_error_code nt_unix_json_socket_open(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_ipc_context *context, const char *path, connected_callback conn_cb, reply_callback reply_cb, error_callback err_cb, void *data);
+neat_error_code nt_unix_json_send(struct neat_ipc_context *context, const char *buffer, written_callback on_written, error_callback on_error);
+neat_error_code nt_unix_json_start_read(struct neat_ipc_context *context);
+neat_error_code nt_unix_json_shutdown(struct neat_ipc_context *context);
+void nt_unix_json_close(struct neat_ipc_context *context, close_callback cb, void *data);
 
 
 #endif /* ifndef NEAT_UNIX_JSON_SOCKET_INCLUDE */

@@ -32,5 +32,5 @@ enum neat_sctp_cause_code {
 struct neat_ctx;
 
 //Pass data to all subscribers of event type
-void neat_run_event_cb(struct neat_ctx *nc, uint8_t event_type, void *data);
+void nt_run_event_cb(struct neat_ctx *nc, uint8_t event_type, void *data);
 #endif

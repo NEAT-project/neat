@@ -57,8 +57,8 @@ static neat_error_code resolver_handle(struct neat_resolver_results *results,
     }
 
     //Free list, it is callers responsibility
-    neat_resolver_free_results(results);
-    //neat_resolver_release(resolver);
+    nt_resolver_free_results(results);
+    //nt_resolver_release(resolver);
     if (num_replies == expected_replies)
         neat_stop_event_loop(resolver->nc);
 
@@ -69,7 +69,7 @@ static void resolver_cleanup(struct neat_resolver *resolver)
 {
     printf("Cleanup function\n");
     //I dont need this resolver object any more
-    neat_resolver_release(resolver);
+    nt_resolver_release(resolver);
 }
 
 static uint8_t test_resolver(struct neat_resolver *resolver,
@@ -77,7 +77,7 @@ static uint8_t test_resolver(struct neat_resolver *resolver,
                              char *node,
                              uint16_t port)
 {
-    if (neat_resolve(resolver, family, node, port, resolver_handle, resolver))
+    if (nt_resolve(resolver, family, node, port, resolver_handle, resolver))
         return 1;
     else
         return 0;
@@ -189,14 +189,14 @@ int main(int argc, char *argv[])
     struct neat_ctx *nc = neat_init_ctx();
     struct neat_resolver *resolver;
 
-    resolver = nc ? neat_resolver_init(nc, "/etc/resolv.conf") : NULL;
+    resolver = nc ? nt_resolver_init(nc, "/etc/resolv.conf") : NULL;
 
     if (nc == NULL || resolver == NULL)
         exit(EXIT_FAILURE);
 
     //this is set in he_lookup in the other example code
     nc->resolver = resolver;
-    neat_resolver_update_timeouts(resolver, 5000, 500);
+    nt_resolver_update_timeouts(resolver, 5000, 500);
 
     test_single_request_v4(nc, resolver);
     test_single_request_literal_v4(nc, resolver);

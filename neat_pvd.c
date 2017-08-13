@@ -448,16 +448,16 @@ neat_pvd_dns_ptr_recv_cb(uv_udp_t *handle,
         LIST_INSERT_HEAD(&(async_query->pvd->queries), async_query_new, next_query);
         async_query_new->pvd = async_query->pvd;
 
-        if (neat_pvd_dns_async(dns_query->loop,
-                               async_query_new,
-                               dns_query->dns_addr,
-                               dns_query->src_addr,
-                               pkt,
-                               neat_pvd_dns_alloc_cb,
-                               neat_pvd_dns_recv_cb,
-                               neat_pvd_dns_sent_cb,
-                               dns_query->pvd_result))
-            ; // return error somehow
+        // ignores errors
+        (void)neat_pvd_dns_async(dns_query->loop,
+                                 async_query_new,
+                                 dns_query->dns_addr,
+                                 dns_query->src_addr,
+                                 pkt,
+                                 neat_pvd_dns_alloc_cb,
+                                 neat_pvd_dns_recv_cb,
+                                 neat_pvd_dns_sent_cb,
+                                 dns_query->pvd_result);
     }
 
     ldns_rr_list_deep_free(pvd_ptr_list);

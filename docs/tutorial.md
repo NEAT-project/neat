@@ -145,13 +145,13 @@ We will start writing the main function of our server. The first thing we need
 to do is to declare a few variables:
 
 ``` embed:: language::c
-../examples/minimal_server.c:44-48
+../examples/minimal_server.c:55-58
 ```
 
 And initialize them:
 
 ``` embed:: language::c
-../examples/minimal_server.c:50-52
+../examples/minimal_server.c:59-62
 ```
 
 We are already familiar with the flow and the context. `neat_init_ctx` is used

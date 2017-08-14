@@ -3,7 +3,7 @@ PROJECT(libneat)
 
 set(BUILD_MAJOR "0")
 set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td164")
+set(BUILD_PATCH "1~td165")
 set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 # INSTALLATION_DIRECTORIES
@@ -243,7 +243,10 @@ IF (OPENSSL_SUPPORT)
                     ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
                 ENDIF()
             ENDIF()
-
+            if (OPENSSL_ROOT_DIR)
+                # if a custom dir was set, specify the include path too
+                SET(CMAKE_C_FLAGS "-I${OPENSSL_ROOT_DIR}/include")
+            ENDIF()
         ENDIF()
     ENDIF()
 ENDIF()

@@ -199,7 +199,7 @@ to start working on the callbacks that NEAT will use. The first callback we
 need is `on_connected`.
 
 ``` embed:: language::c
-../examples/minimal_server.c:42-44
+../examples/minimal_server.c:42-43
 ```
 
 From the functional description above, we know that we need to write to
@@ -228,7 +228,7 @@ The change is applied by calling `neat_set_operations`, just as in the main func
 Next, we write the `on_writable` callback:
 
 ``` embed:: language::c
-../examples/minimal_server.c:27-29
+../examples/minimal_server.c:27-28
 ```
 
 Here, we call the function that will send our message:
@@ -245,7 +245,7 @@ pass `NULL` and `0`.
 The final callback we need to implement is the `on_all_written` callback:
 
 ``` embed:: language::c
-../examples/minimal_server.c:35-37
+../examples/minimal_server.c:35-36
 ```
 
 Here, we call `neat_close` to close the flow:

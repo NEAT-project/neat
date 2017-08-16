@@ -283,7 +283,7 @@ are connecting to a server, we change the `neat_accept` call to `neat_open` inst
 Next, we will specify a few properties for the flow:
 
 ``` embed:: language::c
-../examples/minimal_client.c:56-67
+../examples/minimal_client.c:61-72
 ```
 
 These properties will tell NEAT that it can select either SCTP or TCP as the
@@ -295,7 +295,7 @@ free any allocated resources and exit gracefully. The complete main function
 of the client will look like this:
 
 ``` embed:: language::c
-../examples/minimal_client.c:69-95
+../examples/minimal_client.c:74-101
 ```
 
 Leave the `on_connected` callback similar to the server.
@@ -303,14 +303,14 @@ Leave the `on_connected` callback similar to the server.
 We change the `on_writable` callback to send `"Hi!"` instead:
 
 ``` embed:: language::c
-../examples/minimal_client.c:30-35
+../examples/minimal_client.c:34-40
 ```
 
 The `on_all_written` callback should not close the flow, but instead stop
 writing and set the `on_readable` callback:
 
 ``` embed:: language::c
-../examples/minimal_client.c:37-44
+../examples/minimal_client.c:42-49
 ```
 
 Finally, we will write an `on_readable` callback for the client. We allocate
@@ -321,7 +321,7 @@ will eventually cause the call to `neat_start_event_loop` in the main function
 to return. The `on_readable` callback should look like this:
 
 ``` embed:: language::c
-../examples/minimal_client.c:13-28
+../examples/minimal_client.c:13-26
 ```
 
 And there we have our finished client! You can test it with `socat`:
@@ -351,3 +351,4 @@ The callbacks for the updated server is as follows:
 ```
 
 You may find the complete source for the updated server [here](https://github.com/NEAT-project/neat/blob/master/examples/minimal_server2.c).
+A minimal CMakeLists.txt for cmake can be found [here](https://gist.github.com/bozakov/26fbaabb2d94c25af69bf73977558f9e).

@@ -347,7 +347,7 @@ the `on_writable` callback.
 The callbacks for the updated server is as follows:
 
 ``` embed:: language::c
-../examples/minimal_server2.c:16-68
+../examples/minimal_server2.c:17-70
 ```
 
 You may find the complete source for the updated server [here](https://github.com/NEAT-project/neat/blob/master/examples/minimal_server2.c).

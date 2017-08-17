@@ -86,7 +86,7 @@ def dict_to_properties(property_dict):
 def properties_to_json(property_array, indent=None):
     property_dict = dict()
     for i in property_array.values():
-        property_dict.update(i.dict())
+        property_dict.update(i.dict(full=True))
     return json.dumps(property_dict, sort_keys=True, indent=indent)
 
 
@@ -334,7 +334,7 @@ class NEATProperty(object):
     def property(self):
         return self.key, self.value
 
-    def dict(self, extended=False):
+    def dict(self, full=False):
         """
         Return a dict representation of the NEATProperty e.g. for JSON export.
         If extended is set also include default values.
@@ -350,7 +350,7 @@ class NEATProperty(object):
         else:
             d['value'] = self.value
 
-        if extended:
+        if full:
             d['precedence'] = self.precedence
             d['score'] = self.score
             d['evaluated'] = self.evaluated

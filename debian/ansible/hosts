@@ -1,0 +1,2 @@
+[neat-dev]
+neat-dev-vm[1:2] ansible_sudo_pass=neat

@@ -245,6 +245,21 @@ def process_request(reqs, num_candidates=10):
                 candidates.append(c)
         print('    Policy lookup returned %d candidates:' % len(candidates))
 
+    # post process candidates
+
+    # Each candidate must only contain a single transport protocol. Expand sets to individual candidates.
+    tmp_list = []
+    for candidate in candidates:
+        transport = candidate.get("transport").value
+        if isinstance(transport, set):
+            for t in transport:
+                c = deepcopy(candidate)
+                c["transport"].value = t
+                tmp_list.append(c)
+        else:
+            tmp_list.append(candidate)
+    candidates = tmp_list
+
     # TODO handle 'to_controller' property, wait for controller response
     candidates.sort(key=attrgetter('score'), reverse=True)
     top_candidates = candidates[:num_candidates]
@@ -260,7 +275,6 @@ def process_request(reqs, num_candidates=10):
 
     # TODO check if candidates contain the minimum src/dst/transport tuple
     print(policy.term_separator())
-
     return top_candidates
 
 
@@ -335,9 +349,7 @@ class PMProtocol(asyncio.Protocol):
             candidates_json = '[' + ', '.join(j) + ']\n'
         except TypeError:
             return
-
         data = candidates_json.encode(encoding='utf-8')
-
         self.transport.write(data)
         self.transport.close()
 

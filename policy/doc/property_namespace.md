@@ -29,7 +29,7 @@ This is a list of known properties, to avoid ambiguity in the PM:
 | `flow_size_bytes` | integer           | number of bytes the flow intends to transfer | |
 | `flow_time_ms` | float | | |
 | `flow_group` | integer | | |
-| `flow_priority` | integer | | |
+| `flow_priority` | integer | | Try to assign flow a capacity share, calculated as: (the flow’s priority / sum of all flow priorities) |
 
 
 

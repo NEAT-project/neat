@@ -45,16 +45,9 @@ static char          request[512];
 static uint32_t      flows_active           = 0;
 static char          *config_property       = "\
 {\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ],\
+    \"transport\": {\
+        \"value\": [\"TCP\", \"SCTP\"],\
+        \"precedence\": 1 },\
     \"multihoming\": {\
         \"value\": true,\
         \"precedence\": 1\

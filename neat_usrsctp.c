@@ -112,11 +112,11 @@ nt_usrsctp_init_ctx(struct neat_ctx *ctx)
     int ret;
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
-    ctx->cleanup = neat_usrsctp_cleanup;
+    ctx->cleanup = nt_usrsctp_cleanup;
 
     uv_timer_init(ctx->loop, &(ctx->usrsctp_timer_handle));
     ctx->usrsctp_timer_handle.data = ctx;
-    uv_timer_start(&(ctx->usrsctp_timer_handle), neat_handle_usrsctp_timeout, 10, 10);
+    uv_timer_start(&(ctx->usrsctp_timer_handle), nt_handle_usrsctp_timeout, 10, 10);
 
     if (usr_intern.s4_fd != -1) {
         if ((ret = uv_poll_init(ctx->loop, &(ctx->uv_sctp4_handle), usr_intern.s4_fd)) < 0) {
@@ -128,7 +128,7 @@ nt_usrsctp_init_ctx(struct neat_ctx *ctx)
         ctx->uv_sctp4_handle.data = ctx;
         if ((ret = uv_poll_start(&(ctx->uv_sctp4_handle),
                                      UV_READABLE,
-                                     neat_usrsctp_sctp4_readable)) < 0) {
+                                     nt_usrsctp_sctp4_readable)) < 0) {
             nt_log(ctx, NEAT_LOG_ERROR, "%s: can't start receiving sctp4 readable events (%s)", __func__, uv_strerror(ret));
             nt_usrsctp_cleanup(ctx);
             return NULL;
@@ -144,7 +144,7 @@ nt_usrsctp_init_ctx(struct neat_ctx *ctx)
         ctx->uv_udpsctp4_handle.data = ctx;
         if ((ret = uv_poll_start(&(ctx->uv_udpsctp4_handle),
                                      UV_READABLE,
-                                     neat_usrsctp_udpsctp4_readable)) < 0) {
+                                     nt_usrsctp_udpsctp4_readable)) < 0) {
             nt_log(ctx, NEAT_LOG_ERROR, "%s: can't start receiving udpsctp4 readable events (%s)", __func__, uv_strerror(ret));
             nt_usrsctp_cleanup(ctx);
             return NULL;
@@ -160,7 +160,7 @@ nt_usrsctp_init_ctx(struct neat_ctx *ctx)
         ctx->uv_sctp6_handle.data = ctx;
         if ((ret = uv_poll_start(&(ctx->uv_sctp6_handle),
                                      UV_READABLE,
-                                     neat_usrsctp_sctp6_readable)) < 0) {
+                                     nt_usrsctp_sctp6_readable)) < 0) {
             nt_log(ctx, NEAT_LOG_ERROR, "%s: can't start receiving sctp4 readable events (%s)", __func__, uv_strerror(ret));
             nt_usrsctp_cleanup(ctx);
             return NULL;
@@ -176,7 +176,7 @@ nt_usrsctp_init_ctx(struct neat_ctx *ctx)
         ctx->uv_udpsctp6_handle.data = ctx;
         if ((ret = uv_poll_start(&(ctx->uv_udpsctp6_handle),
                                      UV_READABLE,
-                                     neat_usrsctp_udpsctp6_readable)) < 0) {
+                                     nt_usrsctp_udpsctp6_readable)) < 0) {
             nt_log(ctx, NEAT_LOG_ERROR, "%s: can't start receiving udpsctp6 readable events (%s)", __func__, uv_strerror(ret));
             nt_usrsctp_cleanup(ctx);
             return NULL;

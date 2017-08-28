@@ -71,7 +71,7 @@ struct neat_pvd {
     struct pvd_async_queries queries;
 };
 //Add/remove addresses from src. address list
-// void neat_addr_update_src_list(struct neat_ctx *nc,
+// void nt_addr_update_src_list(struct neat_ctx *nc,
 //         struct sockaddr_storage *src_addr, uint32_t if_idx,
 //         uint8_t newaddr, uint32_t ifa_pref, uint32_t ifa_valid);
 

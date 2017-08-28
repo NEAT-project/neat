@@ -77,7 +77,7 @@ stack_to_string(neat_protocol_stack_type stack)
  * TODO: Contemplate whether this can be written better somehow.
  */
 void
-neat_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
+nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
                     size_t *stack_count, int *precedences)
 {
     json_t *transports, *transport;
@@ -169,7 +169,6 @@ neat_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
                 }
 #endif
             } else {
-                // neat_log(NEAT_LOG_ERROR, "Invalid precedence %d in JSON", precedence);
                 *stack_count = 0;
                 return;
             }
@@ -238,13 +237,13 @@ get_property(json_t *json, const char *key, json_type expected_type)
     json_t *obj = json_object_get(json, key);
 
     if (!obj) {
-        // neat_log(NEAT_LOG_DEBUG, "Unable to find property with key \"%s\"", key);
+        // nt_log(NEAT_LOG_DEBUG, "Unable to find property with key \"%s\"", key);
         return NULL;
     }
 
     obj = json_object_get(obj, "value");
     if (!obj) {
-        // neat_log(NEAT_LOG_DEBUG, "Object with key \"%s\" is missing value key");
+        // nt_log(NEAT_LOG_DEBUG, "Object with key \"%s\" is missing value key");
         return NULL;
     }
 
@@ -277,7 +276,7 @@ get_property(json_t *json, const char *key, json_type expected_type)
             break;
         }
 
-        neat_log(ctx, NEAT_LOG_DEBUG, "Key \"%s\" had unexpected type: \"%s\"", key, typename);
+        nt_log(ctx, NEAT_LOG_DEBUG, "Key \"%s\" had unexpected type: \"%s\"", key, typename);
 #endif
         return NULL;
     }

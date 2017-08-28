@@ -9,7 +9,7 @@
 #include "neat_resolver.h"
 
 uint8_t
-neat_resolver_helpers_addr_internal(struct sockaddr_storage *addr)
+nt_resolver_helpers_addr_internal(struct sockaddr_storage *addr)
 {
     struct sockaddr_in *addr4 = NULL;
     struct sockaddr_in6 *addr6 = NULL;
@@ -34,13 +34,13 @@ neat_resolver_helpers_addr_internal(struct sockaddr_storage *addr)
 //Check if node is an IP literal or not. Returns -1 on failure, 0 if not
 //literal, 1 if literal
 int8_t
-neat_resolver_helpers_check_for_literal(uint8_t *family, const char *node)
+nt_resolver_helpers_check_for_literal(uint8_t *family, const char *node)
 {
     struct in6_addr dummy_addr;
     int32_t v4_literal = 0, v6_literal = 0;
 
     if (*family != AF_UNSPEC && *family != AF_INET && *family != AF_INET6) {
-      // neat_log(NEAT_LOG_ERROR, "%s - Unsupported address family", __func__);
+      // nt_log(NEAT_LOG_ERROR, "%s - Unsupported address family", __func__);
         return -1;
     }
 
@@ -72,7 +72,7 @@ neat_resolver_helpers_check_for_literal(uint8_t *family, const char *node)
     //mistake and must be notifed
     if ((*family == AF_INET && v6_literal) ||
         (*family == AF_INET6 && v4_literal)) {
-      // neat_log(NEAT_LOG_ERROR, "%s - Mismatch between family and literal", __func__);
+      // nt_log(NEAT_LOG_ERROR, "%s - Mismatch between family and literal", __func__);
         return -1;
     }
 
@@ -88,7 +88,7 @@ neat_resolver_helpers_check_for_literal(uint8_t *family, const char *node)
 
 //Create all results for one match
 uint8_t
-neat_resolver_helpers_fill_results(struct neat_resolver_request *request,
+nt_resolver_helpers_fill_results(struct neat_resolver_request *request,
                                    struct neat_resolver_results *result_list,
                                    struct neat_addr *src_addr,
                                    struct sockaddr_storage dst_addr)
@@ -112,7 +112,7 @@ neat_resolver_helpers_fill_results(struct neat_resolver_request *request,
     result->src_addr_len = addrlen;
     result->dst_addr = dst_addr;
     result->dst_addr_len = addrlen;
-    result->internal = neat_resolver_helpers_addr_internal(&dst_addr);
+    result->internal = nt_resolver_helpers_addr_internal(&dst_addr);
 
     //Head of sockaddr_in and sockaddr_in6 is the same, so this is safe
     //for setting port

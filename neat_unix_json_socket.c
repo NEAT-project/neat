@@ -10,7 +10,7 @@
 
 // Disable logging in this source file. They require a context as first
 // argument and there are no such ones here.
-#define neat_log(x, ...)
+#define nt_log(x, ...)
 
 // TODO: Store a list of buffers and read JSON from them instead, if possible
 
@@ -21,19 +21,19 @@ on_unix_json_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
     json_error_t error;
     struct neat_ipc_context *context = stream->data;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if (nread == UV_EOF) {
-        neat_log(NEAT_LOG_DEBUG, "Reached EOF on UNIX socket");
+        nt_log(NEAT_LOG_DEBUG, "Reached EOF on UNIX socket");
 
         if (context->read_buffer == NULL) {
-            neat_log(NEAT_LOG_DEBUG, "Reached EOF with no data");
+            nt_log(NEAT_LOG_DEBUG, "Reached EOF with no data");
             context->on_error(context->ctx, context->flow, PM_ERROR_SOCKET, context->data);
 
         } else if ((json = json_loadb(context->read_buffer, context->buffer_size, 0, &error)) == NULL) {
-            neat_log(NEAT_LOG_DEBUG, "Failed to read JSON reply from PM");
-            neat_log(NEAT_LOG_DEBUG, "Error at position %d:", error.position);
-            neat_log(NEAT_LOG_DEBUG, error.text);
+            nt_log(NEAT_LOG_DEBUG, "Failed to read JSON reply from PM");
+            nt_log(NEAT_LOG_DEBUG, "Error at position %d:", error.position);
+            nt_log(NEAT_LOG_DEBUG, error.text);
 
             context->on_error(context->ctx, context->flow, PM_ERROR_INVALID_JSON, context->data);
         } else if (context->on_reply != NULL) {
@@ -41,15 +41,15 @@ on_unix_json_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
         }
 
     } else if (nread == UV_ENOBUFS) {
-        neat_log(NEAT_LOG_DEBUG, "Out of memory");
+        nt_log(NEAT_LOG_DEBUG, "Out of memory");
         context->on_error(context->ctx, context->flow, PM_ERROR_OOM, context->data);
     } else if (nread < 0) {
-        neat_log(NEAT_LOG_DEBUG, "UNIX socket error: %s", uv_strerror(nread));
+        nt_log(NEAT_LOG_DEBUG, "UNIX socket error: %s", uv_strerror(nread));
         context->on_error(context->ctx, context->flow, PM_ERROR_SOCKET, context->data);
     } else {
         char *new_buffer;
 
-        neat_log(NEAT_LOG_DEBUG, "Received %d bytes", buf->len);
+        nt_log(NEAT_LOG_DEBUG, "Received %d bytes", buf->len);
 
         if ((new_buffer = realloc(context->read_buffer, context->buffer_size + nread)) == NULL) {
             context->on_error(context->ctx, context->flow, PM_ERROR_OOM, context->data);
@@ -85,14 +85,14 @@ on_unix_json_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 
                 if (context->json_nesting_count == 0) {
                     if ((json = json_loadb(new_buffer + offset, i + 1 - offset, 0, &error)) == NULL) {
-                        neat_log(NEAT_LOG_DEBUG, "Failed to read JSON reply from PM");
-                        neat_log(NEAT_LOG_DEBUG, "Error at position %d:", error.position);
-                        neat_log(NEAT_LOG_DEBUG, error.text);
+                        nt_log(NEAT_LOG_DEBUG, "Failed to read JSON reply from PM");
+                        nt_log(NEAT_LOG_DEBUG, "Error at position %d:", error.position);
+                        nt_log(NEAT_LOG_DEBUG, error.text);
 
                         context->on_error(context->ctx, context->flow, PM_ERROR_INVALID_JSON, context->data);
                     } else if (context->on_reply) {
                         context->on_reply(context->ctx, context->flow, json, context->data);
-                        neat_log(NEAT_LOG_DEBUG, "new %d old %d i %d", new_buffer_size, old_buffer_size, i);
+                        nt_log(NEAT_LOG_DEBUG, "new %d old %d i %d", new_buffer_size, old_buffer_size, i);
                     }
 
                     offset = i;
@@ -112,7 +112,7 @@ on_unix_json_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 
                 memcpy(new_buffer, new_buffer + offset, new_buffer_size - offset);
                 context->read_buffer = new_buffer;
-                neat_log(NEAT_LOG_DEBUG, "\n%s", context->read_buffer);
+                nt_log(NEAT_LOG_DEBUG, "\n%s", context->read_buffer);
                 context->buffer_size = new_buffer_size - offset;
 
                 context->read_buffer = realloc(context->read_buffer, context->buffer_size);
@@ -131,7 +131,7 @@ on_unix_json_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 static void
 on_request_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
 {
-    neat_log(NEAT_LOG_DEBUG, "on_request_alloc");
+    nt_log(NEAT_LOG_DEBUG, "on_request_alloc");
 
     // buf->len == 0 indicates OOM. on_read will be called with nread == UV_ENOBUFS
     buf->base = malloc(4096);
@@ -144,24 +144,24 @@ on_shutdown(uv_shutdown_t *shutdown, int status)
     free(shutdown);
 
     if (status != 0) {
-        neat_log(NEAT_LOG_DEBUG, "PM on_shutdown status %d: %s",
+        nt_log(NEAT_LOG_DEBUG, "PM on_shutdown status %d: %s",
                  status, uv_strerror(status));
     }
 }
 
 neat_error_code
-neat_unix_json_shutdown(struct neat_ipc_context *context)
+nt_unix_json_shutdown(struct neat_ipc_context *context)
 {
     int rc;
     uv_shutdown_t *shutdown;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if ((shutdown = calloc(1, sizeof(*shutdown))) == NULL)
         return NEAT_ERROR_OUT_OF_MEMORY;
 
     if ((rc = uv_shutdown(shutdown, context->stream, on_shutdown)) != 0) {
-        neat_log(NEAT_LOG_DEBUG, "uv_shutdown error: %s", uv_strerror(rc));
+        nt_log(NEAT_LOG_DEBUG, "uv_shutdown error: %s", uv_strerror(rc));
         free(shutdown);
         return NEAT_ERROR_INTERNAL;
     }
@@ -170,15 +170,15 @@ neat_unix_json_shutdown(struct neat_ipc_context *context)
 }
 
 neat_error_code
-neat_unix_json_start_read(struct neat_ipc_context *context)
+nt_unix_json_start_read(struct neat_ipc_context *context)
 {
     int rc;
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     context->stream->data = context;
 
     if ((rc = uv_read_start(context->stream, on_request_alloc, on_unix_json_read)) != 0) {
-        neat_log(NEAT_LOG_DEBUG, "uv_read_start error: %s", uv_strerror(rc));
+        nt_log(NEAT_LOG_DEBUG, "uv_read_start error: %s", uv_strerror(rc));
         return NEAT_ERROR_INTERNAL;
     }
 
@@ -201,20 +201,20 @@ static void
 on_unix_json_connected(uv_connect_t* connect, int status)
 {
     struct neat_ipc_context *context = connect->data;
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     context->stream = connect->handle;
 
     free(connect);
 
     if (status < 0) {
-        neat_log(NEAT_LOG_DEBUG, "Failed to connect to UNIX socket");
+        nt_log(NEAT_LOG_DEBUG, "Failed to connect to UNIX socket");
         context->on_error(context->ctx, context->flow, PM_ERROR_SOCKET_UNAVAILABLE, context->data);
         return;
     }
 
     if (uv_stream_set_blocking(context->stream, 0) < 0) {
-        neat_log(NEAT_LOG_DEBUG, "Failed to set UNIX socket as non-blocking");
+        nt_log(NEAT_LOG_DEBUG, "Failed to set UNIX socket as non-blocking");
         context->on_error(context->ctx, context->flow, PM_ERROR_SOCKET, context->data);
         return;
     }
@@ -227,14 +227,14 @@ on_unix_json_connected(uv_connect_t* connect, int status)
 }
 
 neat_error_code
-neat_unix_json_send(struct neat_ipc_context *context, const char *buffer,
+nt_unix_json_send(struct neat_ipc_context *context, const char *buffer,
                     written_callback on_written, error_callback on_error)
 {
     int rc;
     uv_write_t *wr;
     uv_buf_t buf;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     if ((wr = calloc(sizeof(*wr), 1)) == NULL) {
         return NEAT_ERROR_OUT_OF_MEMORY;
@@ -249,7 +249,7 @@ neat_unix_json_send(struct neat_ipc_context *context, const char *buffer,
     context->on_error   = on_error;
 
     if ((rc = uv_write(wr, context->stream, &buf, 1, on_unix_json_written)) != 0) {
-        neat_log(NEAT_LOG_DEBUG, "uv_write error: %s", strerror(rc));
+        nt_log(NEAT_LOG_DEBUG, "uv_write error: %s", strerror(rc));
         free(wr);
         return NEAT_ERROR_INTERNAL;
     }
@@ -258,7 +258,7 @@ neat_unix_json_send(struct neat_ipc_context *context, const char *buffer,
 }
 
 neat_error_code
-neat_unix_json_socket_open(struct neat_ctx *ctx, struct neat_flow *flow,
+nt_unix_json_socket_open(struct neat_ctx *ctx, struct neat_flow *flow,
                            struct neat_ipc_context *context, const char *path,
                            connected_callback conn_cb, reply_callback reply_cb,
                            error_callback err_cb, void *data)
@@ -267,7 +267,7 @@ neat_unix_json_socket_open(struct neat_ctx *ctx, struct neat_flow *flow,
     uv_connect_t *connect;
     uv_pipe_t *pipe;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     assert(err_cb);
     if (ctx == NULL || flow == NULL || path == NULL || err_cb == NULL) {
@@ -295,7 +295,7 @@ neat_unix_json_socket_open(struct neat_ctx *ctx, struct neat_flow *flow,
 
     connect->data = context;
 
-    neat_log(NEAT_LOG_DEBUG, "Opening UNIX socket %s", path);
+    nt_log(NEAT_LOG_DEBUG, "Opening UNIX socket %s", path);
 
     if ((rc = uv_pipe_init(ctx->loop, pipe, 1 /* 1 => IPC = TRUE */)) != 0) {
         free(connect);
@@ -313,7 +313,7 @@ on_pipe_close(uv_handle_t *handle)
 {
     struct neat_ipc_context *context = handle->data;
 
-    neat_log(NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     free(context->read_buffer);
     free(handle);
@@ -322,7 +322,7 @@ on_pipe_close(uv_handle_t *handle)
 }
 
 void
-neat_unix_json_close(struct neat_ipc_context *context, close_callback cb, void *data)
+nt_unix_json_close(struct neat_ipc_context *context, close_callback cb, void *data)
 {
     context->pipe->data = context;
     context->data = data;

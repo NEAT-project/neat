@@ -10,7 +10,7 @@
 
 //Debug function for printing the current addresses seen by a context
 static void
-neat_addr_print_src_addrs(struct neat_ctx *nc)
+nt_addr_print_src_addrs(struct neat_ctx *nc)
 {
     struct neat_addr *nsrc_addr = NULL;
     char addr_str[INET6_ADDRSTRLEN];
@@ -20,18 +20,18 @@ neat_addr_print_src_addrs(struct neat_ctx *nc)
     struct pvd_info* pvd_info;
     struct pvd_result* pvd_result;
 
-    neat_log(nc, NEAT_LOG_INFO, "Available src-addresses:");
+    nt_log(nc, NEAT_LOG_INFO, "Available src-addresses:");
     for (nsrc_addr = nc->src_addrs.lh_first; nsrc_addr != NULL;
             nsrc_addr = nsrc_addr->next_addr.le_next) {
 
         if (nsrc_addr->family == AF_INET) {
             src_addr4 = &(nsrc_addr->u.v4.addr4);
             inet_ntop(AF_INET, &(src_addr4->sin_addr), addr_str, INET_ADDRSTRLEN);
-            neat_log(nc, NEAT_LOG_INFO, "\tIPv4: %s/%u", addr_str, nsrc_addr->prefix_length);
+            nt_log(nc, NEAT_LOG_INFO, "\tIPv4: %s/%u", addr_str, nsrc_addr->prefix_length);
         } else {
             src_addr6 = &(nsrc_addr->u.v6.addr6);
             inet_ntop(AF_INET6, &(src_addr6->sin6_addr), addr_str, INET6_ADDRSTRLEN);
-            neat_log(nc, NEAT_LOG_INFO, "\tIPv6: %s/%u pref %u valid %u", addr_str,
+            nt_log(nc, NEAT_LOG_INFO, "\tIPv6: %s/%u pref %u valid %u", addr_str,
                     nsrc_addr->prefix_length, nsrc_addr->u.v6.ifa_pref,
                     nsrc_addr->u.v6.ifa_valid);
         }
@@ -44,9 +44,9 @@ neat_addr_print_src_addrs(struct neat_ctx *nc)
                 continue;
             }
             LIST_FOREACH(pvd, &(pvd_result->pvds), next_pvd) {
-                neat_log(nc, NEAT_LOG_INFO, "\t\tPVD:");
+                nt_log(nc, NEAT_LOG_INFO, "\t\tPVD:");
                 LIST_FOREACH(pvd_info, &(pvd->infos), next_info) {
-                    neat_log(nc, NEAT_LOG_INFO, "\t\t\t%s => %s", pvd_info->key, pvd_info->value);
+                    nt_log(nc, NEAT_LOG_INFO, "\t\t\t%s => %s", pvd_info->key, pvd_info->value);
                 }
             }
         }
@@ -62,7 +62,7 @@ neat_addr_cmp_ip6_addr(struct in6_addr *aAddr, struct in6_addr *aAddr2)
 
 //Add/remove/update a source address based on information received from OS
 neat_error_code
-neat_addr_update_src_list(struct neat_ctx *nc,
+nt_addr_update_src_list(struct neat_ctx *nc,
         struct sockaddr_storage *src_addr, uint32_t if_idx,
         uint8_t newaddr, uint8_t pref_length, uint32_t ifa_pref, uint32_t ifa_valid)
 {
@@ -106,18 +106,18 @@ neat_addr_update_src_list(struct neat_ctx *nc,
     if (nsrc_addr != NULL) {
         //We found an address to delete, so do that
         if (!newaddr) {
-            neat_run_event_cb(nc, NEAT_DELADDR, nsrc_addr);
+            nt_run_event_cb(nc, NEAT_DELADDR, nsrc_addr);
             LIST_REMOVE(nsrc_addr, next_addr);
             --nc->src_addr_cnt;
             free(nsrc_addr);
-            //neat_addr_print_src_addrs(nc);
+            //nt_addr_print_src_addrs(nc);
         } else if (newaddr && nsrc_addr->family == AF_INET6) {
             //Currently, update is only relevant for v6 addresses and we only
             //use it with new pref/valid times
             nsrc_addr->u.v6.ifa_pref = ifa_pref;
             nsrc_addr->u.v6.ifa_valid = ifa_valid;
-            //neat_addr_print_src_addrs(nc);
-            neat_run_event_cb(nc, NEAT_UPDATEADDR, nsrc_addr);
+            //nt_addr_print_src_addrs(nc);
+            nt_run_event_cb(nc, NEAT_UPDATEADDR, nsrc_addr);
         }
 
         return NEAT_ERROR_OK;
@@ -128,7 +128,7 @@ neat_addr_update_src_list(struct neat_ctx *nc,
     nsrc_addr = (struct neat_addr*) calloc(sizeof(struct neat_addr), 1);
 
     if (nsrc_addr == NULL) {
-        neat_log(nc, NEAT_LOG_ERROR, "%s: Could not allocate memory for %s", __func__, addr_str);
+        nt_log(nc, NEAT_LOG_ERROR, "%s: Could not allocate memory for %s", __func__, addr_str);
         //TODO: Trigger a refresh of available addresses
         return NEAT_ERROR_OUT_OF_MEMORY;
     }
@@ -146,13 +146,13 @@ neat_addr_update_src_list(struct neat_ctx *nc,
 
     LIST_INSERT_HEAD(&(nc->src_addrs), nsrc_addr, next_addr);
     ++nc->src_addr_cnt;
-    neat_addr_print_src_addrs(nc);
-    neat_run_event_cb(nc, NEAT_NEWADDR, nsrc_addr);
+    nt_addr_print_src_addrs(nc);
+    nt_run_event_cb(nc, NEAT_NEWADDR, nsrc_addr);
     return NEAT_ERROR_OK;
 }
 
 void
-neat_addr_lifetime_timeout_cb(uv_timer_t *handle)
+nt_addr_lifetime_timeout_cb(uv_timer_t *handle)
 {
     struct neat_ctx *nc;
     struct neat_addr *addr;
@@ -182,13 +182,13 @@ neat_addr_lifetime_timeout_cb(uv_timer_t *handle)
                     notify = 1;
             }
         if (notify)
-            neat_run_event_cb(nc, NEAT_UPDATEADDR, addr);
+            nt_run_event_cb(nc, NEAT_UPDATEADDR, addr);
     }
-    //neat_addr_print_src_addrs(nc);
+    //nt_addr_print_src_addrs(nc);
 }
 
 void
-neat_addr_free_src_list(struct neat_ctx *nc)
+nt_addr_free_src_list(struct neat_ctx *nc)
 {
     struct neat_addr *nsrc_addr = NULL;
     struct neat_addr *nsrc_addr_itr = nc->src_addrs.lh_first;

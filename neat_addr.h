@@ -42,7 +42,7 @@ struct neat_addr {
 };
 
 //Add/remove addresses from src. address list
-neat_error_code neat_addr_update_src_list(struct neat_ctx *nc,
+neat_error_code nt_addr_update_src_list(struct neat_ctx *nc,
         struct sockaddr_storage *src_addr, uint32_t if_idx,
         uint8_t newaddr, uint8_t pref_length, uint32_t ifa_pref, uint32_t ifa_valid);
 
@@ -52,8 +52,8 @@ uint8_t neat_addr_cmp_ip6_addr(struct in6_addr *aAddr,
 
 int sockaddr_storage_cmp(struct sockaddr_storage *a, struct sockaddr_storage *b);
 
-void neat_addr_lifetime_timeout_cb(uv_timer_t *handle);
+void nt_addr_lifetime_timeout_cb(uv_timer_t *handle);
 
 //Free the list of source addresses
-void neat_addr_free_src_list(struct neat_ctx *nc);
+void nt_addr_free_src_list(struct neat_ctx *nc);
 #endif

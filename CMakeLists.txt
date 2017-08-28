@@ -253,7 +253,10 @@ IF (OPENSSL_SUPPORT)
                     ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
                 ENDIF()
             ENDIF()
-
+            if (OPENSSL_ROOT_DIR)
+                # if a custom dir was set, specify the include path too
+                SET(CMAKE_C_FLAGS "-I${OPENSSL_ROOT_DIR}/include")
+            ENDIF()
         ENDIF()
     ENDIF()
 ENDIF()
@@ -374,7 +377,7 @@ ENDIF()
 MESSAGE("Install directory: ${CMAKE_INSTALL_PREFIX}")
 
 INSTALL(TARGETS neat neat-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
-INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+INSTALL(FILES "neat.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
 # INCLUDE EXAMPLES AND TESTS FOLDER

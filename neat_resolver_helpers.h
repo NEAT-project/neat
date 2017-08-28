@@ -25,14 +25,14 @@ struct neat_resolver_src_dst_addr;
 struct neat_resolver_request;
 
 uint8_t
-neat_resolver_helpers_addr_internal(struct sockaddr_storage *addr);
+nt_resolver_helpers_addr_internal(struct sockaddr_storage *addr);
 
 int8_t
-neat_resolver_helpers_check_for_literal(uint8_t *family,
+nt_resolver_helpers_check_for_literal(uint8_t *family,
                                         const char *node);
 
 uint8_t
-neat_resolver_helpers_fill_results(struct neat_resolver_request *request,
+nt_resolver_helpers_fill_results(struct neat_resolver_request *request,
                                    struct neat_resolver_results *result_list,
                                    struct neat_addr *src_addr,
                                    struct sockaddr_storage dst_addr);

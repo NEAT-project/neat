@@ -529,6 +529,7 @@ pvd_handle_newaddr(struct neat_ctx *ctx,
                           pvd_dns_sent_cb,
                           dns_query) != 0) {
             free(dns_query);
+            free(reverse_ip);
             return RETVAL_FAILURE;
         }
     }

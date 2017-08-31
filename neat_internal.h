@@ -290,10 +290,10 @@ struct neat_flow
     struct neat_flow_statistics flow_stats;
 
     // The memory buffer for reading. Used of SCTP reassembly.
-    unsigned char   *readBuffer;    // memory for read buffer
-    size_t          readBufferSize;        // amount of received data
-    size_t          readBufferAllocation;  // size of buffered allocation
-    int             readBufferMsgComplete;    // it contains a complete user message
+    unsigned char   *readBuffer;            // memory for read buffer
+    size_t          readBufferSize;         // amount of received data
+    size_t          readBufferAllocation;   // size of buffered allocation
+    int             readBufferMsgComplete;  // it contains a complete user message
 
     json_t *properties;
     json_t *user_ips;

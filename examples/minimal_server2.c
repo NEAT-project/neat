@@ -55,7 +55,7 @@ on_all_written(struct neat_flow_operations *ops)
     ops->on_all_written = NULL;
     neat_set_operations(ops->ctx, ops->flow, ops);
 
-    neat_shutdown(ops->ctx, ops->flow);
+    neat_close(ops->ctx, ops->flow);
 
     return NEAT_OK;
 }

@@ -6840,6 +6840,7 @@ neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+#ifdef SCTP_MULTISTREAMING
     if (flow->socket->multistream && flow->multistream_state == NEAT_FLOW_OPEN) {
         // flow was not in closed state before... now it is!
         flow->socket->sctp_streams_used--;
@@ -6848,14 +6849,21 @@ neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
 
     if (!flow->socket->multistream || flow->socket->sctp_streams_used == 0) {
         //nt_log(ctx, NEAT_LOG_DEBUG, "%s - not multistream socket or all streams closed", __func__);
+#endif // SCTP_MULTISTREAMING
         if (flow->isPolling && uv_is_active((uv_handle_t*)flow->socket->handle)) {
             nt_log(ctx, NEAT_LOG_DEBUG, "%s - stopping polling", __func__);
             uv_poll_stop(flow->socket->handle);
         }
+
         neat_close_socket(ctx, flow);
+        return NEAT_OK;
+#ifdef SCTP_MULTISTREAMING
     }
+#endif
 
     nt_notify_close(flow);
+
+
     return NEAT_OK;
 }
 

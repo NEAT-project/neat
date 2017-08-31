@@ -6854,16 +6854,12 @@ neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
             nt_log(ctx, NEAT_LOG_DEBUG, "%s - stopping polling", __func__);
             uv_poll_stop(flow->socket->handle);
         }
-
         neat_close_socket(ctx, flow);
-        return NEAT_OK;
 #ifdef SCTP_MULTISTREAMING
     }
-#endif
+#endif // SCTP_MULTISTREAMING
 
     nt_notify_close(flow);
-
-
     return NEAT_OK;
 }
 

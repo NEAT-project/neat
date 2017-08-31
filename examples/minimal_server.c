@@ -29,6 +29,7 @@ on_writable(struct neat_flow_operations *opCB)
 {
     const unsigned char message[] = "Hello, this is NEAT!";
     neat_write(opCB->ctx, opCB->flow, message, 20, NULL, 0);
+    opCB->on_writable = NULL; 
     return NEAT_OK;
 }
 

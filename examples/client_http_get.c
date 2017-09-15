@@ -40,21 +40,14 @@ static uint32_t      config_rcv_buffer_size  = 32*1024*1024; // 32MB rcv buffer
 static uint32_t      config_max_flows        = 2000;
 static uint8_t       config_log_level        = 0;
 static uint8_t       config_json_stats       = 0;
+static uint16_t      config_port             = 80;
 static char          request[512];
-static uint32_t      flows_active            = 0;
-static const char    *request_tail           = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
-static char          *config_property        = "\
+static uint32_t      flows_active           = 0;
+static char          *config_property       = "\
 {\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ],\
+    \"transport\": {\
+        \"value\": [\"TCP\", \"SCTP\"],\
+        \"precedence\": 1 },\
     \"multihoming\": {\
         \"value\": true,\
         \"precedence\": 1\
@@ -69,6 +62,7 @@ struct stat_flow {
     struct timeval tv_first;
     struct timeval tv_last;
     struct timeval tv_delta;
+    uint16_t protocol;
     uv_timer_t timer;
     struct neat_flow *flow;
 };
@@ -82,7 +76,7 @@ on_error(struct neat_flow_operations *opCB)
 
     result = EXIT_FAILURE;
 
-    neat_close(opCB->ctx, opCB->flow);
+    neat_stop_event_loop(opCB->ctx);
     return NEAT_OK;
 }
 
@@ -110,17 +104,10 @@ on_readable(struct neat_flow_operations *opCB)
     uint32_t bytes_read = 0;
     struct stat_flow *stat = opCB->userData;
     neat_error_code code;
-    struct timeval tv_duration;
-    double time_elapsed = 0.0;
-    char buffer_filesize_human[32];
-    char buffer_bandwidth_human[32];
     struct neat_tlv options[1];
-
-    //last_stream = (last_stream + 1) % opCB->flow->stream_count;
     options[0].tag           = NEAT_TAG_TRANSPORT_STACK;
     options[0].type          = NEAT_TYPE_INTEGER;
 
-    //fprintf(stderr, "%s - reading from flow\n", __func__);
     code = neat_read(opCB->ctx, opCB->flow, buffer, config_rcv_buffer_size, &bytes_read, options, 1);
     if (code == NEAT_ERROR_WOULD_BLOCK) {
         if (config_log_level >= 1) {
@@ -131,55 +118,14 @@ on_readable(struct neat_flow_operations *opCB)
         return on_error(opCB);
     }
 
-    if (!bytes_read) { // eof
-        uv_timer_stop(&(stat->timer));
-
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - neat_read() returned 0 bytes - connection closed\n", __func__);
-        }
-
-        timersub(&(stat->tv_last), &(stat->tv_first), &tv_duration);
-        time_elapsed = tv_duration.tv_sec + (double)tv_duration.tv_usec / 1000000.0;
-        filesize_human(8 * (stat->rcv_bytes) / time_elapsed, buffer_bandwidth_human, sizeof(buffer_bandwidth_human));
-        filesize_human(stat->rcv_bytes, buffer_filesize_human, sizeof(buffer_filesize_human));
-
-        printf("########################################################\n");
-        printf("# %p - transfer finished\n", (void *)opCB->flow);
-        printf("########################################################\n");
-        printf("# size:\t\t%s\n", buffer_filesize_human);
-        printf("# duration:\t%.2f s\n", time_elapsed);
-        printf("# bandwidth:\t%sit/s\n", buffer_bandwidth_human);
-        printf("# protocol:\t");
-
-        switch ((int)options[0].value.integer) {
-            case NEAT_STACK_TCP:
-                printf("TCP");
-                break;
-            case NEAT_STACK_SCTP:
-                printf("SCTP");
-                break;
-            case NEAT_STACK_SCTP_UDP:
-                printf("SCTP/UDP");
-                break;
-            default:
-                printf("OTHER");
-                break;
-        }
-        printf("\n");
-
-        printf("########################################################\n");
-
-        fflush(stdout);
-        on_close(opCB);
-
-    } else if (bytes_read > 0) {
-        stat = opCB->userData;
+    if (bytes_read > 0) {
+        stat->protocol = (int)options[0].value.integer;
         stat->rcv_bytes += bytes_read;
         stat->rcv_calls++;
         gettimeofday(&(stat->tv_last), NULL);
         if (config_log_level >= 1) {
             fprintf(stderr, "%s - received %d bytes\n", __func__, bytes_read);
-           // fwrite(buffer, sizeof(char), bytes_read, stdout);
+            fwrite(buffer, sizeof(char), bytes_read, stdout);
         }
     }
 
@@ -235,7 +181,7 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct stat_flow *stat = opCB->userData;
-    uv_loop_t *loop = neat_get_event_loop(opCB->ctx);
+
     // now we can start writing
     if (config_log_level >= 1) {
         fprintf(stderr, "%s - connection established\n", __func__);
@@ -244,10 +190,6 @@ on_connected(struct neat_flow_operations *opCB)
     gettimeofday(&(stat->tv_first), NULL);
     gettimeofday(&(stat->tv_last), NULL);
     gettimeofday(&(stat->tv_delta), NULL);
-
-    uv_timer_init(loop, &(stat->timer));
-    stat->timer.data = stat;
-    uv_timer_start(&(stat->timer), print_timer_stats, 1000, 1000);
 
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
@@ -259,12 +201,50 @@ on_connected(struct neat_flow_operations *opCB)
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    // cleanup
-    opCB->on_close = NULL;
-    opCB->on_readable = NULL;
-    opCB->on_writable = NULL;
-    opCB->on_error = NULL;
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
+    struct stat_flow *stat = opCB->userData;
+    struct timeval tv_duration;
+    double time_elapsed = 0.0;
+    char buffer_filesize_human[32];
+    char buffer_bandwidth_human[32];
+
+    if (config_log_level >= 1) {
+        fprintf(stderr, "%s - neat_read() returned 0 bytes - connection closed\n", __func__);
+    }
+
+    timersub(&(stat->tv_last), &(stat->tv_first), &tv_duration);
+    time_elapsed = tv_duration.tv_sec + (double)tv_duration.tv_usec / 1000000.0;
+    filesize_human(8 * (stat->rcv_bytes) / time_elapsed, buffer_bandwidth_human, sizeof(buffer_bandwidth_human));
+    filesize_human(stat->rcv_bytes, buffer_filesize_human, sizeof(buffer_filesize_human));
+
+    printf("########################################################\n");
+    printf("# %p - transfer finished\n", (void *)opCB->flow);
+    printf("########################################################\n");
+    printf("# size:\t\t%s\n", buffer_filesize_human);
+    printf("# duration:\t%.2f s\n", time_elapsed);
+    printf("# bandwidth:\t%sit/s\n", buffer_bandwidth_human);
+    printf("# protocol:\t");
+
+    switch (stat->protocol) {
+        case NEAT_STACK_TCP:
+            printf("TCP");
+            break;
+        case NEAT_STACK_SCTP:
+            printf("SCTP");
+            break;
+        case NEAT_STACK_SCTP_UDP:
+            printf("SCTP/UDP");
+            break;
+        default:
+            printf("OTHER");
+            break;
+    }
+    printf("\n");
+
+    printf("########################################################\n");
+
+    fflush(stdout);
+
+    //free(stat);
 
     // stop event loop if all flows are closed
     flows_active--;
@@ -276,7 +256,6 @@ on_close(struct neat_flow_operations *opCB)
         if (config_log_level >= 1) {
             fprintf(stderr, "%s - stopping event loop\n", __func__);
         }
-
         neat_stop_event_loop(opCB->ctx);
     }
 
@@ -299,9 +278,10 @@ main(int argc, char *argv[])
     memset(&ops, 0, sizeof(ops));
     memset(flows, 0, sizeof(flows));
 
-    snprintf(request, sizeof(request), "GET %s %s", "/", request_tail);
+    // request index directory by default
+    snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n", "/", argv[argc - 1]);
 
-    while ((arg = getopt(argc, argv, "P:R:u:n:Jv:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:p:R:u:n:Jv:")) != -1) {
         switch(arg) {
         case 'P':
             if (read_file(optarg, &arg_property) < 0) {
@@ -313,11 +293,18 @@ main(int argc, char *argv[])
                 fprintf(stderr, "%s - option - properties: %s\n", __func__, arg_property);
             }
             break;
+        case 'p':
+            if (atoi(optarg) > 0 && atoi(optarg) < 65556) {
+                config_port = atoi(optarg);
+            } else {
+                fprintf(stderr, "%s - option - port - invalid port, using default : %u\n", __func__, config_port);
+            }
+            break;
         case 'R':
             config_rcv_buffer_size = atoi(optarg);
             break;
         case 'u':
-            snprintf(request, sizeof(request), "GET %s %s", optarg, request_tail);
+            snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n", optarg, argv[argc - 1]);
             break;
         case 'n':
             num_flows = strtoul(optarg, NULL, 0);
@@ -394,7 +381,7 @@ main(int argc, char *argv[])
         neat_set_operations(ctx, flows[i], &(ops[i]));
 
         // wait for on_connected or on_error to be invoked
-        if (neat_open(ctx, flows[i], argv[argc - 1], 80, NULL, 0) != NEAT_OK) {
+        if (neat_open(ctx, flows[i], argv[argc - 1], config_port, NULL, 0) != NEAT_OK) {
             fprintf(stderr, "Could not open flow\n");
             result = EXIT_FAILURE;
         } else {
@@ -406,8 +393,9 @@ main(int argc, char *argv[])
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
 cleanup:
+
     for (i = 0; i < num_flows; i++) {
-        //free((flows[i])->userData);
+        free(ops[i].userData);
     }
 
     if (ctx != NULL) {
@@ -417,6 +405,7 @@ cleanup:
     if (arg_property) {
         free(arg_property);
     }
+
     if (buffer) {
         free(buffer);
     }

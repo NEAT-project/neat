@@ -21,6 +21,14 @@
 #ifdef USRSCTP_SUPPORT
     #include "neat_usrsctp.h"
     #include <usrsctp.h>
+
+    struct usr_internal {
+        uint16_t num_ctx;
+        int s4_fd;
+        int us4_fd;
+        int s6_fd;
+        int us6_fd;
+    } usr_intern;
 #else // USRSCTP_SUPPORT
     #define NEAT_INTERNAL_USRSCTP
 #endif // USRSCTP_SUPPORT
@@ -36,7 +44,8 @@
     uint8_t src_addr_dump_done; \
     uint16_t __pad
 
-#define NEAT_MAX_NUM_PROTO 4
+#define NEAT_MAX_NUM_PROTO  4
+#define MAX_LOCAL_ADDR      64
 
 struct neat_event_cb;
 struct neat_addr;
@@ -86,7 +95,7 @@ struct neat_ctx
     NEAT_INTERNAL_USRSCTP
 };
 
-void neat_ctx_fail_on_error(struct neat_ctx *nc, neat_error_code error);
+void nt_ctx_fail_on_error(struct neat_ctx *nc, neat_error_code error);
 
 struct neat_he_candidate;
 struct neat_pollable_socket;
@@ -222,7 +231,7 @@ struct neat_pollable_socket
     struct sockaddr_storage src_sockaddr;
     socklen_t               src_len;
 
-   #define MAX_LOCAL_ADDR             64
+
    struct sockaddr_storage local_addr[MAX_LOCAL_ADDR];
    unsigned int nr_local_addr;
 
@@ -233,6 +242,7 @@ struct neat_pollable_socket
     uint8_t                     multistream;            // multistreaming active
 
     unsigned int                sctp_explicit_eor : 1;
+    unsigned int                sctp_partial_reliability : 1;
     uint16_t                    sctp_streams_available; // available streams
 #ifdef SCTP_MULTISTREAMING
     uint8_t                     sctp_notification_wait; // wait for all notifications
@@ -245,7 +255,7 @@ struct neat_pollable_socket
 
     struct neat_pollable_socket *listen_socket;
 
-	struct neat_dtls_data *dtls_data;
+    struct neat_dtls_data *dtls_data;
 
     uv_poll_t *handle;
 
@@ -255,9 +265,10 @@ struct neat_pollable_socket
 struct neat_flow
 {
     // Main socket used for communication, not listening
+    uint8_t state;
     struct neat_pollable_socket *socket;
     TAILQ_HEAD(neat_listen_socket_head, neat_pollable_socket) listen_sockets;
-    struct neat_flow_operations *operations; // see ownedByCore flag
+    struct neat_flow_operations operations;
     const char *name;
     char *server_pem;
     char *cert_pem;
@@ -265,7 +276,6 @@ struct neat_flow
     uint16_t port;
     uint8_t qos;
     uint8_t ecn;
-    //uint16_t stream_count;
     struct neat_resolver_results *resolver_results;
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
@@ -303,17 +313,21 @@ struct neat_flow
     neat_accept_usrsctp_impl acceptusrsctpfx;
 #endif
 
-    unsigned int hefirstConnect         : 1;
-    unsigned int firstWritePending      : 1;
-    unsigned int acceptPending          : 1;
-    unsigned int isPolling              : 1;
-    unsigned int ownedByCore            : 1;
-    unsigned int everConnected          : 1;
-    unsigned int isDraining             : 1;
-    unsigned int isServer               : 1; // i.e. created via accept()
-    unsigned int isSCTPMultihoming      : 1;
-    unsigned int security_needed        : 1;
-    unsigned int isSCTPIdata            : 1;
+    unsigned int hefirstConnect             : 1;
+    unsigned int firstWritePending          : 1;
+    unsigned int acceptPending              : 1;
+    unsigned int isPolling                  : 1;
+    unsigned int everConnected              : 1;
+    unsigned int isDraining                 : 1;
+    unsigned int isServer                   : 1; // i.e. created via accept()
+    unsigned int isSCTPMultihoming          : 1;
+    unsigned int security_needed            : 1;
+    unsigned int isSCTPIdata                : 1;
+    unsigned int isClosing                  : 1;
+    unsigned int notifyDrainPending         : 1;
+    unsigned int preserveMessageBoundaries  : 1;
+    unsigned int eofSeen                    : 1;
+    unsigned int skipCertVerification       : 1;
 
     unsigned int streams_requested;
 
@@ -337,7 +351,7 @@ struct neat_flow
     size_t                          multistream_read_queue_size;
 
     neat_flow_states                multistream_state;
-#endif
+#endif // SCTP_MULTISTREAMING
 };
 
 typedef struct neat_flow neat_flow;
@@ -450,8 +464,8 @@ struct cib_he_res {
     int transport;
 };
 
-void neat_free_candidates(struct neat_ctx *ctx, struct neat_he_candidates *candidates);
-void neat_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate);
+void nt_free_candidates(struct neat_ctx *ctx, struct neat_he_candidates *candidates);
+void nt_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate);
 
 // Connect context needed during HE.
 struct he_cb_ctx {
@@ -471,21 +485,21 @@ struct he_cb_ctx {
 
 //Intilize resolver. Sets up internal callbacks etc.
 //Resolve is required, cleanup is not
-struct neat_resolver *neat_resolver_init(struct neat_ctx *nc,
+struct neat_resolver *nt_resolver_init(struct neat_ctx *nc,
                                          const char *resolv_conf_path);
 
 //Release all memory occupied by a resolver. Resolver can't be used again
-void neat_resolver_release(struct neat_resolver *resolver);
+void nt_resolver_release(struct neat_resolver *resolver);
 
 //Free the list of results
-void neat_resolver_free_results(struct neat_resolver_results *results);
+void nt_resolver_free_results(struct neat_resolver_results *results);
 
-struct neat_pollable_socket *neat_find_multistream_socket(neat_ctx *ctx, neat_flow *new_flow);
-uint8_t neat_wait_for_multistream_socket(neat_ctx *ctx, neat_flow *new_flow);
+struct neat_pollable_socket *nt_find_multistream_socket(neat_ctx *ctx, neat_flow *new_flow);
+uint8_t nt_wait_for_multistream_socket(neat_ctx *ctx, neat_flow *new_flow);
 
 //Start to resolve a domain name (or literal). Accepts a list of protocols, will
 //set socktype based on protocol
-uint8_t neat_resolve(struct neat_resolver *resolver,
+uint8_t nt_resolve(struct neat_resolver *resolver,
                          uint8_t family,
                          const char *node,
                          uint16_t port,
@@ -494,15 +508,15 @@ uint8_t neat_resolve(struct neat_resolver *resolver,
 
 //Update timeouts (in ms) for DNS resolving. T1 is total timeout, T2 is how long
 //to wait after first reply from DNS server. Initial values are 30s and 1s.
-void neat_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
+void nt_resolver_update_timeouts(struct neat_resolver *resolver, uint16_t t1,
         uint16_t t2);
 
-void neat_io_error(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
+void nt_io_error(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
 
 struct neat_iofilter *insert_neat_iofilter(neat_ctx *ctx, neat_flow *flow);
 
 //Initialize PvD
-struct neat_pvd *neat_pvd_init(struct neat_ctx *nc);
+struct neat_pvd *nt_pvd_init(struct neat_ctx *nc);
 
 //Free PvD resources
 void neat_pvd_release(struct neat_pvd *pvd);
@@ -519,9 +533,9 @@ enum neat_events{
 #define NEAT_MAX_EVENT (__NEAT_MAX_EVENT - 1)
 
 //Register/remove a callback from the NEAT callback API
-uint8_t neat_add_event_cb(struct neat_ctx *nc, uint8_t event_type,
+uint8_t nt_add_event_cb(struct neat_ctx *nc, uint8_t event_type,
         struct neat_event_cb *cb);
-uint8_t neat_remove_event_cb(struct neat_ctx *nc, uint8_t event_type,
+uint8_t nt_remove_event_cb(struct neat_ctx *nc, uint8_t event_type,
         struct neat_event_cb *cb);
 
 struct neat_resolver_src_dst_addr;
@@ -535,28 +549,26 @@ LIST_HEAD(neat_resolver_pairs, neat_resolver_src_dst_addr);
 struct neat_event_cb {
     //So far we only support one type of callback. p_ptr is data in this
     //cb-struct, data is decided by callback type
-    //TODO: Return something else than void? Do we ever want to for example stop
-    //processing?
-    void (*event_cb)(struct neat_ctx *nc, void *p_ptr, void *data);
+    int (*event_cb)(struct neat_ctx *nc, void *p_ptr, void *data);
     void *data;
     LIST_ENTRY(neat_event_cb) next_cb;
 };
 
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);
-neat_error_code neat_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_list, uv_poll_cb callback_fx);
+neat_error_code nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_list, uv_poll_cb callback_fx);
 
 // Internal routines for hooking up lower-level services/modules with
 // API callbacks:
-void neat_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate);
-void neat_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate);
-void neat_notify_send_failure(neat_flow *flow, neat_error_code code, int context, const unsigned char *unsent_buffer);
-void neat_notify_timeout(neat_flow *flow);
-void neat_notify_aborted(neat_flow *flow);
-void neat_notify_close(neat_flow *flow);
-void neat_notify_network_status_changed(neat_flow *flow, neat_error_code code);
+void nt_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate);
+void nt_notify_cc_hint(neat_flow *flow, int ecn, uint32_t rate);
+void nt_notify_send_failure(neat_flow *flow, neat_error_code code, int context, const unsigned char *unsent_buffer);
+void nt_notify_timeout(neat_flow *flow);
+void nt_notify_aborted(neat_flow *flow);
+void nt_notify_close(neat_flow *flow);
+void nt_notify_network_status_changed(neat_flow *flow, neat_error_code code);
 
-int neat_base_stack(neat_protocol_stack_type stack);
-int neat_stack_to_protocol(neat_protocol_stack_type stack);
+int nt_base_stack(neat_protocol_stack_type stack);
+int nt_stack_to_protocol(neat_protocol_stack_type stack);
 
 extern const char *neat_tag_name[NEAT_TAG_LAST];
 
@@ -569,7 +581,7 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
 #define OPTIONAL_ARGUMENT(tag, var, field, vartype, typestr)\
     case tag:\
              if (optional[i].type != vartype)\
-        neat_log(ctx, NEAT_LOG_DEBUG,\
+        nt_log(ctx, NEAT_LOG_DEBUG,\
                  "Optional argument \"%s\" passed to function %s: "\
                  "Expected type %s, specified as something else. "\
                  "Ignoring.", #tag, __func__, #typestr);\
@@ -596,7 +608,7 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
 #define OPTIONAL_ARGUMENT_PRESENT(tag, var, field, presence, vartype, typestr)\
     case tag:\
         if (optional[i].type != vartype) {\
-            neat_log(ctx, NEAT_LOG_DEBUG,\
+            nt_log(ctx, NEAT_LOG_DEBUG,\
                      "Optional argument \"%s\" passed to function %s: "\
                      "Expected type %s, specified as something else. "\
                      "Ignoring.", "stream", #tag, __func__, typestr);\
@@ -617,7 +629,7 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
 
 #define HANDLE_OPTIONAL_ARGUMENTS_END() \
                 default:\
-                    neat_log(ctx, NEAT_LOG_DEBUG,\
+                    nt_log(ctx, NEAT_LOG_DEBUG,\
                              "Unexpected optional argument \"%s\" passed to function %s, "\
                              "ignoring.", neat_tag_name[optional[i].tag], __func__);\
                     break;\
@@ -627,12 +639,12 @@ extern const char *neat_tag_name[NEAT_TAG_LAST];
     } while (0);
 
 neat_error_code neat_security_install(neat_ctx *ctx, neat_flow *flow);
-void            neat_security_init(neat_ctx *ctx);
-void            neat_security_close(neat_ctx *ctx);
+void            nt_security_init(neat_ctx *ctx);
+void            nt_security_close(neat_ctx *ctx);
 void uvpollable_cb(uv_poll_t *handle, int status, int events);
-neat_error_code neat_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock);
-neat_error_code neat_dtls_connect(neat_ctx *ctx, neat_flow *flow);
+neat_error_code nt_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock);
+neat_error_code nt_dtls_connect(neat_ctx *ctx, neat_flow *flow);
 neat_error_code copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_socket *socket);
-neat_error_code neat_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
+neat_error_code nt_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
 
 #endif

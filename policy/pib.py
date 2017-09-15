@@ -74,16 +74,12 @@ class NEATPolicy(object):
             else:
                 self.properties.add(PropertyArray.from_dict(p))
 
-
-                # set UID
+        # set UID
         self.uid = policy_dict.get('uid')
         if self.uid is None:
             self.uid = self.__gen_uid()
         else:
             self.uid = str(self.uid).lower()
-
-        # deprecated
-        self.name = policy_dict.get('name', self.uid)
 
     def __gen_uid(self):
         # TODO make UID immutable?
@@ -111,7 +107,7 @@ class NEATPolicy(object):
         Entries with the smallest number of elements are matched first."""
         return len(self.match)
 
-    def match_query(self, input_properties, strict=True):
+    def match_query(self, input_properties, strict=False):
         """Check if the match properties are completely covered by the properties of a query.
 
         If strict flag is set match only properties with precedences that are higher or equal to the precedence
@@ -213,8 +209,7 @@ class PIB(list):
 
         with open(filename, 'w') as f:
             f.write(policy.json())
-
-        logging.info("Policy saved as \"%s\"." % filename)
+            logging.debug("Policy saved as \"%s\"." % filename)
 
         # FIXME register
         self.reload_files()
@@ -300,8 +295,9 @@ class PIB(list):
 
     def lookup(self, input_properties, apply=True, tag=None):
         """
-        Look through all installed policies to find the ones which match the properties of the given candidate.
-        If apply is True, append the matched policy properties.
+        Look through all installed policies and apply the ones which match against the properties of the given candidate.
+
+        If apply is False, do not append the matched policy properties (dry run).
 
         Returns all matched policies.
         """
@@ -314,17 +310,17 @@ class PIB(list):
         candidates = [input_properties]
         processed_candidates = []
 
-        # itterate through all policies and apply them to candidate.
+        # iterate through all policies and apply them to candidate.
         for p in self.policies:
             policy_info = str(p.uid)
             if hasattr(p, "description"):
-                policy_info += ' (%s)' % p.description
+                policy_info += ' ' + PM.STYLES.DARK_GRAY_START + '(%s)' % p.description + PM.STYLES.FORMAT_END
             updated_candidates = []
             for cand in candidates:
-                if p.match_query(cand) or not p.match:
+                if p.match_query(cand):
                     logging.info(' ' * 4 + policy_info)
-                    # if not apply:  ## fixme
-                    #    continue
+                    if not apply:
+                        continue
                     # if replace_matched attribute is true, remove the matched properties from the candidate
                     if p.replace_matched:
                         for key in p.match:
@@ -333,9 +329,9 @@ class PIB(list):
                         try:
                             updated_candidate = cand + policy_properties
                             updated_candidates.append(updated_candidate)
-                        except ImmutablePropertyError:
+                        except ImmutablePropertyError as e:
                             logging.info(
-                                ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *REJECTED*' + PM.STYLES.FORMAT_END)
+                                ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *CANDIDATE REJECTED*' + PM.STYLES.FORMAT_END + ' (%s)' % str(e))
                             continue
                 else:
                     updated_candidates.append(cand)

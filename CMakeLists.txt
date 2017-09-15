@@ -3,7 +3,7 @@ PROJECT(libneat)
 
 set(BUILD_MAJOR "0")
 set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td151")
+set(BUILD_PATCH "1~td161")
 set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 # INSTALLATION_DIRECTORIES
@@ -46,7 +46,6 @@ set(CPACK_SOURCE_IGNORE_FILES
 include(CPack)
 
 add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
-
 
 INCLUDE(CheckIncludeFile)
 INCLUDE(CheckStructHasMember)
@@ -179,10 +178,40 @@ IF (FLOW_GROUPS)
     ADD_DEFINITIONS(-DFLOW_GROUPS)
 ENDIF()
 
-OPTION(SCTP_MULTISTREAMING "Include support for SCTP multistreaming" 1)
+OPTION(SCTP_MULTISTREAMING "Include support for SCTP multistreaming" 0)
 IF (SCTP_MULTISTREAMING)
     ADD_DEFINITIONS(-DSCTP_MULTISTREAMING)
 ENDIF()
+
+OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 1)
+
+OPTION(SOCKET_API "Include the socket API" 0)
+
+OPTION(SWIG_PYTHON "Include SWIG Python bindings" 0)
+IF (SWIG_PYTHON)
+    FIND_PACKAGE(SWIG REQUIRED)
+    INCLUDE(${SWIG_USE_FILE})
+    FIND_PACKAGE(PythonLibs 2.7 REQUIRED)
+    INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
+
+    INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
+
+    SET(CMAKE_SWIG_FLAGS "")
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}  -Wno-error=shadow -Wno-error=pedantic")
+
+    #SET_SOURCE_FILES_PROPERTIES(neat_swig.i PROPERTIES CPLUSPLUS ON)
+    SET_SOURCE_FILES_PROPERTIES(neat_swig.i PROPERTIES SWIG_FLAGS "-includeall")
+ENDIF()
+
+OPTION(SANITIZER_ADDRESS "Compile with address sanitizer" 0)
+
+OPTION(SANITIZER_MEMORY "Compile with memory sanitizer" 0)
+
+IF (SANITIZER_ADDRESS AND SANITIZER_MEMORY)
+MESSAGE(FATAL_ERROR "Can not compile with both sanitizer options")
+ENDIF()
+
+
 
 # REQUIREMENTS
 #################################################
@@ -203,27 +232,32 @@ ELSE()
     MESSAGE("LDNS found: " ${LDNS_LIB})
 ENDIF()
 
-FIND_PACKAGE(OpenSSL)
-IF (NOT OPENSSL_FOUND)
-    MESSAGE(WARNING "openssl >= 1.0.2 required for TLS - none found")
-ELSE()
-    MESSAGE("OPENSSL version found: " ${OPENSSL_VERSION})
-    IF (OPENSSL_VERSION VERSION_LESS "1.0.2")
-        MESSAGE(WARNING "openssl >= 1.0.2 required for TLS")
+IF (OPENSSL_SUPPORT)
+    FIND_PACKAGE(OpenSSL)
+    IF (NOT OPENSSL_FOUND)
+        MESSAGE(WARNING "openssl >= 1.0.2 required for TLS - none found")
     ELSE()
-        CHECK_INCLUDE_FILE(openssl/ssl.h HAVE_SYS_OPENSSL_H)
-        MESSAGE(STATUS "OPENSSL Crypto found: " ${OPENSSL_LIBRARIES})
-        ADD_DEFINITIONS(-DNEAT_USETLS)
-        SET(CMAKE_EXTRA_INCLUDE_FILES "openssl/ssl.h")
+        MESSAGE("OPENSSL version found: " ${OPENSSL_VERSION})
+        IF (OPENSSL_VERSION VERSION_LESS "1.0.2")
+            MESSAGE(WARNING "openssl >= 1.0.2 required for TLS")
+        ELSE()
+            CHECK_INCLUDE_FILE(openssl/ssl.h HAVE_SYS_OPENSSL_H)
+            MESSAGE(STATUS "OPENSSL Crypto found: " ${OPENSSL_LIBRARIES})
+            ADD_DEFINITIONS(-DNEAT_USETLS)
+            SET(CMAKE_EXTRA_INCLUDE_FILES "openssl/ssl.h")
 
-        IF ((OPENSSL_VERSION VERSION_EQUAL "1.1.0") OR (OPENSSL_VERSION VERSION_GREATER "1.1.0"))
-            CHECK_TYPE_SIZE("struct bio_dgram_sctp_sndinfo" OPENSSL_DTLS)
-            IF (HAVE_OPENSSL_DTLS)
-                MESSAGE("DTLS for SCTP supported")
-                ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
+            IF ((OPENSSL_VERSION VERSION_EQUAL "1.1.0") OR (OPENSSL_VERSION VERSION_GREATER "1.1.0"))
+                CHECK_TYPE_SIZE("struct bio_dgram_sctp_sndinfo" OPENSSL_DTLS)
+                IF (HAVE_OPENSSL_DTLS)
+                    MESSAGE("DTLS for SCTP supported")
+                    ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
+                ENDIF()
+            ENDIF()
+            if (OPENSSL_ROOT_DIR)
+                # if a custom dir was set, specify the include path too
+                SET(CMAKE_C_FLAGS "-I${OPENSSL_ROOT_DIR}/include")
             ENDIF()
         ENDIF()
-
     ENDIF()
 ENDIF()
 
@@ -284,13 +318,25 @@ ENDIF()
 
 # COMPILER FLAGS
 #################################################
-SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
+# -Wno-array-bounds is unfortunate, but caused by https://bugs.llvm.org/show_bug.cgi?id=20144
+SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unused-command-line-argument -Wno-unreachable-code -Wno-parentheses-equality -Wno-array-bounds")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unused-command-line-argument -Wno-unreachable-code -Wno-parentheses-equality")
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
     # _FORTIFY_SOURCE requires compiling with optimization
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
+ENDIF()
+
+IF (SANITIZER_ADDRESS)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=address -O1 -fno-omit-frame-pointer -g -Wno-address-of-packed-member")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -O1 -fno-omit-frame-pointer -g -Wno-address-of-packed-member")
+ENDIF()
+
+IF (SANITIZER_MEMORY)
+    # maybe add "-fPIE -pie" here
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=memory -fno-omit-frame-pointer -g -Wno-address-of-packed-member -fsanitize-memory-track-origins")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -g -Wno-address-of-packed-member -fsanitize-memory-track-origins")
 ENDIF()
 
 # LIBRARIES
@@ -321,16 +367,23 @@ ADD_LIBRARY(neat-static STATIC ${neat_sources})
 
 TARGET_LINK_LIBRARIES (neat ${neat_libs})
 
+IF (SWIG_PYTHON)
+    SWIG_ADD_MODULE(neat python neat_swig.i ${neat_sources})
+    SWIG_LINK_LIBRARIES(neat ${neat_libs} ${PYTHON_LIBRARIES})
+ENDIF()
+
 # INSTALL
 #################################################
 MESSAGE("Install directory: ${CMAKE_INSTALL_PREFIX}")
 
 INSTALL(TARGETS neat neat-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
-INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+INSTALL(FILES "neat.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
 # INCLUDE EXAMPLES AND TESTS FOLDER
 #################################################
-ADD_SUBDIRECTORY(socketapi)
+IF (SOCKET_API)
+    ADD_SUBDIRECTORY(socketapi)
+ENDIF()
 ADD_SUBDIRECTORY(examples)
 ADD_SUBDIRECTORY(tests)

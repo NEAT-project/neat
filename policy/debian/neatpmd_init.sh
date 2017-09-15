@@ -24,6 +24,7 @@ start() {
     echo 'Service already running' >&2
     return 1
   fi
+  su -c "mkdir -p $SOCKDIR $CIBDIR"
   echo 'Starting service…' >&2
   local CMD="$SCRIPT &> \"$LOGFILE\" & echo \$!"
   su -c "$CMD" $RUNAS > "$PIDFILE"

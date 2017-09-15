@@ -6,10 +6,9 @@ import json
 import logging
 import os
 import signal
+import sys
 from copy import deepcopy
 from operator import attrgetter
-
-import sys
 
 import pmdefaults as PM
 import pmhelper
@@ -17,7 +16,7 @@ import pmrest
 import policy
 from cib import CIB
 from pib import PIB
-from policy import PropertyMultiArray
+from policy import PropertyMultiArray, PropertyArray
 
 try:
     resthelper_loaded = True
@@ -40,7 +39,10 @@ parser.add_argument('--rest-ip', type=str, default=None, help='set local managem
 parser.add_argument('--debug', type=bool, default=None, help='enable debugging')
 parser.add_argument('--rest', type=bool, default=None, help='enable REST API')
 parser.add_argument('--bypass', type=bool, default=False, help='enable debugging')
+parser.add_argument('-v', dest='log_level', type=int, default=2, help='set verbosity level')
 args = parser.parse_args()
+
+PM.update_log_level(args.log_level)
 
 if args.cib:
     PM.CIB_DIR = args.cib
@@ -131,9 +133,12 @@ def cleanup_special_properties(r):
         r.add(p)
 
 
-def process_request(json_str, num_candidates=10):
-    """Process JSON requests from NEAT logic"""
-    requests = []
+def convert_json_request(json_str):
+    """
+    Each request is a list
+    """
+
+    logging.debug(json_str)
 
     try:
         reqs = json.loads(json_str)
@@ -141,37 +146,69 @@ def process_request(json_str, num_candidates=10):
         logging.error('Received invalid request')
         return
 
-    logging.debug(json_str)
+    if not isinstance(reqs, list):
+        logging.error("Request must be a JSON array")
+        return
 
-    # FIXME this is quick workaround to use the new style PropertyArrays
-    for req in reqs:
-        pma = PropertyMultiArray()
-        for p, val in req.items():
-            try:
-                if isinstance(val, list):
-                    pma.add([policy.PropertyArray(policy.dict_to_properties({p: v})[0]) for v in val])
-                else:
-                    pp = policy.dict_to_properties({p: val})[0]
-                    pma.add(policy.PropertyArray(pp))
-            except policy.NEATPropertyError as e:
-                logging.error('Received invalid request: ' + str(e))
-                return
-        requests.extend(pma.expand())
+    try:
+        pma_requests = [__convert_req(req) for req in reqs]
+    except policy.InvalidPropertyError as e:
+        logging.error("Error converting request properties: %s" % e)
+        return
+
+    return pma_requests
+
+
+def __convert_req(req):
+    pma = PropertyMultiArray()
+
+    if not isinstance(req, list):
+        req = [req]
+
+    try:
+        for r in req:
+            if isinstance(r, list):
+                pma.add([PropertyArray.from_dict(pa) for pa in r])
+            else:
+                properties = policy.dict_to_properties(r)
+                pma.add(*policy.__merge_properties(properties))
+
+    except (policy.ImmutablePropertyError,) as e:
+        import code
+        code.interact(banner='>>> test here:', local=dict(globals(), **locals()))
+    return pma
+
+
+def process_request(reqs, num_candidates=10):
+    """Process JSON requests from NEAT logic"""
+    requests = []
+
+    # create initial set of candidates
+    for r in reqs:
+        requests.extend(r.expand())
 
     for r in requests:
         process_special_properties(r)
 
-    for r in requests:
-        # FIXME workaround
-        if 'pre_resolve' not in r:
-            logging.warning("skipping pre_resolve PM lookup")
-            # just add tag and return the requests, theses will be processed during the next round
-            for rr in requests:
-                p = policy.NEATProperty(('pre_resolve', True))
-                rr.add(p)
-            return requests
-
     print('Received %d NEAT requests' % len(requests))
+    for r in requests:
+        logging.debug(str(r))
+
+    pre_resolve = False
+    for r in requests:
+        try:
+            if r['__request_type'].value == 'pre-resolve':
+                pre_resolve = True
+        except KeyError:
+            pass
+
+        if pre_resolve:
+            # remove property from request
+            del r['__request_type']
+
+    if pre_resolve:
+        logging.warning("skipping pre_resolve PM lookup")
+        return requests
 
     candidates = []
 
@@ -183,6 +220,8 @@ def process_request(json_str, num_candidates=10):
 
         print('Profile lookup...')
         updated_requests = profiles.lookup(request, tag='(profile)')
+
+        print('    Profile lookup returned %d candidates:' % len(updated_requests))
         for ur in updated_requests:
             logging.debug("updated request %s" % (ur))
 
@@ -204,7 +243,22 @@ def process_request(json_str, num_candidates=10):
             for c in pib.lookup(candidate, tag=cand_id):
                 if c in candidates: continue
                 candidates.append(c)
-                logging.debug(c)
+        print('    Policy lookup returned %d candidates:' % len(candidates))
+
+    # post process candidates
+
+    # Each candidate must only contain a single transport protocol. Expand sets to individual candidates.
+    tmp_list = []
+    for candidate in candidates:
+        transport = candidate.get("transport").value
+        if isinstance(transport, set):
+            for t in transport:
+                c = deepcopy(candidate)
+                c["transport"].value = t
+                tmp_list.append(c)
+        else:
+            tmp_list.append(candidate)
+    candidates = tmp_list
 
     # TODO handle 'to_controller' property, wait for controller response
     candidates.sort(key=attrgetter('score'), reverse=True)
@@ -221,7 +275,6 @@ def process_request(json_str, num_candidates=10):
 
     # TODO check if candidates contain the minimum src/dst/transport tuple
     print(policy.term_separator())
-
     return top_candidates
 
 
@@ -285,17 +338,18 @@ class PMProtocol(asyncio.Protocol):
             self.transport.close()
             return
         else:
-            candidates = process_request(self.request.strip())
-
+            reqs = convert_json_request(self.request.strip())
+            if reqs:
+                candidates = process_request(reqs)
+            else:
+                candidates = []
         # create JSON string for NEAT logic reply
         try:
             j = [policy.properties_to_json(c) for c in candidates]
             candidates_json = '[' + ', '.join(j) + ']\n'
         except TypeError:
             return
-
         data = candidates_json.encode(encoding='utf-8')
-
         self.transport.write(data)
         self.transport.close()
 

@@ -12,6 +12,7 @@ Welcome to the NEAT documentation!
     Optional arguments <optargs>
     Properties <properties>
     Architecture <arch>
+    Policy Manager <pm_intro>
 
 .. toctree::
     :caption: API Reference

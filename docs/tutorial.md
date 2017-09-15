@@ -145,13 +145,13 @@ We will start writing the main function of our server. The first thing we need
 to do is to declare a few variables:
 
 ``` embed:: language::c
-../examples/minimal_server.c:44-48
+../examples/minimal_server.c:56-59
 ```
 
 And initialize them:
 
 ``` embed:: language::c
-../examples/minimal_server.c:50-52
+../examples/minimal_server.c:60-63
 ```
 
 We are already familiar with the flow and the context. `neat_init_ctx` is used
@@ -161,7 +161,7 @@ when certain events occur. We will use that next to tell which function we
 want NEAT to call when a client connects:
 
 ``` embed:: language::c
-../examples/minimal_server.c:55-56
+../examples/minimal_server.c:64-67
 ```
 
 The function `on_connected` has not been defined yet, we will do that later.
@@ -169,7 +169,7 @@ Now that we have told NEAT what to do with a connecting client, we are ready
 to accept incoming connections.
 
 ``` embed:: language::c
-../examples/minimal_server.c:58-61
+../examples/minimal_server.c:68-72
 ```
 
 This will instruct NEAT to start listening to incoming connections on port 5000.
@@ -181,7 +181,7 @@ The last function call we will do in main will be the one that starts the
 show:
 
 ``` embed:: language::c
-../examples/minimal_server.c:63-66
+../examples/minimal_server.c:73-74
 ```
 
 When this function is called, NEAT will start doing work behind the scenes.
@@ -191,7 +191,7 @@ also possible to run NEAT without having NEAT capture the main loop. Our final
 main function looks like this:
 
 ``` embed:: language::c
-../examples/minimal_server.c:44-66
+../examples/minimal_server.c:53-77
 ```
 
 We have now filled in the main function of our server application. It is time
@@ -199,7 +199,7 @@ to start working on the callbacks that NEAT will use. The first callback we
 need is `on_connected`.
 
 ``` embed:: language::c
-../examples/minimal_server.c:33-35
+../examples/minimal_server.c:43-44
 ```
 
 From the functional description above, we know that we need to write to
@@ -209,32 +209,32 @@ use to update the active callbacks of the flow. We set the `on_writable`
 callback so that we can start writing when the flow becomes writable:
 
 ``` embed:: language::c
-../examples/minimal_server.c:36-36
+../examples/minimal_server.c:46-46
 ```
 
 It is also good practice to set the `on_all_written` callback when setting the
 `on_writable` callback:
 
 ``` embed:: language::c
-../examples/minimal_server.c:37-37
+../examples/minimal_server.c:47-47
 ```
 
 The change is applied by calling `neat_set_operations`, just as in the main function:
 
 ``` embed:: language::c
-../examples/minimal_server.c:38-41
+../examples/minimal_server.c:48-48
 ```
 
 Next, we write the `on_writable` callback:
 
 ``` embed:: language::c
-../examples/minimal_server.c:19-21
+../examples/minimal_server.c:28-29
 ```
 
 Here, we call the function that will send our message:
 
 ``` embed:: language::c
-../examples/minimal_server.c:22-24
+../examples/minimal_server.c:31-33
 ```
 
 Here we specify the data to send and the length of the data.
@@ -245,13 +245,13 @@ pass `NULL` and `0`.
 The final callback we need to implement is the `on_all_written` callback:
 
 ``` embed:: language::c
-../examples/minimal_server.c:26-28
+../examples/minimal_server.c:36-37
 ```
 
 Here, we call `neat_close` to close the flow:
 
 ``` embed:: language::c
-../examples/minimal_server.c:29-31
+../examples/minimal_server.c:39-39
 ```
 
 This is the final piece of our server. You may now compile and run the server.
@@ -283,7 +283,7 @@ are connecting to a server, we change the `neat_accept` call to `neat_open` inst
 Next, we will specify a few properties for the flow:
 
 ``` embed:: language::c
-../examples/minimal_client.c:56-67
+../examples/minimal_client.c:61-72
 ```
 
 These properties will tell NEAT that it can select either SCTP or TCP as the
@@ -295,7 +295,7 @@ free any allocated resources and exit gracefully. The complete main function
 of the client will look like this:
 
 ``` embed:: language::c
-../examples/minimal_client.c:69-95
+../examples/minimal_client.c:74-101
 ```
 
 Leave the `on_connected` callback similar to the server.
@@ -303,14 +303,14 @@ Leave the `on_connected` callback similar to the server.
 We change the `on_writable` callback to send `"Hi!"` instead:
 
 ``` embed:: language::c
-../examples/minimal_client.c:30-35
+../examples/minimal_client.c:34-40
 ```
 
 The `on_all_written` callback should not close the flow, but instead stop
 writing and set the `on_readable` callback:
 
 ``` embed:: language::c
-../examples/minimal_client.c:37-44
+../examples/minimal_client.c:42-49
 ```
 
 Finally, we will write an `on_readable` callback for the client. We allocate
@@ -321,7 +321,7 @@ will eventually cause the call to `neat_start_event_loop` in the main function
 to return. The `on_readable` callback should look like this:
 
 ``` embed:: language::c
-../examples/minimal_client.c:13-28
+../examples/minimal_client.c:13-26
 ```
 
 And there we have our finished client! You can test it with `socat`:
@@ -347,7 +347,8 @@ the `on_writable` callback.
 The callbacks for the updated server is as follows:
 
 ``` embed:: language::c
-../examples/minimal_server2.c:16-68
+../examples/minimal_server2.c:17-70
 ```
 
 You may find the complete source for the updated server [here](https://github.com/NEAT-project/neat/blob/master/examples/minimal_server2.c).
+A minimal CMakeLists.txt for cmake can be found [here](https://gist.github.com/bozakov/26fbaabb2d94c25af69bf73977558f9e).

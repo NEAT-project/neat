@@ -11,6 +11,8 @@ import pmdefaults as PM
 from pmdefaults import *
 from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
 
+CIB_EXPIRED = 2
+
 
 class CIBEntryError(Exception):
     pass
@@ -111,7 +113,7 @@ class CIBNode(object):
             # does not expire
             self._expire = value
         elif time.time() > value:
-            raise CIBEntryError('ignoring expired CIB node')
+            raise CIBEntryError('ignoring expired CIB node', CIB_EXPIRED)
         else:
             self._expire = value
 
@@ -373,7 +375,10 @@ class CIB(object):
         try:
             cib_node = CIBNode(cs)
         except CIBEntryError as e:
-            logging.error("Unable to load CIB node %s: %s" % (filename, e))
+            if CIB_EXPIRED in e.args:
+                logging.debug("Ignoring CIB node %s: %s" % (filename, e.args[0]))
+                return
+            logging.error("Unable to load CIB node %s: %s" % (filename, e.args[0]))
             return
 
         cib_node.filename = filename
@@ -443,7 +448,7 @@ class CIB(object):
 
         with open(os.path.join(self.cib_dir, '%s' % filename), 'w') as f:
             f.write(slim)
-            logging.info("CIB entry saved as \"%s\"." % filename)
+            logging.debug("CIB entry saved as \"%s\"." % filename)
 
         self.reload_files()
 
@@ -470,12 +475,12 @@ class CIB(object):
             try:
                 # FIXME better check whether all input properties are included in row - improve matching
                 # ignore optional properties in input request
-                required_pa = PropertyArray(*(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
+                required_pa = PropertyArray(
+                    *(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
                 if len(required_pa & e) != len(required_pa):
                     continue
             except ImmutablePropertyError:
                 continue
-
             try:
                 candidate = e + input_properties
                 candidate.cib_node = e.cib_node

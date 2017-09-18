@@ -21,15 +21,19 @@ This is a list of known properties, to avoid ambiguity in the PM:
 | `remote_ip`          | integer/dotted IP | | |
 | `remote_name`        | domain name       | | |
 | `transport_ordered`  | true/false        | | |
-| `transport_type`     | stream or message | | |
-| `interface`          | eth0, en1, …      | local interface  | |
-| `interface_wired`    | true/false        | implies interface_wireless:false | |
-| `seamless_handover`  | true | | |
+| `transport_type`     | "stream" or "message" | | |
+| `interface`          | string | local interface, e.g., "eth0", "en1", …   | |
+| `interface_wired`    | true/false | implies interface_wireless:false | |
+| `seamless_handover`  | true/false | | |
 | `stream_count`       | 1 | | |
 | `flow_size_bytes` | integer           | number of bytes the flow intends to transfer | |
 | `flow_time_ms` | float | | |
 | `flow_group` | integer | | |
 | `flow_priority` | integer | | |
+| `multihoming` | true/false| implies SCTP? | |
+| `security` | true/false| ? | |
+| `local_ips` | true/false| currently only used for SCTP | using `local_ip` is preferred |
+
 
 
 

@@ -1,6 +1,5 @@
 # neat_close
-Initiates the closing procedure for a flow.
-
+Close this flow and free all associated data. If the peer still has data to send, it cannot be received anymore after this call. Data buffered by the NEAT layer which has not given to the network layer yet will be discarded.
 
 ### Syntax
 

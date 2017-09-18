@@ -22,7 +22,7 @@ get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
 {
     /* Call the os-specific TCP-info-gathering function and copy the outputs into the
      * relevant fields of the neat-generic tcp-info struct */
-    neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     memset(tcpinfo, 0, sizeof(struct neat_tcp_info));
 
@@ -53,7 +53,7 @@ static int collect_global_statistics(struct neat_ctx *ctx, struct neat_global_st
 /* Traverse the relevant subsystems of NEAT and gather the stats
    then format the stats as a json string to return */
 void
-neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
+nt_stats_build_json(struct neat_ctx *ctx, char **json_stats)
 {
     json_t *json_root, *protostat, *newflow;
     struct neat_flow *flow;
@@ -62,7 +62,7 @@ neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
     uint flowcount;
     char flow_name[128];
 
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     flowcount = 0;
     json_root = json_object();
@@ -82,7 +82,7 @@ neat_stats_build_json(struct neat_ctx *ctx, char **json_stats)
         json_object_set_new(newflow, "flow number",     json_integer( flowcount));
         json_object_set_new(newflow, "remote_host",     json_string(  flow->name ));
         json_object_set_new(newflow, "socket type",     json_integer( flow->socket->type ));
-        json_object_set_new(newflow, "sock_protocol",   json_integer( neat_stack_to_protocol(flow->socket->stack)));
+        json_object_set_new(newflow, "sock_protocol",   json_integer( nt_stack_to_protocol(flow->socket->stack)));
         json_object_set_new(newflow, "port",            json_integer( flow->port )) ;
         json_object_set_new(newflow, "ecn",            json_integer( flow->ecn ));
         json_object_set_new(newflow, "qos",            json_integer( flow->qos ));

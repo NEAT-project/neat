@@ -6,6 +6,9 @@ import uuid
 DEBUG = True
 UTF = True if sys.stdout.encoding == 'UTF-8' else False
 
+#enable caching of HE cib entries
+CIB_CACHE = True
+
 logging.addLevelName(logging.INFO, 'INF')
 logging.addLevelName(logging.ERROR, 'ERR')
 logging.addLevelName(logging.DEBUG, 'DBG')

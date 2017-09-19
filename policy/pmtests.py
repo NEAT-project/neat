@@ -8,7 +8,9 @@ from policy import *
 
 locale.setlocale(locale.LC_ALL, ('en', 'utf-8'))
 
-
+def gen_test_request():
+    test_request_str = '[{"remote_ip": {"precedence": 2,"value": "10.54.1.23"}, "port": {"precedence": 2, "value": 8080}, "__pre_resolve": {"value": true}, "transport": {"value": "reliable"}, "MTU": {"value": [1500, 9000]}, "low_latency": {"precedence": 1, "value": true}}]'
+    
 class PropertyTests(unittest.TestCase):
     # TODO extend tests
 
@@ -96,6 +98,15 @@ class PropertyTests(unittest.TestCase):
             pma.add(p)
         print(pma)
 
+    def test_property_nested_arrays(self):
+        pa = PropertyArray()
+
+        test_request_str = '[{"remote_ip": {"precedence": 2, "value": "10:54:1.23"}, [{"transport": ["value": "TCP"}}], "MTU": {"value": [1500, 9000]}, "low_latency": {"precedence": 2, "value": true}, "foo": {"banned": ["baz"]}}]'
+        pma = PropertyMultiArray()
+
+        #import code
+        #code.interact(banner='>>> test here:', local=dict(globals(), **locals()))
+
     def test_property_multi_array_creation_RENAME(self):
         """multiple requests (list)"""
         test_request_str = '[{"remote_ip": {"precedence": 2, "value": "10:54:1.23"}, "transport": [{"value": "TCP", "banned": ["UDP", "UDPLite"]}, {"value": "UDP"}]},  {"MTU": {"value": [1500, 9000]}, "low_latency": {"precedence": 2, "value": true}, "foo": {"banned": ["baz"]}}]'
@@ -135,8 +146,7 @@ class PropertyTests(unittest.TestCase):
         jresp = json.loads(resp.decode())
         for r in jresp:
             print(PropertyArray.from_dict(r))
-        #import code
-        #code.interact(banner='>>> test here:', local=dict(globals(), **locals()))
+        print("\n")
 
 
 if __name__ == "__main__":

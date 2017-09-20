@@ -408,7 +408,6 @@ class CIB(object):
         """
 
         # TODO optimize
-
         try:
             json_slim = json.loads(slim)
         except json.decoder.JSONDecodeError:
@@ -428,9 +427,9 @@ class CIB(object):
             print(e)
             return
 
-        # disable import of caching entries
-        if any(['cached' in i for i in cs.properties.expand()]) and PM.CIB_CACHE:
-            logging.debug('Ignoring cached CIB node')
+        # no not import cache nodes if disabled
+        if not PM.CIB_CACHE and any(['__cached' in p for p in cs.properties.expand()]):
+            logging.debug('Ignoring cache CIB node')
             return
 
         if uid is not None:

@@ -556,8 +556,14 @@ class PropertyArray(dict):
 
     @property
     def score(self):
+        """Return the sum of scores of all array properties that have their `evaluated` flag set."""
         return sum((s.score for s in self.values() if s.evaluated)), sum(
-            (s.score for s in self.values() if not s.evaluated))  # FIXME only if s.evaluated?
+            (s.score for s in self.values() if not s.evaluated))
+
+    @property
+    def uid(self):
+        # TODO generate UID for candidates
+        return 1234
 
     def dict(self):
         """ Return a dictionary containing all contained NEAT property attributes"""
@@ -584,7 +590,7 @@ def __merge_properties(properties):
 
     for k in keys:
         pa_list = [PropertyArray(p) for p in properties if p.key == k]
-        if len(pa_list)==1:
+        if len(pa_list) == 1:
             single_property_pa.add(pa_list[0][k])
         else:
             new_property_list.append(pa_list)

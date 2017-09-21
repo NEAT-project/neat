@@ -1,0 +1,38 @@
+#!/bin/bash
+# find-socket-functions: Grep for socket API function calls
+# 
+# Copyright (C) 2017 by Thomas Dreibholz
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Contact: dreibh@simula.no
+
+DIRECTORIES=$@
+FUNCTION_NAMES="accept bind close connect fcntl getpeername getsockname getsockopt ioctl listen pipe poll read recv recvfrom recvmsg select send sendmsg sendto setsockopt shutdown socket write"
+RULES_FILE="rules.grep"
+
+rm -f $RULES_FILE
+for fname in $FUNCTION_NAMES ; do
+   echo "[^a-zA-Z0-9_\.>]${fname}[[:space:]]*\([[:space:]]*[^)]" >>$RULES_FILE
+done
+
+for directory in $DIRECTORIES ; do
+   # NOTE:
+   # - The first grep for the rule set filters without colours.
+   # - The last grep for the rule set colorises the output.
+   grep -n -r -H -E -f $RULES_FILE $directory |\
+      grep -v -E "^[^:]*:[0-9]+:[[:space:]]*virtual[[:space:]]*.*=[[:space:]]*0[[:space:]]*;" |\
+      grep -v -E "^[^:]*:[0-9]+:[[:space:]]*(int |virtual |static |bool |size_t |ssize_t |void |string |srs_error_t )[^=]*$" |\
+      grep --color=auto -E -f $RULES_FILE
+done

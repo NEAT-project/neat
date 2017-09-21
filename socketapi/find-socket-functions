@@ -32,6 +32,6 @@ for directory in $DIRECTORIES ; do
    # - The first grep for the rule set filters without colours.
    # - The last grep for the rule set colorises the output.
    grep -n -r -E -f $RULES_FILE $directory |\
-      grep -v -E "^.*:[0-9]*:[[:space:]]*(int |virtual |static |bool |size_t |ssize_t |void |string |srs_error_t )" |\
+      grep -v -E "^.*:[0-9]*:[[:space:]]*(int |virtual |static |bool |size_t |ssize_t |void |string |srs_error_t )[^=]*$" |\
       grep --color=auto -E -f $RULES_FILE
 done

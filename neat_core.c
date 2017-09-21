@@ -1977,11 +1977,12 @@ send_result_connection_attempt_to_pm(neat_ctx *ctx, neat_flow *flow, struct cib_
         socket_path = socket_path_buf;
     }
 
-    prop_obj = json_pack("{s:{ss},s:{ss},s:{si},s:{sbsisi}}",
+    prop_obj = json_pack("{s:{s:s},s:{s:s},s:{s:i},s:{s:b,s:i},s:{s:b}}",
         "transport", "value", stack_to_string(he_res->transport ),
         "remote_ip", "value", he_res->remote_ip,
-        "remote_port", "value", he_res->remote_port,
-        "cached", "value", 1, "precedence", 2, "score", 5);
+        "port", "value", he_res->remote_port,
+        "__he_candidate_success", "value", result, "score", result?5:-5,
+        "__cached", "value", 1);
     if (prop_obj == NULL) {
         goto end;
     }

@@ -67,7 +67,7 @@ if args.rest:
     PM.REST_ENABLE = args.rest
 
 PM.CIB_CACHE = args.no_cache
-print (PM.CIB_CACHE)
+
 try:
     os.makedirs(os.path.dirname(PM.DOMAIN_SOCK), exist_ok=True)
     os.makedirs(os.path.dirname(PM.PIB_SOCK), exist_ok=True)

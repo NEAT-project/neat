@@ -285,6 +285,8 @@ void nsa_freepaddrs(struct sockaddr* addrs);
 /* ====== Miscellaneous ================================================== */
 int nsa_open(const char* pathname, int flags, mode_t mode);
 int nsa_creat(const char* pathname, mode_t mode);
+off_t nsa_lseek(int fd, off_t offset, int whence);
+off64_t nsa_lseek64(int fd, off64_t offset, int whence);
 int nsa_pipe(int fds[2]);
 int nsa_ioctl(int fd, int request, const void* argp);
 

@@ -286,7 +286,11 @@ void nsa_freepaddrs(struct sockaddr* addrs);
 int nsa_open(const char* pathname, int flags, mode_t mode);
 int nsa_creat(const char* pathname, mode_t mode);
 off_t nsa_lseek(int fd, off_t offset, int whence);
+int nsa_ftruncate(int fd, off_t length);
+#ifdef _LARGEFILE64_SOURCE
 off64_t nsa_lseek64(int fd, off64_t offset, int whence);
+int nsa_ftruncate64(int fd, off64_t length);
+#endif
 int nsa_pipe(int fds[2]);
 int nsa_ioctl(int fd, int request, const void* argp);
 

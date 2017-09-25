@@ -46,7 +46,7 @@
 #include <netdb.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
-#if defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
+#if defined(HAVE_NETINET_SCTP_H)
 #include <netinet/sctp.h>
 #endif
 
@@ -819,7 +819,7 @@ int nsa_creat(const char* pathname, mode_t mode)
 
 
 /* ###### NEAT lseek() implementation #################################### */
-off_t nsa_lseek(int fd, off_t offset, int whence);
+off_t nsa_lseek(int fd, off_t offset, int whence)
 {
    GET_NEAT_SOCKET(fd)
    if(neatSocket->ns_flow != NULL) {
@@ -832,8 +832,9 @@ off_t nsa_lseek(int fd, off_t offset, int whence);
 }
 
 
+#ifdef _LARGEFILE64_SOURCE
 /* ###### NEAT lseek64() implementation ################################## */
-off64_t nsa_lseek64(int fd, off64_t offset, int whence);
+off64_t nsa_lseek64(int fd, off64_t offset, int whence)
 {
    GET_NEAT_SOCKET(fd)
    if(neatSocket->ns_flow != NULL) {
@@ -844,6 +845,7 @@ off64_t nsa_lseek64(int fd, off64_t offset, int whence);
       return(lseek64(neatSocket->ns_socket_sd, offset, whence));
    }
 }
+#endif
 
 
 /* ###### NEAT ftruncate() implementation ################################ */

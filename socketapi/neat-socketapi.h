@@ -274,11 +274,10 @@ ssize_t nsa_recvv(int sockfd, struct iovec* iov, int iovcnt,
 int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout);
 int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
                struct timeval* timeout);
-
 int nsa_epoll_create(int size);
+int nsa_epoll_create1(int flags);
 int nsa_epoll_ctl(int epfd, int op, int fd, struct epoll_event* event);
 int nsa_epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout);
-int nsa_epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
 int nsa_epoll_pwait(int epfd, struct epoll_event *events, int maxevents,
                     int timeout, const sigset_t* ss);
 

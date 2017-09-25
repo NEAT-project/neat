@@ -224,3 +224,39 @@ int nsa_select(int             n,
 
    return(result);
 }
+
+
+/* ###### NEAT epoll_create() implementation ############################# */
+int nsa_epoll_create(int size)
+{
+   abort();
+}
+
+
+/* ###### NEAT select() implementation ################################### */
+int nsa_epoll_ctl(int epfd, int op, int fd, struct epoll_event* event)
+{
+   abort();   
+}
+
+
+/* ###### NEAT epoll_ctl() implementation ################################ */
+int nsa_epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout)
+{
+   abort();
+}
+
+
+/* ###### NEAT epoll_wait() implementation ############################### */
+int nsa_epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
+{
+   abort();
+}
+
+
+/* ###### NEAT epoll_waitp() implementation ############################## */
+int nsa_epoll_pwait(int epfd, struct epoll_event *events, int maxevents,
+                    int timeout, const sigset_t* ss)
+{
+   abort();
+}

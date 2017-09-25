@@ -234,7 +234,7 @@ int nsa_epoll_create(int size)
 
 
 /* ###### NEAT epoll_create1() implementation ############################ */
-int nsa_epoll_create(int flags)
+int nsa_epoll_create1(int flags)
 {
    abort();
 }

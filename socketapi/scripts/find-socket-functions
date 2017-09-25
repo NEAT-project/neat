@@ -19,7 +19,7 @@
 # Contact: dreibh@simula.no
 
 DIRECTORIES=$@
-FUNCTION_NAMES="accept bind close connect creat fcntl ftruncate ftruncate64 getpeername getsockname getsockopt ioctl listen lseek lseek64 open pipe poll read recv recvfrom recvmsg recvv select send sendmsg sendto sendv setsockopt shutdown socket write"
+FUNCTION_NAMES="accept bind close connect creat epoll_create epoll_create1 epoll_ctl epoll_pwait epoll_wait fcntl ftruncate ftruncate64 getpeername getsockname getsockopt ioctl listen lseek lseek64 open pipe poll read recv recvfrom recvmsg recvv select send sendmsg sendto sendv setsockopt shutdown socket write"
 RULES_FILE="rules.grep"
 
 

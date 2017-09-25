@@ -1,5 +1,5 @@
 Name: libneat
-Version: 0.0.1~td161
+Version: 0.0.1~td170
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -147,8 +147,6 @@ make install DESTDIR=%{buildroot}
 
 %files devel
 /usr/include/neat.h
-/usr/include/neat_linux.h
-/usr/include/neat_queue.h
 /usr/lib/libneat-static.a
 /usr/lib/libneat[^\-]*so
 
@@ -168,6 +166,8 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat/minimal_client
 /usr/lib/libneat/minimal_server
 /usr/lib/libneat/minimal_server2
+/usr/lib/libneat/client_dtls_echo
+/usr/lib/libneat/server_dtls_echo
 
 %files socketapi
 %defattr(-,root,root,-)

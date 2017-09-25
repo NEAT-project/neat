@@ -20,7 +20,7 @@
 
 if [ $# -ne 1 ] ; then
    echo >&2 "Usage: $0 file:line_number"
-   exit 1   
+   exit 1
 fi
 
 FILE=`echo "$1" | awk -F ":" '{ print $1 }'`

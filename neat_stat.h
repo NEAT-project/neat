@@ -37,6 +37,7 @@ struct neat_flow_statistics {
 struct neat_global_statistics {
     uint64_t global_bytes_sent;
     uint64_t global_bytes_received;
+    uint32_t flowcount;
 };
 
 void nt_stats_build_json(struct neat_ctx *ctx, char **json_stats);

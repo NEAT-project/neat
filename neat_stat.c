@@ -16,28 +16,6 @@
     #include "neat_bsd_internal.h"
 #endif
 
-void on_pm_stats_report(uv_timer_t *handle)
-{
-    struct neat_ctx *ctx;
-    ctx = (struct neat_ctx *)handle->data;
-
-    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
-
-}
-
-/* Initialise periodic reporting of statistics to the CIB to provide
- * system-wide statistics to admins and for PM decisionmaking purposes */
-void nt_pm_stats_init(struct neat_ctx *ctx)
-{
-    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
-    uv_timer_init(ctx->loop, &(ctx->pm_stats_interval_handle));
-    ctx->pm_stats_interval_handle.data = ctx;
-    uv_timer_start(&(ctx->pm_stats_interval_handle),
-                   on_pm_stats_report,
-                   NEAT_PM_STAT_REPORT_INTERVAL,
-                   NEAT_PM_STAT_REPORT_INTERVAL);
-}
-
 /* This function assumes it is only called when the flow is a TCP flow */
 static int
 get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
@@ -55,11 +33,9 @@ get_tcp_info(neat_flow *flow, struct neat_tcp_info *tcpinfo)
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
     return bsd_get_tcp_info(flow, tcpinfo);
 #else
-    // TODO: implement error reporting for not-supported OSes
+    // TODO: implement error reporting for unsupported OSes
 
 #endif
-
-
     return RETVAL_FAILURE;
 }
 
@@ -70,6 +46,7 @@ static int collect_global_statistics(struct neat_ctx *ctx, struct neat_global_st
     LIST_FOREACH(flow, &ctx->flows, next_flow) {
         gstats->global_bytes_received += flow->flow_stats.bytes_received;
         gstats->global_bytes_sent += flow->flow_stats.bytes_sent;
+        gstats->flowcount++;
     }
 
     return NEAT_OK;
@@ -162,7 +139,7 @@ nt_stats_build_json(struct neat_ctx *ctx, char **json_stats)
     }
     /* Global statistics */
     json_object_set_new( json_root, "ctx_id",     json_integer( getpid()));
-    json_object_set_new( json_root, "Number of flows", json_integer( flowcount ));
+    json_object_set_new( json_root, "Number of flows", json_integer( gstats.flowcount));
     json_object_set_new( json_root, "Total bytes sent", json_integer(gstats.global_bytes_sent));
     json_object_set_new( json_root, "Total bytes received", json_integer(gstats.global_bytes_received));
 
@@ -173,3 +150,78 @@ nt_stats_build_json(struct neat_ctx *ctx, char **json_stats)
 
     return;
 }
+
+void pm_send_global_stats(struct neat_ctx *ctx)
+{
+    json_t *json_root, *properties;
+    char uidstring[20];
+    struct neat_global_statistics gstats;
+
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+    json_root = json_object();
+
+    memset(&gstats, 0, sizeof(struct neat_global_statistics));
+    collect_global_statistics(ctx, &gstats);
+    sprintf(uidstring ,"ctx_%i", getpid());
+    json_object_set_new( json_root, "uid", json_string(uidstring));
+    json_object_set_new( json_root, "type", json_string("statistics"));
+
+    properties = json_object();
+
+    json_object_set_new( properties, "num_flows", json_integer( gstats.flowcount ));
+    json_object_set_new( properties, "bytes_sent", json_integer(gstats.global_bytes_sent));
+    json_object_set_new( properties, "bytes_recvd", json_integer(gstats.global_bytes_received));
+
+    json_object_set_new(json_root, "properties", properties);
+
+    json_dumpf(json_root, stdout, JSON_INDENT(4));
+
+    free(json_root);
+}
+
+void pm_send_flow_stats(struct neat_ctx *ctx)
+{
+    //json_t *json_root, *pmflowstats;
+    //struct neat_tcp_info *neat_tcpi
+
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+    // json_root = json_object();
+
+}
+
+
+void on_pm_stats_report(uv_timer_t *handle)
+{
+    //struct neat_flow *flow;
+    struct neat_ctx *ctx;
+
+    ctx = (struct neat_ctx *)handle->data;
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+    // iterate through flows
+    //LIST_FOREACH(flow, &ctx->flows, next_flow){
+    //    pm_send_flow_stats(ctx);
+    //}
+
+    // Generate Json CIB entry for each flow
+
+    /* generate global statistics CIB entry */
+    pm_send_global_stats(ctx);
+}
+
+/* Initialise periodic reporting of statistics to the CIB to provide
+ * system-wide statistics to admins and for PM decisionmaking purposes */
+    void nt_pm_stats_init(struct neat_ctx *ctx)
+    {
+        nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+        uv_timer_init(ctx->loop, &(ctx->pm_stats_interval_handle));
+        ctx->pm_stats_interval_handle.data = ctx;
+        uv_timer_start(&(ctx->pm_stats_interval_handle),
+                       on_pm_stats_report,
+                       NEAT_PM_STAT_REPORT_INTERVAL,
+                       NEAT_PM_STAT_REPORT_INTERVAL);
+    }
+
+

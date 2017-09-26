@@ -6,6 +6,9 @@
 #include <jansson.h>
 #include "neat_internal.h"
 
+/* Interval (ms) between each statistics report to the CIB */
+#define NEAT_PM_STAT_REPORT_INTERVAL 15000
+
 /* Stats to provide to NEAT about a given TCP flow.
  * TODO: Choose the right subset of stats */
 struct neat_tcp_info {
@@ -36,5 +39,7 @@ struct neat_global_statistics {
 };
 
 void nt_stats_build_json(struct neat_ctx *ctx, char **json_stats);
+
+void nt_pm_stats_init(struct neat_ctx *ctx);
 
 #endif

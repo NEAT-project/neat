@@ -170,7 +170,8 @@ neat_init_ctx()
                    1000 * NEAT_ADDRESS_LIFETIME_TIMEOUT,
                    1000 * NEAT_ADDRESS_LIFETIME_TIMEOUT);
     nt_security_init(nc);
-#if defined(USRSCTP_SUPPORT)
+    nt_pm_stats_init(nc);
+    #if defined(USRSCTP_SUPPORT)
     if (usr_intern.num_ctx == 0) {
         nt_usrsctp_init(nc);
     }

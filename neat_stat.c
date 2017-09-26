@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <zconf.h>
 
 #include "neat_internal.h"
 #include "neat_core.h"
@@ -15,6 +16,27 @@
     #include "neat_bsd_internal.h"
 #endif
 
+void on_pm_stats_report(uv_timer_t *handle)
+{
+    struct neat_ctx *ctx;
+    ctx = (struct neat_ctx *)handle->data;
+
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+}
+
+/* Initialise periodic reporting of statistics to the CIB to provide
+ * system-wide statistics to admins and for PM decisionmaking purposes */
+void nt_pm_stats_init(struct neat_ctx *ctx)
+{
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    uv_timer_init(ctx->loop, &(ctx->pm_stats_interval_handle));
+    ctx->pm_stats_interval_handle.data = ctx;
+    uv_timer_start(&(ctx->pm_stats_interval_handle),
+                   on_pm_stats_report,
+                   NEAT_PM_STAT_REPORT_INTERVAL,
+                   NEAT_PM_STAT_REPORT_INTERVAL);
+}
 
 /* This function assumes it is only called when the flow is a TCP flow */
 static int
@@ -139,6 +161,7 @@ nt_stats_build_json(struct neat_ctx *ctx, char **json_stats)
         }
     }
     /* Global statistics */
+    json_object_set_new( json_root, "ctx_id",     json_integer( getpid()));
     json_object_set_new( json_root, "Number of flows", json_integer( flowcount ));
     json_object_set_new( json_root, "Total bytes sent", json_integer(gstats.global_bytes_sent));
     json_object_set_new( json_root, "Total bytes received", json_integer(gstats.global_bytes_received));

@@ -77,6 +77,7 @@ struct neat_ctx
     struct neat_cib cib;
     struct neat_flow_list_head flows;
     uv_timer_t addr_lifetime_handle;
+    uv_timer_t pm_stats_interval_handle;
 
     // PvD
     struct neat_pvd* pvd;

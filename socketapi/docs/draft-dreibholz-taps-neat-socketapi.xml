@@ -7,7 +7,7 @@
 <?rfc strict="no" ?>
 <?rfc symrefs="no" ?>
 
-<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-01.txt">
+<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-02.txt">
 
 <?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
 
@@ -35,7 +35,7 @@ NEAT Sockets API
 </address>
 </author>
 
-<date day="04" month="July" year="2017" />
+<date day="29" month="September" year="2017" />
 <keyword>Internet-Draft</keyword>
 
 <abstract>
@@ -133,6 +133,15 @@ int nsa_socket(int domain, int type, int protocol,
  <t>Return Value:</t>
  <t>nsa_socket() returns the NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
  <t>See the socket() documentation for details.</t>
+</section>
+
+<section title="nsa_socketpair()">
+ <t>nsa_socketpair() is a wrapper around the socketpair() call, returning NEAT socket descriptors instead. Note, that socketpair() only supports AF_UNIX sockets, i.e. this function is just a wrapper for the system function.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_socketpair(int domain, int type, int protocol,
+                   const char* properties)</artwork></figure>
+ <t>See the socketpair() documentation for details.</t>
 </section>
 
 <section title="nsa_close()">
@@ -795,6 +804,22 @@ int nsa_open(const char* pathname, int flags, mode_t mode)</artwork></figure>
  <figure><artwork>
 int nsa_creat(const char* pathname, mode_t mode)</artwork></figure>
  <t>See the creat() documentation for details.</t>
+</section>
+
+<section title="nsa_lseek()">
+ <t>nsa_lseek() is a wrapper around the lseek() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+off_t nsa_lseek(int fd, off_t offset, int whence)</artwork></figure>
+ <t>See the lseek() documentation for details.</t>
+</section>
+
+<section title="nsa_truncate()">
+ <t>nsa_truncate() is a wrapper around the truncate() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_ftruncate(int fd, off_t length)</artwork></figure>
+ <t>See the truncate() documentation for details.</t>
 </section>
 
 <section title="nsa_pipe()">

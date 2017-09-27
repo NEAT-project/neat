@@ -46,7 +46,7 @@
 #include <netdb.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
-#if defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
+#if defined(HAVE_NETINET_SCTP_H)
 #include <netinet/sctp.h>
 #endif
 

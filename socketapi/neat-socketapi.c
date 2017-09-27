@@ -112,6 +112,36 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
 }
 
 
+/* ###### NEAT nsa_socketpair() implementation ########################### */
+int nsa_socketpair(int domain, int type, int protocol, int sv[2], const char* properties)
+{
+   if(nsa_initialize() != NULL) {
+      int sysFDs[2];
+      if(socketpair(domain, type, protocol, (int*)&sysFDs) == 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         sv[0] = nsa_socket_internal(0, 0, 0, sysFDs[0], NULL, -1);
+         if(sv[0] >= 0) {
+            sv[1] = nsa_socket_internal(0, 0, 0, sysFDs[1], NULL, -1);
+            if(sv[1] >= 0) {
+               pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+               return(0);
+            }
+            nsa_close(sv[0]);
+            sv[0] = -1;
+         }
+         errno = ENOMEM;
+         close(sysFDs[0]);
+         close(sysFDs[1]);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      }
+   }
+   else {
+      errno = ENXIO;
+   }
+   return(-1);
+}
+
+
 /* ###### NEAT close() implementation #################################### */
 int nsa_close(int sockfd)
 {

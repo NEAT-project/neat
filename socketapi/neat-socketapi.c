@@ -858,6 +858,66 @@ int nsa_creat(const char* pathname, mode_t mode)
 }
 
 
+/* ###### NEAT lseek() implementation #################################### */
+off_t nsa_lseek(int fd, off_t offset, int whence)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(lseek(neatSocket->ns_socket_sd, offset, whence));
+   }
+}
+
+
+#ifdef _LARGEFILE64_SOURCE
+/* ###### NEAT lseek64() implementation ################################## */
+off64_t nsa_lseek64(int fd, off64_t offset, int whence)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(lseek64(neatSocket->ns_socket_sd, offset, whence));
+   }
+}
+#endif
+
+
+/* ###### NEAT ftruncate() implementation ################################ */
+int nsa_ftruncate(int fd, off_t length)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(ftruncate(neatSocket->ns_socket_sd, length));
+   }
+}
+
+
+#ifdef _LARGEFILE64_SOURCE
+/* ###### NEAT ftruncate64() implementation ############################## */
+int nsa_ftruncate64(int fd, off64_t length)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(ftruncate64(neatSocket->ns_socket_sd, length));
+   }
+}
+#endif
+
+
 /* ###### NEAT ioctl() implementation #################################### */
 int nsa_ioctl(int fd, int request, const void* argp)
 {

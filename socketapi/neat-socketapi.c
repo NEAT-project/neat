@@ -46,7 +46,7 @@
 #include <netdb.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
-#if defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
+#if defined(HAVE_NETINET_SCTP_H)
 #include <netinet/sctp.h>
 #endif
 
@@ -801,23 +801,28 @@ int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
 /* ###### NEAT open() implementation ##################################### */
 int nsa_open(const char* pathname, int flags, mode_t mode)
 {
-   const int fd = open(pathname, flags, mode);
-   if(fd >= 0) {
-      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   if(nsa_initialize() != NULL) {
+      const int fd = open(pathname, flags, mode);
+      if(fd >= 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
-      int       result;
-      const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
-      if(newFD >= 0) {
-         result = newFD;
-      }
-      else {
-         errno = ENOMEM;
-         close(fd);
-         result = -1;
-      }
+         int       result;
+         const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
+         if(newFD >= 0) {
+            result = newFD;
+         }
+         else {
+            errno = ENOMEM;
+            close(fd);
+            result = -1;
+         }
 
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-      return(result);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         return(result);
+      }
+   }
+   else {
+      errno = ENXIO;
    }
    return(-1);
 }
@@ -826,23 +831,28 @@ int nsa_open(const char* pathname, int flags, mode_t mode)
 /* ###### NEAT creat() implementation #################################### */
 int nsa_creat(const char* pathname, mode_t mode)
 {
-   const int fd = creat(pathname, mode);
-   if(fd >= 0) {
-      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   if(nsa_initialize() != NULL) {
+      const int fd = creat(pathname, mode);
+      if(fd >= 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
-      int       result;
-      const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
-      if(newFD >= 0) {
-         result = newFD;
-      }
-      else {
-         errno = ENOMEM;
-         close(fd);
-         result = -1;
-      }
+         int       result;
+         const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
+         if(newFD >= 0) {
+            result = newFD;
+         }
+         else {
+            errno = ENOMEM;
+            close(fd);
+            result = -1;
+         }
 
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-      return(result);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         return(result);
+      }
+   }
+   else {
+      errno = ENXIO;
    }
    return(-1);
 }
@@ -865,23 +875,28 @@ int nsa_ioctl(int fd, int request, const void* argp)
 /* ###### NEAT pipe() implementation ##################################### */
 int nsa_pipe(int fds[2])
 {
-   int sysFDs[2];
-   if(pipe((int*)&sysFDs) == 0) {
-      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-      fds[0] = nsa_socket_internal(0, 0, 0, sysFDs[0], NULL, 0);
-      if(fds[0] >= 0) {
-         fds[1] = nsa_socket_internal(0, 0, 0, sysFDs[1], NULL, 0);
-         if(fds[1] >= 0) {
-            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-            return(0);
+   if(nsa_initialize() != NULL) {
+      int sysFDs[2];
+      if(pipe((int*)&sysFDs) == 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         fds[0] = nsa_socket_internal(0, 0, 0, sysFDs[0], NULL, -1);
+         if(fds[0] >= 0) {
+            fds[1] = nsa_socket_internal(0, 0, 0, sysFDs[1], NULL, -1);
+            if(fds[1] >= 0) {
+               pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+               return(0);
+            }
+            nsa_close(fds[0]);
+            fds[0] = -1;
          }
-         nsa_close(fds[0]);
-         fds[0] = -1;
+         errno = ENOMEM;
+         close(sysFDs[0]);
+         close(sysFDs[1]);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
       }
-      errno = ENOMEM;
-      close(sysFDs[0]);
-      close(sysFDs[1]);
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   }
+   else {
+      errno = ENXIO;
    }
    return(-1);
 }

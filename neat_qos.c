@@ -76,6 +76,12 @@ neat_set_qos(struct neat_ctx *ctx, struct neat_flow *flow, uint8_t qos)
 }
 
 neat_error_code
+neat_get_qos(struct neat_ctx *ctx, struct neat_flow *flow)
+{
+    return flow->qos = qos;
+}
+
+neat_error_code
 neat_set_ecn(struct neat_ctx *ctx, struct neat_flow *flow, uint8_t ecn)
 {
     flow->ecn = 0x03 & ecn;

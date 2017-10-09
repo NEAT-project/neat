@@ -17,6 +17,7 @@ import policy
 from cib import CIB
 from pib import PIB
 from policy import PropertyMultiArray, PropertyArray
+import pvd
 
 try:
     resthelper_loaded = True
@@ -34,6 +35,7 @@ parser = argparse.ArgumentParser(description='NEAT Policy Manager')
 parser.add_argument('--cib', type=str, default=None, help='specify directory in which to look for CIB files')
 parser.add_argument('--pib', type=str, default=None, help='specify directory in which to look for PIB files')
 parser.add_argument('--sock', type=str, default=None, help='set path for Unix domain sockets')
+parser.add_argument('--pvd', type=str, default=None, help='pvd server ip (comma separated list)')
 parser.add_argument('--controller', type=str, default=None, help='set URL of controller REST API')
 parser.add_argument('--rest-ip', type=str, default=None, help='set local management IP:PORT for external REST calls')
 parser.add_argument('--debug', action='store_true', help='enable debugging')
@@ -59,6 +61,12 @@ if args.rest_ip:
     PM.REST_IP = ip_port[0]
     if len(ip_port) > 1:
         PM.REST_PORT = int(ip_port[1])
+if args.pvd:
+    for host in args.pvd.split(','):
+        pvd_ip = host.split(':')
+        PM.PVD_HOSTS.append(pvd_ip[0])
+        #if len(ip_port) > 1:       #TODO: Add setting pvd host ports
+        #   PM.REST_PORT = int(ip_port[1])
 if args.debug:
     PM.DEBUG = args.debug
     if PM.DEBUG:
@@ -394,6 +402,11 @@ if __name__ == "__main__":
     # Generate CIB nodes for local interfaces (if possible)
     if resthelper_loaded:
         for slim in resthelper.gen_cibs():
+            cib.import_json(slim)
+
+    # Generate CIB nodes for pvd interfaces
+    if PM.PVD_HOSTS:
+        for slim in pvd.gen_cibs(PM.PVD_HOSTS):
             cib.import_json(slim)
 
     profiles = PIB(PM.PIB_DIR, file_extension='.profile')

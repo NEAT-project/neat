@@ -26,6 +26,7 @@ PIB_SOCK_NAME = 'neat_pib_socket'
 CIB_SOCK_NAME = 'neat_cib_socket'
 DOMAIN_SOCK_NAME = 'neat_pm_socket'
 
+PVD_HOSTS = []
 
 def update_log_level(level):
     if level == 0:

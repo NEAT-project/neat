@@ -87,7 +87,7 @@ Requires: %{name} = %{version}-%{release}
  features as they evolve.
  This package contains the library for the NEAT Sockets API.
 
- 
+
 %package socketapi-devel
 Summary: NEAT (Socket API Development Files)
 Group: Development/Libraries
@@ -168,6 +168,10 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat/minimal_server2
 /usr/lib/libneat/client_dtls_echo
 /usr/lib/libneat/server_dtls_echo
+
+%files socketapi
+%defattr(-,root,root,-)
+/usr/lib/libneat-socketapi.so*
 
 %files socketapi
 %defattr(-,root,root,-)

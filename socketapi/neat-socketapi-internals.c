@@ -464,6 +464,16 @@ int nsa_socket_internal(int domain, int type, int protocol,
       neatSocket->ns_socket_sd = customFD;
    }
 
+   /* ====== Set socket into non-blocking mode =========================== */
+   if(neatSocket->ns_socket_sd >= 0) {
+      // Do not change blocking mode for stdout, stderr and stdin.
+      if( (neatSocket->ns_socket_sd != STDOUT_FILENO) &&
+          (neatSocket->ns_socket_sd != STDERR_FILENO) &&
+          (neatSocket->ns_socket_sd != STDIN_FILENO) ) {
+         set_non_blocking(neatSocket->ns_socket_sd);
+      }
+   }
+
    /* ====== Initialize NEAT socket ====================================== */
    rbt_node_new(&neatSocket->ns_node);
    es_new(&neatSocket->ns_read_signal, NULL);

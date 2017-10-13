@@ -106,7 +106,7 @@ void freepaddrs(struct sockaddr* addrs);
 
 /* ====== Miscellaneous ================================================== */
 int open(const char* pathname, int flags, ...)
-{   
+{
    va_list args;
    va_start(args, flags);
    int result = nsa_open(pathname, flags, __builtin_va_arg_pack());

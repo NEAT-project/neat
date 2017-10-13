@@ -19,7 +19,7 @@ void vtest1(const char* text, ...)
    }
    va_end(list);
 
-   puts("");      
+   puts("");
 }
 
 extern inline void vtest2(const char* text, ...)
@@ -29,7 +29,7 @@ extern inline void vtest2(const char* text, ...)
 //    va_start(list, text);
 //    va_copy(list, list2);
    vtest1(text, __builtin_va_arg_pack ());
-//    va_end(list);   
+//    va_end(list);
 }
 
 
@@ -38,9 +38,9 @@ int main(int argc, char** argv)
    puts("Hello World!");
    vtest1("Test", 1, 2, 3, 0);
    vtest2("Test", 5, 4, 3, 2, 1, 0);
-   
+
    int fd = open("/tmp/x0.txt", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-   printf("fd=%d\n", fd);   
+   printf("fd=%d\n", fd);
    if(fd > 0) {
       ssize_t w = write(fd, "Test", 4);
       if(w < 0) { puts("Write Error!"); }

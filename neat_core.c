@@ -2151,8 +2151,12 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 #ifdef MPTCP_SUPPORT
         if (candidate->pollable_socket->stack == NEAT_STACK_MPTCP) {
             int mptcp_enabled = 0;
-            unsigned int len_mp = sizeof(mptcp_enabled);
-            getsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_enabled, &len_mp);
+            if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_ENABLED) {
+                mptcp_enabled = 1;
+            } else if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_APP_CTRL) {
+                unsigned int len_mp = sizeof(mptcp_enabled);
+                getsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_enabled, &len_mp);
+            }
 
             if (!mptcp_enabled) {
                 uv_poll_stop(handle);
@@ -2177,7 +2181,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
                 return;
             }
         }
-#endif
+#endif // MPTCP_SUPPORT
         flow->hefirstConnect = 0;
         nt_log(ctx, NEAT_LOG_DEBUG, "First successful connect (flow->hefirstConnect)");
 
@@ -2562,7 +2566,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 
     newFlow->ctx                = ctx;
     newFlow->isServer           = 1;
-    newFlow->isSCTPMultihoming  = flow->isSCTPMultihoming;
+    newFlow->isMultihoming      = flow->isMultihoming;
     newFlow->security_needed    = flow->security_needed;
     newFlow->eofSeen            = 0;
 
@@ -2982,7 +2986,7 @@ static void
 combine_candidates(neat_flow *flow, struct neat_he_candidates *candidate_list)
 {
     struct neat_he_candidate *candidate = NULL;
-    if (!flow->isSCTPMultihoming) {
+    if (!flow->isMultihoming) {
         return;
     }
 
@@ -3097,7 +3101,7 @@ on_pm_reply_post_resolve(neat_ctx *ctx, neat_flow *flow, json_t *json)
                candidate->pollable_socket->family == AF_INET6);
     }
 
-    if (flow->isSCTPMultihoming) {
+    if (flow->isMultihoming) {
         combine_candidates(flow, candidate_list);
     }
     json_decref(json);
@@ -4002,9 +4006,9 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
         (val = json_object_get(multihoming, "value")) != NULL &&
         json_typeof(val) == JSON_TRUE)
     {
-        flow->isSCTPMultihoming = 1;
+        flow->isMultihoming = 1;
     } else {
-        flow->isSCTPMultihoming = 0;
+        flow->isMultihoming = 0;
     }
 
     if ((transport_type = json_object_get(flow->properties, "transport_type")) != NULL &&
@@ -5247,6 +5251,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     const char *algo;
 #endif
     int enable = 1;
+    int disable = 0;
     int retval;
     socklen_t len = 0;
     int size = 0, protocol;
@@ -5313,17 +5318,43 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
 #if defined(MPTCP_SUPPORT)
     if (nt_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_MPTCP) {
-        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &enable, sizeof(int)) < 0) {
-            nt_log(ctx, NEAT_LOG_WARNING, "Could not use MPTCP over for socket %d", candidate->pollable_socket->fd);
-            return -2;
+        if (candidate->pollable_socket->flow->isMultihoming) {
+            // We fail MPTCP candidate in case MPTCP is not supported (no fallback to TCP)
+            if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_DISABLED) {
+                nt_log(ctx, NEAT_LOG_WARNING, "Could not use MPTCP over for socket %d, MPTCP globaly disabled", candidate->pollable_socket->fd);
+                return -2;
+            } else if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_APP_CTRL) {
+                if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &enable, sizeof(int)) < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Could not use MPTCP over for socket %d, setsockopt failed", candidate->pollable_socket->fd);
+                    return -2;
+                }
+            }
+        } else {
+            // For disabled multihoming, MPTCP silently falls back to TCP
+            if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_ENABLED) {
+                nt_log(ctx, NEAT_LOG_WARNING, "Could not disable MPTCP for socket %d, MPTCP globaly enabled", candidate->pollable_socket->fd);
+                return -2;
+            } else if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_APP_CTRL) {
+                if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &disable, sizeof(int)) < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Could not disable MPTCP for socket %d, setsockopt failed", candidate->pollable_socket->fd);
+                    return -2;
+                }
+            }
         }
     } else if (nt_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_TCP) {
-        int mptcp_disable = 0;
-        setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_disable, sizeof(int));
+        if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_ENABLED) {
+            nt_log(ctx, NEAT_LOG_WARNING, "Could not use TCP over for socket %d, MPTCP globaly enabled", candidate->pollable_socket->fd);
+            return -2;
+        } else if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_APP_CTRL) {
+            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &disable, sizeof(int)) < 0) {
+                nt_log(ctx, NEAT_LOG_WARNING, "Could not disable MPTCP for socket %d, setsockopt failed", candidate->pollable_socket->fd);
+                return -2;
+            }
+        }
     }
-#endif
+#endif // MPTCP_SUPPORT
 
-    if (candidate->pollable_socket->flow->isSCTPMultihoming && nt_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
+    if (candidate->pollable_socket->flow->isMultihoming && nt_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
         char *address_name, *ptr = NULL;
         char *tmp = strdup(candidate->pollable_socket->src_address);
@@ -6158,7 +6189,7 @@ nt_connect_via_usrsctp(struct neat_he_candidate *candidate)
     }
 #endif
 
-    if (candidate->pollable_socket->flow->isSCTPMultihoming && nt_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP && candidate->pollable_socket->nr_local_addr > 0) {
+    if (candidate->pollable_socket->flow->isMultihoming && nt_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_SCTP && candidate->pollable_socket->nr_local_addr > 0) {
         char *local_addr_ptr = (char*) (candidate->pollable_socket->local_addr);
         char *address_name, *ptr = NULL;
         char *tmp = strdup(candidate->pollable_socket->src_address);

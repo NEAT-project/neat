@@ -146,6 +146,56 @@ static void nt_linux_cleanup(struct neat_ctx *nc)
     free(nc->mnl_rcv_buf);
 }
 
+#ifdef MPTCP_SUPPORT
+// Find out if MPTCP is supported and enabled on the machine
+int linux_read_sys_mptcp_enabled(void)
+{
+    int res = MPTCP_SYS_DISABLED;
+    FILE *file = NULL;
+    char buff[4];
+    char *endptr;
+    long value;
+    size_t len;
+
+    file = fopen("/proc/sys/net/mptcp/mptcp_enabled", "r");
+    if (!file) {
+        goto cleanup;
+    }
+
+    len = fread(buff, 1, sizeof(buff), file);
+    if (ferror(file) || !feof(file) || len <= 0) {
+        goto cleanup;
+    }
+
+    buff[len] = '\0';
+    value = strtol(buff, &endptr, 0);
+    if (*endptr != '\0') {
+        goto cleanup;
+    }
+
+    switch(value) {
+    case 0:
+        res = MPTCP_SYS_DISABLED;
+        break;
+    case 1:
+        res = MPTCP_SYS_ENABLED;
+        break;
+    case 2:
+        res = MPTCP_SYS_APP_CTRL;
+        break;
+    default:
+        res = MPTCP_SYS_DISABLED;
+    }
+
+cleanup:
+    if (file) {
+        fclose(file);
+    }
+
+    return res;
+}
+#endif // MPTCP_SUPPORT
+
 //Initialize the Linux-specific part of the context. All is related to
 //libmnl/netfilter
 struct neat_ctx *nt_linux_init_ctx(struct neat_ctx *ctx)
@@ -196,6 +246,10 @@ struct neat_ctx *nt_linux_init_ctx(struct neat_ctx *ctx)
     }
 
     ctx->cleanup = nt_linux_cleanup;
+
+#ifdef MPTCP_SUPPORT
+    ctx->sys_mptcp_enabled = linux_read_sys_mptcp_enabled();
+#endif // MPTCP_SUPPORT
 
     //Configure netlink socket, add to event loop and start dumping
     return ctx;

@@ -36,7 +36,7 @@ N1="@libdir@/libneat-socketapi.so.@libversion@"
 N2="@libdir@/libneat.so.@libversion@"
 W="./libwithneat.so.@libversion@"
 C="/lib/x86_64-linux-gnu/libc.so.6"
-LIBWITHNEAT="$N2 $N1 $W"
+LIBWITHNEAT="$W"
 
 export LD_PRELOAD="${LIBWITHNEAT} ${LD_PRELOAD}"
 

@@ -115,6 +115,7 @@ int open(const char* pathname, int flags, ...)
       mode = va_arg (arg, int);
       va_end (arg);
    }
+   puts("calling nsa_open");
    const int result = nsa_open(pathname, flags, mode);
    return(result);
 }

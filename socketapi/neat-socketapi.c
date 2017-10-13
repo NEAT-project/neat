@@ -31,6 +31,8 @@
 
 #include <neat-socketapi.h>
 #include <identifierbitmap.h>
+#define __USE_GNU
+#include <dlfcn.h>
 
 #include "neat-socketapi-internals.h"
 
@@ -798,12 +800,16 @@ int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
 }
 
 
+#define GET_ORIGINAL(value, name, ...) \
+   static value (*original_##name)(__VA_ARGS__) = NULL; \
+   if(original_##name == NULL) { original_##name = (value (*)(__VA_ARGS__))dlsym(RTLD_NEXT, "open"); }
+#define ORIGINAL(name) original_##name
+
+
 /* ###### NEAT open() implementation ##################################### */
 int nsa_open(const char* pathname, int flags, ...)
 {
-puts("q1");
    if(nsa_initialize() != NULL) {
-puts("q2");
       int mode = 0;
       if(((flags) & O_CREAT) != 0) {   // open() needs "mode" parameter
          va_list arg;
@@ -811,12 +817,13 @@ puts("q2");
          mode = va_arg (arg, int);
          va_end (arg);
       }
-puts("q3");
 
-      const int fd = open(pathname, flags, mode);
+      GET_ORIGINAL(int, open, const char* pathname, int flags, ...);
+      const int fd = ORIGINAL(open)(pathname, flags, mode);
+      printf("fd=%d\n", fd);
       if(fd >= 0) {
          pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-         const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, 0);
+         const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
          pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
          if(newFD >= 0) {
             return(newFD);
@@ -939,9 +946,7 @@ int nsa_ioctl(int fd, int request, const void* argp)
 /* ###### NEAT pipe() implementation ##################################### */
 int nsa_pipe(int fds[2])
 {
-   puts("P1");
    if(nsa_initialize() != NULL) {
-   puts("P2");
       int sysFDs[2];
       if(pipe((int*)&sysFDs) == 0) {
          pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);

@@ -28,17 +28,30 @@
 #  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-LIBWITHNEAT=@libdir@/libwithneat.so.@libversion@
-export LD_PRELOAD=${LIBWITHNEAT}:${LD_PRELOAD}
+# LIBWITHNEAT=@libdir@/libwithneat.so.@libversion@
+
+LIBWITHNEAT=""
+
+N1="@libdir@/libneat-socketapi.so.@libversion@"
+N2="@libdir@/libneat.so.@libversion@"
+W="./libwithneat.so.@libversion@"
+C="/lib/x86_64-linux-gnu/libc.so.6"
+LIBWITHNEAT="$N2 $N1 $W"
+
+export LD_PRELOAD="${LIBWITHNEAT} ${LD_PRELOAD}"
+
+echo "### LD_PRELOAD=$LD_PRELOAD ###"
 
 if [ $# -lt 1 ] ; then
    echo >&2 "Usage: $0 program [arguments ...]"
    exit 1
 fi
-if [ ! -e "${LIBWITHNEAT}" ] ; then
-   echo >&2 "ERROR: libwithneat not found under ${LIBWITHNEAT}!"
-   exit 1
-fi
+for library in $LIBWITHNEAT ; do
+   if [ ! -e "${library}" ] ; then
+      echo >&2 "ERROR: ${library} not found!"
+      exit 1
+   fi
+done
 
 echo "run-with-neat: using LD_PRELOAD=$LD_PRELOAD"
 exec "$@"

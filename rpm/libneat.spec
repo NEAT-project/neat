@@ -1,5 +1,5 @@
 Name: libneat
-Version: 0.0.1~td170
+Version: 0.0.1~td173
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -168,6 +168,7 @@ make install DESTDIR=%{buildroot}
 /usr/lib/libneat/minimal_server2
 /usr/lib/libneat/client_dtls_echo
 /usr/lib/libneat/server_dtls_echo
+<<<<<<< HEAD
 
 %files socketapi
 %defattr(-,root,root,-)
@@ -180,6 +181,8 @@ make install DESTDIR=%{buildroot}
 %files socketapi
 %defattr(-,root,root,-)
 /usr/lib/libneat-socketapi.so*
+=======
+>>>>>>> dreibh/neat-socketapi
 
 %files socketapi
 %defattr(-,root,root,-)

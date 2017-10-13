@@ -1,0 +1,40 @@
+#!/bin/bash -e
+# neatify-source-file: Replace Sockets API calls by NEAT Sockets API calls
+#
+# Copyright (C) 2017 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: dreibh@simula.no
+
+if [ $# -ne 1 ] ; then
+   echo >&2 "Usage: $0 file:line_number"
+   exit 1
+fi
+
+FILE=`echo "$1" | awk -F ":" '{ print $1 }'`
+LINENUMBER=`echo "$1" | awk -F ":" '{ print $2 }'`
+
+echo "$FILE"
+
+FUNCTION_NAMES="accept bind close connect creat epoll_create epoll_create1 epoll_ctl epoll_pwait epoll_wait fcntl ftruncate ftruncate64 getpeername getsockname getsockopt ioctl listen lseek lseek64 open pipe poll read recv recvfrom recvmsg recvv select send sendmsg sendto sendv setsockopt shutdown socket write"
+SED_FILE="rules.sed"
+
+rm -f $SED_FILE
+for fname in $FUNCTION_NAMES ; do
+   echo "${LINENUMBER}s/\([^a-zA-Z0-9_\.>]\)\(${fname}\)\([[:space:]]*([[:space:]]*[^)]\)/\1nsa_${fname}\3/g" >>$SED_FILE
+done
+
+sed -f $SED_FILE <$FILE >$FILE.changed
+mv $FILE.changed $FILE

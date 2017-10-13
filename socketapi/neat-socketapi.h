@@ -35,6 +35,7 @@
 
 #include <inttypes.h>
 #include <poll.h>
+#include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -274,6 +275,12 @@ ssize_t nsa_recvv(int sockfd, struct iovec* iov, int iovcnt,
 int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout);
 int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
                struct timeval* timeout);
+int nsa_epoll_create(int size);
+int nsa_epoll_create1(int flags);
+int nsa_epoll_ctl(int epfd, int op, int fd, struct epoll_event* event);
+int nsa_epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout);
+int nsa_epoll_pwait(int epfd, struct epoll_event *events, int maxevents,
+                    int timeout, const sigset_t* ss);
 
 /* ====== Address Handling =============================================== */
 int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen);
@@ -286,6 +293,12 @@ void nsa_freepaddrs(struct sockaddr* addrs);
 /* ====== Miscellaneous ================================================== */
 int nsa_open(const char* pathname, int flags, ...);
 int nsa_creat(const char* pathname, mode_t mode);
+off_t nsa_lseek(int fd, off_t offset, int whence);
+int nsa_ftruncate(int fd, off_t length);
+#ifdef _LARGEFILE64_SOURCE
+off64_t nsa_lseek64(int fd, off64_t offset, int whence);
+int nsa_ftruncate64(int fd, off64_t length);
+#endif
 int nsa_pipe(int fds[2]);
 int nsa_ioctl(int fd, int request, const void* argp);
 

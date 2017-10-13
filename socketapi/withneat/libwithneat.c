@@ -55,65 +55,71 @@
 
 
 /* ====== Connection Establishment and Teardown ========================== */
-int socket(int domain, int type, int protocol)
-{
-   return(nsa_socket(domain, type, protocol, NULL));
-}
+// int socket(int domain, int type, int protocol)
+// {
+//    return(nsa_socket(domain, type, protocol, NULL));
+// }
 
-DEF1(int, close, int)
-
-int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
-{ return(nsa_bind(sockfd, addr, addrlen, NULL, 0)); }
-
-int connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
-{ return(nsa_bind(sockfd, addr, addrlen, NULL, 0)); }
-
-DEF2(int, listen, int, int)
-DEF3(int, accept, int, struct sockaddr*, socklen_t*)
-// int peeloff(int sockfd, neat_assoc_t id);
-DEF2(int, shutdown, int, int)
-
-/* ====== Options Handling =============================================== */
-DEF5(int, getsockopt, int, int, int, void*, socklen_t*)
-DEF5(int, setsockopt, int, int, int, const void*, socklen_t)
-
-/* ====== Input/Output Handling ========================================== */
-DEF3(ssize_t, write, int, const void*, size_t)
-DEF4(ssize_t, send, int, const void*, size_t, int)
-DEF6(ssize_t, sendto, int, const void*, size_t, int, const struct sockaddr*, socklen_t)
-DEF3(ssize_t, sendmsg, int, const struct msghdr*, int)
-DEF9(ssize_t, sendv, int, struct iovec*, int, struct sockaddr*, int, void*, socklen_t, unsigned int, int)
-
-DEF3(ssize_t, read, int, void*, size_t)
-DEF4(ssize_t, recv, int, void*, size_t, int)
-DEF6(ssize_t, recvfrom, int, void*, size_t, int, struct sockaddr*, socklen_t*)
-DEF3(ssize_t, recvmsg, int, struct msghdr*, int)
-DEF9(ssize_t, recvv, int, struct iovec*, int, struct sockaddr*, socklen_t*, void*, socklen_t*, unsigned int*, int*)
-
-/* ====== Poll and Select ================================================ */
-DEF3(int, poll, struct pollfd*, const nfds_t, int)
-DEF5(int, select,int, fd_set*, fd_set*, fd_set*, struct timeval*)
-
-/* ====== Address Handling =============================================== */
-DEF3(int, getsockname, int, struct sockaddr*, socklen_t*)
-DEF3(int, getpeername, int, struct sockaddr*, socklen_t*)
-/*
-int getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
-void freeladdrs(struct sockaddr* addrs);
-int getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
-void freepaddrs(struct sockaddr* addrs);
-*/
+// DEF1(int, close, int)
+//
+// int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+// { return(nsa_bind(sockfd, addr, addrlen, NULL, 0)); }
+//
+// int connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+// { return(nsa_bind(sockfd, addr, addrlen, NULL, 0)); }
+//
+// DEF2(int, listen, int, int)
+// DEF3(int, accept, int, struct sockaddr*, socklen_t*)
+// // int peeloff(int sockfd, neat_assoc_t id);
+// DEF2(int, shutdown, int, int)
+//
+// /* ====== Options Handling =============================================== */
+// DEF5(int, getsockopt, int, int, int, void*, socklen_t*)
+// DEF5(int, setsockopt, int, int, int, const void*, socklen_t)
+//
+// /* ====== Input/Output Handling ========================================== */
+// DEF3(ssize_t, write, int, const void*, size_t)
+// DEF4(ssize_t, send, int, const void*, size_t, int)
+// DEF6(ssize_t, sendto, int, const void*, size_t, int, const struct sockaddr*, socklen_t)
+// DEF3(ssize_t, sendmsg, int, const struct msghdr*, int)
+// DEF9(ssize_t, sendv, int, struct iovec*, int, struct sockaddr*, int, void*, socklen_t, unsigned int, int)
+//
+// DEF3(ssize_t, read, int, void*, size_t)
+// DEF4(ssize_t, recv, int, void*, size_t, int)
+// DEF6(ssize_t, recvfrom, int, void*, size_t, int, struct sockaddr*, socklen_t*)
+// DEF3(ssize_t, recvmsg, int, struct msghdr*, int)
+// DEF9(ssize_t, recvv, int, struct iovec*, int, struct sockaddr*, socklen_t*, void*, socklen_t*, unsigned int*, int*)
+//
+// /* ====== Poll and Select ================================================ */
+// DEF3(int, poll, struct pollfd*, const nfds_t, int)
+// DEF5(int, select,int, fd_set*, fd_set*, fd_set*, struct timeval*)
+//
+// /* ====== Address Handling =============================================== */
+// DEF3(int, getsockname, int, struct sockaddr*, socklen_t*)
+// DEF3(int, getpeername, int, struct sockaddr*, socklen_t*)
+// /*
+// int getladdrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
+// void freeladdrs(struct sockaddr* addrs);
+// int getpaddrs(int sockfd, neat_assoc_t id, struct sockaddr** addrs);
+// void freepaddrs(struct sockaddr* addrs);
+// */
 
 /* ====== Miscellaneous ================================================== */
 int open(const char* pathname, int flags, ...)
 {
-   va_list args;
-   va_start(args, flags);
-   int result = nsa_open(pathname, flags, __builtin_va_arg_pack());
-   va_end(args);
+   puts("O...");
+   int mode = 0;
+   if(((flags) & O_CREAT) != 0) {   // open() needs "mode" parameter
+      va_list arg;
+      va_start (arg, flags);
+      mode = va_arg (arg, int);
+      va_end (arg);
+   }
+   const int result = nsa_open(pathname, flags, mode);
    return(result);
 }
 
-DEF2(int, creat, const char*, mode_t)
-int pipe(int fds[2]) { return(nsa_pipe(fds)); }
-DEF3(int, ioctl, int, int, const void*)
+// DEF2(int, creat, const char*, mode_t)
+// int pipe(int fds[2]) { puts("P1!"); return(nsa_pipe(fds)); }
+// int pipe2(int pipefd[2], int flags) { puts("P2!"); return(nsa_pipe(pipefd)); }
+// DEF3(int, ioctl, int, int, const void*)

@@ -41,6 +41,11 @@ ADD_DEPENDENCIES(withneat run-with-neat)
 INSTALL(FILES run-with-neat
         DESTINATION ${CMAKE_INSTALL_BINDIR})
 
+# ====== Test only ==============================
+ADD_EXECUTABLE(t1 t1.cc)
+TARGET_LINK_LIBRARIES(t1)
+# ===============================================
+
 
 # INSTALL
 #################################################

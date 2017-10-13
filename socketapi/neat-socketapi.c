@@ -46,7 +46,7 @@
 #include <netdb.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
-#if defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
+#if defined(HAVE_NETINET_SCTP_H)
 #include <netinet/sctp.h>
 #endif
 
@@ -801,8 +801,19 @@ int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
 /* ###### NEAT open() implementation ##################################### */
 int nsa_open(const char* pathname, int flags, ...)
 {
+puts("q1");
    if(nsa_initialize() != NULL) {
-      int fd = open(pathname, flags, __builtin_va_arg_pack());
+puts("q2");
+      int mode = 0;
+      if(((flags) & O_CREAT) != 0) {   // open() needs "mode" parameter
+         va_list arg;
+         va_start (arg, flags);
+         mode = va_arg (arg, int);
+         va_end (arg);
+      }
+puts("q3");
+
+      const int fd = open(pathname, flags, mode);
       if(fd >= 0) {
          pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
          const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, 0);
@@ -824,26 +835,91 @@ int nsa_open(const char* pathname, int flags, ...)
 /* ###### NEAT creat() implementation #################################### */
 int nsa_creat(const char* pathname, mode_t mode)
 {
-   const int fd = creat(pathname, mode);
-   if(fd >= 0) {
-      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   if(nsa_initialize() != NULL) {
+      const int fd = creat(pathname, mode);
+      if(fd >= 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
 
-      int       result;
-      const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
-      if(newFD >= 0) {
-         result = newFD;
-      }
-      else {
-         errno = ENOMEM;
-         close(fd);
-         result = -1;
-      }
+         int       result;
+         const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
+         if(newFD >= 0) {
+            result = newFD;
+         }
+         else {
+            errno = ENOMEM;
+            close(fd);
+            result = -1;
+         }
 
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-      return(result);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         return(result);
+      }
+   }
+   else {
+      errno = ENXIO;
    }
    return(-1);
 }
+
+
+/* ###### NEAT lseek() implementation #################################### */
+off_t nsa_lseek(int fd, off_t offset, int whence)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(lseek(neatSocket->ns_socket_sd, offset, whence));
+   }
+}
+
+
+#ifdef _LARGEFILE64_SOURCE
+/* ###### NEAT lseek64() implementation ################################## */
+off64_t nsa_lseek64(int fd, off64_t offset, int whence)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(lseek64(neatSocket->ns_socket_sd, offset, whence));
+   }
+}
+#endif
+
+
+/* ###### NEAT ftruncate() implementation ################################ */
+int nsa_ftruncate(int fd, off_t length)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(ftruncate(neatSocket->ns_socket_sd, length));
+   }
+}
+
+
+#ifdef _LARGEFILE64_SOURCE
+/* ###### NEAT ftruncate64() implementation ############################## */
+int nsa_ftruncate64(int fd, off64_t length)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(ftruncate64(neatSocket->ns_socket_sd, length));
+   }
+}
+#endif
 
 
 /* ###### NEAT ioctl() implementation #################################### */
@@ -863,23 +939,30 @@ int nsa_ioctl(int fd, int request, const void* argp)
 /* ###### NEAT pipe() implementation ##################################### */
 int nsa_pipe(int fds[2])
 {
-   int sysFDs[2];
-   if(pipe((int*)&sysFDs) == 0) {
-      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-      fds[0] = nsa_socket_internal(0, 0, 0, sysFDs[0], NULL, 0);
-      if(fds[0] >= 0) {
-         fds[1] = nsa_socket_internal(0, 0, 0, sysFDs[1], NULL, 0);
-         if(fds[1] >= 0) {
-            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-            return(0);
+   puts("P1");
+   if(nsa_initialize() != NULL) {
+   puts("P2");
+      int sysFDs[2];
+      if(pipe((int*)&sysFDs) == 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         fds[0] = nsa_socket_internal(0, 0, 0, sysFDs[0], NULL, -1);
+         if(fds[0] >= 0) {
+            fds[1] = nsa_socket_internal(0, 0, 0, sysFDs[1], NULL, -1);
+            if(fds[1] >= 0) {
+               pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+               return(0);
+            }
+            nsa_close(fds[0]);
+            fds[0] = -1;
          }
-         nsa_close(fds[0]);
-         fds[0] = -1;
+         errno = ENOMEM;
+         close(sysFDs[0]);
+         close(sysFDs[1]);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
       }
-      errno = ENOMEM;
-      close(sysFDs[0]);
-      close(sysFDs[1]);
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   }
+   else {
+      errno = ENXIO;
    }
    return(-1);
 }

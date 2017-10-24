@@ -39,7 +39,6 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#define __USE_GNU
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>

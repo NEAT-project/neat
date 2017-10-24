@@ -33,40 +33,12 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#define __USE_GNU
 #include <unistd.h>
 #include <errno.h>
 #include <assert.h>
 #include <sys/ioctl.h>
-
-
-/* ###### NEAT open() implementation ##################################### */
-int nsa_open(const char* pathname, int flags, mode_t mode)
-{
-   if(nsa_initialize() != NULL) {
-      const int fd = open(pathname, flags, mode);
-      if(fd >= 0) {
-         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-
-         int       result;
-         const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
-         if(newFD >= 0) {
-            result = newFD;
-         }
-         else {
-            errno = ENOMEM;
-            close(fd);
-            result = -1;
-         }
-
-         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-         return(result);
-      }
-   }
-   else {
-      errno = ENXIO;
-   }
-   return(-1);
-}
+#include <sys/file.h>
 
 
 /* ###### NEAT creat() implementation #################################### */
@@ -96,6 +68,118 @@ int nsa_creat(const char* pathname, mode_t mode)
       errno = ENXIO;
    }
    return(-1);
+}
+
+
+/* ###### NEAT fchown() implementation ################################### */
+int nsa_fchown(int fd, uid_t owner, gid_t group)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(fchown(neatSocket->ns_socket_sd, owner, group));
+   }
+}
+
+
+/* ###### NEAT fsync() implementation #################################### */
+int nsa_fsync(int fd)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(fsync(neatSocket->ns_socket_sd));
+   }
+}
+
+
+/* ###### NEAT fdatasync() implementation ################################ */
+int nsa_fdatasync(int fd)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(fdatasync(neatSocket->ns_socket_sd));
+   }
+}
+
+
+/* ###### NEAT syncfs() implementation ################################### */
+int nsa_syncfs(int fd)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(syncfs(neatSocket->ns_socket_sd));
+   }
+}
+
+
+/* ###### NEAT lockf() implementation #################################### */
+int nsa_lockf(int fd, int cmd, off_t len)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(lockf(neatSocket->ns_socket_sd, cmd, len));
+   }
+}
+
+
+/* ###### NEAT flock() implementation #################################### */
+int nsa_flock(int fd, int operation)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(flock(neatSocket->ns_socket_sd, operation));
+   }
+}
+
+
+/* ###### NEAT fstat() implementation #################################### */
+int nsa_fstat(int fd, struct stat* buf)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(fstat(neatSocket->ns_socket_sd, buf));
+   }
+}
+
+
+/* ###### NEAT fpathconf() implementation ################################ */
+long nsa_fpathconf(int fd, int name)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(fpathconf(neatSocket->ns_socket_sd, name));
+   }
 }
 
 
@@ -200,4 +284,86 @@ int nsa_pipe(int fds[2])
       errno = ENXIO;
    }
    return(-1);
+}
+
+
+/* ###### NEAT dup() implementation ###################################### */
+int nsa_dup(int oldfd)
+{
+   GET_NEAT_SOCKET(oldfd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      int fd = dup(neatSocket->ns_socket_sd);
+      if(fd >= 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         const int result = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         if(result >= 0) {
+            return(result);
+         }
+         close(fd);
+      }
+      return(-1);
+   }
+}
+
+
+/* ###### NEAT dup2() implementation ##################################### */
+int nsa_dup2(int oldfd, int newfd)
+{
+   GET_NEAT_SOCKET(oldfd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      if(oldfd == newfd) {
+         errno = EOPNOTSUPP;
+         return(-1);
+      }
+      int fd = dup(neatSocket->ns_socket_sd);
+      if(fd >= 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         nsa_close(newfd);   // Close exitising file descriptor, if existing.
+         const int result = nsa_socket_internal(0, 0, 0, fd, NULL, newfd);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         if(result >= 0) {
+            return(result);
+         }
+         close(fd);
+      }
+      return(-1);
+   }
+}
+
+
+/* ###### NEAT dup3() implementation ##################################### */
+int nsa_dup3(int oldfd, int newfd, int flags)
+{
+   GET_NEAT_SOCKET(oldfd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      int fd = dup(neatSocket->ns_socket_sd);
+      if(fd >= 0) {
+         if(oldfd == newfd) {
+            errno = EOPNOTSUPP;
+            return(-1);
+         }
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         nsa_close(newfd);   // Close exitising file descriptor, if existing.
+         const int result = nsa_socket_internal(0, 0, 0, fd, NULL, newfd);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         if(result >= 0) {
+            return(result);
+         }
+         close(fd);
+      }
+      return(-1);
+   }
 }

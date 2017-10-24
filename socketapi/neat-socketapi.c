@@ -39,11 +39,13 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#define __USE_GNU
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
 #include <netdb.h>
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
 #if defined(HAVE_NETINET_SCTP_H)
@@ -858,7 +860,7 @@ int nsa_creat(const char* pathname, mode_t mode)
 }
 
 
-/* ###### NEAT lseek() implementation #################################### */
+/* ###### NEAT fchown() implementation ################################### */
 int nsa_fchown(int fd, uid_t owner, gid_t group)
 {
    GET_NEAT_SOCKET(fd)
@@ -868,6 +870,77 @@ int nsa_fchown(int fd, uid_t owner, gid_t group)
    }
    else {
       return(fchown(neatSocket->ns_socket_sd, owner, group));
+   }
+}
+
+
+/* ###### NEAT fsync() implementation #################################### */
+int nsa_fsync(int fd)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(fsync(neatSocket->ns_socket_sd));
+   }
+}
+
+
+/* ###### NEAT fdatasync() implementation ################################ */
+int nsa_fdatasync(int fd)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(fdatasync(neatSocket->ns_socket_sd));
+   }
+}
+
+
+/* ###### NEAT syncfs() implementation ################################### */
+int nsa_syncfs(int fd)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(syncfs(neatSocket->ns_socket_sd));
+   }
+}
+
+
+
+/* ###### NEAT lockf() implementation #################################### */
+int nsa_lockf(int fd, int cmd, off_t len)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(lockf(neatSocket->ns_socket_sd, cmd, len));
+   }
+}
+
+
+/* ###### NEAT flock() implementation #################################### */
+int nsa_flock(int fd, int operation)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(flock(neatSocket->ns_socket_sd, operation));
    }
 }
 

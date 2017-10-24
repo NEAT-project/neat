@@ -654,12 +654,10 @@ socket_handle_free_cb(uv_handle_t *handle)
     struct neat_pollable_socket *pollable_socket = handle->data;
 #ifdef SCTP_MULTISTREAMING
     struct neat_flow *flow = NULL;
-    struct neat_flow *prev_flow = NULL;
+
 #endif
 
     assert(pollable_socket);
-    //struct neat_ctx *ctx = pollable_socket->flow->ctx;
-    //nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (pollable_socket->multistream) {
 #ifdef SCTP_MULTISTREAMING
@@ -667,16 +665,7 @@ socket_handle_free_cb(uv_handle_t *handle)
             flow = LIST_FIRST(&pollable_socket->sctp_multistream_flows);
             assert(flow);
             LIST_REMOVE(flow, multistream_next_flow);
-            /*
-             * If this assert triggers, it means that a call to neat_free_flow did
-             * not remove the flow pointed to by f from the list of flows. The
-             * assert is present because clang-analyzer somehow doesn't see the fact
-             * that the list is changed in nt_free_flow().
-             */
-            assert(flow != prev_flow);
-
             synchronous_free(flow);
-            prev_flow = flow;
         }
 
         assert(pollable_socket->sctp_streams_used == 0);

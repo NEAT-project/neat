@@ -3477,7 +3477,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
-            
+
             candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket));
             if (!candidate->pollable_socket) {
                 free(candidate);
@@ -6997,7 +6997,6 @@ nt_hook_mulitstream_flows(neat_flow *flow) {
     struct neat_ctx *ctx = flow->ctx;
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
-    return;
 
     LIST_FOREACH(flow_itr, &(flow->ctx->flows), next_flow) {
         nt_log(ctx, NEAT_LOG_DEBUG, "%s - %p - checking", __func__, flow_itr);

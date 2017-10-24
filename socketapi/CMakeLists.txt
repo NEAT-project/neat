@@ -16,6 +16,9 @@ LIST(APPEND neat_socketapi_sources
    redblacktree.c
 )
 
+# Define *64() functions
+ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
+
 
 # PROGRAMS LIST
 #################################################

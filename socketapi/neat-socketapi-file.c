@@ -255,7 +255,7 @@ int nsa_lockf(int fd, int cmd, off_t len)
 
 #ifdef _LARGEFILE64_SOURCE
 /* ###### NEAT lockf64() implementation #################################### */
-int nsa_lockf(int fd, int cmd, off64_t len)
+int nsa_lockf64(int fd, int cmd, off64_t len)
 {
    GET_NEAT_SOCKET(fd)
    if(neatSocket->ns_flow != NULL) {

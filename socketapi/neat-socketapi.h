@@ -303,6 +303,7 @@ int nsa_creat(const char* pathname, mode_t mode);
 int nsa_dup(int oldfd);
 int nsa_dup2(int oldfd, int newfd);
 int nsa_dup3(int oldfd, int newfd, int flags);
+int nsa_fchown(int fd, uid_t owner, gid_t group);
 off_t nsa_lseek(int fd, off_t offset, int whence);
 int nsa_ftruncate(int fd, off_t length);
 #ifdef _LARGEFILE64_SOURCE

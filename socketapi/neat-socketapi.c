@@ -859,6 +859,20 @@ int nsa_creat(const char* pathname, mode_t mode)
 
 
 /* ###### NEAT lseek() implementation #################################### */
+int nsa_fchown(int fd, uid_t owner, gid_t group)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(fchown(neatSocket->ns_socket_sd, owner, group));
+   }
+}
+
+
+/* ###### NEAT lseek() implementation #################################### */
 off_t nsa_lseek(int fd, off_t offset, int whence)
 {
    GET_NEAT_SOCKET(fd)

@@ -39,7 +39,7 @@ NEAT Sockets API
 <keyword>Internet-Draft</keyword>
 
 <abstract>
-<t>This document describes the NEAT Sockets API.</t>
+<t>This document describes a BSD Sockets-like API on top of the callback-based NEAT Core API. This facilitates porting existing applications to use a subset of NEAT's functionality.</t>
 </abstract>
 
 

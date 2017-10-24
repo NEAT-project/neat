@@ -316,6 +316,11 @@ IF (HAVE_SCTP_EVENT_SUBSCRIBE)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_SCTP_EVENT_SUBSCRIBE")
 ENDIF()
 
+CHECK_INCLUDE_FILE(sys/epoll.h HAVE_SYS_EPOLL_H)
+IF (HAVE_SYS_EPOLL_H)
+    ADD_DEFINITIONS(-DHAVE_SYS_EPOLL_H)
+ENDIF()
+
 # COMPILER FLAGS
 #################################################
 # -Wno-array-bounds is unfortunate, but caused by https://bugs.llvm.org/show_bug.cgi?id=20144

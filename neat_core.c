@@ -1643,6 +1643,11 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                 neat_flow *listen_flow = flow->socket->listen_socket->flow;
                 multistream_flow = neat_new_flow(ctx);
 
+                if (!multistream_flow) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "unable to create new flow");
+                    return READ_WITH_ERROR;
+                }
+
                 multistream_flow->name                      = strdup(listen_flow->name);
                 if (!multistream_flow->name) {
                     nt_log(ctx, NEAT_LOG_WARNING, "Out of memory");

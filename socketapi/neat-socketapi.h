@@ -300,6 +300,9 @@ void nsa_freepaddrs(struct sockaddr* addrs);
 /* ====== Miscellaneous ================================================== */
 int nsa_open(const char* pathname, int flags, mode_t mode);
 int nsa_creat(const char* pathname, mode_t mode);
+int nsa_dup(int oldfd);
+int nsa_dup2(int oldfd, int newfd);
+int nsa_dup3(int oldfd, int newfd, int flags);
 off_t nsa_lseek(int fd, off_t offset, int whence);
 int nsa_ftruncate(int fd, off_t length);
 #ifdef _LARGEFILE64_SOURCE

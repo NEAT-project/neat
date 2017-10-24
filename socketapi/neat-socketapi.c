@@ -960,3 +960,85 @@ int nsa_pipe(int fds[2])
    }
    return(-1);
 }
+
+
+/* ###### NEAT dup() implementation ###################################### */
+int nsa_dup(int oldfd)
+{
+   GET_NEAT_SOCKET(oldfd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      int fd = dup(neatSocket->ns_socket_sd);
+      if(fd >= 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         const int result = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         if(result >= 0) {
+            return(result);
+         }
+         close(fd);
+      }
+      return(-1);
+   }
+}
+
+
+/* ###### NEAT dup2() implementation ##################################### */
+int nsa_dup2(int oldfd, int newfd)
+{
+   GET_NEAT_SOCKET(oldfd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      if(oldfd == newfd) {
+         errno = EOPNOTSUPP;
+         return(-1);
+      }
+      int fd = dup(neatSocket->ns_socket_sd);
+      if(fd >= 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         nsa_close(newfd);   // Close exitising file descriptor, if existing.
+         const int result = nsa_socket_internal(0, 0, 0, fd, NULL, newfd);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         if(result >= 0) {
+            return(result);
+         }
+         close(fd);
+      }
+      return(-1);
+   }
+}
+
+
+/* ###### NEAT dup3() implementation ##################################### */
+int nsa_dup3(int oldfd, int newfd, int flags)
+{
+   GET_NEAT_SOCKET(oldfd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      int fd = dup(neatSocket->ns_socket_sd);
+      if(fd >= 0) {
+         if(oldfd == newfd) {
+            errno = EOPNOTSUPP;
+            return(-1);
+         }
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         nsa_close(newfd);   // Close exitising file descriptor, if existing.
+         const int result = nsa_socket_internal(0, 0, 0, fd, NULL, newfd);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         if(result >= 0) {
+            return(result);
+         }
+         close(fd);
+      }
+      return(-1);
+   }
+}

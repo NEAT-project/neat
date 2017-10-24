@@ -2149,16 +2149,8 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     } else if (flow->hefirstConnect && (status == 0)) {
         /* if MPTCP was chosen, don't accept fallback to TCP */
 #ifdef MPTCP_SUPPORT
-        if (candidate->pollable_socket->stack == NEAT_STACK_MPTCP) {
-            int mptcp_enabled = 0;
-            if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_ENABLED) {
-                mptcp_enabled = 1;
-            } else if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_APP_CTRL) {
-                unsigned int len_mp = sizeof(mptcp_enabled);
-                getsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &mptcp_enabled, &len_mp);
-            }
-
-            if (!mptcp_enabled) {
+        if (candidate->pollable_socket->stack == NEAT_STACK_MPTCP &&
+            candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_DISABLED) {
                 uv_poll_stop(handle);
                 uv_close((uv_handle_t*)handle, free_he_handle_cb);
 
@@ -2179,9 +2171,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
                 }
 
                 return;
-            }
         }
 #endif // MPTCP_SUPPORT
+
         flow->hefirstConnect = 0;
         nt_log(ctx, NEAT_LOG_DEBUG, "First successful connect (flow->hefirstConnect)");
 

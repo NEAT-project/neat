@@ -206,6 +206,7 @@ union neat_notification {
    struct neat_data_arrive      nn_data_arrive;
 };
 
+struct epoll_event;
 
 #ifdef __cplusplus
 extern "C" {

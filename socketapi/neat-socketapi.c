@@ -428,8 +428,8 @@ int nsa_listen(int sockfd, int backlog)
 }
 
 
-/* ###### NEAT accept() implementation ################################### */
-int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+/* ###### NEAT accept4() implementation ################################## */
+int nsa_accept4(int sockfd, struct sockaddr* addr, socklen_t* addrlen, int flags)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
@@ -475,6 +475,17 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 
                result = newSocket->ns_descriptor;
 
+               if(flags != 0) {
+                  int socketFlags = fcntl(newSocket->ns_descriptor, F_GETFL, 0);
+                  if(flags & SOCK_NONBLOCK) {
+                      socketFlags |= O_NONBLOCK;
+                  }
+                  if(flags & SOCK_CLOEXEC) {
+                      socketFlags |= O_CLOEXEC;
+                  }
+                  fcntl(newSocket->ns_descriptor, F_SETFL, socketFlags);
+               }
+
                /* ====== Fill in peer address ============================ */
                if(addrlen != NULL) {
                   if(nsa_getpeername(newSocket->ns_descriptor, addr, addrlen) < 0) {
@@ -505,6 +516,13 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
    else {
       return(accept(neatSocket->ns_socket_sd, addr, addrlen));
    }
+}
+
+
+/* ###### NEAT accept() implementation ################################### */
+int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+{
+   return(nsa_accept4(sockfd, addr, addrlen, 0));
 }
 
 

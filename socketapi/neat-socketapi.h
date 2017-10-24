@@ -235,6 +235,7 @@ int nsa_connectn(int sockfd, const char* name, const uint16_t port, neat_assoc_t
                  struct neat_tlv* opt, const int optcnt);
 int nsa_listen(int sockfd, int backlog);
 int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen);
+int nsa_accept4(int sockfd, struct sockaddr* addr, socklen_t* addrlen, int flags);
 int nsa_peeloff(int sockfd, neat_assoc_t id);
 int nsa_shutdown(int sockfd, int how);
 

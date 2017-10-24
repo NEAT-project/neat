@@ -218,6 +218,7 @@ int nsa_unmap_socket(int neatSD);
 
 /* ====== Connection Establishment and Teardown ========================== */
 int nsa_socket(int domain, int type, int protocol, const char* properties);
+int nsa_socketpair(int domain, int type, int protocol, int sv[2], const char* properties);
 int nsa_close(int sockfd);
 int nsa_fcntl(int sockfd, int cmd, ...);
 int nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen,
@@ -285,6 +286,12 @@ void nsa_freepaddrs(struct sockaddr* addrs);
 /* ====== Miscellaneous ================================================== */
 int nsa_open(const char* pathname, int flags, mode_t mode);
 int nsa_creat(const char* pathname, mode_t mode);
+off_t nsa_lseek(int fd, off_t offset, int whence);
+int nsa_ftruncate(int fd, off_t length);
+#ifdef _LARGEFILE64_SOURCE
+off64_t nsa_lseek64(int fd, off64_t offset, int whence);
+int nsa_ftruncate64(int fd, off64_t length);
+#endif
 int nsa_pipe(int fds[2]);
 int nsa_ioctl(int fd, int request, const void* argp);
 

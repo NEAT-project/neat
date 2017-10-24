@@ -29,6 +29,12 @@
             "precedence": 0,
             "score": 0
         },
+        "__he_delay": {
+            "value": 10,
+            "precedence": 1,
+            "score": 0,
+            "description": "special property defining HE delay in milliseconds"
+        },
        "remote_ip": {
             "value": null,
             "precedence": 0,

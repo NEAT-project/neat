@@ -3,7 +3,9 @@
   remote_user: neat
   vars:
     neat_home: /home/neat/neat
+    pib_dir: /etc/neat/pib/
   tasks:
+
    - name: Install NEAT dependencies
      become: yes
      apt: 
@@ -27,6 +29,11 @@
      with_items:
        - git
        - mc 
+       - aptitude
+
+   - name: Upgrade packages
+     become: yes
+     apt: upgrade=yes 
 
    - name: Clone NEAT GitHub repo
      git: 
@@ -53,12 +60,12 @@
    - name: Create config directories
      become: yes
      file: 
-       path: "/etc/neat/pib/"
+       path: "{{ pib_dir }}"
        state: directory
 
    - name: Copy config files
      become: yes
-     shell: "cp -v {{ neat_home }}/policy/debian/99-neat-vars.sh /etc/profile.d/ && chmod +x /etc/profile.d/99-neat-vars.sh; cp -v {{ neat_home }}/policy/examples/pib/* /etc/neat/pib/"
+     shell: "cp -v {{ neat_home }}/policy/debian/99-neat-vars.sh /etc/profile.d/ && chmod +x /etc/profile.d/99-neat-vars.sh; cp -v {{ neat_home }}/policy/examples/pib/* {{ pib_dir }}; cp {{ neat_home }}/policy/debian/neat-motd.sh /etc/update-motd.d/01-neat"
 
    - name: Register PM service
      become: yes

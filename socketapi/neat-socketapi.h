@@ -251,6 +251,13 @@ int nsa_set_secure_identity(int sockfd, const char* pem);
 
 /* ====== Input/Output Handling ========================================== */
 ssize_t nsa_write(int fd, const void* buf, size_t len);
+ssize_t nsa_writev(int fd, const struct iovec* iov, int iovcnt);
+ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset);
+ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt, off_t offset);
+#ifdef _LARGEFILE64_SOURCE
+ssize_t nsa_pwrite64(int fd, const void* buf, size_t len, off64_t offset);
+ssize_t nsa_pwritev64(int fd, const struct iovec* iov, int iovcnt, off64_t offset);
+#endif
 ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags);
 ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags,
                    const struct sockaddr* to, socklen_t tolen);
@@ -261,6 +268,13 @@ ssize_t nsa_sendv(int sockfd, struct iovec* iov, int iovcnt,
                   int flags);
 
 ssize_t nsa_read(int fd, void* buf, size_t len);
+ssize_t nsa_readv(int fd, const struct iovec* iov, int iovcnt);
+ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset);
+ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt, off_t offset);
+#ifdef _LARGEFILE64_SOURCE
+ssize_t nsa_pread64(int fd, void* buf, size_t len, off64_t offset);
+ssize_t nsa_preadv64(int fd, const struct iovec* iov, int iovcnt, off64_t offset);
+#endif
 ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags);
 ssize_t nsa_recvfrom(int sockfd, void* buf, size_t len, int flags,
                      struct sockaddr* from, socklen_t* fromlen);

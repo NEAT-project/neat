@@ -963,6 +963,34 @@ int nsa_flock(int fd, int operation)
 }
 
 
+/* ###### NEAT fstat() implementation #################################### */
+int nsa_fstat(int fd, struct stat* buf)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(fstat(neatSocket->ns_socket_sd, buf));
+   }
+}
+
+
+/* ###### NEAT fpathconf() implementation ################################ */
+long nsa_fpathconf(int fd, int name)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      errno = EOPNOTSUPP;
+      return(-1);
+   }
+   else {
+      return(fpathconf(neatSocket->ns_socket_sd, name));
+   }
+}
+
+
 /* ###### NEAT lseek() implementation #################################### */
 off_t nsa_lseek(int fd, off_t offset, int whence)
 {

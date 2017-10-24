@@ -303,6 +303,8 @@ int nsa_open(const char* pathname, int flags, mode_t mode);
 int nsa_creat(const char* pathname, mode_t mode);
 int nsa_lockf(int fd, int cmd, off_t len);
 int nsa_flock(int fd, int operation);
+int nsa_fstat(int fd, struct stat* buf);
+long nsa_fpathconf(int fd, int name);
 int nsa_dup(int oldfd);
 int nsa_dup2(int oldfd, int newfd);
 int nsa_dup3(int oldfd, int newfd, int flags);

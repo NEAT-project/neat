@@ -1,0 +1,29 @@
+These scripts provide porting help from the BSD Sockets API to the
+NEAT Sockets API. The scripts are simple, and only intended for
+simplifying the porting process. They will *not* automatically
+transform your program into a NEAT program! Some manual work will
+still be necessary!
+
+
+1. find-socket-functions file1 [file2 ...]
+
+find-socket-functions identifies possible places in the given source file(s)
+to adapt to the NEAT Sockets API.
+
+
+2. neatify-source-file file:line_number
+
+Replaces the given line line_number in the given file by a NEAT Sockets API
+variant.
+
+WARNING:
+* This replacement may be incomplete or wrong!
+* A manual check is necessary!
+* Always keep a backup of the original file!!!
+
+
+3. replace-socket-functions file1 [file2 ...]
+
+replace-socket-functions runs find-socket-functions to identify lines
+that may require replacement by NEAT Sockets API functions, and runs
+neatify-source-file to make the replacements.

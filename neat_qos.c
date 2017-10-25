@@ -75,6 +75,12 @@ neat_set_qos(struct neat_ctx *ctx, struct neat_flow *flow, uint8_t qos)
     return nt_set_tos(ctx, flow);
 }
 
+int
+neat_get_qos(struct neat_ctx *ctx, struct neat_flow *flow)
+{
+    return flow->qos;
+}
+
 neat_error_code
 neat_set_ecn(struct neat_ctx *ctx, struct neat_flow *flow, uint8_t ecn)
 {

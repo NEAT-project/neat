@@ -161,6 +161,7 @@ NEAT_EXTERN neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct ne
                                      const char *filename, int pemType);
 NEAT_EXTERN neat_error_code neat_set_qos(struct neat_ctx *ctx,
                     struct neat_flow *flow, uint8_t qos);
+NEAT_EXTERN int neat_get_qos(struct neat_ctx *ctx, struct neat_flow *flow);
 NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
                     struct neat_flow *flow, uint8_t ecn);
 NEAT_EXTERN neat_error_code neat_set_low_watermark(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t watermark);

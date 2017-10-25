@@ -31,7 +31,7 @@
 
 static uint32_t config_rcv_buffer_size      = 10240;
 static uint32_t config_snd_buffer_size      = 1024;
-static uint32_t config_message_count        = 1;
+static uint32_t config_message_count        = 1024;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_mode                 = 0;
 static uint16_t config_chargen_offset       = 0;
@@ -127,6 +127,7 @@ on_error(struct neat_flow_operations *opCB)
 
     fprintf(stderr, "%s()\n", __func__);
     neat_stop_event_loop(opCB->ctx);
+    result = EXIT_FAILURE;
     return NEAT_OK;
 }
 

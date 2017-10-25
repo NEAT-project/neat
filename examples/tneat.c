@@ -60,6 +60,7 @@ static uint32_t server_runs     = 0;
 static char *cert_file          = NULL;
 static char *key_file           = NULL;
 static char *loop_hostname      = "127.0.0.1";
+static int result               = EXIT_SUCCESS;
 
 /*
     macro - tvp-uvp=vvp
@@ -387,14 +388,12 @@ main(int argc, char *argv[])
     struct neat_flow_operations ops_client[config_max_flows];
     struct neat_flow_operations op_server;
 
-    int arg, result;
+    int arg;
     char *arg_property = config_property;
     char *remote_addr = NULL;
 
     memset(&ops_client, 0, sizeof(ops_client));
     memset(&op_server, 0, sizeof(op_server));
-
-    result = EXIT_SUCCESS;
 
     while ((arg = getopt(argc, argv, "c:k:l:Ln:p:P:R:T:v:w:")) != -1) {
         switch(arg) {

@@ -33,7 +33,7 @@ static uint16_t config_json_stats = 0;
 static uint16_t config_timeout = 0;
 static char *config_primary_dest_addr = NULL;
 static char *config_property =
-    "{ \"transport\": [ { \"value\": \"UDP\", \"precedence\": 1 } ], \"security\" : { \"value\": true, \"precedence\": 2 }, \"verification\" : { \"value\": false, \"precedence\": 2} }";
+    "{ \"transport\": { \"value\": \"UDP\", \"precedence\": 1 }, \"security\" : { \"value\": true, \"precedence\": 2 }, \"verification\" : { \"value\": false, \"precedence\": 2} }";
 
 struct std_buffer {
     unsigned char *buffer;

@@ -25,12 +25,10 @@ static uint16_t config_max_flows            = 100;
 static uint32_t config_delay                = 0;
 static uint32_t config_loss                 = 0;
 static char *config_property = "{\
-    \"transport\": [\
-        {\
+    \"transport\": {\
             \"value\": \"SCTP\",\
             \"precedence\": 1\
-        }\
-    ],\
+        },\
     \"multihoming\": {\
         \"value\": true,\
         \"precedence\": 2\

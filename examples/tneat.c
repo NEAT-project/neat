@@ -41,19 +41,12 @@ static uint16_t config_num_flows            = 1;
 static uint16_t config_max_flows            = 100;
 static uint16_t config_max_server_runs      = 0;
 static uint32_t config_low_watermark        = 0;
-static char *config_property = "\
-{\
-    \"transport\": [\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        }\
-    ]\
+static char *config_property = "{\
+    \"transport\": {\
+        \"value\": [\"SCTP\", \"TCP\"],\
+        \"precedence\": 2}\
 }";
+
 
 static uint32_t flows_active    = 0;
 static uint32_t server_runs     = 0;

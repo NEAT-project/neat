@@ -21,16 +21,11 @@
 
 static char *config_property = QUOTE(
     {
-        "transport": [
-            {
-                "value": "SCTP",
-                "precedence": 1
-            },
-            {
-                "value": "TCP",
-                "precedence": 1
-            }
-        ]
+      "transport": 
+          {
+              "value": ["TCP", "SCTP"],
+              "precedence": 1
+          }
     }
 );
 

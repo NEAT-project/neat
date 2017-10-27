@@ -39,7 +39,7 @@ NEAT Sockets API
 <keyword>Internet-Draft</keyword>
 
 <abstract>
-<t>This document describes a BSD Sockets-like API on top of the callback-based NEAT Callback API. This facilitates porting existing applications to use a subset of NEAT's functionality.</t>
+<t>This document describes a BSD Sockets-like API on top of the callback-based NEAT User API. This facilitates porting existing applications to use a subset of NEAT's functionality.</t>
 </abstract>
 
 
@@ -49,8 +49,8 @@ NEAT Sockets API
 
 
 <section title="Introduction">
-   <t>The NEAT project <xref target="NEAT-D1.1" />, <xref target="I-D.ietf-taps-transports-usage" />, <xref target="I-D.gjessing-taps-minset" />, <xref target="NEAT-Website" /> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network “services” offered to applications – such as reliability, low-delay communication or security – to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion.</t>
-   <t>This document describes the NEAT Sockets API on top of the callback-based NEAT Callback API <xref target="I-D.fairhurst-taps-neat" />. It provides a BSD Sockets-like API that facilitates porting existing applications to use a subset of NEAT's functionality. For further information on NEAT, see also <xref target="ANRW2017" />, <xref target="NEAT-D1.1" />,  <xref  target="NEAT-D1.2" />,  <xref target="NEAT-D2.1" />,  <xref target="NEAT-D2.2" />.</t>
+   <t>The NEAT project <xref target="ANRW2017" />, <xref target="NEAT-D1.1" />, <xref target="I-D.ietf-taps-transports-usage" />, <xref target="I-D.gjessing-taps-minset" />, <xref target="NEAT-Website" /> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network “services” offered to applications – such as reliability, low-delay communication or security – to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion.</t>
+   <t>This document describes the NEAT Sockets API on top of the callback-based NEAT User API <xref target="I-D.fairhurst-taps-neat" />. It provides a BSD Sockets-like API that facilitates porting existing applications to use a subset of NEAT's functionality. For further information on NEAT, see also <xref target="ANRW2017" />, <xref target="NEAT-D1.1" />,  <xref  target="NEAT-D1.2" />,  <xref target="NEAT-D2.1" />,  <xref target="NEAT-D2.2" />.</t>
 
 <section title="Conventions">
 <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in <xref target="RFC2119"/>.</t>
@@ -115,7 +115,7 @@ int nsa_unmap_socket(int neatSD)</artwork></figure>
 <section title="Connection Establishment and Teardown">
 
 <section title="nsa_socket()">
- <t>nsa_socket() creates a new NEAT socket. The NEAT socket can either be a wrapper around the NEAT Callback API (if properties are specified) or be a wrapper around a system socket (if no properties are specified).</t>
+ <t>nsa_socket() creates a new NEAT socket. The NEAT socket can either be a wrapper around the NEAT User API (if properties are specified) or be a wrapper around a system socket (if no properties are specified).</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_socket(int domain, int type, int protocol,

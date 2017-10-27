@@ -486,6 +486,23 @@ ssize_t nsa_write(int fd, const void* buf, size_t len)</artwork></figure>
  <t>See the write() documentation for details.</t>
 </section>
 
+<section title="nsa_writev()">
+ <t>nsa_writev() sends data over a given connected NEAT socket. The data is provided by an iovec structure.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_writev(int fd, const struct iovec* iov, int iovcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="iov:">Data to send provided as iovec structures.</t>
+      <t hangText="iovcnt:">Number of provided iovec structures.</t>
+   </list>
+ </t>
+ <t>nsa_writev() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the writev() documentation for details.</t>
+</section>
+
 <section title="nsa_send()">
  <t>nsa_send() sends data over a given connected NEAT socket.</t>
  <t>Function Prototype:</t>
@@ -565,7 +582,7 @@ ssize_t nsa_sendv(int sockfd, struct iovec* iov, int iovcnt,
       <t hangText="flags:">Optional flags (0, if there are none).</t>
    </list>
  </t>
- <t>nsa_sendmsg() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>nsa_sendv() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
  <t>See the sctp_sendv() documentation for details.</t>
 </section>
 
@@ -584,6 +601,23 @@ ssize_t nsa_read(int fd, void* buf, size_t len)</artwork></figure>
  </t>
  <t>nsa_read() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
  <t>See the read() documentation for details.</t>
+</section>
+
+<section title="nsa_readv()">
+ <t>nsa_readv() reads data from a given connected NEAT socket.  The data information buffers are provided by an iovec structure.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_readv(int fd, const struct iovec* iov, int iovcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="fd:">NEAT socket descriptor.</t>
+      <t hangText="iov:">Data to send provided as iovec structures.</t>
+      <t hangText="iovcnt:">Number of provided iovec structures.</t>
+   </list>
+ </t>
+ <t>nsa_readv() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the readv() documentation for details.</t>
 </section>
 
 <section title="nsa_recv()">
@@ -824,6 +858,38 @@ int nsa_open(const char* pathname, int flags, mode_t mode)</artwork></figure>
  <figure><artwork>
 int nsa_creat(const char* pathname, mode_t mode)</artwork></figure>
  <t>See the creat() documentation for details.</t>
+</section>
+
+<section title="nsa_pwrite()">
+ <t>nsa_pwrite() is a wrapper around the pwrite() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset)</artwork></figure>
+ <t>See the pwrite() documentation for details.</t>
+</section>
+
+<section title="nsa_pwritev()">
+ <t>nsa_pwritev() is a wrapper around the pwritev() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt, off_t offset)</artwork></figure>
+ <t>See the pwritev() documentation for details.</t>
+</section>
+
+<section title="nsa_pread()">
+ <t>nsa_pread() is a wrapper around the pread() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)</artwork></figure>
+ <t>See the pread() documentation for details.</t>
+</section>
+
+<section title="nsa_preadv()">
+ <t>nsa_preadv() is a wrapper around the preadv() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt, off_t offset)</artwork></figure>
+ <t>See the preadv() documentation for details.</t>
 </section>
 
 <section title="nsa_lockf()">

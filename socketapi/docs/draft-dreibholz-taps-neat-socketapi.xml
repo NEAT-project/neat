@@ -50,7 +50,7 @@ NEAT Sockets API
 
 <section title="Introduction">
    <t>The NEAT project <xref target="NEAT-D1.1" />, <xref target="I-D.ietf-taps-transports-usage" />, <xref target="I-D.gjessing-taps-minset" />, <xref target="NEAT-Website" /> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network “services” offered to applications – such as reliability, low-delay communication or security – to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion.</t>
-   <t>This document describes the NEAT Sockets API on top of the callback-based NEAT Callback API <xref target="I-D.fairhurst-taps-neat" />. It provides a BSD Sockets-like API that facilitates porting existing applications to use a subset of NEAT's functionality. For further information on NEAT, see also <xref target="NEAT-D1.1" />,  <xref  target="NEAT-D1.2" />,  <xref target="NEAT-D2.1" />,  <xref target="NEAT-D2.2" />.</t>
+   <t>This document describes the NEAT Sockets API on top of the callback-based NEAT Callback API <xref target="I-D.fairhurst-taps-neat" />. It provides a BSD Sockets-like API that facilitates porting existing applications to use a subset of NEAT's functionality. For further information on NEAT, see also <xref target="ANRW2017" />, <xref target="NEAT-D1.1" />,  <xref  target="NEAT-D1.2" />,  <xref target="NEAT-D2.1" />,  <xref target="NEAT-D2.2" />.</t>
 
 <section title="Conventions">
 <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in <xref target="RFC2119"/>.</t>
@@ -503,6 +503,40 @@ ssize_t nsa_writev(int fd, const struct iovec* iov, int iovcnt)</artwork></figur
  <t>See the writev() documentation for details.</t>
 </section>
 
+<section title="nsa_pwrite()">
+ <t>nsa_pwrite() is a wrapper around the pwrite() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset)</artwork></figure>
+ <t>See the pwrite() documentation for details.</t>
+</section>
+
+<section title="nsa_pwrite64()">
+ <t>nsa_pwrite64() is a wrapper around the pwrite64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off64_t offset)</artwork></figure>
+ <t>See the pwrite64() documentation for details.</t>
+</section>
+
+<section title="nsa_pwritev()">
+ <t>nsa_pwritev() is a wrapper around the pwritev() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
+                    off_t offset)</artwork></figure>
+ <t>See the pwritev() documentation for details.</t>
+</section>
+
+<section title="nsa_pwritev64()">
+ <t>nsa_pwritev64() is a wrapper around the pwritev64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
+                    off64_t offset)</artwork></figure>
+ <t>See the pwritev64() documentation for details.</t>
+</section>
+
 <section title="nsa_send()">
  <t>nsa_send() sends data over a given connected NEAT socket.</t>
  <t>Function Prototype:</t>
@@ -618,6 +652,40 @@ ssize_t nsa_readv(int fd, const struct iovec* iov, int iovcnt)</artwork></figure
  </t>
  <t>nsa_readv() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
  <t>See the readv() documentation for details.</t>
+</section>
+
+<section title="nsa_pread()">
+ <t>nsa_pread() is a wrapper around the pread() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)</artwork></figure>
+ <t>See the pread() documentation for details.</t>
+</section>
+
+<section title="nsa_pread64()">
+ <t>nsa_pread64() is a wrapper around the pread64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)</artwork></figure>
+ <t>See the pread64() documentation for details.</t>
+</section>
+
+<section title="nsa_preadv()">
+ <t>nsa_preadv() is a wrapper around the preadv() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
+                   off64_t offset)</artwork></figure>
+ <t>See the preadv() documentation for details.</t>
+</section>
+
+<section title="nsa_preadv64()">
+ <t>nsa_preadv64() is a wrapper around the preadv64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
+                   off64_t offset)</artwork></figure>
+ <t>See the preadv64() documentation for details.</t>
 </section>
 
 <section title="nsa_recv()">
@@ -860,74 +928,6 @@ int nsa_creat(const char* pathname, mode_t mode)</artwork></figure>
  <t>See the creat() documentation for details.</t>
 </section>
 
-<section title="nsa_pwrite()">
- <t>nsa_pwrite() is a wrapper around the pwrite() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset)</artwork></figure>
- <t>See the pwrite() documentation for details.</t>
-</section>
-
-<section title="nsa_pwrite64()">
- <t>nsa_pwrite64() is a wrapper around the pwrite64() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off64_t offset)</artwork></figure>
- <t>See the pwrite64() documentation for details.</t>
-</section>
-
-<section title="nsa_pwritev()">
- <t>nsa_pwritev() is a wrapper around the pwritev() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
-                    off_t offset)</artwork></figure>
- <t>See the pwritev() documentation for details.</t>
-</section>
-
-<section title="nsa_pwritev64()">
- <t>nsa_pwritev64() is a wrapper around the pwritev64() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
-                    off64_t offset)</artwork></figure>
- <t>See the pwritev64() documentation for details.</t>
-</section>
-
-<section title="nsa_pread()">
- <t>nsa_pread() is a wrapper around the pread() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)</artwork></figure>
- <t>See the pread() documentation for details.</t>
-</section>
-
-<section title="nsa_pread64()">
- <t>nsa_pread64() is a wrapper around the pread64() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)</artwork></figure>
- <t>See the pread64() documentation for details.</t>
-</section>
-
-<section title="nsa_preadv()">
- <t>nsa_preadv() is a wrapper around the preadv() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
-                   off64_t offset)</artwork></figure>
- <t>See the preadv() documentation for details.</t>
-</section>
-
-<section title="nsa_preadv64()">
- <t>nsa_preadv64() is a wrapper around the preadv64() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
-                   off64_t offset)</artwork></figure>
- <t>See the preadv64() documentation for details.</t>
-</section>
-
 <section title="nsa_lockf()">
  <t>nsa_lockf() is a wrapper around the lockf() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
@@ -1103,9 +1103,9 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 
 <section title="Acknowledgments">
 <t>
-   The authors would like to thank
-   (ADD NAMES HERE)
-   for their support.
+   The author would like to thank
+   Xing Zhou
+   for her support.
 </t>
 </section>
 
@@ -1131,6 +1131,7 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
  <?rfc include="NorNet-Website" ?>
  <?rfc include="Haikou2017-NEAT" ?>
 
+ <?rfc include="ANRW2017" ?>
  <?rfc include="NEAT-D1.1" ?>
  <?rfc include="NEAT-D1.2" ?>
  <?rfc include="NEAT-D2.1" ?>

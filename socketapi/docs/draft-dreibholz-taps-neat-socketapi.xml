@@ -861,47 +861,91 @@ int nsa_creat(const char* pathname, mode_t mode)</artwork></figure>
 </section>
 
 <section title="nsa_pwrite()">
- <t>nsa_pwrite() is a wrapper around the pwrite() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_pwrite() is a wrapper around the pwrite() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset)</artwork></figure>
  <t>See the pwrite() documentation for details.</t>
 </section>
 
-<section title="nsa_pwritev()">
- <t>nsa_pwritev() is a wrapper around the pwritev() call, returning a NEAT socket descriptor instead.</t>
+<section title="nsa_pwrite64()">
+ <t>nsa_pwrite64() is a wrapper around the pwrite64() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt, off_t offset)</artwork></figure>
+ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off64_t offset)</artwork></figure>
+ <t>See the pwrite64() documentation for details.</t>
+</section>
+
+<section title="nsa_pwritev()">
+ <t>nsa_pwritev() is a wrapper around the pwritev() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
+                    off_t offset)</artwork></figure>
  <t>See the pwritev() documentation for details.</t>
 </section>
 
+<section title="nsa_pwritev64()">
+ <t>nsa_pwritev64() is a wrapper around the pwritev64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
+                    off64_t offset)</artwork></figure>
+ <t>See the pwritev64() documentation for details.</t>
+</section>
+
 <section title="nsa_pread()">
- <t>nsa_pread() is a wrapper around the pread() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_pread() is a wrapper around the pread() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)</artwork></figure>
  <t>See the pread() documentation for details.</t>
 </section>
 
-<section title="nsa_preadv()">
- <t>nsa_preadv() is a wrapper around the preadv() call, returning a NEAT socket descriptor instead.</t>
+<section title="nsa_pread64()">
+ <t>nsa_pread64() is a wrapper around the pread64() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt, off_t offset)</artwork></figure>
+ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)</artwork></figure>
+ <t>See the pread64() documentation for details.</t>
+</section>
+
+<section title="nsa_preadv()">
+ <t>nsa_preadv() is a wrapper around the preadv() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
+                   off64_t offset)</artwork></figure>
  <t>See the preadv() documentation for details.</t>
 </section>
 
+<section title="nsa_preadv64()">
+ <t>nsa_preadv64() is a wrapper around the preadv64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
+                   off64_t offset)</artwork></figure>
+ <t>See the preadv64() documentation for details.</t>
+</section>
+
 <section title="nsa_lockf()">
- <t>nsa_lockf() is a wrapper around the lockf() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_lockf() is a wrapper around the lockf() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_lockf(int fd, int cmd, off_t len)</artwork></figure>
  <t>See the lockf() documentation for details.</t>
 </section>
 
+<section title="nsa_lockf64()">
+ <t>nsa_lockf64() is a wrapper around the lockf64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_lockf(int fd, int cmd, off64_t len)</artwork></figure>
+ <t>See the lockf64() documentation for details.</t>
+</section>
+
 <section title="nsa_flock()">
- <t>nsa_flock() is a wrapper around the flock() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_flock() is a wrapper around the flock() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_flock(int fd, int operation)</artwork></figure>
@@ -909,7 +953,7 @@ int nsa_flock(int fd, int operation)</artwork></figure>
 </section>
 
 <section title="nsa_fstat()">
- <t>nsa_fstat() is a wrapper around the fstat() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_fstat() is a wrapper around the fstat() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_fstat(int fd, struct stat* buf)</artwork></figure>
@@ -917,7 +961,7 @@ int nsa_fstat(int fd, struct stat* buf)</artwork></figure>
 </section>
 
 <section title="nsa_fpathconf()">
- <t>nsa_fpathconf() is a wrapper around the fpathconf() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_fpathconf() is a wrapper around the fpathconf() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 long nsa_fpathconf(int fd, int name)</artwork></figure>
@@ -925,7 +969,7 @@ long nsa_fpathconf(int fd, int name)</artwork></figure>
 </section>
 
 <section title="nsa_fchown()">
- <t>nsa_fchown() is a wrapper around the fchown() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_fchown() is a wrapper around the fchown() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_fchown(int fd, uid_t owner, gid_t group)</artwork></figure>
@@ -933,7 +977,7 @@ int nsa_fchown(int fd, uid_t owner, gid_t group)</artwork></figure>
 </section>
 
 <section title="nsa_fsync()">
- <t>nsa_fsync() is a wrapper around the fsync() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_fsync() is a wrapper around the fsync() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_fsync(int fd)</artwork></figure>
@@ -941,7 +985,7 @@ int nsa_fsync(int fd)</artwork></figure>
 </section>
 
 <section title="nsa_fdatasync()">
- <t>nsa_fdatasync() is a wrapper around the fdatasync() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_fdatasync() is a wrapper around the fdatasync() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_fdatasync(int fd)</artwork></figure>
@@ -949,7 +993,7 @@ int nsa_fdatasync(int fd)</artwork></figure>
 </section>
 
 <section title="nsa_syncfs()">
- <t>nsa_syncfs() is a wrapper around the syncfs() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_syncfs() is a wrapper around the syncfs() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_syncfs(int fd)</artwork></figure>
@@ -957,7 +1001,7 @@ int nsa_syncfs(int fd)</artwork></figure>
 </section>
 
 <section title="nsa_dup2()">
- <t>nsa_dup2() is a wrapper around the dup2() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_dup2() is a wrapper around the dup2() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_dup2(int oldfd, int newfd)</artwork></figure>
@@ -965,7 +1009,7 @@ int nsa_dup2(int oldfd, int newfd)</artwork></figure>
 </section>
 
 <section title="nsa_dup3()">
- <t>nsa_dup3() is a wrapper around the dup3() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_dup3() is a wrapper around the dup3() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_dup3(int oldfd, int newfd, int flags)</artwork></figure>
@@ -973,7 +1017,7 @@ int nsa_dup3(int oldfd, int newfd, int flags)</artwork></figure>
 </section>
 
 <section title="nsa_dup()">
- <t>nsa_dup() is a wrapper around the dup() call, returning a NEAT socket descriptor instead.</t>
+ <t>nsa_dup() is a wrapper around the dup() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_dup(int oldfd)</artwork></figure>
@@ -988,12 +1032,28 @@ off_t nsa_lseek(int fd, off_t offset, int whence)</artwork></figure>
  <t>See the lseek() documentation for details.</t>
 </section>
 
+<section title="nsa_lseek64()">
+ <t>nsa_lseek64() is a wrapper around the lseek64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+off_t nsa_lseek(int fd, off64_t offset, int whence)</artwork></figure>
+ <t>See the lseek64() documentation for details.</t>
+</section>
+
 <section title="nsa_truncate()">
  <t>nsa_truncate() is a wrapper around the truncate() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_ftruncate(int fd, off_t length)</artwork></figure>
  <t>See the truncate() documentation for details.</t>
+</section>
+
+<section title="nsa_truncate64()">
+ <t>nsa_truncate64() is a wrapper around the truncate64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_ftruncate(int fd, off64_t length)</artwork></figure>
+ <t>See the truncate64() documentation for details.</t>
 </section>
 
 <section title="nsa_pipe()">

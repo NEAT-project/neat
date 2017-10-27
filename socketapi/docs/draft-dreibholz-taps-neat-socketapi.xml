@@ -808,6 +808,8 @@ void nsa_freepaddrs(struct sockaddr* addrs)</artwork></figure>
 
 <section title="Miscellaneous">
 
+<t>This section contains miscellaneous wrapper functions, mostly around file I/O. Since Unix file descriptors are used together with socket descriptors in functions like poll(), select(), etc., it is necessary to wrap functions handling file descriptors as well.</t>
+
 <section title="nsa_open()">
  <t>nsa_open() is a wrapper around the open() call, returning a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
@@ -822,6 +824,94 @@ int nsa_open(const char* pathname, int flags, mode_t mode)</artwork></figure>
  <figure><artwork>
 int nsa_creat(const char* pathname, mode_t mode)</artwork></figure>
  <t>See the creat() documentation for details.</t>
+</section>
+
+<section title="nsa_lockf()">
+ <t>nsa_lockf() is a wrapper around the lockf() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_lockf(int fd, int cmd, off_t len)</artwork></figure>
+ <t>See the lockf() documentation for details.</t>
+</section>
+
+<section title="nsa_flock()">
+ <t>nsa_flock() is a wrapper around the flock() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_flock(int fd, int operation)</artwork></figure>
+ <t>See the flock() documentation for details.</t>
+</section>
+
+<section title="nsa_fstat()">
+ <t>nsa_fstat() is a wrapper around the fstat() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_fstat(int fd, struct stat* buf)</artwork></figure>
+ <t>See the fstat() documentation for details.</t>
+</section>
+
+<section title="nsa_fpathconf()">
+ <t>nsa_fpathconf() is a wrapper around the fpathconf() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+long nsa_fpathconf(int fd, int name)</artwork></figure>
+ <t>See the fpathconf() documentation for details.</t>
+</section>
+
+<section title="nsa_fchown()">
+ <t>nsa_fchown() is a wrapper around the fchown() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_fchown(int fd, uid_t owner, gid_t group)</artwork></figure>
+ <t>See the fchown() documentation for details.</t>
+</section>
+
+<section title="nsa_fsync()">
+ <t>nsa_fsync() is a wrapper around the fsync() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_fsync(int fd)</artwork></figure>
+ <t>See the fsync() documentation for details.</t>
+</section>
+
+<section title="nsa_fdatasync()">
+ <t>nsa_fdatasync() is a wrapper around the fdatasync() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_fdatasync(int fd)</artwork></figure>
+ <t>See the fdatasync() documentation for details.</t>
+</section>
+
+<section title="nsa_syncfs()">
+ <t>nsa_syncfs() is a wrapper around the syncfs() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_syncfs(int fd)</artwork></figure>
+ <t>See the syncfs() documentation for details.</t>
+</section>
+
+<section title="nsa_dup2()">
+ <t>nsa_dup2() is a wrapper around the dup2() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_dup2(int oldfd, int newfd)</artwork></figure>
+ <t>See the dup2() documentation for details.</t>
+</section>
+
+<section title="nsa_dup3()">
+ <t>nsa_dup3() is a wrapper around the dup3() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_dup3(int oldfd, int newfd, int flags)</artwork></figure>
+ <t>See the dup3() documentation for details.</t>
+</section>
+
+<section title="nsa_dup()">
+ <t>nsa_dup() is a wrapper around the dup() call, returning a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_dup(int oldfd)</artwork></figure>
+ <t>See the dup() documentation for details.</t>
 </section>
 
 <section title="nsa_lseek()">

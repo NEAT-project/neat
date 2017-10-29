@@ -1104,8 +1104,10 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 <section title="Acknowledgments">
 <t>
    The author would like to thank
+   David Ros,
+   Michael Welzl, and
    Xing Zhou
-   for her support.
+   for their support.
 </t>
 </section>
 

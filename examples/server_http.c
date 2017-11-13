@@ -11,6 +11,7 @@
 
 #include "util.h"
 #include "picohttpparser.h"
+
 #define QUOTE(...) #__VA_ARGS__
 
 /**********************************************************************
@@ -20,12 +21,8 @@
 **********************************************************************/
 
 static char *config_property = QUOTE(
-    {
-      "transport": 
-          {
-              "value": ["TCP", "SCTP"],
-              "precedence": 1
-          }
+    {"transport":
+        {"value":["TCP","SCTP"],"precedence":1}
     }
 );
 

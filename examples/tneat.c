@@ -7,6 +7,8 @@
 #include <sys/time.h>
 #include <errno.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
     tneat - neat testing tool
@@ -41,11 +43,11 @@ static uint16_t config_num_flows            = 1;
 static uint16_t config_max_flows            = 100;
 static uint16_t config_max_server_runs      = 0;
 static uint32_t config_low_watermark        = 0;
-static char *config_property = "{\
-    \"transport\": {\
-        \"value\": [\"SCTP\", \"TCP\"],\
-        \"precedence\": 2}\
-}";
+static char *config_property = QUOTE({
+    "transport": {
+        "value": ["SCTP", "TCP"],
+        "precedence": 2}
+  });
 
 
 static uint32_t flows_active    = 0;

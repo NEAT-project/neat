@@ -8,6 +8,8 @@
 #include "util.h"
 #include <errno.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
     daytime server
@@ -18,11 +20,11 @@
 
 **********************************************************************/
 
-static char *config_property = "{\
-    \"transport\": {\
-        \"value\": [\"SCTP\", \"TCP\", \"SCTP/UDP\"],\
-        \"precedence\": 2}\
-}";
+static char *config_property = QUOTE({
+    "transport": {
+        "value": ["SCTP", "TCP", "SCTP/UDP"],
+        "precedence": 2}
+  });
 static uint16_t config_log_level = 1;
 
 #define BUFFERSIZE 32

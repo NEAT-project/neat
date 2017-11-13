@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <uv.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
     simple neat client
@@ -32,8 +34,9 @@ static uint16_t config_log_level = 0;
 static uint16_t config_json_stats = 0;
 static uint16_t config_timeout = 0;
 static char *config_primary_dest_addr = NULL;
-static char *config_property =
-    "{ \"transport\": { \"value\": \"UDP\", \"precedence\": 1 }, \"security\" : { \"value\": true, \"precedence\": 2 }, \"verification\" : { \"value\": false, \"precedence\": 2} }";
+static char *config_property = QUOTE(
+    { "transport": { "value": "UDP", "precedence": 1 }, "security" : { "value": true, "precedence": 2 }, "verification" : { "value": false, "precedence": 2} };
+);
 
 struct std_buffer {
     unsigned char *buffer;

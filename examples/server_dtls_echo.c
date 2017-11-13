@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <ctype.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
     echo server
@@ -24,7 +26,10 @@ static uint32_t config_buffer_size = 512;
 static uint16_t config_log_level = 0;
 static uint16_t config_number_of_streams = 1988;
 static char *config_property =
-    "{ \"transport\": { \"value\": \"UDP\", \"precedence\": 1 }, \"security\" : { \"value\": true, \"precedence\": 2 } }";
+  QUOTE(
+    {"transport": { "value": "UDP", "precedence": 1 },
+     "security" : { "value": true, "precedence": 2 }}
+        );
 
 static char *pem_file = NULL;
 

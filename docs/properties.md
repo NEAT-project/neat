@@ -59,16 +59,11 @@ strictly mandated by the application protocol.
 
 ```javascript
 {
-    "transport": [
-        {
-            "value": "SCTP",
-            "precedence": 1
-        },
-        {
-            "value": "TCP",
-            "precedence": 1
-        }
-    ]
+    "transport": 
+    {
+        "value": [ "SCTP", "TCP" ]
+        "precedence": 1
+    }
 }
 ```
 
@@ -76,12 +71,11 @@ strictly mandated by the application protocol.
 
 ```javascript
 {
-    "transport": [
-        {
-            "value": "UDP",
-            "precedence": 2
-        }
-    ]
+    "transport": 
+    {
+        "value": "UDP",
+        "precedence": 2
+    }
 }
 ```
 

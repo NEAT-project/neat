@@ -24,8 +24,8 @@ tests_general.append([0, 0, workdir + 'tneat -L -n 1024 -P ' + workdir + 'prop_t
 
 if (platform.system() == "FreeBSD") or (platform.system() == "Linux"):
     tests_general.append([1, 0, workdir + 'client_http_get -P ' + workdir + 'prop_tcp_security.json -p 443 -v 2 ec.europa.eu'])
-    tests_general.append([0, 0, workdir + 'tneat -v 1 -P ' + workdir + 'prop_sctp_dtls.json interop.fh-muenster.de'])
-    tests_general.append([0, 0, workdir + 'tneat -L -n 1024 -P ' + workdir + 'prop_sctp.json'])
+    tests_general.append([0, 0, workdir + 'tneat -v 2 -P ' + workdir + 'prop_sctp_dtls.json interop.fh-muenster.de'])
+    tests_general.append([0, 0, workdir + 'tneat -v 2 -L -n 1024 -P ' + workdir + 'prop_sctp.json'])
 
 #tests_general.append([0, 0, 'python3.5 ../../policy/pmtests.py'])
 

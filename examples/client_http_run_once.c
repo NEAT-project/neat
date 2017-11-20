@@ -37,40 +37,22 @@ static char request[512];
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 static char *config_property_sctp_tcp = QUOTE(
     {                                             
-    "transport": [
-        {
-            "value": "SCTP",
-            "precedence": 1
+    "transport": {
+          "value": ["TCP", "SCTP", "SCTP/UDP"]
+          "precedence": 1
         },
-        {
-            "value": "SCTP/UDP",
-            "precedence": 1
-        },
-        {
-            "value": "TCP",
-            "precedence": 1
-        }
-    ]
       });
 static char *config_property_tcp = QUOTE({
-    "transport": [
-        {
+    "transport": {
             "value": "TCP",
             "precedence": 1
         }
-    ]
       });
 static char *config_property_sctp = QUOTE({
-    "transport": [
-        {
-            "value": "SCTP",
-            "precedence": 1
+    "transport": {
+          "value": ["SCTP", "SCTP/UDP"]
+           "precedence": 1
         },
-        {
-            "value": "SCTP/UDP",
-            "precedence": 1
-        }
-    ]
       });
 static unsigned char *buffer = NULL;
 static int streams_going = 0;

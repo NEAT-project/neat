@@ -23,9 +23,9 @@ tests_general.append([0, 0, workdir + 'client_http_get -n 2 -u /files/4M bsd10.n
 tests_general.append([0, 0, workdir + 'tneat -L -n 1024 -P ' + workdir + 'prop_tcp.json'])
 
 if (platform.system() == "FreeBSD") or (platform.system() == "Linux"):
-    tests_general.append([1, 0, workdir + 'client_http_get -P ' + workdir + 'prop_tcp_security.json -p 443 -v 2 ec.europa.eu'])
-    tests_general.append([0, 0, workdir + 'tneat -v 1 -P ' + workdir + 'prop_sctp_dtls.json interop.fh-muenster.de'])
-    tests_general.append([0, 0, workdir + 'tneat -L -n 1024 -P ' + workdir + 'prop_sctp.json'])
+    tests_general.append([0, 0, workdir + 'client_http_get -P ' + workdir + 'prop_tcp_security.json -p 443 -v 2 ec.europa.eu'])
+    tests_general.append([0, 0, workdir + 'tneat -v 2 -P ' + workdir + 'prop_sctp_dtls.json interop.fh-muenster.de'])
+    tests_general.append([0, 0, workdir + 'tneat -v 2 -L -n 1024 -P ' + workdir + 'prop_sctp.json'])
 
 #tests_general.append([0, 0, 'python3.5 ../../policy/pmtests.py'])
 
@@ -55,6 +55,7 @@ if len(sys.argv) > 2 :
 
 print("prefix : " + prefix)
 print("Starting tests...")
+sys.stdout.flush()
 
 result_global = 0
 
@@ -63,8 +64,9 @@ for test in tests:
     result = 0
     print("\n\n############################### TEST")
     print("Runnning: " + test[2])
+    sys.stdout.flush()
     try:
-        result = subprocess.call(prefix + test[2], shell=True, timeout=70)
+        result = subprocess.call(prefix + test[2], shell=True, timeout=timeout)
         if result != test[0]:
             print("Test failed: program returned with error")
             test[1] = 2

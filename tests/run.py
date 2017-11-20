@@ -55,6 +55,7 @@ if len(sys.argv) > 2 :
 
 print("prefix : " + prefix)
 print("Starting tests...")
+sys.stdout.flush()
 
 result_global = 0
 
@@ -63,8 +64,9 @@ for test in tests:
     result = 0
     print("\n\n############################### TEST")
     print("Runnning: " + test[2])
+    sys.stdout.flush()
     try:
-        result = subprocess.call(prefix + test[2], shell=True, timeout=70)
+        result = subprocess.call(prefix + test[2], shell=True, timeout=timeout)
         if result != test[0]:
             print("Test failed: program returned with error")
             test[1] = 2

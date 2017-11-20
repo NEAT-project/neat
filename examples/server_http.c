@@ -28,14 +28,11 @@ static char *config_property = QUOTE(
 
 static char *config_property_https  = QUOTE(
     {
-        "transport": [
-            {
+        "transport": {
                 "value": "TCP",
                 "precedence": 1
-            }
-        ],
-        "security" :
-            {
+            },
+        "security" : {
                 "value": true,
                 "precedence": 2
             }

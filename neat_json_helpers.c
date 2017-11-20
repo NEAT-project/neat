@@ -96,92 +96,17 @@ nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
 
     transports = json_object_get(json, "transport");
 
-    if (json_is_array(transports)) {
-        // TODO array encoding is deprecated. use objects instead. More complex properties should be handled by PM.
-        printf("DEPRECATED: Please update to new JSON properties style.\n");
-        // FIXME update JSON format in examples, and remove this code
-
-        json_array_foreach(transports, i, transport) {
-            int precedence = json_integer_value(json_object_get(transport, "precedence"));
-            const char* value;
-            json_t* val;
-            neat_protocol_stack_type stack;
-
-            val = json_object_get(transport, "value");
-            assert(val);
-            assert(json_typeof(val) == JSON_STRING);
-            value = json_string_value(val);
-
-            if (precedence == 2) {
-                // Don't specify more than one transport if you have precedence == 2,
-                // unless it's for listening sockets
-                assert(json_array_size(transports) == 1 || precedences);
-
-                if ((stack = string_to_stack(value)) != 0) {
-                    *stacks = stack;
-                    count++;
-
-                    if (precedences) {
-                        *(precedences++) = precedence;
-                    } else {
-                        *stack_count = count;
-                        return;
-                    }
-
-                } else {
-                    // neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
-                    *stack_count = 0;
-                }
-
-                if (!precedences)
-                    return;
-            } else if (precedence == 1) {
-#if BANNED_ENABLED
-                    int b;
-
-                val = json_object_get(transport, "banned");
-                b = json_boolean_value(val);
-
-                if ((stack = string_to_stack(value)) != 0) {
-                    if (val && b) {
-                        *(banned_ptr++) = stack;
-                        ban_count++;
-                        continue;
-                    } else {
-                        *(stack_ptr++) = stack;
-                        count++;
-                        if (precedences) {
-                            *(precedences++) = precedence;
-                        }
-                    }
-                } else {
-                    // neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
-                }
-#else
-                if ((stack = string_to_stack(value)) != 0) {
-                    *(stack_ptr++) = stack;
-                    count++;
-                    if (precedences) {
-                        *(precedences++) = precedence;
-                    }
-                } else {
-                    // neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
-                }
-#endif
-            } else {
-                *stack_count = 0;
-                return;
-            }
-        }
-    } else if (json_is_object(transports)) {
-        printf("New properties format\n");
+    if (json_is_object(transports)) {
+        // new properties format
         int precedence = json_integer_value(json_object_get(transports, "precedence"));
         const char* value;
         json_t* val;
 
         val = json_object_get(transports, "value");
         assert(val);
-
+        
+        // transport values are either a single string e.g. "TCP",
+        // or a dict of supported transport protocols ["TCP", "SCTP"]
         if (json_typeof(val) == JSON_STRING) {
             neat_protocol_stack_type stack;
             value = json_string_value(val);
@@ -191,22 +116,28 @@ nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
                 if (precedences) {
                     *(precedences++) = precedence;
                 }
+            } else {
+                // neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
+                *stack_count = 0;
             }
         } else if (json_typeof(val) == JSON_ARRAY){
             json_array_foreach(val, i, transport){
                 neat_protocol_stack_type stack;
                 value = json_string_value(transport);
+                // neat_log(NEAT_LOG_DEBUG, "Transport %s", value);
                 if ((stack = string_to_stack(value)) != 0) {
                     *(stack_ptr++) = stack;
                     count++;
                     if (precedences) {
                         *(precedences++) = precedence;
                     }
+                } else {
+                  //neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
                 }
             }
         }
     } else  {
-        printf("Invalid property format\n");
+        printf("ERROR: Invalid property format\n");
     }
 #if BANNED_ENABLED
     // If only banned protocols are specified

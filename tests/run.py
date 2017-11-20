@@ -46,51 +46,51 @@ if len(sys.argv) > 1 :
     elif sys.argv[1] == "usrsctp" :
         tests = tests_usrsctp
     else:
-        print("WARN: Unknown testsuite, using default")
+        print("WARN: Unknown testsuite, using default", file=sys.stdout, True)
         tests = tests_general
 
 # Second argument: command prefix (e.g. valgrind)
 if len(sys.argv) > 2 :
     prefix = sys.argv[2]
 
-print("prefix : " + prefix)
-print("Starting tests...")
+print("prefix : " + prefix, file=sys.stdout, True)
+print("Starting tests...", file=sys.stdout, True)
 
 result_global = 0
 
 # Iteratre through tests
 for test in tests:
     result = 0
-    print("\n\n############################### TEST")
-    print("Runnning: " + test[2])
+    print("\n\n############################### TEST", file=sys.stdout, True)
+    print("Runnning: " + test[2], file=sys.stdout, True)
     try:
-        result = subprocess.call(prefix + test[2], shell=True, timeout=70)
+        result = subprocess.call(prefix + test[2], shell=True, timeout=timeout)
         if result != test[0]:
-            print("Test failed: program returned with error")
+            print("Test failed: program returned with error", file=sys.stdout, True)
             test[1] = 2
             break
     except subprocess.TimeoutExpired:
-        print("Test failed: timeout")
+        print("Test failed: timeout", file=sys.stdout, True)
         test[1] = 2
         break
     except:
-        print("Something went wrong")
+        print("Something went wrong", file=sys.stdout, True)
         test[1] = 2
         break
 
     # test succeeded
     test[1] = 1
 
-print("\n\n###############################")
-print("Tests finished - summary")
+print("\n\n###############################", file=sys.stdout, True)
+print("Tests finished - summary", file=sys.stdout, True)
 for test in tests:
     if test[1] == 1:
-        print("PASSED   --  " + test[2])
+        print("PASSED   --  " + test[2], file=sys.stdout, True)
     elif test[1] == 2:
-        print("FAILED   --  " + test[2])
+        print("FAILED   --  " + test[2], file=sys.stdout, True)
         result_global = 2
     else:
-        print("SKIPPED  --  " + test[2])
+        print("SKIPPED  --  " + test[2], file=sys.stdout, True)
         result_global = 2
 
 if result_global > 0:

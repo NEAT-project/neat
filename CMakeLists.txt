@@ -3,7 +3,7 @@ PROJECT(libneat)
 
 set(BUILD_MAJOR "0")
 set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td175")
+set(BUILD_PATCH "1~td176")
 set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 # INSTALLATION_DIRECTORIES
@@ -50,6 +50,7 @@ add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
 INCLUDE(CheckIncludeFile)
 INCLUDE(CheckStructHasMember)
 INCLUDE(CheckTypeSize)
+INCLUDE(CheckCCompilerFlag)
 SET(CMAKE_MACOSX_RPATH 1)
 
 # SOURCES + HEADERS
@@ -168,6 +169,13 @@ IF (USRSCTP_SUPPORT)
     MESSAGE("USRSCTP found: " ${USRSCTP_LIB})
 ENDIF()
 
+OPTION(MPTCP_SUPPORT "Include MPTCP support" 0)
+IF (MPTCP_SUPPORT)
+    MESSAGE(STATUS "Included MPTCP support")
+    ADD_DEFINITIONS(-DMPTCP_SUPPORT)
+ENDIF()
+
+
 OPTION(NEAT_LOG "enable NEAT log module" 1)
 IF (NEAT_LOG)
     ADD_DEFINITIONS(-DNEAT_LOG)
@@ -208,7 +216,7 @@ OPTION(SANITIZER_ADDRESS "Compile with address sanitizer" 0)
 OPTION(SANITIZER_MEMORY "Compile with memory sanitizer" 0)
 
 IF (SANITIZER_ADDRESS AND SANITIZER_MEMORY)
-MESSAGE(FATAL_ERROR "Can not compile with both sanitizer options")
+    MESSAGE(FATAL_ERROR "Can not compile with both sanitizer options")
 ENDIF()
 
 
@@ -270,9 +278,11 @@ IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         MESSAGE("LIBMNL found: " ${MNL_LIB})
     ENDIF()
     FIND_LIBRARY(SCTP_LIB sctp)
-    IF(EXISTS "/proc/sys/net/mptcp/mptcp_enabled")
-        MESSAGE(STATUS "MPTCP found")
-        ADD_DEFINITIONS(-DMPTCP_SUPPORT)
+    IF (NOT MPTCP_SUPPORT)
+        IF(EXISTS "/proc/sys/net/mptcp/mptcp_enabled")
+            MESSAGE(STATUS "MPTCP found")
+            ADD_DEFINITIONS(-DMPTCP_SUPPORT)
+        ENDIF()
     ENDIF()
 ENDIF()
 
@@ -326,6 +336,78 @@ ENDIF()
 # -Wno-array-bounds is unfortunate, but caused by https://bugs.llvm.org/show_bug.cgi?id=20144
 SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unreachable-code -Wno-array-bounds")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unreachable-code")
+
+CHECK_C_COMPILER_FLAG(-Wfloat-equal HAS_WFLOAT_EQUAL)
+IF (HAS_WFLOAT_EQUAL)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wfloat-equal")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wfloat-equal")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wshadow HAS_WSHADOW)
+IF (HAS_WSHADOW)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wshadow")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wpointer-arith HAS_WPOINTER_ARITIH)
+IF (HAS_WPOINTER_ARITIH)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wpointer-arith")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wpointer-arith")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wunreachable-code HAS_WUNREACHABLE_CODE)
+IF (HAS_WUNREACHABLE_CODE)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wunreachable-code")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunreachable-code")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Winit-self HAS_WINIT_SELF)
+IF (HAS_WINIT_SELF)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Winit-self")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Winit-self")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-unused-function HAS_WNO_UNUSED_FUNCTION)
+IF (HAS_WNO_UNUSED_FUNCTION)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-unused-function")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-unused-parameter HAS_WNO_UNUSED_PARAMETER)
+IF (HAS_WNO_UNUSED_PARAMETER)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-unused-parameter")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-overlength-strings HAS_WNO_OVERLENGTH_STRINGS)
+IF (HAS_WNO_OVERLENGTH_STRINGS)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-overlength-strings")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-overlength-strings")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-unused-command-line-argument HAS_WNO_UNUSED_COMMAND_LINE_ARGUMENT)
+IF (HAS_WNO_UNUSED_COMMAND_LINE_ARGUMENT)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-unused-command-line-argument")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-unreachable-code HAS_WNO_UNREACHABLE_CODE)
+IF (HAS_WNO_UNREACHABLE_CODE)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-unreachable-code")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unreachable-code")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-parentheses-equality HAS_WNO_PARANTHESES_EQUALITY)
+IF (HAS_WNO_PARANTHESES_EQUALITY)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-parentheses-equality")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-parentheses-equality")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-array-bounds HAS_WNO_ARRAY_BOUNDS)
+IF (HAS_WNO_ARRAY_BOUNDS)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-array-bounds")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-array-bounds")
+ENDIF()
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")

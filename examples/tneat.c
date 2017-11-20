@@ -7,6 +7,8 @@
 #include <sys/time.h>
 #include <errno.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
     tneat - neat testing tool
@@ -31,7 +33,7 @@
 
 static uint32_t config_rcv_buffer_size      = 10240;
 static uint32_t config_snd_buffer_size      = 1024;
-static uint32_t config_message_count        = 1;
+static uint32_t config_message_count        = 1024;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_mode                 = 0;
 static uint16_t config_chargen_offset       = 0;
@@ -41,25 +43,19 @@ static uint16_t config_num_flows            = 1;
 static uint16_t config_max_flows            = 100;
 static uint16_t config_max_server_runs      = 0;
 static uint32_t config_low_watermark        = 0;
-static char *config_property = "\
-{\
-    \"transport\": [\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";
+static char *config_property = QUOTE({
+    "transport": {
+        "value": ["SCTP", "TCP"],
+        "precedence": 2}
+  });
+
 
 static uint32_t flows_active    = 0;
 static uint32_t server_runs     = 0;
 static char *cert_file          = NULL;
 static char *key_file           = NULL;
 static char *loop_hostname      = "127.0.0.1";
+static int result               = EXIT_SUCCESS;
 
 /*
     macro - tvp-uvp=vvp
@@ -127,6 +123,7 @@ on_error(struct neat_flow_operations *opCB)
 
     fprintf(stderr, "%s()\n", __func__);
     neat_stop_event_loop(opCB->ctx);
+    result = EXIT_FAILURE;
     return NEAT_OK;
 }
 
@@ -386,14 +383,12 @@ main(int argc, char *argv[])
     struct neat_flow_operations ops_client[config_max_flows];
     struct neat_flow_operations op_server;
 
-    int arg, result;
+    int arg;
     char *arg_property = config_property;
     char *remote_addr = NULL;
 
     memset(&ops_client, 0, sizeof(ops_client));
     memset(&op_server, 0, sizeof(op_server));
-
-    result = EXIT_SUCCESS;
 
     while ((arg = getopt(argc, argv, "c:k:l:Ln:p:P:R:T:v:w:")) != -1) {
         switch(arg) {

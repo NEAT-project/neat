@@ -230,7 +230,6 @@ int nsa_select(int             n,
 
 #include <sys/epoll.h>
 
-
 /* ###### NEAT epoll_create() implementation ############################# */
 int nsa_epoll_create(int size)
 {

@@ -1132,8 +1132,8 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
  <?rfc include="NEAT-Website" ?>
  <?rfc include="NorNet-Website" ?>
  <?rfc include="Haikou2017-NEAT" ?>
-
  <?rfc include="ANRW2017" ?>
+
  <?rfc include="NEAT-D1.1" ?>
  <?rfc include="NEAT-D1.2" ?>
  <?rfc include="NEAT-D2.1" ?>

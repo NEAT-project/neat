@@ -33,6 +33,17 @@
     #define NEAT_INTERNAL_USRSCTP
 #endif // USRSCTP_SUPPORT
 
+#ifdef MPTCP_SUPPORT
+    #define MPTCP_SYS_DISABLED (0) // MPTCP is disabled globaly on the system or not installed
+    #define MPTCP_SYS_ENABLED (1) // MPTCP is enabled globaly on the system
+    #define MPTCP_SYS_APP_CTRL (2) // MPTCP is controlled by the application
+                               // via MPTCP_ENABLED (value 42) socket option
+    #define NEAT_INTERNAL_MPTCP \
+        int sys_mptcp_enabled;
+#else // MPTCP_SUPPORT
+    #define NEAT_INTERNAL_MPTCP
+#endif // MPTCP_SUPPORT
+
 #include "neat_log.h"
 #include "neat_stat.h"
 
@@ -93,6 +104,7 @@ struct neat_ctx
     NEAT_INTERNAL_CTX;
     NEAT_INTERNAL_OS;
     NEAT_INTERNAL_USRSCTP
+    NEAT_INTERNAL_MPTCP
 };
 
 void nt_ctx_fail_on_error(struct neat_ctx *nc, neat_error_code error);
@@ -320,7 +332,7 @@ struct neat_flow
     unsigned int everConnected              : 1;
     unsigned int isDraining                 : 1;
     unsigned int isServer                   : 1; // i.e. created via accept()
-    unsigned int isSCTPMultihoming          : 1;
+    unsigned int isMultihoming              : 1;
     unsigned int security_needed            : 1;
     unsigned int isSCTPIdata                : 1;
     unsigned int isClosing                  : 1;

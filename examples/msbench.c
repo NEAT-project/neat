@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <uv.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /*
     default values
 */
@@ -24,28 +26,26 @@ static uint16_t config_num_flows            = 6;
 static uint16_t config_max_flows            = 100;
 static uint32_t config_delay                = 0;
 static uint32_t config_loss                 = 0;
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        }\
-    ],\
-    \"multihoming\": {\
-        \"value\": true,\
-        \"precedence\": 2\
-    },\
-    \"local_ips\": [\
-        {\
-            \"value\": \"10.1.1.2\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"10.1.2.2\",\
-            \"precedence\": 2\
-        }\
-    ]\
-}";\
+static char *config_property = QUOTE({
+    "transport": {
+            "value": "SCTP",
+            "precedence": 1
+        },
+    "multihoming": {
+        "value": true,
+        "precedence": 2
+    },
+    "local_ips": [
+        {
+            "value": "10.1.1.2",
+            "precedence": 1
+        },
+        {
+            "value": "10.1.2.2",
+            "precedence": 2
+        }
+    ]
+      });
 
 static uint32_t flows_active = 0;
 static uint32_t flows_connected = 0;

@@ -23,7 +23,7 @@ tests_general.append([0, 0, workdir + 'client_http_get -n 2 -u /files/4M bsd10.n
 #tests_general.append([0, 0, workdir + 'tneat -L -n 1024 -P ' + workdir + 'prop_tcp.json'])
 
 if (platform.system() == "FreeBSD") or (platform.system() == "Linux"):
-    #tests_general.append([0, 0, workdir + 'client_http_get -P ' + workdir + 'prop_tcp_security.json -p 443 -v 2 www.fh-muenster.de'])
+    tests_general.append([0, 0, workdir + 'client_http_get -P ' + workdir + 'prop_tcp_security.json -p 443 -v 2 www.fh-muenster.de'])
     tests_general.append([0, 0, workdir + 'tneat -v 2 -P ' + workdir + 'prop_sctp_dtls.json interop.fh-muenster.de'])
     tests_general.append([0, 0, workdir + 'tneat -v 2 -L -n 1024 -P ' + workdir + 'prop_sctp.json'])
 

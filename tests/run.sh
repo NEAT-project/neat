@@ -22,7 +22,7 @@ function runtest {
 unamestr=`uname`
 if [ "$unamestr" == "Linux" ] || [ "$unamestr" == "FreeBSD" ]; then
     retcode=0
-    runtest "../examples/client_http_get" "-P" "../examples/prop_tcp_security.json" "-p" "443" "-v" "2" "www.fh-muenster.de"
+    runtest "../examples/client_http_get" "-P" "../examples/prop_tcp_security.json" "-p" "443" "-v" "1" "www.fh-muenster.de"
     runtest "../examples/tneat" "-v" "2" "-P" "../examples/prop_sctp_dtls.json" "interop.fh-muenster.de"
     runtest "../examples/tneat" "-v" "2" "-L" "-n" "1024" "-P" "../examples/prop_sctp.json"
 fi

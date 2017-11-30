@@ -5,10 +5,13 @@ cmdprefix=""
 
 if [ $# -eq 1 ]; then
     cmdprefix=$1
-    echo "No arguments supplied"
+    echo "Running tests with prefix: $cmdprefix"
 fi
 
 function runtest {
+    echo "##################################"
+    echo "$@"
+    echo ""
     $cmdprefix "$@"
     local status=$?
     if [ $status -ne $retcode ]; then
@@ -16,7 +19,7 @@ function runtest {
         echo "$@" >&2
         exit 0
     fi
-    return $status
+    echo ""
 }
 
 unamestr=`uname`
@@ -32,6 +35,7 @@ retcode=0
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "2" "bsd10.nplab.de"
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "2" "212.201.121.100"
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "2" "2a02:c6a0:4015:10::100"
+
 
 retcode=1
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "2" "buildbot.nplab.de"

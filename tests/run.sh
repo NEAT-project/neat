@@ -4,22 +4,22 @@ retcode=1
 cmdprefix=""
 
 if [ $# -eq 1 ]; then
-    cmdprefix=$1
-    echo "Running tests with prefix: $cmdprefix"
+	cmdprefix=$1
+	echo "Running tests with prefix: $cmdprefix"
 fi
 
 function runtest {
-    echo "##################################"
-    echo "$@"
-    echo ""
-    $cmdprefix "$@"
-    local status=$?
-    if [ $status -ne $retcode ]; then
-        echo "TEST FAILED!" >&2
-        echo "$@" >&2
-        exit 1
-    fi
-    echo ""
+	echo "##################################"
+	echo "$@"
+	echo ""
+	$cmdprefix "$@"
+	local status=$?
+	if [ $status -ne $retcode ]; then
+		echo "TEST FAILED!" >&2
+		echo "$@" >&2
+		exit 1
+	fi
+	echo ""
 }
 
 # Tests which should succeed
@@ -37,8 +37,13 @@ runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "not.resolvabl
 # Platform specific tests
 unamestr=`uname`
 if [ "$unamestr" == "Linux" ] || [ "$unamestr" == "FreeBSD" ]; then
-    retcode=0
-    runtest "../examples/client_http_get" "-P" "../examples/prop_tcp_security.json" "-p" "443" "-v" "1" "www.fh-muenster.de"
-    runtest "../examples/tneat" "-v" "1" "-P" "../examples/prop_sctp_dtls.json" "interop.fh-muenster.de"
-    runtest "../examples/tneat" "-v" "1" "-L" "-n" "1024" "-P" "../examples/prop_sctp.json"
+	retcode=0
+	runtest "../examples/client_http_get" "-P" "../examples/prop_tcp_security.json" "-p" "443" "-v" "1" "www.fh-muenster.de"
+	runtest "../examples/tneat" "-v" "1" "-P" "../examples/prop_sctp_dtls.json" "interop.fh-muenster.de"
+	runtest "../examples/tneat" "-v" "1" "-L" "-n" "1024" "-P" "../examples/prop_sctp.json"
+fi
+
+if [ "$unamestr" == "Darwin" ]; then
+	retcode=0
+	#runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "2" "bsd10.nplab.de"
 fi

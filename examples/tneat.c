@@ -363,12 +363,9 @@ on_close(struct neat_flow_operations *opCB)
         free(tnf->rcv.buffer);
     }
 
-    if (tnf) {
-        free(tnf);
-    }
+    free(tnf);
 
     fprintf(stderr, "%s - flow closed OK!\n", __func__);
-
     return NEAT_OK;
 }
 

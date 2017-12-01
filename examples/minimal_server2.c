@@ -77,7 +77,17 @@ main(int argc, char *argv[])
     struct neat_flow_operations ops;
 
     ctx  = neat_init_ctx();
+    if (!ctx) {
+        fprintf(stderr, "neat_init_ctx failed\n");
+        return EXIT_FAILURE;
+    }
+
     flow = neat_new_flow(ctx);
+    if (!flow) {
+        fprintf(stderr, "neat_new_flow failed\n");
+        return EXIT_FAILURE;
+    }
+    
     memset(&ops, 0, sizeof(ops));
 
     ops.on_connected = on_connected;

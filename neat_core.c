@@ -655,20 +655,27 @@ socket_handle_free_cb(uv_handle_t *handle)
     struct neat_pollable_socket *pollable_socket = handle->data;
 #ifdef SCTP_MULTISTREAMING
     struct neat_flow *flow = NULL;
-
+    struct neat_flow *next_flow = NULL;
 #endif
 
     assert(pollable_socket);
 
     if (pollable_socket->multistream) {
 #ifdef SCTP_MULTISTREAMING
+
+#if 0
         while (!LIST_EMPTY(&pollable_socket->sctp_multistream_flows)) {
             flow = LIST_FIRST(&pollable_socket->sctp_multistream_flows);
             assert(flow);
             LIST_REMOVE(flow, multistream_next_flow);
             synchronous_free(flow);
         }
-
+#else
+        LIST_FOREACH_SAFE(flow, &(pollable_socket->sctp_multistream_flows), multistream_next_flow, next_flow) {
+            LIST_REMOVE(flow, multistream_next_flow);
+            synchronous_free(flow);
+        }
+#endif
         assert(pollable_socket->sctp_streams_used == 0);
 
         //nt_log(ctx, NEAT_LOG_DEBUG, "%s - all multistreams closed - freeing socket", __func__);

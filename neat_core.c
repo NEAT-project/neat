@@ -535,10 +535,11 @@ nt_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
 
-    close(candidate->pollable_socket->fd);
+    if (candidate->pollable_socket->fd) {
+        close(candidate->pollable_socket->fd);
+    }
 
     if (!TAILQ_EMPTY(&(candidate->sock_opts))) {
-
         TAILQ_FOREACH_SAFE(sockopt, (&candidate->sock_opts), next, tmp) {
             if (sockopt->type == NEAT_SOCKOPT_STRING) {
                 free(sockopt->value.s_val);

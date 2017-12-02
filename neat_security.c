@@ -189,7 +189,7 @@ handshake(struct neat_ctx *ctx,
 
     int err = SSL_do_handshake(private->ssl);
     if (err == 1) {
-        nt_log(ctx, NEAT_LOG_WARNING, "%s - handshake failed", __func__);
+        nt_log(ctx, NEAT_LOG_INFO, "%s - handshake successfull", __func__);
         return NEAT_OK;
     }
 

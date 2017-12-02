@@ -40,6 +40,7 @@ test_protocol(int protocol, int socktype)
     if (rc < 0) {
         perror("connect");
         freeaddrinfo(info);
+        close(sock);
         return -1;
     }
 
@@ -47,6 +48,7 @@ test_protocol(int protocol, int socktype)
     if (rc != 4) {
         perror("send");
         freeaddrinfo(info);
+        close(sock);
         return -1;
     }
 
@@ -54,6 +56,7 @@ test_protocol(int protocol, int socktype)
     if (rc != 4) {
         perror("recv");
         freeaddrinfo(info);
+        close(sock);
         return -1;
     }
 

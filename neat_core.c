@@ -3439,16 +3439,16 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
 
         iface_name = if_indextoname(result->if_idx, iface);
 
-        if (iface_name == NULL)
+        if (iface_name == NULL) {
             continue;
+        }
 
         rc = getnameinfo((struct sockaddr *)&result->dst_addr,
                          result->dst_addr_len,
                          dst_buffer, sizeof(dst_buffer), NULL, 0, NI_NUMERICHOST);
 
         if (rc != 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "getnameinfo() failed: %s\n",
-                     gai_strerror(rc));
+            nt_log(ctx, NEAT_LOG_DEBUG, "getnameinfo() failed: %s\n", gai_strerror(rc));
             continue;
         }
 
@@ -3457,8 +3457,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                          src_buffer, sizeof(src_buffer), NULL, 0, NI_NUMERICHOST);
 
         if (rc != 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "getnameinfo() failed: %s\n",
-                     gai_strerror(rc));
+            nt_log(ctx, NEAT_LOG_DEBUG, "getnameinfo() failed: %s\n", gai_strerror(rc));
             continue;
         }
 
@@ -3471,11 +3470,15 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             }
 
             struct neat_he_candidate *candidate = calloc(1, sizeof(*candidate));
-            if (!candidate)
+            if (!candidate) {
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
+            }
+
             candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket));
             if (!candidate->pollable_socket) {
                 free(candidate);
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
 
@@ -3490,6 +3493,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             if (!candidate->if_name) {
                 free(candidate->pollable_socket);
                 free(candidate);
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
             candidate->if_idx                       = result->if_idx;
@@ -3501,6 +3505,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 free(candidate->if_name);
                 free(candidate->pollable_socket);
                 free(candidate);
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
@@ -3509,6 +3514,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 free(candidate->if_name);
                 free(candidate->pollable_socket);
                 free(candidate);
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
             candidate->pollable_socket->port        = flow->port;
@@ -3565,6 +3571,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 candidate->pollable_socket->src_address = strdup(src_buffer);
                 if (!candidate->pollable_socket->src_address) {
                     free(candidate);
+                    nt_free_candidates(ctx, candidates);
                     return NEAT_ERROR_OUT_OF_MEMORY;
                 }
 
@@ -3578,7 +3585,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 free(candidate->if_name);
                 free(candidate->pollable_socket);
                 free(candidate);
-                free(candidates);
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
             candidate->pollable_socket->dst_len     = result->dst_addr_len;

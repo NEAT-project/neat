@@ -5591,7 +5591,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
             // Enable fragment interleaving
             enable = 2;
-            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, &enable, sizeof(int))) < 0) {
+            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, &enable, sizeof(int)) < 0) {
                 nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_FRAGMENT_INTERLEAVE) failed - %s", strerror(errno));
                 close(candidate->pollable_socket->fd);
                 return -1;
@@ -5601,7 +5601,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             // Enable anciliarry data when receiving data from SCTP
             memset(&assoc_value, 0, sizeof(assoc_value));
             assoc_value.assoc_value = 1;
-            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED, &assoc_value, sizeof(struct sctp_assoc_value))) < 0) {
+            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED, &assoc_value, sizeof(struct sctp_assoc_value)) < 0) {
                 nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INTERLEAVING_SUPPORTED) failed - %s", strerror(errno));
                 close(candidate->pollable_socket->fd);
                 return -1;

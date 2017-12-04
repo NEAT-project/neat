@@ -2321,6 +2321,10 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     if (status < 0) {
         nt_log(ctx, NEAT_LOG_DEBUG, "ERROR: %s", uv_strerror(status));
 
+        if (!flow) {
+            return;
+        }
+
 #if !defined(USRSCTP_SUPPORT)
         if (nt_base_stack(pollable_socket->stack) == NEAT_STACK_TCP ||
             nt_base_stack(pollable_socket->stack) == NEAT_STACK_SCTP)

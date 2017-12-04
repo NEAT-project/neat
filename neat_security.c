@@ -662,13 +662,13 @@ nt_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
     struct neat_dtls_data *dtls     = calloc (1, sizeof( struct neat_dtls_data));
 
     if (!private) {
-        nt_log(NEAT_LOG_ERROR, "%s - calloc failed", __func__);
+        nt_log(ctx, NEAT_LOG_ERROR, "%s - calloc failed", __func__);
         return NEAT_ERROR_SECURITY;
     }
 
     if (!dtls) {
         free(private);
-        nt_log(NEAT_LOG_ERROR, "%s - calloc failed", __func__);
+        nt_log(ctx, NEAT_LOG_ERROR, "%s - calloc failed", __func__);
         return NEAT_ERROR_SECURITY;
     }
 
@@ -790,13 +790,13 @@ copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_sock
     struct neat_dtls_data *dtls     = calloc (1, sizeof( struct neat_dtls_data));
 
     if (!private)
-        nt_log(NEAT_LOG_ERROR, "%s - calloc failed", __func__);
+        nt_log(ctx, NEAT_LOG_ERROR, "%s - calloc failed", __func__);
         return NEAT_ERROR_SECURITY;
     }
 
     if (!dtls)
         free(private);
-        nt_log(NEAT_LOG_ERROR, "%s - calloc failed", __func__);
+        nt_log(ctx, NEAT_LOG_ERROR, "%s - calloc failed", __func__);
         return NEAT_ERROR_SECURITY;
     }
 

@@ -2574,7 +2574,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 
 #ifdef NEAT_SCTP_DTLS
     if (flow->security_needed && newFlow->socket->stack == NEAT_STACK_SCTP) {
-        copy_dtls_data(newFlow->socket, listen_socket);
+        if (copy_dtls_data(newFlow->socket, listen_socket) != NEAT_OK) {
+            return NULL;
+        }
         struct security_data *server = (struct security_data *) listen_socket->dtls_data->userData;
         SSL_CTX_up_ref(server->ctx);
     }

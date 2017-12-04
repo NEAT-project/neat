@@ -790,25 +790,24 @@ copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_sock
     struct neat_dtls_data *dtls     = calloc (1, sizeof( struct neat_dtls_data));
 
     if (!private)
-        nt_log(ctx, NEAT_LOG_ERROR, "%s - calloc failed", __func__);
         return NEAT_ERROR_SECURITY;
     }
 
     if (!dtls)
         free(private);
-        nt_log(ctx, NEAT_LOG_ERROR, "%s - calloc failed", __func__);
         return NEAT_ERROR_SECURITY;
     }
 
-    dtls->dtor = neat_dtls_dtor;
-    private->inputBIO = NULL;
-    private->outputBIO = NULL;
-    struct security_data *server = (struct security_data *) socket->dtls_data->userData;
-    private->ctx = server->ctx;
-    private->ssl = server->ssl;
-    private->dtlsBIO = server->dtlsBIO;
-    dtls->userData = private;
-    newSocket->dtls_data = dtls;
+    dtls->dtor                      = neat_dtls_dtor;
+    private->inputBIO               = NULL;
+    private->outputBIO              = NULL;
+    struct security_data *server    = (struct security_data *) socket->dtls_data->userData;
+    private->ctx                    = server->ctx;
+    private->ssl                    = server->ssl;
+    private->dtlsBIO                = server->dtlsBIO;
+    dtls->userData                  = private;
+    newSocket->dtls_data            = dtls;
+
     return NEAT_OK;
 }
 

@@ -5514,7 +5514,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     case NEAT_STACK_SCTP:
         candidate->pollable_socket->write_limit =  candidate->pollable_socket->write_size / 4;
 #ifdef SCTP_NODELAY
-        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int)) {
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int))) {
             nt_log(ctx, NEAT_LOG_WARNING, "%s - setsockopt(SCTP_NODELAY) failed: %s", __func__, strerror(errno));
         }
 #endif

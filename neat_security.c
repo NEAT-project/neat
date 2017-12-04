@@ -786,14 +786,14 @@ nt_dtls_connect(neat_ctx *ctx, neat_flow *flow)
 neat_error_code
 copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_socket *socket)
 {
-    struct security_data *private   = calloc (1, sizeof (struct security_data));
-    struct neat_dtls_data *dtls     = calloc (1, sizeof( struct neat_dtls_data));
+    struct security_data *private   = calloc (1, sizeof(struct security_data));
+    struct neat_dtls_data *dtls     = calloc (1, sizeof(struct neat_dtls_data));
 
-    if (!private)
+    if (!private) {
         return NEAT_ERROR_SECURITY;
     }
 
-    if (!dtls)
+    if (!dtls) {
         free(private);
         return NEAT_ERROR_SECURITY;
     }

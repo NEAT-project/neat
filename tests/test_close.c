@@ -198,7 +198,11 @@ run_case(const char* name, close_t *close_spec)
         goto cleanup;
     }
 
-    neat_set_property(ctx, flow, config_property);
+    if (neat_set_property(ctx, flow, config_property) != NEAT_OK) {
+        fprintf(stderr, "could not set flow property\n");
+        result = EXIT_FAILURE;
+        goto cleanup;
+    }
 
     ops.userData = close_spec;
 

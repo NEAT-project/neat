@@ -467,9 +467,7 @@ on_close(struct neat_flow_operations *opCB)
         free(tnf->rcv.buffer);
     }
 
-    if (tnf) {
-        free(tnf);
-    }
+    free(tnf);
 
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 

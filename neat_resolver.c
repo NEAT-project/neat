@@ -262,7 +262,11 @@ nt_resolver_literal_populate_results(struct neat_resolver_request *request,
 
         //We already know that this will be successful, it was checked in the
         //literal-check performed earlier
-        inet_pton(request->family, address_name, dst_addr_pton);
+        if (inet_pton(request->family, address_name, dst_addr_pton) != 1) {
+            // inet_pton failed - skip address
+            address_name = strtok_r(NULL, ",", &ptr);
+            continue;
+        }
 
         for (nsrc_addr = request->resolver->nc->src_addrs.lh_first;
             nsrc_addr != NULL; nsrc_addr = nsrc_addr->next_addr.le_next) {
@@ -274,10 +278,7 @@ nt_resolver_literal_populate_results(struct neat_resolver_request *request,
             if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
                 continue;
 
-            num_resolved_addrs += nt_resolver_helpers_fill_results(request,
-                                                                     result_list,
-                                                                     nsrc_addr,
-                                                                     dst_addr);
+            num_resolved_addrs += nt_resolver_helpers_fill_results(request, result_list, nsrc_addr, dst_addr);
         }
 
         address_name = strtok_r(NULL, ",", &ptr);

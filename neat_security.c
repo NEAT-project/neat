@@ -658,8 +658,21 @@ nt_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    struct security_data *private = calloc (1, sizeof (struct security_data));
-    struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
+    struct security_data *private   = calloc (1, sizeof (struct security_data));
+    struct neat_dtls_data *dtls     = calloc (1, sizeof( struct neat_dtls_data));
+
+    if (!private || !dtls) {
+        if (private) {
+            free(private);
+        }
+
+        if (dtls) {
+            free(dtls);
+        }
+
+        nt_log(ctx, NEAT_LOG_ERROR, "%s - calloc failed", __func__);
+        return NEAT_ERROR_SECURITY;
+    }
 
     dtls->dtor = neat_dtls_dtor;
     private->inputBIO = NULL;
@@ -775,17 +788,31 @@ nt_dtls_connect(neat_ctx *ctx, neat_flow *flow)
 neat_error_code
 copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_socket *socket)
 {
-    struct security_data *private = calloc (1, sizeof (struct security_data));
-    struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
-    dtls->dtor = neat_dtls_dtor;
-    private->inputBIO = NULL;
-    private->outputBIO = NULL;
-    struct security_data *server = (struct security_data *) socket->dtls_data->userData;
-    private->ctx = server->ctx;
-    private->ssl = server->ssl;
-    private->dtlsBIO = server->dtlsBIO;
-    dtls->userData = private;
-    newSocket->dtls_data = dtls;
+    struct security_data *private   = calloc (1, sizeof(struct security_data));
+    struct neat_dtls_data *dtls     = calloc (1, sizeof(struct neat_dtls_data));
+
+    if (!private || !dtls) {
+        if (private) {
+            free(private);
+        }
+
+        if (dtls) {
+            free(dtls);
+        }
+
+        return NEAT_ERROR_SECURITY;
+    }
+
+    dtls->dtor                      = neat_dtls_dtor;
+    private->inputBIO               = NULL;
+    private->outputBIO              = NULL;
+    struct security_data *server    = (struct security_data *) socket->dtls_data->userData;
+    private->ctx                    = server->ctx;
+    private->ssl                    = server->ssl;
+    private->dtlsBIO                = server->dtlsBIO;
+    dtls->userData                  = private;
+    newSocket->dtls_data            = dtls;
+
     return NEAT_OK;
 }
 

@@ -592,7 +592,11 @@ on_writable(struct neat_flow_operations *opCB)
         unsigned char buf[SEGMENT_SIZE];
         size_t bytes;
 
-        fseek(pf->fi->stream, pf->segment*SEGMENT_SIZE, SEEK_SET);
+        if (fseek(pf->fi->stream, pf->segment*SEGMENT_SIZE, SEEK_SET)) {
+            fprintf(stderr, "%s - fseek() failed\n", __func__);
+            exit(EXIT_FAILURE);
+        }
+
         bytes = fread(buf, sizeof(unsigned char), SEGMENT_SIZE, pf->fi->stream);
         if (bytes == 0) {
             if(feof(pf->fi->stream)) {

@@ -658,8 +658,12 @@ nt_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    struct security_data *private = calloc (1, sizeof (struct security_data));
-    struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
+    struct security_data *private   = calloc (1, sizeof (struct security_data));
+    struct neat_dtls_data *dtls     = calloc (1, sizeof( struct neat_dtls_data));
+
+    if (!private || dtls) {
+        nt_log(NEAT_LOG_ERROR, "%s - calloc failed", __func__);
+    }
 
     dtls->dtor = neat_dtls_dtor;
     private->inputBIO = NULL;

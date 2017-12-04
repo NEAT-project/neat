@@ -512,8 +512,8 @@ on_all_written(struct neat_flow_operations *opCB)
 
             finfo = openfile(pf->file_name,"w");
             if (finfo == NULL) {
-                fprintf(stderr, "%s:%d could not open file %s\n",
-                    __func__, __LINE__, pf->file_name);
+                fprintf(stderr, "%s:%d could not open file %s\n", __func__, __LINE__, pf->file_name);
+                exit(EXIT_FAILURE);
             }
 
             fwrite(pf->file_buffer, sizeof(char), pf->file_buffer_size, finfo->stream);

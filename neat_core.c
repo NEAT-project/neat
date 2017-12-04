@@ -2585,7 +2585,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     optval = 1;
     rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval));
     if (rc < 0) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_NOSIGPIPE) failed");
+        nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_NOSIGPIPE) failed");
     }
 #endif //  defined(SO_NOSIGPIPE)
 
@@ -2637,7 +2637,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             optval = 1;
             rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &optval, sizeof(optval));
             if (rc < 0) {
-                nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
+                nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
             }
 #endif // defined(SCTP_RECVRCVINFO)
 #if defined(SCTP_RECVNXTINFO)
@@ -2645,7 +2645,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             optval = 1;
             rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &optval, sizeof(optval));
             if (rc < 0) {
-                nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
+                nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
             }
 #endif // defined(SCTP_RECVNXTINFO)
 #endif
@@ -2666,11 +2666,27 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                     }
                 }
                 optval = 1;
-                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+                rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEADDR) failed");
+                }
 
-                bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
-                connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
+                rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEPORT) failed");
+                }
+
+                rc = bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to bind() failed");
+                    return NULL;
+                }
+
+                rc = connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to connect() failed");
+                    return NULL;
+                }
 
                 newFlow->everConnected = 1;
 
@@ -2694,11 +2710,27 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                 return NULL;
             } else {
                 optval = 1;
-                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+                rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEADDR) failed");
+                }
 
-                bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
-                connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
+                rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEPORT) failed");
+                }
+
+                rc = bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to bind() failed");
+                    return NULL;
+                }
+
+                rc = connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to connect() failed");
+                    return NULL;
+                }
 
                 newFlow->everConnected = 1;
 

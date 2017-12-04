@@ -214,7 +214,7 @@ neat_resolver_add_initial_servers(struct neat_resolver *resolver)
         addr4->sin_len = sizeof(struct sockaddr_in);
 #endif
         if (inet_pton(AF_INET, INET_DNS_SERVERS[i], &(addr4->sin_addr)) != 1) {
-            return 0;
+            continue;
         }
 
         if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {
@@ -234,7 +234,7 @@ neat_resolver_add_initial_servers(struct neat_resolver *resolver)
         addr6->sin6_len = sizeof(struct sockaddr_in6);
 #endif
         if (inet_pton(AF_INET, INET6_DNS_SERVERS[i], &(addr6->sin6_addr)) != 1) {
-            return 0;
+            continue;
         }
 
         if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {

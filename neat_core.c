@@ -940,6 +940,11 @@ nt_io_error(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
     const int stream_id = NEAT_INVALID_STREAM;
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+    if (!flow) {
+        nt_log(ctx, NEAT_LOG_ERROR, "Called nt_io_error() with invalid flow");
+        return;
+    }
+
     if (!flow->operations.on_error) {
         return;
     }
@@ -2316,6 +2321,10 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     if (status < 0) {
         nt_log(ctx, NEAT_LOG_DEBUG, "ERROR: %s", uv_strerror(status));
 
+        if (!flow) {
+            return;
+        }
+
 #if !defined(USRSCTP_SUPPORT)
         if (nt_base_stack(pollable_socket->stack) == NEAT_STACK_TCP ||
             nt_base_stack(pollable_socket->stack) == NEAT_STACK_SCTP)
@@ -2341,15 +2350,9 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
             }
         }
 
-
         nt_log(ctx, NEAT_LOG_ERROR, "Unspecified internal error when polling socket");
         nt_io_error(ctx, flow, NEAT_ERROR_INTERNAL);
 
-        return;
-    }
-
-    if (!events && status < 0) {
-        nt_io_error(ctx, flow, NEAT_ERROR_IO);
         return;
     }
 
@@ -2575,7 +2578,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
 
 #ifdef NEAT_SCTP_DTLS
     if (flow->security_needed && newFlow->socket->stack == NEAT_STACK_SCTP) {
-        copy_dtls_data(newFlow->socket, listen_socket);
+        if (copy_dtls_data(newFlow->socket, listen_socket) != NEAT_OK) {
+            return NULL;
+        }
         struct security_data *server = (struct security_data *) listen_socket->dtls_data->userData;
         SSL_CTX_up_ref(server->ctx);
     }
@@ -2585,7 +2590,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     optval = 1;
     rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval));
     if (rc < 0) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_NOSIGPIPE) failed");
+        nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_NOSIGPIPE) failed");
     }
 #endif //  defined(SO_NOSIGPIPE)
 
@@ -2637,7 +2642,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             optval = 1;
             rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &optval, sizeof(optval));
             if (rc < 0) {
-                nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
+                nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
             }
 #endif // defined(SCTP_RECVRCVINFO)
 #if defined(SCTP_RECVNXTINFO)
@@ -2645,7 +2650,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             optval = 1;
             rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &optval, sizeof(optval));
             if (rc < 0) {
-                nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
+                nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
             }
 #endif // defined(SCTP_RECVNXTINFO)
 #endif
@@ -2666,11 +2671,27 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                     }
                 }
                 optval = 1;
-                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+                rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEADDR) failed");
+                }
 
-                bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
-                connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
+                rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEPORT) failed");
+                }
+
+                rc = bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to bind() failed");
+                    return NULL;
+                }
+
+                rc = connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to connect() failed");
+                    return NULL;
+                }
 
                 newFlow->everConnected = 1;
 
@@ -2694,11 +2715,27 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                 return NULL;
             } else {
                 optval = 1;
-                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-                setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+                rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEADDR) failed");
+                }
 
-                bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
-                connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
+                rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEPORT) failed");
+                }
+
+                rc = bind(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->src_sockaddr, sizeof(struct sockaddr));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to bind() failed");
+                    return NULL;
+                }
+
+                rc = connect(newFlow->socket->fd, (struct sockaddr*) &newFlow->socket->dst_sockaddr, sizeof(struct sockaddr));
+                if (rc < 0) {
+                    nt_log(ctx, NEAT_LOG_WARNING, "Call to connect() failed");
+                    return NULL;
+                }
 
                 newFlow->everConnected = 1;
 
@@ -3439,16 +3476,16 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
 
         iface_name = if_indextoname(result->if_idx, iface);
 
-        if (iface_name == NULL)
+        if (iface_name == NULL) {
             continue;
+        }
 
         rc = getnameinfo((struct sockaddr *)&result->dst_addr,
                          result->dst_addr_len,
                          dst_buffer, sizeof(dst_buffer), NULL, 0, NI_NUMERICHOST);
 
         if (rc != 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "getnameinfo() failed: %s\n",
-                     gai_strerror(rc));
+            nt_log(ctx, NEAT_LOG_DEBUG, "getnameinfo() failed: %s\n", gai_strerror(rc));
             continue;
         }
 
@@ -3457,8 +3494,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                          src_buffer, sizeof(src_buffer), NULL, 0, NI_NUMERICHOST);
 
         if (rc != 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "getnameinfo() failed: %s\n",
-                     gai_strerror(rc));
+            nt_log(ctx, NEAT_LOG_DEBUG, "getnameinfo() failed: %s\n", gai_strerror(rc));
             continue;
         }
 
@@ -3471,11 +3507,15 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             }
 
             struct neat_he_candidate *candidate = calloc(1, sizeof(*candidate));
-            if (!candidate)
+            if (!candidate) {
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
+            }
+
             candidate->pollable_socket = calloc(1, sizeof(struct neat_pollable_socket));
             if (!candidate->pollable_socket) {
                 free(candidate);
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
 
@@ -3490,6 +3530,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
             if (!candidate->if_name) {
                 free(candidate->pollable_socket);
                 free(candidate);
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
             candidate->if_idx                       = result->if_idx;
@@ -3501,6 +3542,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 free(candidate->if_name);
                 free(candidate->pollable_socket);
                 free(candidate);
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
             candidate->pollable_socket->dst_address = strdup(dst_buffer);
@@ -3509,6 +3551,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 free(candidate->if_name);
                 free(candidate->pollable_socket);
                 free(candidate);
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
             candidate->pollable_socket->port        = flow->port;
@@ -3565,6 +3608,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 candidate->pollable_socket->src_address = strdup(src_buffer);
                 if (!candidate->pollable_socket->src_address) {
                     free(candidate);
+                    nt_free_candidates(ctx, candidates);
                     return NEAT_ERROR_OUT_OF_MEMORY;
                 }
 
@@ -3578,7 +3622,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                 free(candidate->if_name);
                 free(candidate->pollable_socket);
                 free(candidate);
-                free(candidates);
+                nt_free_candidates(ctx, candidates);
                 return NEAT_ERROR_OUT_OF_MEMORY;
             }
             candidate->pollable_socket->dst_len     = result->dst_addr_len;
@@ -4086,16 +4130,9 @@ neat_change_timeout(neat_ctx *ctx, neat_flow *flow, unsigned int seconds)
 
     timeout_msec = seconds * 1000;
 
-    rc = setsockopt(flow->socket->fd,
-                    IPPROTO_TCP,
-                    TCP_USER_TIMEOUT,
-                    &timeout_msec,
-                    sizeof(timeout_msec));
-
+    rc = setsockopt(flow->socket->fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &timeout_msec, sizeof(timeout_msec));
     if (rc < 0) {
-        nt_log(ctx, NEAT_LOG_ERROR,
-                 "Unable to change timeout for TCP socket: "
-                 "Call to setsockopt failed with errno=%d", errno);
+        nt_log(ctx, NEAT_LOG_ERROR, "Unable to change timeout for TCP socket: Call to setsockopt failed with errno=%d", errno);
         return NEAT_ERROR_IO;
     }
 
@@ -4140,7 +4177,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
     addr.ssp_addr = results->lh_first->dst_addr;
 
     if (usrsctp_setsockopt(flow->socket->usrsctp_socket, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr)) < 0) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "Call to usrsctp_setsockopt failed");
+        nt_log(ctx, NEAT_LOG_WARNING, "Call to usrsctp_setsockopt(SCTP_PRIMARY_ADDR) failed");
         return NEAT_ERROR_IO;
     }
 #elif defined(HAVE_NETINET_SCTP_H)
@@ -4149,7 +4186,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
 
     rc = setsockopt(flow->socket->fd, IPPROTO_SCTP, SCTP_PRIMARY_ADDR, &addr, sizeof(addr));
     if (rc < 0) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt failed");
+        nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SCTP_PRIMARY_ADDR) failed");
         return NEAT_ERROR_IO;
     }
 #endif
@@ -4158,7 +4195,7 @@ set_primary_dest_resolve_cb(struct neat_resolver_results *results,
                      dest_addr, sizeof(dest_addr), NULL, 0, 0);
 
     if (rc < 0) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "getnameinfo failed for primary destination address");
+        nt_log(ctx, NEAT_LOG_WARNING, "getnameinfo failed for primary destination address");
     } else {
         nt_log(ctx, NEAT_LOG_DEBUG, "Updated primary destination address to: %s", dest_addr);
     }
@@ -4205,7 +4242,7 @@ neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow, unsigne
             const int state = receive_coverage ? 1 : 0;
 
             if (setsockopt(flow->socket->fd, SOL_SOCKET, SO_NO_CHECK, &state, sizeof(state)) < 0) {
-                nt_log(ctx, NEAT_LOG_DEBUG, "Unable to set SO_NO_CHECK to %d", state);
+                nt_log(ctx, NEAT_LOG_WARNING, "Unable to set SO_NO_CHECK to %d", state);
                 return NEAT_ERROR_UNABLE;
             }
 
@@ -4219,12 +4256,12 @@ neat_set_checksum_coverage(struct neat_ctx *ctx, struct neat_flow *flow, unsigne
         {
 #if defined(UDPLITE_SEND_CSCOV) && defined(UDPLITE_RECV_CSCOV)
         if (setsockopt(flow->socket->fd, IPPROTO_UDPLITE, UDPLITE_SEND_CSCOV, &send_coverage, sizeof(unsigned int)) < 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "Failed to set UDP-Lite send checksum coverage");
+            nt_log(ctx, NEAT_LOG_WARNING, "Failed to set UDP-Lite send checksum coverage");
             return NEAT_ERROR_UNABLE;
         }
 
         if (setsockopt(flow->socket->fd, IPPROTO_UDPLITE, UDPLITE_RECV_CSCOV, &receive_coverage, sizeof(unsigned int)) < 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "Failed to set UDP-Lite receive checksum coverage");
+            nt_log(ctx, NEAT_LOG_WARNING, "Failed to set UDP-Lite receive checksum coverage");
             return NEAT_ERROR_UNABLE;
         }
 
@@ -4413,7 +4450,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
         encaps.sue_port              = htons(SCTP_UDP_TUNNELING_PORT);
 
         if (usrsctp_setsockopt(sctp_socket->usrsctp_socket, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps)) != 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "Unable to set UDP encapsulation port");
+            nt_log(ctx, NEAT_LOG_WARNING, "Unable to set UDP encapsulation port");
         }
     }
 #else // ifdef USRSCTP_SUPPORT
@@ -4428,7 +4465,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
 
         if (setsockopt(sctp_socket->fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT,
                        (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps)) != 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "Unable to set UDP encapsulation port");
+            nt_log(ctx, NEAT_LOG_WARNING, "Unable to set UDP encapsulation port");
         }
     }
 
@@ -5282,16 +5319,16 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     }
 
     if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_REUSEADDR) failed");
+        nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEADDR) failed");
     }
 
     if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_REUSEPORT) failed");
+        nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEPORT) failed");
     }
 
 #if defined(SO_NOSIGPIPE)
     if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable)) < 0) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SO_NOSIGPIPE) failed");
+        nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_NOSIGPIPE) failed");
     }
 #endif //defined(SO_NOSIGPIPE)
 
@@ -5471,10 +5508,9 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             memset(&encaps, 0, sizeof(struct sctp_udpencaps));
             encaps.sue_address.ss_family = AF_INET;
             encaps.sue_port = htons(SCTP_UDP_TUNNELING_PORT);
-            setsockopt(candidate->pollable_socket->fd,
-                       IPPROTO_SCTP,
-                       SCTP_REMOTE_UDP_ENCAPS_PORT,
-                       (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps));
+            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps)) < 0) {
+                nt_log(ctx, NEAT_LOG_WARNING, "%s - setsockopt(SCTP_REMOTE_UDP_ENCAPS_PORT) failed: %s", __func__, strerror(errno));
+            }
         }
         // Fallthrough to case NEAT_STACK_SCTP:
 #else
@@ -5484,29 +5520,23 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     case NEAT_STACK_SCTP:
         candidate->pollable_socket->write_limit =  candidate->pollable_socket->write_size / 4;
 #ifdef SCTP_NODELAY
-        setsockopt(candidate->pollable_socket->fd,
-                   IPPROTO_SCTP,
-                   SCTP_NODELAY,
-                   &enable,
-                   sizeof(int));
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_NODELAY, &enable, sizeof(int))) {
+            nt_log(ctx, NEAT_LOG_WARNING, "%s - setsockopt(SCTP_NODELAY) failed: %s", __func__, strerror(errno));
+        }
 #endif
 #ifdef SCTP_EXPLICIT_EOR
         if (!candidate->pollable_socket->flow->security_needed) {
-            if (setsockopt(candidate->pollable_socket->fd,
-                           IPPROTO_SCTP,
-                           SCTP_EXPLICIT_EOR,
-                           &enable,
-                           sizeof(int)) == 0) {
+            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0) {
                 candidate->pollable_socket->sctp_explicit_eor = 1;
+            } else {
+                nt_log(ctx, NEAT_LOG_WARNING, "%s - setsockopt(SCTP_EXPLICIT_EOR) failed: %s", __func__, strerror(errno));
             }
         } else {
 #ifndef NEAT_SCTP_DTLS
-            if (setsockopt(candidate->pollable_socket->fd,
-                           IPPROTO_SCTP,
-                           SCTP_EXPLICIT_EOR,
-                           &enable,
-                           sizeof(int)) == 0) {
+            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &enable, sizeof(int)) == 0) {
                 candidate->pollable_socket->sctp_explicit_eor = 1;
+            } else {
+                nt_log(ctx, NEAT_LOG_WARNING, "%s - setsockopt(SCTP_EXPLICIT_EOR) failed: %s", __func__, strerror(errno));
             }
 #endif // NEAT_SCTP_DTLS
         }
@@ -5533,11 +5563,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     if (candidate->pollable_socket->stack == NEAT_STACK_SCTP) {
 #if defined(SCTP_RECVRCVINFO)
         // Enable anciliarry data when receiving data from SCTP
-        if (setsockopt(candidate->pollable_socket->fd,
-                        IPPROTO_SCTP,
-                        SCTP_RECVRCVINFO,
-                        &enable,
-                        sizeof(int)) < 0) {
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &enable, sizeof(int)) < 0) {
             nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
             close(candidate->pollable_socket->fd);
             return -1;
@@ -5545,11 +5571,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #endif // defined(SCTP_RECVRCVINFO)
 #if defined(SCTP_RECVNXTINFO)
         // Enable anciliarry data when receiving data from SCTP
-        if (setsockopt(candidate->pollable_socket->fd,
-                        IPPROTO_SCTP,
-                        SCTP_RECVNXTINFO,
-                        &enable,
-                        sizeof(int)) < 0) {
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &enable, sizeof(int)) < 0) {
             nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
             close(candidate->pollable_socket->fd);
             return -1;
@@ -5565,11 +5587,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             // Set adaptation layer indication
             memset(&adaptation, 0, sizeof(adaptation));
             adaptation.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
-            if (setsockopt(candidate->pollable_socket->fd,
-                            IPPROTO_SCTP,
-                            SCTP_ADAPTATION_LAYER,
-                            &adaptation,
-                            sizeof(adaptation)) < 0) {
+            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_ADAPTATION_LAYER, &adaptation, sizeof(adaptation)) < 0) {
                 nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed");
                 close(candidate->pollable_socket->fd);
                 return -1;
@@ -5579,12 +5597,8 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
             // Enable fragment interleaving
             enable = 2;
-            if ((retval = setsockopt(candidate->pollable_socket->fd,
-                            IPPROTO_SCTP,
-                            SCTP_FRAGMENT_INTERLEAVE,
-                            &enable,
-                            sizeof(int))) < 0) {
-                nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_FRAGMENT_INTERLEAVE) failed - %s", strerror(retval));
+            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, &enable, sizeof(int)) < 0) {
+                nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_FRAGMENT_INTERLEAVE) failed - %s", strerror(errno));
                 close(candidate->pollable_socket->fd);
                 return -1;
             }
@@ -5593,12 +5607,8 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             // Enable anciliarry data when receiving data from SCTP
             memset(&assoc_value, 0, sizeof(assoc_value));
             assoc_value.assoc_value = 1;
-            if ((retval = setsockopt(candidate->pollable_socket->fd,
-                            IPPROTO_SCTP,
-                            SCTP_INTERLEAVING_SUPPORTED,
-                            &assoc_value,
-                            sizeof(struct sctp_assoc_value))) < 0) {
-                nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INTERLEAVING_SUPPORTED) failed - %s", strerror(retval));
+            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED, &assoc_value, sizeof(struct sctp_assoc_value)) < 0) {
+                nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INTERLEAVING_SUPPORTED) failed - %s", strerror(errno));
                 close(candidate->pollable_socket->fd);
                 return -1;
             }
@@ -5606,11 +5616,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             // Enable Stream Reset extension
             memset(&assoc_value, 0, sizeof(assoc_value));
             assoc_value.assoc_value = SCTP_ENABLE_RESET_STREAM_REQ;
-            if (setsockopt(candidate->pollable_socket->fd,
-                            IPPROTO_SCTP,
-                            SCTP_ENABLE_STREAM_RESET,
-                            &assoc_value,
-                            sizeof(assoc_value)) < 0) {
+            if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_ENABLE_STREAM_RESET, &assoc_value, sizeof(assoc_value)) < 0) {
                 nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ENABLE_STREAM_RESET) failed");
                 close(candidate->pollable_socket->fd);
                 return -1;
@@ -5635,11 +5641,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         init.sinit_max_init_timeo = 3000;
         init.sinit_max_attempts = 3;
 
-        if (setsockopt(candidate->pollable_socket->fd,
-                       IPPROTO_SCTP,
-                       SCTP_INITMSG,
-                       &init,
-                       sizeof(struct sctp_initmsg)) < 0) {
+        if (setsockopt(candidate->pollable_socket->fd, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(struct sctp_initmsg)) < 0) {
             nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INITMSG) failed - Unable to set inbound/outbound stream count");
             close(candidate->pollable_socket->fd);
             return -1;
@@ -5667,9 +5669,7 @@ neat_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     }
 #endif
 
-    retval = connect(candidate->pollable_socket->fd,
-                     (struct sockaddr *) &(candidate->pollable_socket->dst_sockaddr),
-                     slen);
+    retval = connect(candidate->pollable_socket->fd, (struct sockaddr *) &(candidate->pollable_socket->dst_sockaddr), slen);
     if (retval && errno != EINPROGRESS) {
         nt_log(ctx, NEAT_LOG_DEBUG,
                  "%s: Connect failed for fd %d connect error (%d): %s",
@@ -5783,7 +5783,7 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
             encaps.sue_port = htons(SCTP_UDP_TUNNELING_PORT);
             nt_log(ctx, NEAT_LOG_DEBUG, "Setting UDP encapsulation port to %d", SCTP_UDP_TUNNELING_PORT);
             if (setsockopt(fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps)) != 0)
-                nt_log(ctx, NEAT_LOG_DEBUG, "Failed enabling UDP encapsulation!");
+                nt_log(ctx, NEAT_LOG_WARNING, "Failed enabling UDP encapsulation!");
             else
                 nt_log(ctx, NEAT_LOG_DEBUG, "UDP encapsulation enabled");
         }
@@ -6901,9 +6901,13 @@ neat_abort(struct neat_ctx *ctx, struct neat_flow *flow)
     ling.l_linger = 0;
 
 #if !defined(USRSCTP_SUPPORT)
-    setsockopt(flow->socket->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(struct linger));
+    if (setsockopt(flow->socket->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(struct linger)) < 0) {
+        nt_log(ctx, NEAT_LOG_DEBUG, "setsockopt(SO_LINGER) failed");
+    }
 #else
-    usrsctp_setsockopt(flow->socket->usrsctp_socket, SOL_SOCKET, SO_LINGER, &ling, sizeof(struct linger));
+    if (usrsctp_setsockopt(flow->socket->usrsctp_socket, SOL_SOCKET, SO_LINGER, &ling, sizeof(struct linger)) < 0) {
+        nt_log(ctx, NEAT_LOG_DEBUG, "usrsctp_setsockopt(SO_LINGER) failed");
+    }
 #endif
 
     neat_close(ctx, flow);

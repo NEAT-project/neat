@@ -24,9 +24,9 @@ function runtest {
 
 # Tests which should succeed
 retcode=0
-runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "2" "bsd10.nplab.de"
-runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "212.201.121.100"
-runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "2a02:c6a0:4015:10::100"
+runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "2" "interop.nplab.de"
+runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "212.201.121.80"
+runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "2a02:c6a0:4015:11::80"
 
 # Tests which should fail
 retcode=1

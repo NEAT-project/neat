@@ -213,7 +213,9 @@ neat_resolver_add_initial_servers(struct neat_resolver *resolver)
 #ifdef HAVE_SIN_LEN
         addr4->sin_len = sizeof(struct sockaddr_in);
 #endif
-        inet_pton(AF_INET, INET_DNS_SERVERS[i], &(addr4->sin_addr));
+        if (inet_pton(AF_INET, INET_DNS_SERVERS[i], &(addr4->sin_addr)) != 1) {
+            continue;
+        }
 
         if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {
             //nt_log(NEAT_LOG_ERROR, "Failed to allocate memory for DNS server");
@@ -231,7 +233,9 @@ neat_resolver_add_initial_servers(struct neat_resolver *resolver)
 #ifdef HAVE_SIN6_LEN
         addr6->sin6_len = sizeof(struct sockaddr_in6);
 #endif
-        inet_pton(AF_INET, INET6_DNS_SERVERS[i], &(addr6->sin6_addr));
+        if (inet_pton(AF_INET, INET6_DNS_SERVERS[i], &(addr6->sin6_addr)) != 1) {
+            continue;
+        }
 
         if (!(server = calloc(sizeof(struct neat_resolver_server), 1))) {
             //nt_log(NEAT_LOG_ERROR, "Failed to allocate memory for DNS server");

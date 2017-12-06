@@ -96,7 +96,10 @@ main(int argc, char *argv[])
     ops.on_close = on_close;
     neat_set_operations(ctx, flow, &ops);
 
-    neat_set_property(ctx, flow, properties);
+    if (neat_set_property(ctx, flow, properties) != NEAT_OK) {
+        fprintf(stderr, "neat_set_property failed\n");
+        return EXIT_FAILURE;
+    }
 
     if (neat_open(ctx, flow, "127.0.0.1", 5000, NULL, 0)) {
         fprintf(stderr, "neat_open failed\n");

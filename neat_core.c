@@ -3601,6 +3601,7 @@ open_resolve_cb(struct neat_resolver_results *results, uint8_t code,
                     }
                     free(candidate->pollable_socket);
                     free(candidate);
+                    prio--;
                     continue;
                 }
             } else {

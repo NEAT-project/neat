@@ -333,7 +333,9 @@ neat_free_ctx(struct neat_ctx *nc)
          * that the list is changed in nt_free_flow().
          */
         assert(flow != prev_flow);
-
+        if (flow == prev_flow) {
+            nt_log(nc, NEAT_LOG_ERROR, "%s - nt_free_flow() failed", __func__);
+        }
         /* NEAT is shutting down. Make sure that close callback is called here,
          * since there is no main loop any more. */
         if (!flow->socket->multistream
@@ -2770,6 +2772,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                 assert(rc == 0);
 
                 ptr = (void*)inet_ntop(AF_INET, (void*)&((struct sockaddr_in*)(&sockaddr))->sin_addr, buffer, INET6_ADDRSTRLEN);
+                if (!ptr) {
+                    nt_log(ctx, NEAT_LOG_ERROR, "%s - inet_ntop() failed", __func__);
+                }
                 assert(ptr);
 
                 json = json_pack("{ss}", "value", buffer);
@@ -3120,6 +3125,9 @@ on_pm_reply_post_resolve(neat_ctx *ctx, neat_flow *flow, json_t *json)
     TAILQ_FOREACH(candidate, candidate_list, next) {
         sa = (struct sockaddr*) &candidate->pollable_socket->src_sockaddr;
         da = (struct sockaddr*) &candidate->pollable_socket->dst_sockaddr;
+
+        _unused(sa);
+        _unused(da);
 
         assert(da->sa_family == AF_INET || da->sa_family == AF_INET6);
         assert(sa->sa_family == AF_INET || sa->sa_family == AF_INET6);

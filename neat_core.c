@@ -1880,8 +1880,6 @@ updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
         }
 #endif
 
-
-
 #ifdef SCTP_MULTISTREAMING
         if (pollable_socket && pollable_socket->multistream == 1) {
             flow = LIST_NEXT(flow, multistream_next_flow);

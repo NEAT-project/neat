@@ -680,9 +680,8 @@ socket_handle_free_cb(uv_handle_t *handle)
 #endif
         assert(pollable_socket->sctp_streams_used == 0);
 
-        //nt_log(ctx, NEAT_LOG_DEBUG, "%s - all multistreams closed - freeing socket", __func__);
-        free(pollable_socket->handle);
-        free(pollable_socket);
+        //free(pollable_socket->handle);
+        //free(pollable_socket);
 #else
         assert(false);
 #endif
@@ -1841,51 +1840,47 @@ updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 
         flow->isPolling = 0;
 
-        {
 #if !defined(MSG_NOTIFICATION)
-            if (flow->operations.on_readable)
+        if (flow->operations.on_readable)
 #else
-            // If a flow has on_readable set, poll for reading.
-            // If a flow is using SCTP for transport, also poll for reading if we're
-            // interested in various SCTP events that is reported via SCTP_EVENT etc.
-            if (flow->operations.on_readable ||
-                (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP &&
-                (flow->operations.on_close ||
-                flow->operations.on_network_status_changed ||
-                flow->operations.on_send_failure)))
+        // If a flow has on_readable set, poll for reading.
+        // If a flow is using SCTP for transport, also poll for reading if we're
+        // interested in various SCTP events that is reported via SCTP_EVENT etc.
+        if (flow->operations.on_readable ||
+            (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP &&
+            (flow->operations.on_close ||
+            flow->operations.on_network_status_changed ||
+            flow->operations.on_send_failure)))
 #endif
-            {
-                newEvents |= UV_READABLE;
-                flow->isPolling = 1;
-            }
-
-            if (flow->operations.on_writable ||
-#ifdef SCTP_MULTISTREAMING
-                (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP && flow->socket->sctp_notification_wait) ||
-#endif
-                (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP && flow->firstWritePending)
-            ) {
-                newEvents |= UV_WRITABLE;
-                flow->isPolling = 1;
-            }
-        }
-
-#ifdef SCTP_MULTISTREAMING
-        if (flow->socket->sctp_notification_wait || flow->firstWritePending) {
+        {
             newEvents |= UV_READABLE;
             flow->isPolling = 1;
         }
 
-        if (flow->socket->sctp_notification_wait || flow->firstWritePending) {
+        if (flow->operations.on_writable ||
+#ifdef SCTP_MULTISTREAMING
+            (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP && flow->socket->sctp_notification_wait) ||
+#endif
+            (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP && flow->firstWritePending)
+        ) {
             newEvents |= UV_WRITABLE;
             flow->isPolling = 1;
         }
-#endif
 
         if (flow->isDraining) {
             newEvents |= UV_WRITABLE;
             flow->isPolling = 1;
         }
+
+
+#ifdef SCTP_MULTISTREAMING
+        if (flow->socket->sctp_notification_wait) {
+            newEvents = UV_READABLE;
+            flow->isPolling = 1;
+        }
+#endif
+
+
 
 #ifdef SCTP_MULTISTREAMING
         if (pollable_socket && pollable_socket->multistream == 1) {
@@ -1894,7 +1889,7 @@ updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
         }
 #endif
 
-    // iterate through all flows
+    // iterate over all flows
     } while (pollable_socket != NULL && pollable_socket->multistream == 1 && flow != NULL);
 
     if (newEvents) {
@@ -1909,7 +1904,6 @@ updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 static void
 free_he_handle_cb(uv_handle_t *handle)
 {
-    //nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     free(handle);
 }
 
@@ -2309,8 +2303,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if ((events & UV_READABLE) && flow && flow->acceptPending) {
-        if (pollable_socket->stack == NEAT_STACK_UDP ||
-           pollable_socket->stack == NEAT_STACK_UDPLITE) {
+        if (pollable_socket->stack == NEAT_STACK_UDP || pollable_socket->stack == NEAT_STACK_UDPLITE) {
             nt_log(ctx, NEAT_LOG_DEBUG, "%s - UDP or UDPLite accept flow", __func__);
             io_readable(ctx, flow, pollable_socket, NEAT_OK);
         } else {
@@ -2382,7 +2375,6 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
             } else {
                 nt_log(ctx, NEAT_LOG_DEBUG, "%s - awaiting notifications, socket not readable yet, skipping...", __func__);
             }
-
             break;
         }
 #endif
@@ -6054,6 +6046,7 @@ static void nt_sctp_init_events(int sock)
 {
     //nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+
 #if defined(IPPROTO_SCTP)
 #if defined(SCTP_EVENT)
     // Set up SCTP event subscriptions using RFC6458 API
@@ -6075,7 +6068,7 @@ static void nt_sctp_init_events(int sock)
     event.se_assoc_id = SCTP_FUTURE_ASSOC;
     event.se_on = 1;
 
-    for (i = 0; i < (unsigned int)(sizeof(event_types)/sizeof(uint16_t)); i++) {
+    for (i = 0; i < (unsigned int)(sizeof(event_types) / sizeof(uint16_t)); i++) {
         event.se_type = event_types[i];
 #if defined(USRSCTP_SUPPORT)
         if (usrsctp_setsockopt(

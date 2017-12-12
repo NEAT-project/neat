@@ -5047,6 +5047,9 @@ neat_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
         if (rv < 0 ) {
             nt_log(ctx, NEAT_LOG_WARNING, "%s - sending failed - %s", __func__, strerror(errno));
+            if (errno == ENOENT) {
+                flow->isClosing = 1;
+            }
             if (errno != EWOULDBLOCK) {
                 return NEAT_ERROR_IO;
             }

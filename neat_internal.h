@@ -33,6 +33,8 @@
     #define NEAT_INTERNAL_USRSCTP
 #endif // USRSCTP_SUPPORT
 
+#define _unused(x) ((void)(x))
+
 #ifdef MPTCP_SUPPORT
     #define MPTCP_SYS_DISABLED (0) // MPTCP is disabled globaly on the system or not installed
     #define MPTCP_SYS_ENABLED (1) // MPTCP is enabled globaly on the system

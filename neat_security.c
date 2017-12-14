@@ -686,7 +686,7 @@ nt_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 
     if (isClient) {
         private->ctx = SSL_CTX_new(DTLS_client_method());
-        SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
+        SSL_CTX_set_verify(private->ctx, SSL_VERIFY_NONE, NULL);
         tls_init_trust_list(private->ctx);
     } else {
         private->ctx = SSL_CTX_new(DTLS_server_method());

@@ -33,13 +33,13 @@
 
 static uint32_t config_rcv_buffer_size      = 10240;
 static uint32_t config_snd_buffer_size      = 1024;
-static uint32_t config_message_count        = 1024;
+static uint32_t config_message_count        = 128;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_mode                 = 0;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_port                 = 23232;
 static uint16_t config_log_level            = 1;
-static uint16_t config_num_flows            = 1;
+static uint16_t config_num_flows            = 5;
 static uint16_t config_max_flows            = 100;
 static uint16_t config_max_server_runs      = 0;
 static uint32_t config_low_watermark        = 0;

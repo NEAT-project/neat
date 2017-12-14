@@ -465,7 +465,7 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
         if (isClient) {
             private->ctx = SSL_CTX_new(DTLS_client_method());
             if (!flow->skipCertVerification) {
-                SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
+                SSL_CTX_set_verify(private->ctx, SSL_VERIFY_NONE, NULL);
                 tls_init_trust_list(private->ctx);
             }
         } else {

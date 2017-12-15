@@ -40,7 +40,7 @@ static const char* properties = "{\
       \"value\": [ \"MPTCP\", \"SCTP\", \"SCTP/UDP\", \"TCP\" ],\
       \"precedence\": 1\
    }\
-}";\
+}";
 
 
 int main(int argc, char** argv)

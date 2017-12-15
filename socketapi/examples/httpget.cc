@@ -36,20 +36,10 @@
 
 
 static const char* properties = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"MPTCP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
+   \"transport\": {\
+      \"value\": [ \"MPTCP\", \"SCTP\", \"SCTP/UDP\", \"TCP\" ],\
+      \"precedence\": 1\
+   }\
 }";\
 
 
@@ -60,7 +50,7 @@ int main(int argc, char** argv)
       exit(1);
    }
 
-#if 0   
+#if 0
    // ====== Get remote address (resolve hostname and service if necessary) ==
    struct addrinfo* ainfo = NULL;
    struct addrinfo  ainfohint;

@@ -35,6 +35,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-build
 Summary: NEAT (Core API Development Files)
 Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
+Requires: libuv-devel
 
 %description devel
  The NEAT project wants to achieve a complete redesign of the way in which

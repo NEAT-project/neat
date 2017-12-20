@@ -1,13 +1,15 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(libneat)
 
-set(BUILD_MAJOR "0")
-set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td180")
-set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
+SET(BUILD_MAJOR "0")
+SET(BUILD_MINOR "0")
+SET(BUILD_PATCH "1~td181")
+SET(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
+
+#############################################################################
 # INSTALLATION_DIRECTORIES
-#################################################
+#############################################################################
 
 SET(CMAKE_INSTALL_BINDIR_DOC        "user executables [PREFIX/bin]")
 SET(CMAKE_INSTALL_SBINDIR_DOC       "system admin executables [EPREFIX/sbin]")
@@ -35,8 +37,10 @@ SET(CMAKE_INSTALL_INCLUDEDIR "include"
 SET(CMAKE_INSTALL_MANDIR "share/man"
     CACHE PATH ${CMAKE_INSTALL_MANDIR_DOC})
 
+
+#############################################################################
 # PACKAGING
-#################################################
+#############################################################################
 
 SET(CPACK_SOURCE_GENERATOR "TGZ")
 SET(CPACK_SOURCE_PACKAGE_FILE_NAME
@@ -78,8 +82,11 @@ LIST(APPEND neat_sources
     tls-trust.c
 )
 
+
+#############################################################################
 # OS DEPENDENT
-#################################################
+#############################################################################
+
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     MESSAGE(${CMAKE_SYSTEM_NAME} " supported")
     ADD_DEFINITIONS("-D_DEFAULT_SOURCE")
@@ -116,6 +123,7 @@ ELSE()
 ENDIF()
 
 FIND_PACKAGE(Threads REQUIRED)
+
 
 #################################################
 # CHECK STRUCT MEMBERS

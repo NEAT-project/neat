@@ -785,7 +785,6 @@ nt_dtls_connect(neat_ctx *ctx, neat_flow *flow)
     // these will eventually be popped back onto the stack when dtls is setup
     flow->operations.on_writable = neat_dtls_handshake;
     flow->operations.on_readable = neat_dtls_handshake;
-    flow->operations.on_writable = neat_dtls_handshake;
     flow->operations.on_connected = NULL;
     neat_set_operations(ctx, flow, &flow->operations);
 

@@ -33,6 +33,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <errno.h>
 #include <assert.h>
@@ -112,7 +113,7 @@ ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)
       }
       if(result == NEAT_ERROR_WOULD_BLOCK) {
          neatSocket->ns_flags &= ~NSAF_WRITABLE;
-         es_has_fired(&neatSocket->ns_write_signal); /* Clear write signal */
+         es_has_fired(&neatSocket->ns_write_signal);   /* Clear write signal */
          nsa_set_socket_event_on_write(neatSocket, true);
       }
       pthread_mutex_unlock(&neatSocket->ns_mutex);
@@ -179,10 +180,10 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
 
          /* ====== Check whether the socket has been closed ============== */
          if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
-            /* The socket has been closed -> return with EBADF. */
-            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-            errno = EBADF;
-            return(-1);
+            /* The socket has been closed -> return 0, since socket was good
+             * before. The next call to nsa_recvmsg() will return with EBADF. */
+            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);            
+            return(0);
          }
 
          /* ====== Try again ============================================= */
@@ -234,15 +235,124 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
 /* ###### NEAT write() implementation #################################### */
 ssize_t nsa_write(int fd, const void* buf, size_t len)
 {
-   struct iovec  iov = { (char*)buf, len };
-   struct msghdr msg = {
-      NULL, 0,
-      &iov, 1,
-      NULL, 0,
-      0
-   };
-   return(nsa_sendmsg(fd, &msg, 0));
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      struct iovec  iov = { (char*)buf, len };
+      struct msghdr msg = {
+         NULL, 0,
+         &iov, 1,
+         NULL, 0,
+         0
+      };
+      return(nsa_sendmsg(fd, &msg, 0));
+   }
+   else {
+      return(write(neatSocket->ns_socket_sd, buf, len));
+   }
 }
+
+
+/* ###### NEAT writev() implementation ################################### */
+ssize_t nsa_writev(int fd, const struct iovec* iov, int iovcnt)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      struct msghdr msg = {
+         NULL, 0,
+         (struct iovec*)iov, 1,
+         NULL, 0,
+         0
+      };
+      return(nsa_sendmsg(fd, &msg, 0));
+   }
+   else {
+      return(writev(neatSocket->ns_socket_sd, iov, iovcnt));
+   }
+}
+
+
+/* ###### NEAT pwrite() implementation ################################### */
+ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      assert(offset == 0);
+      struct iovec  iov = { (char*)buf, len };
+      struct msghdr msg = {
+         NULL, 0,
+         &iov, 1,
+         NULL, 0,
+         0
+      };
+      return(nsa_sendmsg(fd, &msg, 0));
+   }
+   else {
+      return(pwrite(neatSocket->ns_socket_sd, buf, len, offset));
+   }
+}
+
+
+/* ###### NEAT pwritev() implementation ################################## */
+ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt, off_t offset)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      assert(offset == 0);
+      struct msghdr msg = {
+         NULL, 0,
+         (struct iovec*)iov, iovcnt,
+         NULL, 0,
+         0
+      };
+      return(nsa_sendmsg(fd, &msg, 0));
+   }
+   else {
+      return(pwritev(neatSocket->ns_socket_sd, iov, iovcnt, offset));
+   }
+}
+
+
+#ifdef _LARGEFILE64_SOURCE
+/* ###### NEAT pwrite64() implementation ################################# */
+ssize_t nsa_pwrite64(int fd, const void* buf, size_t len, off64_t offset)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      assert(offset == 0);
+      struct iovec  iov = { (char*)buf, len };
+      struct msghdr msg = {
+         NULL, 0,
+         &iov, 1,
+         NULL, 0,
+         0
+      };
+      return(nsa_sendmsg(fd, &msg, 0));
+   }
+   else {
+      return(pwrite64(neatSocket->ns_socket_sd, buf, len, offset));
+   }
+}
+
+
+/* ###### NEAT pwritev64() implementation ################################ */
+ssize_t nsa_pwritev64(int fd, const struct iovec* iov, int iovcnt, off64_t offset)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      assert(offset == 0);
+      struct msghdr msg = {
+         NULL, 0,
+         (struct iovec*)iov, iovcnt,
+         NULL, 0,
+         0
+      };
+      return(nsa_sendmsg(fd, &msg, 0));
+   }
+   else {
+      return(pwritev64(neatSocket->ns_socket_sd, iov, iovcnt, offset));
+   }
+}
+#endif
 
 
 /* ###### NEAT send() implementation ##################################### */
@@ -294,15 +404,124 @@ ssize_t nsa_sendv(int sockfd, struct iovec* iov, int iovcnt,
 /* ###### NEAT read() implementation ##################################### */
 ssize_t nsa_read(int fd, void* buf, size_t len)
 {
-   struct iovec  iov = { (char*)buf, len };
-   struct msghdr msg = {
-      NULL, 0,
-      &iov, 1,
-      NULL, 0,
-      0
-   };
-   return(nsa_recvmsg(fd, &msg, 0));
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      struct iovec  iov = { (char*)buf, len };
+      struct msghdr msg = {
+         NULL, 0,
+         &iov, 1,
+         NULL, 0,
+         0
+      };
+      return(nsa_recvmsg(fd, &msg, 0));
+   }
+   else {
+      return(read(neatSocket->ns_socket_sd, buf, len));
+   }
 }
+
+
+/* ###### NEAT readv() implementation #################################### */
+ssize_t nsa_readv(int fd, const struct iovec* iov, int iovcnt)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      struct msghdr msg = {
+         NULL, 0,
+         (struct iovec*)iov,  iovcnt,
+         NULL, 0,
+         0
+      };
+      return(nsa_recvmsg(fd, &msg, 0));
+   }
+   else {
+      return(readv(neatSocket->ns_socket_sd, iov, iovcnt));
+   }
+}
+
+
+/* ###### NEAT pread() implementation #################################### */
+ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      assert(offset == 0);
+      struct iovec  iov = { (char*)buf, len };
+      struct msghdr msg = {
+         NULL, 0,
+         &iov, 1,
+         NULL, 0,
+         0
+      };
+      return(nsa_recvmsg(fd, &msg, 0));
+   }
+   else {
+      return(pread(neatSocket->ns_socket_sd, buf, len, offset));
+   }
+}
+
+
+/* ###### NEAT preadv() implementation ################################### */
+ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt, off_t offset)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      assert(offset == 0);
+      struct msghdr msg = {
+         NULL, 0,
+         (struct iovec*)iov,  iovcnt,
+         NULL, 0,
+         0
+      };
+      return(nsa_recvmsg(fd, &msg, 0));
+   }
+   else {
+      return(preadv(neatSocket->ns_socket_sd, iov, iovcnt, offset));
+   }
+}
+
+
+#ifdef _LARGEFILE64_SOURCE
+/* ###### NEAT pread64() implementation ################################## */
+ssize_t nsa_pread64(int fd, void* buf, size_t len, off64_t offset)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      assert(offset == 0);
+      struct iovec  iov = { (char*)buf, len };
+      struct msghdr msg = {
+         NULL, 0,
+         &iov, 1,
+         NULL, 0,
+         0
+      };
+      return(nsa_recvmsg(fd, &msg, 0));
+   }
+   else {
+      return(pread64(neatSocket->ns_socket_sd, buf, len, offset));
+   }
+}
+
+
+/* ###### NEAT preadv64() implementation ################################# */
+ssize_t nsa_preadv64(int fd, const struct iovec* iov, int iovcnt, off64_t offset)
+{
+   GET_NEAT_SOCKET(fd)
+   if(neatSocket->ns_flow != NULL) {
+      assert(offset == 0);
+      struct msghdr msg = {
+         NULL, 0,
+         (struct iovec*)iov,  iovcnt,
+         NULL, 0,
+         0
+      };
+      return(nsa_recvmsg(fd, &msg, 0));
+   }
+   else {
+      return(preadv64(neatSocket->ns_socket_sd, iov, iovcnt, offset));
+   }
+}
+#endif
 
 
 /* ###### NEAT recv() implementation ##################################### */

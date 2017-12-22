@@ -7,6 +7,8 @@
 #include "util.h"
 #include <errno.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
     discard server
@@ -19,23 +21,11 @@
 
 static uint32_t config_buffer_size = 128;
 static uint16_t config_log_level = 1;
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"SCTP/UDP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";
-
+static char *config_property = QUOTE({
+    "transport": {
+        "value": ["SCTP", "TCP", "SCTP/UDP"],
+        "precedence": 2}
+});
 static unsigned char *buffer = NULL;
 static uint32_t buffer_filled = 0;
 
@@ -94,23 +84,16 @@ on_readable(struct neat_flow_operations *opCB)
         }
     }
 
-    if (buffer_filled > 0) {
-        if (config_log_level >= 1) {
-            printf("received data - %d byte\n", buffer_filled);
-        }
-        if (config_log_level >= 2) {
-            fwrite(buffer, sizeof(char), buffer_filled, stdout);
-            printf("\n");
-            fflush(stdout);
-        }
-    } else {
-        if (config_log_level >= 1) {
-            printf("peer disconnected\n");
-        }
-        opCB->on_readable = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        neat_close(opCB->ctx, opCB->flow);
+
+    if (config_log_level >= 1) {
+        printf("received data - %d byte\n", buffer_filled);
     }
+    if (config_log_level >= 2) {
+        fwrite(buffer, sizeof(char), buffer_filled, stdout);
+        printf("\n");
+        fflush(stdout);
+    }
+
     return NEAT_OK;
 }
 

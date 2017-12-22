@@ -86,7 +86,7 @@ def dict_to_properties(property_dict):
 def properties_to_json(property_array, indent=None):
     property_dict = dict()
     for i in property_array.values():
-        property_dict.update(i.dict())
+        property_dict.update(i.dict(full=True))
     return json.dumps(property_dict, sort_keys=True, indent=indent)
 
 
@@ -121,6 +121,15 @@ class PropertyValue(object):
     def value(self):
         return self._value
 
+    def __to_inf(self, value):
+        str_value = str(value).strip().lower()
+        if str_value in ['inf', '-inf', 'infinity', '-infinity']:
+            if str_value.startswith('-'):
+                value = -math.inf
+            else:
+                value = math.inf
+        return value
+
     @value.setter
     def value(self, value):
 
@@ -136,10 +145,15 @@ class PropertyValue(object):
         # min-max numeric range
         elif isinstance(value, (dict,)):
             try:
-                self._value = (value['start'], value['end'])
+                range_start, range_end = self.__to_inf(value['start']), self.__to_inf(value['end'])
+                range_end - range_start > 0
+                self._value = (range_start, range_end)
             except KeyError as e:
                 print(e)
                 raise IndexError("Invalid property range definition")
+            except TypeError as e:
+                print(e)
+                raise IndexError("Invalid property range definition: ranges should be numeric")
             self.is_range = True
         # old-style numeric ranges stored as tuples
         # deprecated
@@ -276,6 +290,7 @@ class NEATProperty(object):
     """
     The basic unit for representing properties in NEAT. NEATProperties are (key,value) tuples.
 
+    NEATProperty keys are always in lower case
     """
 
     IMMUTABLE = 2
@@ -283,12 +298,14 @@ class NEATProperty(object):
     BASE = 0
 
     def __init__(self, key_val, precedence=OPTIONAL, score=0, banned=None, evaluated=False):
+        self._key = ''
         self.key = key_val[0]
         self._value = PropertyValue(key_val[1])
 
         self.precedence = precedence
         self.score = score
 
+        # TODO implement banned values
         if banned:
             self.banned = [PropertyValue(b) for b in banned]
         else:
@@ -296,8 +313,6 @@ class NEATProperty(object):
 
         # set if property was compared or updated during a lookup
         self.evaluated = evaluated
-
-        # TODO check if value is in banned list
 
     @property
     def value(self):
@@ -308,10 +323,18 @@ class NEATProperty(object):
         self._value = PropertyValue(value)
 
     @property
+    def key(self):
+        return self._key
+
+    @key.setter
+    def key(self, value):
+        self._key = str(value).lower()
+
+    @property
     def property(self):
         return self.key, self.value
 
-    def dict(self, extended=False):
+    def dict(self, full=False):
         """
         Return a dict representation of the NEATProperty e.g. for JSON export.
         If extended is set also include default values.
@@ -327,7 +350,7 @@ class NEATProperty(object):
         else:
             d['value'] = self.value
 
-        if extended:
+        if full:
             d['precedence'] = self.precedence
             d['score'] = self.score
             d['evaluated'] = self.evaluated
@@ -357,7 +380,8 @@ class NEATProperty(object):
         Create a new property by updating the first one with the second. Returns a new NEATProperty object.
         """
 
-        # experimental: reverse comparison order if precedence is zero. Used to specify default policies
+        # experimental: reverse comparison order if precedence is zero.
+        # Used to implement policies with default properties.
         if other.precedence == NEATProperty.BASE:
             new_prop = copy.deepcopy(other)
             new_prop.update(self, evaluate=False)
@@ -398,8 +422,8 @@ class NEATProperty(object):
         value_match = self == other
 
         # property with the higher precedence determines the new property value and new precedence
-        # if both precedences are optional, the other property sets the new property value and new precedence
-        # if both precedences are immutable, we raise an exception if the values differ
+        # if both precedences are optional, the other property determines the new property value and new precedence
+        # if both precedences are immutable, we raise an exception if the property values differ
 
         if value_match:
             self.score += other.score  # TODO adjust scoring
@@ -433,7 +457,8 @@ class NEATProperty(object):
         elif self._value.is_set:
             val_str = ','.join([str(i) for i in self.value])
         elif self.value is None:
-            val_str = ''
+            # empty value matches ANY property value
+            val_str = '*'
         else:
             val_str = str(self._value)
 
@@ -468,7 +493,10 @@ class NEATProperty(object):
         else:
             property_str = '?%s?%s' % (keyval_str, score_str)
 
-        property_str = STYLES.DARK_GRAY_START + property_str + STYLES.FORMAT_END
+        if self.key.startswith('__'):
+            property_str = STYLES.LIGHT_GRAY_START + property_str + STYLES.FORMAT_END
+        else:
+            property_str = STYLES.DARK_GRAY_START + property_str + STYLES.FORMAT_END
 
         return property_str
 
@@ -528,8 +556,14 @@ class PropertyArray(dict):
 
     @property
     def score(self):
+        """Return the sum of scores of all array properties that have their `evaluated` flag set."""
         return sum((s.score for s in self.values() if s.evaluated)), sum(
-            (s.score for s in self.values() if not s.evaluated))  # FIXME only if s.evaluated?
+            (s.score for s in self.values() if not s.evaluated))
+
+    @property
+    def uid(self):
+        # TODO generate UID for candidates
+        return 1234
 
     def dict(self):
         """ Return a dictionary containing all contained NEAT property attributes"""
@@ -543,6 +577,24 @@ class PropertyArray(dict):
         str_list = [str(i) for i in sorted(list(self.values()), key=lambda v: v.key.lower())]
         j = CHARS.DASH * 2
         return '├─' + j.join(str_list) + '─┤'
+
+
+def __merge_properties(properties):
+    """
+    Merge list of properties into a list for adding into MultiArray. If several properties with identical key exit,
+    they will be added into a joint list.
+    """
+    keys = {i.key for i in properties}
+    new_property_list = []
+    single_property_pa = PropertyArray()
+
+    for k in keys:
+        pa_list = [PropertyArray(p) for p in properties if p.key == k]
+        if len(pa_list) == 1:
+            single_property_pa.add(pa_list[0][k])
+        else:
+            new_property_list.append(pa_list)
+    return new_property_list + [single_property_pa]
 
 
 class PropertyMultiArray(list):
@@ -567,11 +619,14 @@ class PropertyMultiArray(list):
                 return
 
     def expand(self):
+        # FIXME this is called too often
         expanded_pas = []
-        for pa_product in list(itertools.product(*self)):
+
+        for pa_product in itertools.product(*self):
             pa = PropertyArray()
             for p in pa_product:
-                pa.add(*p.values())
+                tmp = copy.deepcopy(p)  # FIXME otherwise method alters the properties
+                pa.add(*tmp.values())
             expanded_pas.append(pa)
         return expanded_pas
 

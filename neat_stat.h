@@ -20,9 +20,6 @@ struct neat_tcp_info {
     uint32_t tcpi_snd_cwnd;
     uint32_t tcpi_advmss;
     uint32_t tcpi_reordering;
-
-    uint32_t tcpi_rcv_rtt;
-    uint32_t tcpi_rcv_space;
     uint32_t tcpi_total_retrans;
 };
 
@@ -33,7 +30,12 @@ struct neat_flow_statistics {
     uint64_t bytes_received;
 };
 
-void neat_stats_build_json(struct neat_ctx *ctx, char **json_stats);
+struct neat_global_statistics {
+    uint64_t global_bytes_sent;
+    uint64_t global_bytes_received;
+};
+
+void nt_stats_build_json(struct neat_ctx *ctx, char **json_stats);
 
 
 #endif

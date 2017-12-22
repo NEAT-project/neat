@@ -6,6 +6,10 @@
 //lo interface has fixed index 1
 #define LO_DEV_IDX 1
 
+#if defined(MPTCP_SUPPORT) && !defined(MPTCP_ENABLED)
+#define MPTCP_ENABLED 42
+#endif
+
 struct nlattr;
 struct neat_ctx;
 
@@ -14,7 +18,7 @@ struct nlattr_storage {
     uint32_t limit;
 };
 
-struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *nic);
+struct neat_ctx *nt_linux_init_ctx(struct neat_ctx *nic);
 
 /* Get statistics from Linux TCP_INFO */
 int linux_get_tcp_info(struct neat_flow * , struct neat_tcp_info *);

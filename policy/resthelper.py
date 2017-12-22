@@ -1,4 +1,5 @@
 from ipaddress import IPv4Network, IPv4Address
+import pmdefaults as PM
 
 import os
 
@@ -7,7 +8,7 @@ import cib
 try:
     import netifaces
 except ImportError as e:
-    e.msg = "netifaces is not installed, but is needed to generate local CIBs"
+    e.msg = "netifaces module is not installed, but is needed to generate local CIBs"
     raise
 
 
@@ -40,12 +41,12 @@ def get_local_ips():
     ips = []
     for en in netifaces.interfaces():
         for af, addresses in netifaces.ifaddresses(en).items():
-            if af not in (netifaces.AF_INET, netifaces.AF_INET6):
+            if af not in (netifaces.AF_INET, ): # TODO support netifaces.AF_INET6
                 continue
             for address in addresses:
                 if 'addr' in address:
                     ip = address['addr']
-                    if ip not in ('127.0.0.1', '::1'):
+                    if ip not in ('127.0.0.1', '::1', PM.REST_IP):
                         ips.append(ip)
     return ips
 

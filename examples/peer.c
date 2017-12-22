@@ -177,11 +177,11 @@ preparemsg(unsigned char *buf, uint32_t bufsz, uint32_t *actualsz, uint8_t cmd,
 {
     size_t headsz = sizeof(cmd) + sizeof(flags) + sizeof(size);
 
-    if ( bufsz < (data_size + headsz)) {
-            return -1;
+    if (bufsz < (data_size + headsz)) {
+        return -1;
     }
 
-    *actualsz = data_size+headsz;
+    *actualsz = data_size + headsz;
 
     buf[0] = cmd;
     buf[1] = flags;
@@ -190,8 +190,8 @@ preparemsg(unsigned char *buf, uint32_t bufsz, uint32_t *actualsz, uint8_t cmd,
 
     memcpy(buf+2, &nsize, sizeof(uint32_t));
 
-    if( data_size > 0 && data != NULL) {
-            memcpy(buf+headsz, data, *actualsz);
+    if (data_size > 0 && data != NULL) {
+        memcpy(buf + headsz, data, *actualsz);
     }
 
     return 1;
@@ -512,8 +512,8 @@ on_all_written(struct neat_flow_operations *opCB)
 
             finfo = openfile(pf->file_name,"w");
             if (finfo == NULL) {
-                fprintf(stderr, "%s:%d could not open file %s\n",
-                    __func__, __LINE__, pf->file_name);
+                fprintf(stderr, "%s:%d could not open file %s\n", __func__, __LINE__, pf->file_name);
+                exit(EXIT_FAILURE);
             }
 
             fwrite(pf->file_buffer, sizeof(char), pf->file_buffer_size, finfo->stream);
@@ -555,14 +555,12 @@ on_writable(struct neat_flow_operations *opCB)
 
     case CONNECT:
         if (config_log_level >= 3) {
-            fprintf(stderr, "%s:%d CONNECT'ing with filename: %s\n",
-                                    __func__, __LINE__, filename);
+            fprintf(stderr, "%s:%d CONNECT'ing with filename: %s\n", __func__, __LINE__, filename);
         }
         //pf->master = 0;
         pf->segments_count = pf->fi->segments;
 
-                preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECT, 0,
-                        pf->segments_count, (unsigned char *)filename, sizeof(filename));
+        preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECT, 0, pf->segments_count, (unsigned char *)filename, strlen(filename));
 
         break;
     case COMPLETE:
@@ -570,16 +568,14 @@ on_writable(struct neat_flow_operations *opCB)
             fprintf(stderr, "%s:%d Sending COMPLETE%d\n",
                                     __func__, __LINE__, pf->segments_count);
         }
-        preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, COMPLETE,
-                0, pf->segments_count, NULL, 0);
+        preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, COMPLETE, 0, pf->segments_count, NULL, 0);
         break;
     case CONNECTACK:
         if (config_log_level >= 3) {
             fprintf(stderr, "%s:%d CONNECTACK acking segments %d\n",
                                     __func__, __LINE__, pf->segments_count);
         }
-        preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECTACK,
-                0, pf->segments_count, NULL, 0);
+        preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, CONNECTACK, 0, pf->segments_count, NULL, 0);
         break;
     case DATA:
         if (config_log_level >= 3) {
@@ -592,7 +588,11 @@ on_writable(struct neat_flow_operations *opCB)
         unsigned char buf[SEGMENT_SIZE];
         size_t bytes;
 
-        fseek(pf->fi->stream, pf->segment*SEGMENT_SIZE, SEEK_SET);
+        if (fseek(pf->fi->stream, pf->segment*SEGMENT_SIZE, SEEK_SET)) {
+            fprintf(stderr, "%s - fseek() failed\n", __func__);
+            exit(EXIT_FAILURE);
+        }
+
         bytes = fread(buf, sizeof(unsigned char), SEGMENT_SIZE, pf->fi->stream);
         if (bytes == 0) {
             if(feof(pf->fi->stream)) {
@@ -606,16 +606,14 @@ on_writable(struct neat_flow_operations *opCB)
             }
         }
 
-        preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, DATA,
-                0, pf->segment, buf, bytes);
+        preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, DATA, 0, pf->segment, buf, bytes);
         break;
     case ACK:
         if (config_log_level >= 3) {
             fprintf(stderr, "%s:%d ACK acking segment %d\n",
                                     __func__, __LINE__, pf->segment);
         }
-        preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, ACK,
-                0, pf->segment, NULL, 0);
+        preparemsg(pf->buffer, pf->buffer_alloc, &pf->buffer_size, ACK, 0, pf->segment, NULL, 0);
         break;
     case ERROR:
         if (config_log_level >= 3) {

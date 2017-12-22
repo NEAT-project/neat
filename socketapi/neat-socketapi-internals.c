@@ -241,6 +241,8 @@ static neat_error_code on_connected(struct neat_flow_operations* ops)
       if(newSD >= 0) {
          struct neat_socket* newSocket = nsa_get_socket_for_descriptor(newSD);
          assert(newSocket != NULL);
+         
+         newSocket->ns_acceptor = neatSocket;
 
          neat_set_operations(gSocketAPIInternals->nsi_neat_context,
                              newSocket->ns_flow, &newSocket->ns_flow_ops);
@@ -426,10 +428,8 @@ static void on_rate_hint(struct neat_flow_operations* ops, uint32_t new_rate)
 int nsa_socket_internal(int domain, int type, int protocol,
                         int customFD, struct neat_flow* flow, int requestedSD)
 {
-   struct neat_socket* neatSocket;
-
    /* ====== Handle different internal types ============================= */
-   neatSocket = (struct neat_socket*)calloc(1, sizeof(struct neat_socket));
+   struct neat_socket* neatSocket = (struct neat_socket*)calloc(1, sizeof(struct neat_socket));
    if(neatSocket == NULL) {
       errno = ENOMEM;
       return(-1);
@@ -462,11 +462,6 @@ int nsa_socket_internal(int domain, int type, int protocol,
    }
    else {   /* Existing socket, given by its socket descriptor */
       neatSocket->ns_socket_sd = customFD;
-   }
-
-   /* ====== Set socket into non-blocking mode =========================== */
-   if(neatSocket->ns_socket_sd >= 0) {
-      set_non_blocking(neatSocket->ns_socket_sd);
    }
 
    /* ====== Initialize NEAT socket ====================================== */
@@ -593,11 +588,15 @@ int nsa_connectx_internal(struct neat_socket* neatSocket,
 /* ###### NEAT close() implementation internals ########################## */
 void nsa_close_internal(struct neat_socket* neatSocket)
 {
-   /* NOTE: gSocketAPIInternals->nsi_socket_set_mutex must already
-    *       be obtained when calling nsa_close_internal()! */
-
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
    pthread_mutex_lock(&neatSocket->ns_mutex);
 
+   /* ====== Remove this socket from accepting socket ==================== */
+   if(neatSocket->ns_acceptor != NULL) {
+      TAILQ_REMOVE(&neatSocket->ns_acceptor->ns_accept_list, neatSocket, ns_accept_node);
+      neatSocket->ns_acceptor = NULL;
+   }
+   
    /* ====== Close accepted sockets first ================================ */
    struct neat_socket* acceptedSocket;
    while( (acceptedSocket = TAILQ_FIRST(&neatSocket->ns_accept_list)) != NULL ) {
@@ -623,6 +622,7 @@ void nsa_close_internal(struct neat_socket* neatSocket)
       rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
    }
    ibm_free_id(gSocketAPIInternals->nsi_socket_identifier_bitmap, neatSocket->ns_descriptor);
+   assert(nsa_get_socket_for_descriptor(neatSocket->ns_descriptor) == NULL);
    neatSocket->ns_descriptor = -1;
 
    if(neatSocket->ns_options) {
@@ -637,6 +637,7 @@ void nsa_close_internal(struct neat_socket* neatSocket)
    pthread_mutex_unlock(&neatSocket->ns_mutex);
    pthread_mutex_destroy(&neatSocket->ns_mutex);
    free(neatSocket);
+   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
 }
 
 
@@ -704,7 +705,7 @@ int nsa_wait_for_event(struct neat_socket* neatSocket,
 {
    struct pollfd ufds[1];
    ufds[0].fd     = neatSocket->ns_descriptor;
-   ufds[0].events = POLLIN;
+   ufds[0].events = eventMask;
    int result = nsa_poll((struct pollfd*)&ufds, 1, timeout);
    if((result > 0) && (ufds[0].revents & eventMask)) {
       return(ufds[0].revents);

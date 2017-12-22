@@ -1,0 +1,124 @@
+language: c
+sudo: required
+cache:
+    directories:
+        - $HOME/libuv-v1.9.1
+        - $HOME/openssl-1.0.2l
+        - $HOME/jansson-2.10
+        - $HOME/ldns-1.7.0
+
+addons:
+    apt:
+        sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.8
+        packages:
+            - cmake
+            - gcc-4.8
+            - lcov
+            - clang-3.8
+            - valgrind
+            - g++-4.8
+            - libstdc++-4.8-dev
+            - libmnl-dev
+            - libsctp-dev
+
+matrix:
+    include:
+        - os: linux
+          compiler: gcc
+          dist: trusty
+          env: T=normal
+        - os: osx
+          compiler: clang
+          env: T=normal
+
+install:
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update > /dev/null; fi
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install libuv ldns jansson swig; fi
+
+before_script:
+  # build libuv 1.9.1 from source on Linux
+  - |
+    if [ $TRAVIS_OS_NAME = linux ]; then
+      if [ ! -e $HOME/libuv-v1.9.1/Makefile ]; then
+        (cd $HOME && \
+        wget archive.ubuntu.com/ubuntu/pool/universe/libu/libuv1/libuv1_1.9.1.orig.tar.gz && \
+        tar -xzf libuv1_1.9.1.orig.tar.gz && \
+        cd libuv-v1.9.1 && \
+        sh autogen.sh && \
+        ./configure && \
+        make && \
+        make check)
+      fi
+    fi
+  # build openssl 1.0.2 from source on Linux
+  - |
+    if [ $TRAVIS_OS_NAME = linux ]; then
+      if [ ! -e $HOME/openssl-1.0.2l/libssl.a ]; then
+        (cd $HOME && \
+        curl -O https://www.openssl.org/source/openssl-1.0.2l.tar.gz && \
+        tar zxf openssl-1.0.2l.tar.gz && \
+        cd openssl-1.0.2l && \
+        ./config shared no-asm no-ssl2 no-ssl3 -fPIC && \
+        make depend && make)
+      fi
+    fi
+  # build jansson 2.10 from source on Linux
+  - |
+    if [ $TRAVIS_OS_NAME = linux ]; then
+      if [ ! -e $HOME/jansson-2.10/Makefile ]; then
+        (cd $HOME && \
+        curl -O http://www.digip.org/jansson/releases/jansson-2.10.tar.gz && \
+        tar zxf jansson-2.10.tar.gz && \
+        cd jansson-2.10 && \
+        ./configure && \
+        make)
+      fi
+    fi
+  # build ldns 1.7.0 from source on Linux
+  - |
+    if [ $TRAVIS_OS_NAME = linux ]; then
+      if [ ! -e $HOME/ldns-1.7.0/Makefile ]; then
+        # install openssl first
+        (cd $HOME/openssl-1.0.2l && sudo make install) && \
+        (cd $HOME && \
+        curl -O https://www.nlnetlabs.nl/downloads/ldns/ldns-1.7.0.tar.gz && \
+        tar zxf ldns-1.7.0.tar.gz && \
+        cd ldns-1.7.0 && \
+        ./configure --disable-dane-verify --with-ssl=/usr/local/ssl && \
+        make)
+      fi
+    fi
+  - |
+    if [ $TRAVIS_OS_NAME = linux ]; then
+      (cd $HOME/libuv-v1.9.1 && sudo make install) && \
+      (cd $HOME/openssl-1.0.2l && sudo make install) && \
+      (cd $HOME/jansson-2.10 && sudo make install) && \
+      (cd $HOME/ldns-1.7.0 && sudo make install)
+    fi
+
+script:
+    - |
+        if [ "$T" = "normal" ]; then
+             mkdir build
+             cd build
+             export LD_LIBRARY_PATH=/usr/local/ssl/lib:/usr/local/lib
+             cmake -DOPENSSL_ROOT_DIR=/usr/local/ssl ..
+             make VERBOSE=1
+        fi
+    - |
+        if [ "$T" = "distcheck" ]; then
+            ./maketgz 99.98.97
+            (tar xf neat-99.98.97.tar.gz && cd neat-99.98.97 && cmake . && make)
+            rm -rf neat-99.98.97
+            (tar xf neat-99.98.97.tar.gz && cd neat-99.98.97 && mkdir build && cd build && cmake .. && make)
+        fi
+
+# whitelist branches to avoid testing feature branches twice (as branch and as pull request)
+branches:
+    only:
+        - master
+
+notifications:
+  email: false

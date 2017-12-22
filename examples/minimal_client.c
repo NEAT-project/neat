@@ -22,8 +22,12 @@ on_readable(struct neat_flow_operations *ops)
     }
 
     neat_close(ops->ctx, ops->flow);
-    neat_stop_event_loop(ops->ctx);
+    return NEAT_OK;
+}
 
+static neat_error_code
+on_close(struct neat_flow_operations *ops) {
+    neat_stop_event_loop(ops->ctx);
     return NEAT_OK;
 }
 
@@ -75,13 +79,27 @@ main(int argc, char *argv[])
     struct neat_flow_operations ops;
 
     ctx  = neat_init_ctx();
+    if (!ctx) {
+        fprintf(stderr, "neat_init_ctx failed\n");
+        return EXIT_FAILURE;
+    }
+
     flow = neat_new_flow(ctx);
+    if (!flow) {
+        fprintf(stderr, "neat_new_flow failed\n");
+        return EXIT_FAILURE;
+    }
+
     memset(&ops, 0, sizeof(ops));
 
     ops.on_connected = on_connected;
+    ops.on_close = on_close;
     neat_set_operations(ctx, flow, &ops);
 
-    neat_set_property(ctx, flow, properties);
+    if (neat_set_property(ctx, flow, properties) != NEAT_OK) {
+        fprintf(stderr, "neat_set_property failed\n");
+        return EXIT_FAILURE;
+    }
 
     if (neat_open(ctx, flow, "127.0.0.1", 5000, NULL, 0)) {
         fprintf(stderr, "neat_open failed\n");

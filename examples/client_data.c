@@ -8,16 +8,18 @@
 #include <unistd.h>
 #include <uv.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
-    simple neat client
+    simple neat traffic generator
 
     * connect to HOST and PORT
-    * read from stdin and send data to HOST
-    * write received data from peer to stdout
+    * generate and send N amount of bytes to HOST
 
     client [OPTIONS] HOST PORT
     -P : neat properties
+    -D : number of bytes to generate
     -R : receive buffer in byte
     -S : send buffer in byte
     -J : print json stats for each time data is sent
@@ -28,8 +30,7 @@
 **********************************************************************/
 
 static uint32_t config_snd_chunk = 1000;
-static uint32_t config_snd_bytes = 1;
-static uint32_t config_snd_count = 0;
+static uint32_t config_snd_bytes = 100;
 static uint32_t config_rcv_buffer_size = 256;
 static uint32_t config_snd_buffer_size = 128;
 static uint16_t config_log_level = 1;
@@ -37,22 +38,8 @@ static uint16_t config_json_stats = 1;
 static uint16_t config_timeout = 0;
 static uint16_t config_number_of_streams = 1207;
 static char *config_primary_dest_addr = NULL;
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"SCTP/UDP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";
+static char *config_property = QUOTE({"transport": {"value":"reliable", "precedence":2}});
+
 
 struct std_buffer {
     unsigned char *buffer;
@@ -65,11 +52,8 @@ static struct neat_ctx *ctx = NULL;
 static struct neat_flow *flow = NULL;
 static unsigned char *buffer_rcv = NULL;
 static unsigned char *buffer_snd= NULL;
-static uv_tty_t tty;
 static uint16_t last_stream = 0;
 
-void tty_read(uv_stream_t *stream, ssize_t bytes_read, const uv_buf_t *buffer);
-void tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf);
 static neat_error_code on_all_written(struct neat_flow_operations *opCB);
 
 
@@ -206,10 +190,11 @@ on_readable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-// Send data from stdin
+// Send data
 static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
+    int32_t chunk_size;
     neat_error_code code;
     struct neat_tlv options[1];
 
@@ -217,33 +202,33 @@ on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    //last_stream = (last_stream + 1) % opCB->flow->stream_count;
     options[0].tag           = NEAT_TAG_STREAM_ID;
     options[0].type          = NEAT_TYPE_INTEGER;
     options[0].value.integer = last_stream;
 
-    //ZDR
-    unsigned char msg[config_snd_chunk];
-    memset(msg, 0x4e, config_snd_chunk);
+
+    if (config_snd_bytes<config_snd_chunk) {
+      chunk_size = config_snd_bytes;    
+    } else {
+      chunk_size = config_snd_chunk;
+    }
+
+    unsigned char msg[chunk_size];
+    memset(msg, 0x4e, chunk_size);
 
     code = neat_write(opCB->ctx, opCB->flow, msg, sizeof(msg), options, 1);
     if (code != NEAT_OK) {
       fprintf(stderr, "%s - neat_write - error: %d\n", __func__, (int)code);
       return on_error(opCB);
     }
-
-    config_snd_count += config_snd_chunk;
-    // if (config_json_stats){
-    // print_neat_stats(ctx);
-    //}
-
-    // stop writing
-    if  (config_snd_count>=config_snd_bytes) {
-      neat_close(ctx, flow);
+   
+    config_snd_bytes -= chunk_size;
+    // stop writing if all requested bytes have been sent
+    if (config_snd_bytes<=0) {
+      ops.on_all_written = on_all_written;
+      neat_set_operations(ctx, flow, &ops);
     }
 
-    //ops.on_all_written = on_all_written;
-    //neat_set_operations(ctx, flow, &ops);
     return NEAT_OK;
 }
 
@@ -253,15 +238,12 @@ on_all_written(struct neat_flow_operations *opCB)
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
-    fprintf(stderr, "%s()\n", __func__);
 
     // stop writing
-    ops.on_writable = on_writable;
-    ops.on_all_written = NULL;
     neat_set_operations(ctx, flow, &ops);
+    neat_close(ctx, flow);
 
-    // data sent completely - continue reading from stdin
-    //uv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
+    // data sent completely
     return NEAT_OK;
 }
 
@@ -269,23 +251,10 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     int rc;
-    uv_loop_t *loop;
-
-
-    /*
-    if (config_log_level >= 1) {
-        printf("%s - available streams : %d\n", __func__, opCB->flow->stream_count);
-    }
-    */
 
     last_stream = 0;
-    loop = neat_get_event_loop(opCB->ctx);
-    uv_tty_init(loop, &tty, 0, 1);
-    //ZDRuv_read_start((uv_stream_t*) &tty, tty_alloc, tty_read);
 
     ops.on_writable = on_writable;
-
-    //ops.on_readable = on_readable;
     neat_set_operations(ctx, flow, &ops);
 
     if (config_primary_dest_addr != NULL) {
@@ -315,9 +284,6 @@ on_close(struct neat_flow_operations *opCB)
     ops.on_readable = NULL;
     ops.on_writable = NULL;
     ops.on_error = NULL;
-    if (!uv_is_closing((uv_handle_t*) &tty)) {
-        uv_close((uv_handle_t*) &tty, NULL);
-    }
     neat_set_operations(ctx, flow, &ops);
 
     neat_stop_event_loop(opCB->ctx);
@@ -325,86 +291,6 @@ on_close(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-/*
-    Read from stdin
-*/
-void
-tty_read(uv_stream_t *stream, ssize_t buffer_filled, const uv_buf_t *buffer)
-{
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
-
-    if (config_log_level >= 1) {
-        fprintf(stderr, "%s - tty_read called with buffer_filled %zd\n", __func__, buffer_filled);
-    }
-
-    // error case
-    if (buffer_filled == UV_EOF) {
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - tty_read - UV_EOF\n", __func__);
-        }
-        uv_read_stop(stream);
-        ops.on_writable = NULL;
-        neat_set_operations(ctx, flow, &ops);
-        if (!uv_is_closing((uv_handle_t*) &tty)) {
-            uv_close((uv_handle_t*) &tty, NULL);
-        }
-        neat_shutdown(ctx, flow);
-    } else if (strncmp(buffer->base, "close\n", buffer_filled) == 0) {
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - tty_read - CLOSE\n", __func__);
-        }
-        uv_read_stop(stream);
-        ops.on_writable = NULL;
-        neat_set_operations(ctx, flow, &ops);
-        if (!uv_is_closing((uv_handle_t*) &tty)) {
-            uv_close((uv_handle_t*) &tty, NULL);
-        }
-        neat_close(ctx, flow);
-        buffer_filled = UV_EOF;
-    } else if (strncmp(buffer->base, "abort\n", buffer_filled) == 0) {
-        if (config_log_level >= 1) {
-            fprintf(stderr, "%s - tty_read - ABORT\n", __func__);
-        }
-        uv_read_stop(stream);
-        ops.on_writable = NULL;
-        neat_set_operations(ctx, flow, &ops);
-        if (!uv_is_closing((uv_handle_t*) &tty)) {
-            uv_close((uv_handle_t*) &tty, NULL);
-        }
-        neat_abort(ctx, flow);
-        buffer_filled = UV_EOF;
-    }
-
-    fprintf(stderr, "%s - felix - marker\n", __func__);
-
-    // all fine
-    if (buffer_filled > 0 && buffer_filled != UV_EOF) {
-        // copy input to app buffer
-        stdin_buffer.buffer_filled = buffer_filled;
-        memcpy(stdin_buffer.buffer, buffer->base, buffer_filled);
-
-        // stop reading from stdin and set write callbacks
-        uv_read_stop(stream);
-        ops.on_writable = on_writable;
-        ops.on_all_written = on_all_written;
-        neat_set_operations(ctx, flow, &ops);
-    }
-
-    free(buffer->base);
-}
-
-void
-tty_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer)
-{
-    if (config_log_level >= 2) {
-        fprintf(stderr, "%s()\n", __func__);
-    }
-
-    buffer->len = config_rcv_buffer_size;
-    buffer->base = malloc(config_rcv_buffer_size);
-}
 
 
 int
@@ -435,7 +321,6 @@ main(int argc, char *argv[])
             }
             break;
         case 'D':
-          //ZDR
             config_snd_bytes = atoi(optarg);
             if (config_log_level >= 1) {
                 fprintf(stderr, "%s - option - number of bytes to send: %d\n", __func__, config_snd_bytes);

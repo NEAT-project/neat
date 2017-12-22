@@ -12,6 +12,7 @@ Welcome to the NEAT documentation!
     Optional arguments <optargs>
     Properties <properties>
     Architecture <arch>
+    Policy Manager <pm_intro>
 
 .. toctree::
     :caption: API Reference
@@ -38,6 +39,7 @@ Welcome to the NEAT documentation!
     neat_secure_identity <neat_secure_identity>
     neat_set_checksum_coverage <neat_set_checksum_coverage>
     neat_set_qos <neat_set_qos>
+    neat_get_qos <neat_get_qos>
     neat_set_ecn <neat_set_ecn>
 
     neat_start_event_loop <neat_start_event_loop>

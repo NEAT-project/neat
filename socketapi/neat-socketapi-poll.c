@@ -224,3 +224,44 @@ int nsa_select(int             n,
 
    return(result);
 }
+
+
+#ifdef HAVE_SYS_EPOLL_H
+
+#include <sys/epoll.h>
+
+/* ###### NEAT epoll_create() implementation ############################# */
+int nsa_epoll_create(int size)
+{
+   abort();   // FIXME: to be implemented!
+}
+
+
+/* ###### NEAT epoll_create1() implementation ############################ */
+int nsa_epoll_create1(int flags)
+{
+   abort();   // FIXME: to be implemented!
+}
+
+
+/* ###### NEAT epoll_ctl() implementation ################################ */
+int nsa_epoll_ctl(int epfd, int op, int fd, struct epoll_event* event)
+{
+   abort();   // FIXME: to be implemented!
+}
+
+
+/* ###### NEAT epoll_wait() implementation ############################### */
+int nsa_epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout)
+{
+   abort();   // FIXME: to be implemented!
+}
+
+
+/* ###### NEAT epoll_waitp() implementation ############################## */
+int nsa_epoll_pwait(int epfd, struct epoll_event *events, int maxevents,
+                    int timeout, const sigset_t* ss)
+{
+   abort();   // FIXME: to be implemented!
+}
+#endif

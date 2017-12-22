@@ -44,6 +44,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <netdb.h>
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
 #if defined(HAVE_NETINET_SCTP_H)
@@ -54,7 +55,10 @@
 /* ###### Map system socket into NEAT socket descriptor space ############ */
 int nsa_map_socket(int systemSD, int neatSD)
 {
-   return(nsa_socket_internal(0, 0, 0, systemSD, NULL, neatSD));
+   pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   const int result = nsa_socket_internal(0, 0, 0, systemSD, NULL, neatSD);
+   pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+   return(result);
 }
 
 
@@ -62,6 +66,14 @@ int nsa_map_socket(int systemSD, int neatSD)
 int nsa_unmap_socket(int neatSD)
 {
    return(nsa_close(neatSD));
+}
+
+
+/* ###### Initialise ##################################################### */
+int nsa_init()
+{
+   const bool success = (nsa_initialize() != NULL);
+   return((success == true) ? 0 : -1);
 }
 
 
@@ -101,26 +113,63 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
 }
 
 
+/* ###### NEAT nsa_socketpair() implementation ########################### */
+int nsa_socketpair(int domain, int type, int protocol, int sv[2], const char* properties)
+{
+   if(nsa_initialize() != NULL) {
+      int sysFDs[2];
+      if(socketpair(domain, type, protocol, (int*)&sysFDs) == 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         sv[0] = nsa_socket_internal(0, 0, 0, sysFDs[0], NULL, -1);
+         if(sv[0] >= 0) {
+            sv[1] = nsa_socket_internal(0, 0, 0, sysFDs[1], NULL, -1);
+            if(sv[1] >= 0) {
+               pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+               return(0);
+            }
+            nsa_close(sv[0]);
+            sv[0] = -1;
+         }
+         errno = ENOMEM;
+         close(sysFDs[0]);
+         close(sysFDs[1]);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      }
+   }
+   else {
+      errno = ENXIO;
+   }
+   return(-1);
+}
+
+
 /* ###### NEAT close() implementation #################################### */
 int nsa_close(int sockfd)
 {
-   GET_NEAT_SOCKET(sockfd)
    pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-   if(neatSocket->ns_flow != NULL) {
-      pthread_mutex_lock(&neatSocket->ns_mutex);
-      rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
-      pthread_mutex_unlock(&neatSocket->ns_mutex);
-      neat_close(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow);
+   struct neat_socket* neatSocket = nsa_get_socket_for_descriptor(sockfd);
+   int                 result     = 0;
+   if(neatSocket != NULL) {
+      if(neatSocket->ns_flow != NULL) {
+         pthread_mutex_lock(&neatSocket->ns_mutex);
+         rbt_remove(&gSocketAPIInternals->nsi_socket_set, &neatSocket->ns_node);
+         pthread_mutex_unlock(&neatSocket->ns_mutex);
+         neat_close(gSocketAPIInternals->nsi_neat_context, neatSocket->ns_flow);
 
-      /* Finally, finish the main loop's waiting, in order to let it
-       * process the closing request. */
-      nsa_notify_main_loop();
+         /* Finally, finish the main loop's waiting, in order to let it
+         * process the closing request. */
+         nsa_notify_main_loop();
+      }
+      else {
+         nsa_close_internal(neatSocket);
+      }
    }
    else {
-      nsa_close_internal(neatSocket);
+      errno  = EBADF;
+      result = -1;
    }
    pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-   return(0);
+   return(result);
 }
 
 
@@ -211,7 +260,7 @@ int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt, int flags,
    if(neatSocket->ns_flow != NULL) {
       if(addrcnt >= 1) {
          if(copy_options(&neatSocket->ns_options, &neatSocket->ns_optcount,
-                        opt, optcnt) < 0) {
+                         opt, optcnt) < 0) {
             return(-1);
          }
          neatSocket->ns_port = get_port(addrs);
@@ -257,7 +306,7 @@ int nsa_connectn(int                 sockfd,
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
       return(nsa_connectx_internal(neatSocket,
-                                   name, port, id, opt, optcnt)); 
+                                   name, port, id, opt, optcnt));
    }
    else {
       errno = ENOTSUP;
@@ -378,8 +427,8 @@ int nsa_listen(int sockfd, int backlog)
 }
 
 
-/* ###### NEAT accept() implementation ################################### */
-int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+/* ###### NEAT accept4() implementation ################################## */
+int nsa_accept4(int sockfd, struct sockaddr* addr, socklen_t* addrlen, int flags)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
@@ -394,8 +443,8 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
          if(neatSocket->ns_flags & NSAF_LISTENING) {
             /* ====== Accept new socket ================================== */
             struct neat_socket* newSocket = TAILQ_FIRST(&neatSocket->ns_accept_list);
-            if( (newSocket == NULL) &&
-                (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) ) {
+            while( (newSocket == NULL) &&
+                   (!(neatSocket->ns_flags & NSAF_NONBLOCKING)) ) {
                /* ====== Blocking mode: wait ============================= */
                es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
                nsa_set_socket_event_on_read(neatSocket, true);
@@ -421,7 +470,20 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             /* ====== Remove new socket from accept queue ================ */
             if(newSocket) {
                TAILQ_REMOVE(&neatSocket->ns_accept_list, newSocket, ns_accept_node);
+               newSocket->ns_acceptor = NULL;
+
                result = newSocket->ns_descriptor;
+
+               if(flags != 0) {
+                  int socketFlags = fcntl(newSocket->ns_descriptor, F_GETFL, 0);
+                  if(flags & SOCK_NONBLOCK) {
+                      socketFlags |= O_NONBLOCK;
+                  }
+                  if(flags & SOCK_CLOEXEC) {
+                      socketFlags |= O_CLOEXEC;
+                  }
+                  fcntl(newSocket->ns_descriptor, F_SETFL, socketFlags);
+               }
 
                /* ====== Fill in peer address ============================ */
                if(addrlen != NULL) {
@@ -432,6 +494,7 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             }
 
             if(TAILQ_FIRST(&neatSocket->ns_accept_list) == NULL) {
+               neatSocket->ns_flags &= ~NSAF_READABLE;
                es_has_fired(&neatSocket->ns_read_signal);   /* Clear read signal */
             }
         }
@@ -452,6 +515,13 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
    else {
       return(accept(neatSocket->ns_socket_sd, addr, addrlen));
    }
+}
+
+
+/* ###### NEAT accept() implementation ################################### */
+int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+{
+   return(nsa_accept4(sockfd, addr, addrlen, 0));
 }
 
 
@@ -512,8 +582,44 @@ int nsa_getsockopt(int sockfd, int level,
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
-      errno = EOPNOTSUPP;
-      return(-1);
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      pthread_mutex_lock(&neatSocket->ns_mutex);
+
+      int result = -1;
+      if(level == SOL_SOCKET) {
+         switch(optname) {
+            case SO_RCVBUF:
+               if(*optlen >= (socklen_t)sizeof(int)) {
+                  *((int*)optval) = 1024*1024;
+                  *optlen         = sizeof(int);
+                  result = 0;
+               }
+               else {
+                  errno = EINVAL;
+               }
+             break;
+            case SO_SNDBUF:
+               if(*optlen >= (socklen_t)sizeof(int)) {
+                  *((int*)optval) = 1024*1024;
+                  *optlen         = sizeof(int);
+                  result = 0;
+               }
+               else {
+                  errno = EINVAL;
+               }
+             break;
+            default:
+               errno = EOPNOTSUPP;
+             break;
+         }
+      }
+      else {
+         errno = EOPNOTSUPP;
+      }
+
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      return(result);
    }
    else {
       return(getsockopt(neatSocket->ns_socket_sd, level, optname, optval, optlen));
@@ -527,8 +633,42 @@ int nsa_setsockopt(int sockfd, int level,
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
-      errno = EOPNOTSUPP;
-      return(-1);
+      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      pthread_mutex_lock(&neatSocket->ns_mutex);
+
+      int result = -1;
+      if(level == SOL_SOCKET) {
+         switch(optname) {
+            case SO_RCVBUF:
+               if(optlen >= (socklen_t)sizeof(int)) {
+//                ... = *((int*)optval);
+                  result = 0;
+               }
+               else {
+                  errno = EINVAL;
+               }
+             break;
+            case SO_SNDBUF:
+               if(optlen >= (socklen_t)sizeof(int)) {
+//                ... = *((int*)optval);
+                  result = 0;
+               }
+               else {
+                  errno = EINVAL;
+               }
+             break;
+            default:
+               errno = EOPNOTSUPP;
+             break;
+         }
+      }
+      else {
+         errno = EOPNOTSUPP;
+      }
+
+      pthread_mutex_unlock(&neatSocket->ns_mutex);
+      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      return(result);
    }
    else {
       return(setsockopt(neatSocket->ns_socket_sd, level, optname, optval, optlen));
@@ -572,7 +712,7 @@ int nsa_set_secure_identity(int sockfd, const char* pem)
       // Security in the NEAT Core API is currently broken!
       // It will not work here as well ...
       assert(false);
-/*      
+/*
       switch(result) {
          case NEAT_OK:
             return(0);
@@ -580,7 +720,7 @@ int nsa_set_secure_identity(int sockfd, const char* pem)
       }
 */
       errno = ENOENT;   /* Unexpected error from NEAT Core */
-      return(-1);      
+      return(-1);
    }
    errno = EOPNOTSUPP;
    return(-1);
@@ -674,72 +814,4 @@ int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen)
 int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
 {
    return(nsa_getlpname(sockfd, name, namelen, 0));
-}
-
-
-/* ###### NEAT open() implementation ##################################### */
-int nsa_open(const char* pathname, int flags, mode_t mode)
-{
-   int fd = open(pathname, flags, mode);
-   if(fd >= 0) {
-      int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, 0);
-      if(newFD >= 0) {
-         return(newFD);
-      }
-      errno = ENOMEM;
-      close(fd);
-   }
-   return(-1);
-}
-
-
-/* ###### NEAT creat() implementation #################################### */
-int nsa_creat(const char* pathname, mode_t mode)
-{
-   int fd = creat(pathname, mode);
-   if(fd >= 0) {
-      int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, 0);
-      if(newFD >= 0) {
-         return(newFD);
-      }
-      errno = ENOMEM;
-      close(fd);
-   }
-   return(-1);
-}
-
-
-/* ###### NEAT ioctl() implementation #################################### */
-int nsa_ioctl(int fd, int request, const void* argp)
-{
-   GET_NEAT_SOCKET(fd)
-   if(neatSocket->ns_flow != NULL) {
-      errno = EOPNOTSUPP;
-      return(-1);
-   }
-   else {
-      return(ioctl(neatSocket->ns_socket_sd, fd, request, argp));
-   }
-}
-
-
-/* ###### NEAT pipe() implementation ##################################### */
-int nsa_pipe(int fds[2])
-{
-   int sysFDs[2];
-   if(pipe((int*)&sysFDs) == 0) {
-      fds[0] = nsa_socket_internal(0, 0, 0, sysFDs[0], NULL, 0);
-      if(fds[0] >= 0) {
-         fds[1] = nsa_socket_internal(0, 0, 0, sysFDs[1], NULL, 0);
-         if(fds[1] >= 0) {
-            return(0);
-         }
-         nsa_close(fds[0]);
-         fds[0] = -1;
-      }
-      errno = ENOMEM;
-      close(sysFDs[0]);
-      close(sysFDs[1]);
-   }
-   return(-1);
 }

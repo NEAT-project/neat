@@ -32,24 +32,31 @@ test_protocol(int protocol, int socktype)
     sock = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
     if (sock < 0) {
         perror("socket");
+        freeaddrinfo(info);
         return -1;
     }
 
     rc = connect(sock, info->ai_addr, info->ai_addrlen);
     if (rc < 0) {
         perror("connect");
+        freeaddrinfo(info);
+        close(sock);
         return -1;
     }
 
     rc = send(sock, "TEST", 4, MSG_WAITALL);
     if (rc != 4) {
         perror("send");
+        freeaddrinfo(info);
+        close(sock);
         return -1;
     }
 
     rc = recv(sock, buffer, 4, MSG_WAITALL);
     if (rc != 4) {
         perror("recv");
+        freeaddrinfo(info);
+        close(sock);
         return -1;
     }
 

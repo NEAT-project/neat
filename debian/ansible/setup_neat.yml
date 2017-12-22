@@ -1,0 +1,78 @@
+---
+- hosts: neat-dev
+  remote_user: neat
+  vars:
+    neat_home: /home/neat/neat
+    pib_dir: /etc/neat/pib/
+  tasks:
+
+   - name: Install NEAT dependencies
+     become: yes
+     apt: 
+       pkg: "{{ item }}"
+       state: installed 
+       update_cache: true
+     with_items:
+       - cmake 
+       - libuv1-dev
+       - libldns-dev
+       - libjansson-dev
+       - libmnl-dev 
+       - libsctp-dev
+
+   - name: Install optional tools
+     become: yes
+     apt: 
+       pkg: "{{ item }}"
+       state: installed 
+       update_cache: true
+     with_items:
+       - git
+       - mc 
+       - aptitude
+
+   - name: Upgrade packages
+     become: yes
+     apt: upgrade=yes 
+
+   - name: Clone NEAT GitHub repo
+     git: 
+       repo: https://github.com/NEAT-project/neat
+       dest: "{{ neat_home }}"
+       force: yes
+
+   - name: Create build directories
+     file: 
+       path: "{{ neat_home }}/build/"
+       state: directory
+
+   - name: Compile NEAT
+     shell: cmake .. && cmake --build .
+     args:
+       chdir: "{{ neat_home }}/build/"
+
+   - name: make install NEAT
+     become: yes
+     make:
+       chdir: "{{ neat_home }}/build/"
+       target: install
+
+   - name: Create config directories
+     become: yes
+     file: 
+       path: "{{ pib_dir }}"
+       state: directory
+
+   - name: Copy config files
+     become: yes
+     shell: "cp -v {{ neat_home }}/policy/debian/99-neat-vars.sh /etc/profile.d/ && chmod +x /etc/profile.d/99-neat-vars.sh; cp -v {{ neat_home }}/policy/examples/pib/* {{ pib_dir }}; cp {{ neat_home }}/policy/debian/neat-motd.sh /etc/update-motd.d/01-neat"
+
+   - name: Register PM service
+     become: yes
+     command: update-rc.d neatpmd defaults
+
+   - name: (Re-)start Policy Manager
+     become: yes
+     service:
+        name: neatpmd
+        state: restarted

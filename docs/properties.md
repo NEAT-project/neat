@@ -4,8 +4,8 @@ A property in NEAT may either express a requirement or it may express a desire
 from the application with regards to the service provided by the transport
 layer.
 
-A property takes the form of a JSON object. A set of properties is contained
-within one JSON object. Below is an example of a JSON object with one property:
+Properties are represented as JSON objects. A set of properties may be contained
+within one JSON object. Below is an example of a JSON object with a single property:
 
 ```javascript
 {
@@ -59,16 +59,11 @@ strictly mandated by the application protocol.
 
 ```javascript
 {
-    "transport": [
-        {
-            "value": "SCTP",
-            "precedence": 1
-        },
-        {
-            "value": "TCP",
-            "precedence": 1
-        }
-    ]
+    "transport": 
+    {
+        "value": [ "SCTP", "TCP" ]
+        "precedence": 1
+    }
 }
 ```
 
@@ -76,12 +71,11 @@ strictly mandated by the application protocol.
 
 ```javascript
 {
-    "transport": [
-        {
-            "value": "UDP",
-            "precedence": 2
-        }
-    ]
+    "transport": 
+    {
+        "value": "UDP",
+        "precedence": 2
+    }
 }
 ```
 

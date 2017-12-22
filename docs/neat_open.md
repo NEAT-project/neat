@@ -23,8 +23,7 @@ neat_error_code neat_open(struct neat_ctx *ctx,
 
 ### Optional parameters
 
-- **NEAT_TAG_STREAM_COUNT** (integer): The number of streams to open, for protocols that
-supports multistreaming
+- **NEAT_TAG_STREAM_COUNT** (integer): The number of streams to open, for protocols that supports multistreaming. Note that NEAT may automatically make use of multi-streaming for multiple NEAT flows between the same endpoints when this parameter is not used.
 - **NEAT_TAG_FLOW_GROUP** (integer): The group ID that this flow belongs to. For use with
 coupled congestion control.
 - **NEAT_TAG_PRIORITY** (float): The priority of this flow relative to the other flows. Must be between 0.1 and 1.0.

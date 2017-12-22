@@ -6,6 +6,8 @@
 #include "util.h"
 #include <errno.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
     echo server
@@ -22,22 +24,12 @@ A TLS example:
 static uint32_t config_buffer_size = 512;
 static uint16_t config_log_level = 1;
 static uint16_t config_number_of_streams = 1988;
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"SCTP/UDP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";\
+
+static char *config_property = QUOTE({
+    "transport": {
+        "value": ["TCP", "SCTP", "SCTP/UDP"],
+        "precedence": 2}
+});
 
 static char *pem_file = NULL;
 
@@ -106,37 +98,35 @@ on_readable(struct neat_flow_operations *opCB)
         }
     }
 
-    // we got some data
-    if (ef->bytes > 0) {
-        if (config_log_level >= 1) {
-            printf("received data - %d bytes on stream %d\n", ef->bytes, opCB->stream_id);
-        }
-        if (config_log_level >= 2) {
-            fwrite(ef->buffer, sizeof(char), ef->bytes, stdout);
-            printf("\n");
-            fflush(stdout);
-        }
-
-        // remember stream_id
-        ef->stream_id = opCB->stream_id;
-
-        // echo data
-        opCB->on_readable = NULL;
-        opCB->on_writable = on_writable;
-        opCB->on_all_written = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-    // peer disconnected - stop callbacks and free ressources
-    } else {
-        if (config_log_level >= 1) {
-            printf("peer disconnected\n");
-        }
-        opCB->on_readable = NULL;
-        opCB->on_writable = NULL;
-        opCB->on_all_written = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-        free(ef->buffer);
-        free(ef);
+    if (config_log_level >= 1) {
+        printf("received data - %d bytes on stream %d\n", ef->bytes, opCB->stream_id);
     }
+    if (config_log_level >= 2) {
+        fwrite(ef->buffer, sizeof(char), ef->bytes, stdout);
+        printf("\n");
+        fflush(stdout);
+    }
+
+    // remember stream_id
+    ef->stream_id = opCB->stream_id;
+
+    // echo data
+    opCB->on_readable = NULL;
+    opCB->on_writable = on_writable;
+    opCB->on_all_written = NULL;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
+
+    return NEAT_OK;
+}
+
+static neat_error_code
+on_close(struct neat_flow_operations *opCB)
+{
+    struct echo_flow *ef = opCB->userData;
+    fprintf(stderr, "%s - flow closed OK!\n", __func__);
+
+    free(ef->buffer);
+    free(ef);
     return NEAT_OK;
 }
 
@@ -150,6 +140,7 @@ on_all_written(struct neat_flow_operations *opCB)
     opCB->on_readable = on_readable;
     opCB->on_writable = NULL;
     opCB->on_all_written = NULL;
+    opCB->on_close = on_close;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
     return NEAT_OK;
 }

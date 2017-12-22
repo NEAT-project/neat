@@ -18,23 +18,13 @@
 **********************************************************************/
 
 static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"SCTP/UDP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
+    \"transport\": {\
+        \"value\": [\"SCTP\", \"TCP\", \"SCTP/UDP\"],\
+        \"precedence\": 2}\
 }";
-static uint16_t config_log_level = 1;
-static uint16_t chargen_offset = 0;
+
+static uint16_t config_log_level    = 1;
+static uint16_t chargen_offset      = 0;
 
 #define BUFFERSIZE 32
 
@@ -90,23 +80,14 @@ static neat_error_code on_readable(struct neat_flow_operations *opCB)
         }
     }
 
-    if (buffer_filled > 0) {
-        if (config_log_level >= 1) {
-            printf("data received - %d byte\n", buffer_filled);
-        }
-        if (config_log_level >= 2) {
-            fwrite(buffer, sizeof(char), buffer_filled, stdout);
-            printf("\n");
-            fflush(stdout);
-        }
-    } else { // peer disconnected
-        if (config_log_level >= 1) {
-            printf("peer disconnected\n");
-        }
-        opCB->on_readable = NULL;
-        opCB->on_writable = NULL;
-        opCB->on_all_written = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
+
+    if (config_log_level >= 1) {
+        printf("data received - %d byte\n", buffer_filled);
+    }
+    if (config_log_level >= 2) {
+        fwrite(buffer, sizeof(char), buffer_filled, stdout);
+        printf("\n");
+        fflush(stdout);
     }
 
     return NEAT_OK;
@@ -125,9 +106,7 @@ on_all_written(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
-/*
-    //XXX behave more like specified in the rfc (UDP, TCP)
-*/
+
 static neat_error_code
 on_writable(struct neat_flow_operations *opCB)
 {
@@ -161,6 +140,13 @@ on_writable(struct neat_flow_operations *opCB)
     return NEAT_OK;
 }
 
+static neat_error_code
+on_close(struct neat_flow_operations *opCB)
+{
+    fprintf(stderr, "%s - flow closed OK!\n", __func__);
+    return NEAT_OK;
+}
+
 
 static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
@@ -176,10 +162,13 @@ on_connected(struct neat_flow_operations *opCB)
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
     opCB->on_all_written = NULL;
+    opCB->on_close = on_close;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     return NEAT_OK;
 }
+
+
 
 int
 main(int argc, char *argv[])

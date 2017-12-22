@@ -10,9 +10,9 @@
 
 CIBDIR="/var/run/neat/cib"
 SOCKDIR="/var/run/neat"
-SCRIPT="/usr/local/bin/neatpmd --cib=$CIBDIR --pib=/etc/neat/pib --sock=$SOCKDIR"
+SCRIPT="python3 -u /usr/local/bin/neatpmd --cib=$CIBDIR --pib=/etc/neat/pib --sock=$SOCKDIR"
 RUNAS=root
-NAME=neatpm
+NAME=neatpmd
 
 export NEAT_PM_SOCKET=$SOCKDIR/neat_pm_socket
 
@@ -24,8 +24,9 @@ start() {
     echo 'Service already running' >&2
     return 1
   fi
+  su -c "mkdir -p $SOCKDIR $CIBDIR"
   echo 'Starting service…' >&2
-  local CMD="$SCRIPT > \"$LOGFILE\" 2>&1 & echo \$!"
+  local CMD="$SCRIPT &> \"$LOGFILE\" & echo \$!"
   su -c "$CMD" $RUNAS > "$PIDFILE"
   echo 'Service started' >&2
 }

@@ -465,7 +465,7 @@ neat_security_install(neat_ctx *ctx, neat_flow *flow)
         if (isClient) {
             private->ctx = SSL_CTX_new(DTLS_client_method());
             if (!flow->skipCertVerification) {
-                SSL_CTX_set_verify(private->ctx, SSL_VERIFY_NONE, NULL);
+                SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
                 tls_init_trust_list(private->ctx);
             }
         } else {
@@ -632,6 +632,7 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
     nt_log(opCB->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     struct security_data *private;
+    int ret;
     private = (struct security_data *) opCB->flow->socket->dtls_data->userData;
 
     if (private->state == DTLS_CONNECTING &&
@@ -647,6 +648,19 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
         opCB->flow->operations.on_connected = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, &opCB->flow->operations);
         uvpollable_cb(opCB->flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
+    } else {
+        ret = SSL_do_handshake(private->ssl);
+        if (ret <= 0) {
+            switch (SSL_get_error(private->ssl, ret)) {
+                case SSL_ERROR_WANT_READ:
+                    uvpollable_cb(opCB->flow->socket->handle, NEAT_OK, UV_READABLE);
+                    break;
+                case SSL_ERROR_WANT_WRITE:
+                    uvpollable_cb(opCB->flow->socket->handle, NEAT_OK, UV_WRITABLE);
+                    break;
+                default: break;
+            }
+        }
     }
 
     return NEAT_OK;
@@ -686,7 +700,7 @@ nt_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 
     if (isClient) {
         private->ctx = SSL_CTX_new(DTLS_client_method());
-        SSL_CTX_set_verify(private->ctx, SSL_VERIFY_NONE, NULL);
+        SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
         tls_init_trust_list(private->ctx);
     } else {
         private->ctx = SSL_CTX_new(DTLS_server_method());
@@ -781,7 +795,11 @@ nt_dtls_connect(neat_ctx *ctx, neat_flow *flow)
 
     flow->socket->handle->data = flow->socket;
 
-    uvpollable_cb(flow->socket->handle, NEAT_OK, UV_READABLE | UV_WRITABLE);
+    if (flow->isServer) {
+        uvpollable_cb(flow->socket->handle, NEAT_OK, UV_READABLE | UV_WRITABLE);
+    } else {
+        uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
+    }
     return NEAT_OK;
 }
 

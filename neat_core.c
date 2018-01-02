@@ -2779,6 +2779,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                 memset(buffer, 0, sizeof(buffer));
 
                 rc = getpeername(newFlow->socket->fd, (struct sockaddr*)&sockaddr, &socklen);
+                if (rc == -1) {
+                    nt_log(ctx, NEAT_LOG_ERROR, "%s - getpeername(() failed - %s", __func__, strerror(errno));
+                }
                 assert(rc == 0);
 
                 ptr = (void*)inet_ntop(AF_INET, (void*)&((struct sockaddr_in*)(&sockaddr))->sin_addr, buffer, INET6_ADDRSTRLEN);

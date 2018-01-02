@@ -530,6 +530,15 @@ nt_resolver_mark_pair_del(struct neat_resolver *resolver,
         uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
 }
 
+static void
+nt_resolver_start_timeout(struct neat_resolver_src_dst_addr *pair)
+{
+    uv_timer_stop(&(pair->request->timeout_handle));
+    uv_timer_start(&(pair->request->timeout_handle), neat_resolver_timeout_cb,
+                   pair->request->resolver->dns_t2, 0);
+    pair->request->name_resolved_timeout = 1;
+}
+
 //Receive and parse a DNS reply
 //TODO: Refactor and make large parts helper function?
 static void
@@ -546,6 +555,7 @@ neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
     ldns_buffer *host_addr = NULL;
     ldns_rdf *rdf_result = NULL;
     ldns_rr_type rr_type;
+    ldns_pkt_rcode rcode;
     size_t retval, rr_count, i;
     uint8_t num_resolved = 0, pton_failed = 0;
     struct sockaddr_in *addr4;
@@ -558,6 +568,16 @@ neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
 
     if (retval != LDNS_STATUS_OK)
         return;
+
+    rcode = ldns_pkt_get_rcode(dns_reply);
+
+    if (rcode != LDNS_RCODE_NOERROR) {
+        nt_log(pair->request->resolver->nc, NEAT_LOG_DEBUG, "DNS error code %u",
+               rcode);
+        nt_resolver_start_timeout(pair);
+        ldns_pkt_free(dns_reply);
+        return;
+    }
 
     if (pair->src_addr->family == AF_INET)
         rr_type = LDNS_RR_TYPE_A;
@@ -644,10 +664,7 @@ neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
     ldns_pkt_free(dns_reply);
 
     if (num_resolved && !pair->request->name_resolved_timeout){
-        uv_timer_stop(&(pair->request->timeout_handle));
-        uv_timer_start(&(pair->request->timeout_handle), neat_resolver_timeout_cb,
-                pair->request->resolver->dns_t2, 0);
-        pair->request->name_resolved_timeout = 1;
+        nt_resolver_start_timeout(pair);
     }
 }
 

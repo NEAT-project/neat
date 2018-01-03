@@ -781,25 +781,21 @@ nt_dtls_connect(neat_ctx *ctx, neat_flow *flow)
     }
 
     private->state = DTLS_CONNECTING;
-    SSL_do_handshake(private->ssl);
 
     // these will eventually be popped back onto the stack when dtls is setup
     flow->operations.on_writable = neat_dtls_handshake;
-    if (flow->isServer) {
-        flow->operations.on_readable = neat_dtls_handshake;
-    } else {
-        flow->operations.on_readable = NULL;
-    }
+    flow->operations.on_readable = neat_dtls_handshake;
     flow->operations.on_connected = NULL;
     neat_set_operations(ctx, flow, &flow->operations);
 
     flow->socket->handle->data = flow->socket;
 
     if (flow->isServer) {
-        uvpollable_cb(flow->socket->handle, NEAT_OK, UV_READABLE | UV_WRITABLE);
+        uvpollable_cb(flow->socket->handle, NEAT_OK, UV_READABLE);
     } else {
         uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
     }
+    neat_dtls_handshake(&flow->operations);
     return NEAT_OK;
 }
 

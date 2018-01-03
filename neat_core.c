@@ -2271,7 +2271,9 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
 {
     struct neat_pollable_socket *pollable_socket = handle->data;
     neat_flow   *flow       = NULL;
+#ifdef SCTP_MULTISTREAMING
     neat_flow   *next_flow  = NULL;
+#endif
     neat_ctx    *ctx        = NULL;
     int         result      = NEAT_OK;
 

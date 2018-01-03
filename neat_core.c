@@ -204,15 +204,17 @@ neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
     return nc->error;
 }
 
-void neat_stop_event_loop(struct neat_ctx *nc)
+void
+neat_stop_event_loop(struct neat_ctx *nc)
 {
-    //nt_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
     if (nc && nc->loop) {
         uv_stop(nc->loop);
     }
 }
 
-int neat_get_backend_fd(struct neat_ctx *nc)
+int
+neat_get_backend_fd(struct neat_ctx *nc)
 {
     nt_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -250,7 +252,8 @@ neat_get_backend_timeout(struct neat_ctx *nc)
     return uv_backend_timeout(nc->loop);
 }
 
-static void nt_walk_cb(uv_handle_t *handle, void *ctx)
+static void
+nt_walk_cb(uv_handle_t *handle, void *ctx)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -274,34 +277,6 @@ static void nt_walk_cb(uv_handle_t *handle, void *ctx)
 
         nt_log(ctx, NEAT_LOG_DEBUG, "%s - closing handle", __func__);
         uv_close(handle, NULL);
-    }
-}
-
-static void nt_close_loop(struct neat_ctx *nc)
-{
-    nt_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
-
-    // Some handles may be closed inside uv_close callbacks.
-    // Give those callbacks an opportunity to run first before executing uv_walk.
-    uv_run(nc->loop, UV_RUN_NOWAIT);
-
-    uv_walk(nc->loop, nt_walk_cb, nc);
-
-    //Let all close handles run
-    uv_run(nc->loop, UV_RUN_DEFAULT);
-    uv_loop_close(nc->loop);
-}
-
-static void nt_core_cleanup(struct neat_ctx *nc)
-{
-    nt_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
-
-    //We need to gracefully clean-up loop resources
-    nt_close_loop(nc);
-    nt_addr_free_src_list(nc);
-
-    if (nc->cleanup) {
-        nc->cleanup(nc);
     }
 }
 
@@ -348,7 +323,19 @@ neat_free_ctx(struct neat_ctx *nc)
         prev_flow = flow;
     }
 
-    nt_core_cleanup(nc);
+    //uv_run(nc->loop, UV_RUN_NOWAIT);
+
+    uv_walk(nc->loop, nt_walk_cb, nc);
+
+    //Let all close handles run
+    uv_run(nc->loop, UV_RUN_DEFAULT);
+    uv_loop_close(nc->loop);
+
+    nt_addr_free_src_list(nc);
+
+    if (nc->cleanup) {
+        nc->cleanup(nc);
+    }
 
     if (nc->event_cbs) {
         free(nc->event_cbs);
@@ -757,6 +744,12 @@ nt_free_flow(neat_flow *flow)
             nt_log(ctx, NEAT_LOG_DEBUG, "%s - listen handle is already closing", __func__);
         }
     }
+
+#ifdef SCTP_MULTISTREAMING
+    if (flow->socket->multistream) {
+        LIST_REMOVE(flow, multistream_next_flow);
+    }
+#endif
 
     // close handles for active flow
     if (flow->socket->handle != NULL && flow->socket->handle->type != UV_UNKNOWN_HANDLE
@@ -2277,9 +2270,10 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 void uvpollable_cb(uv_poll_t *handle, int status, int events)
 {
     struct neat_pollable_socket *pollable_socket = handle->data;
-    neat_flow   *flow   = NULL;
-    neat_ctx    *ctx    = NULL;
-    int         result  = NEAT_OK;
+    neat_flow   *flow       = NULL;
+    neat_flow   *next_flow  = NULL;
+    neat_ctx    *ctx        = NULL;
+    int         result      = NEAT_OK;
 
     if (pollable_socket->multistream) {
 #ifdef SCTP_MULTISTREAMING
@@ -2369,6 +2363,8 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
             }
             break;
         }
+
+        next_flow = LIST_NEXT(flow, multistream_next_flow);
 #endif
 
         // newly created flow
@@ -2393,12 +2389,14 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
 
 #ifdef SCTP_MULTISTREAMING
         // next flow
-        flow = LIST_NEXT(flow, multistream_next_flow);
+        flow = next_flow;
         nt_log(ctx, NEAT_LOG_DEBUG, "%s - next flow : %p", __func__, flow);
 #endif
 
         // iterate through all flows
     } while (pollable_socket->multistream && flow);
+
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s - OUT", __func__);
 
     if (pollable_socket->is_closed) {
         if (!uv_is_closing((uv_handle_t *)handle)) {
@@ -2424,8 +2422,6 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
     }
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s - finished", __func__);
-
-
 }
 
 int
@@ -5079,7 +5075,7 @@ nt_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
     }
     if (TAILQ_EMPTY(&flow->bufferedMessages)) {
         flow->isDraining = 0;
-        io_all_written(ctx, flow, stream_id);
+        //io_all_written(ctx, flow, stream_id);
     } else {
         flow->isDraining = 1;
     }

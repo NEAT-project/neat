@@ -99,7 +99,7 @@ nt_linux_handle_addr(struct neat_ctx *ctx, struct nlmsghdr *nl_hdr)
 
     //TODO: Should this function be a callback instead? Will we have multiple
     //addresses handlers/types of context?
-    return nt_addr_update_src_list(ctx, &src_addr, ifm->ifa_index,
+    return nt_addr_update_src_list(ctx, (struct sockaddr*) &src_addr, ifm->ifa_index,
                                      nl_hdr->nlmsg_type == RTM_NEWADDR,
                                      ifm->ifa_prefixlen, ifa_pref, ifa_valid);
 }

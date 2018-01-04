@@ -2271,7 +2271,9 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
 {
     struct neat_pollable_socket *pollable_socket = handle->data;
     neat_flow   *flow       = NULL;
+#ifdef SCTP_MULTISTREAMING
     neat_flow   *next_flow  = NULL;
+#endif
     neat_ctx    *ctx        = NULL;
     int         result      = NEAT_OK;
 
@@ -2402,7 +2404,6 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         if (!uv_is_closing((uv_handle_t *)handle)) {
             uv_poll_stop(handle);
         }
-
         if (pollable_socket->multistream) {
 #ifdef SCTP_MULTISTREAMING
             while(!LIST_EMPTY(&pollable_socket->sctp_multistream_flows)) {
@@ -2420,7 +2421,6 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         flow = pollable_socket->flow;
         updatePollHandle(ctx, flow, handle);
     }
-
     nt_log(ctx, NEAT_LOG_DEBUG, "%s - finished", __func__);
 }
 

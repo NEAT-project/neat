@@ -37,21 +37,11 @@
 
 
 static const char* properties = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"MPTCP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";\
+   \"transport\": {\
+      \"value\": [ \"MPTCP\", \"SCTP\", \"SCTP/UDP\", \"TCP\" ],\
+      \"precedence\": 1\
+   }\
+}";
 
 
 class ServiceThread : public Thread

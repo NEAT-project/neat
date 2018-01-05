@@ -4938,7 +4938,7 @@ nt_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                 cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndinfo));
                 sndinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
                 memset(sndinfo, 0, sizeof(struct sctp_sndinfo));
-                if (has_stream_id && stream_id) {
+                if (stream_id) {
                     sndinfo->snd_sid = stream_id;
                 }
                 if (has_unordered && unordered) {
@@ -4976,7 +4976,7 @@ nt_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                 sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
                 memset(sndrcvinfo, 0, sizeof(struct sctp_sndrcvinfo));
 
-                if (has_stream_id && stream_id) {
+                if (stream_id) {
                     sndrcvinfo->sinfo_stream = stream_id;
                 }
 

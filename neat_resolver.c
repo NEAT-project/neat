@@ -242,8 +242,9 @@ nt_resolver_localhost_populate_results(struct neat_resolver_request *request,
          nsrc_addr != NULL; nsrc_addr = nsrc_addr->next_addr.le_next) {
 
         //Do not use deprecated addresses
-        if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
+        if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref) {
             continue;
+        }
 
         if (nsrc_addr->family == AF_INET) {
             tmp_literal = "127.0.0.1";
@@ -269,7 +270,9 @@ nt_resolver_localhost_populate_results(struct neat_resolver_request *request,
             dst_addr_pton = &(u.dst_addr6->sin6_addr);
         }
 
-        inet_pton(nsrc_addr->family, tmp_literal, dst_addr_pton);
+        if(!inet_pton(nsrc_addr->family, tmp_literal, dst_addr_pton)) {
+            continue;
+        }
 
         num_resolved_addrs += nt_resolver_helpers_fill_results(request,
                                                                result_list,

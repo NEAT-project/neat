@@ -522,10 +522,6 @@ nt_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
 
-    if (candidate->pollable_socket->fd) {
-        close(candidate->pollable_socket->fd);
-    }
-
     if (!TAILQ_EMPTY(&(candidate->sock_opts))) {
         TAILQ_FOREACH_SAFE(sockopt, (&candidate->sock_opts), next, tmp) {
             if (sockopt->type == NEAT_SOCKOPT_STRING) {
@@ -546,7 +542,7 @@ nt_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
                 free(candidate->pollable_socket->handle);
             } else if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
                 nt_log(ctx, NEAT_LOG_DEBUG,"%s: Release candidate after closing (%d)", __func__,
-                         candidate->pollable_socket->fd);
+                       candidate->pollable_socket->fd);
                 candidate->pollable_socket->handle->data = candidate;
                 uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed_candidate);
                 return;

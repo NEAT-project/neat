@@ -36,11 +36,11 @@ static uint32_t config_rcv_buffer_size = 65536;
 static char request[512];
 static const char *request_tail = "HTTP/1.0\r\nUser-agent: libneat\r\nConnection: close\r\n\r\n";
 static char *config_property_sctp_tcp = QUOTE(
-    {                                             
+    {
     "transport": {
-          "value": ["TCP", "SCTP", "SCTP/UDP"]
+          "value": ["TCP","SCTP","SCTP/UDP"],
           "precedence": 1
-        },
+        }
       });
 static char *config_property_tcp = QUOTE({
     "transport": {
@@ -50,9 +50,9 @@ static char *config_property_tcp = QUOTE({
       });
 static char *config_property_sctp = QUOTE({
     "transport": {
-          "value": ["SCTP", "SCTP/UDP"]
+          "value": ["SCTP","SCTP/UDP"],
            "precedence": 1
-        },
+        }
       });
 static unsigned char *buffer = NULL;
 static int streams_going = 0;

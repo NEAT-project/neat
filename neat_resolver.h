@@ -124,6 +124,7 @@ struct neat_resolver_request {
     TAILQ_ENTRY(neat_resolver_request) next_dead_req;
 
     uint8_t is_literal;
+    uint8_t is_localhost;
 };
 
 #endif

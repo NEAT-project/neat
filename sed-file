@@ -14,7 +14,6 @@ s:neat_close_via_kernel(:nt_close_via_kernel(:g
 s:neat_close_via_kernel_2(:nt_close_via_kernel_2(:g
 s:neat_close_via_usrsctp(:nt_close_via_usrsctp(:g
 s:neat_connect_via_usrsctp(:nt_connect_via_usrsctp(:g
-s:neat_core_cleanup(:nt_core_cleanup(:g
 s:neat_ctx_fail_on_error(:nt_ctx_fail_on_error(:g
 s:neat_dtls_connect(:nt_dtls_connect(:g
 s:neat_dtls_install(:nt_dtls_install(:g

@@ -33,6 +33,8 @@
     #define NEAT_INTERNAL_USRSCTP
 #endif // USRSCTP_SUPPORT
 
+#define _unused(x) ((void)(x))
+
 #ifdef MPTCP_SUPPORT
     #define MPTCP_SYS_DISABLED (0) // MPTCP is disabled globaly on the system or not installed
     #define MPTCP_SYS_ENABLED (1) // MPTCP is enabled globaly on the system
@@ -243,15 +245,15 @@ struct neat_pollable_socket
     struct sockaddr_storage src_sockaddr;
     socklen_t               src_len;
 
-
-   struct sockaddr_storage local_addr[MAX_LOCAL_ADDR];
-   unsigned int nr_local_addr;
+    struct sockaddr_storage local_addr[MAX_LOCAL_ADDR];
+    unsigned int nr_local_addr;
 
     size_t      write_limit;        // maximum to write if the socket supports partial writes
     size_t      write_size;         // send buffer size
     size_t      read_size;          // receive buffer size
 
     uint8_t                     multistream;            // multistreaming active
+    uint8_t                     is_closed;
 
     unsigned int                sctp_explicit_eor : 1;
     unsigned int                sctp_partial_reliability : 1;
@@ -315,7 +317,6 @@ struct neat_flow
     neat_accept_impl    acceptfx;
     neat_connect_impl   connectfx;
     neat_close_impl     closefx;
-    neat_listen_impl    listenfx;
     neat_shutdown_impl  shutdownfx;
 
     uint8_t heConnectAttemptCount;

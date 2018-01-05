@@ -1,12 +1,7 @@
 {
-    "transport": [
+    "transport":
         {
-            "value": "SCTP",
-            "precedence": 1
-        },
-        {
-            "value": "TCP",
+            "value": ["SCTP","TCP"],
             "precedence": 1
         }
-    ]
 }

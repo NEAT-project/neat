@@ -43,7 +43,7 @@ struct neat_addr {
 
 //Add/remove addresses from src. address list
 neat_error_code nt_addr_update_src_list(struct neat_ctx *nc,
-        struct sockaddr_storage *src_addr, uint32_t if_idx,
+        struct sockaddr *src_addr, uint32_t if_idx,
         uint8_t newaddr, uint8_t pref_length, uint32_t ifa_pref, uint32_t ifa_valid);
 
 //Utility function for comparing two v6 addresses

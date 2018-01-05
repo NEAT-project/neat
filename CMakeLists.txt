@@ -38,14 +38,14 @@ SET(CMAKE_INSTALL_MANDIR "share/man"
 # PACKAGING
 #################################################
 
-set(CPACK_SOURCE_GENERATOR "TGZ")
-set(CPACK_SOURCE_PACKAGE_FILE_NAME
+SET(CPACK_SOURCE_GENERATOR "TGZ")
+SET(CPACK_SOURCE_PACKAGE_FILE_NAME
    "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
-set(CPACK_SOURCE_IGNORE_FILES
+SET(CPACK_SOURCE_IGNORE_FILES
    "${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}-*;${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}_*;/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;.cmake$;.tar.gz$;/_CPack_Packages;/Makefile$;~$;/build-deb;/clean-deb;/filter-empty-entries;/make-symbols;/make-ppa;/make-deb;/debian.conf;/make-rpm;/rpm.conf;${CPACK_SOURCE_IGNORE_FILES}")
-include(CPack)
+INCLUDE(CPack)
 
-add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
+ADD_CUSTOM_TARGET(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
 
 INCLUDE(CheckIncludeFile)
 INCLUDE(CheckStructHasMember)
@@ -115,7 +115,7 @@ ELSE()
 
 ENDIF()
 
-find_package(Threads REQUIRED)
+FIND_PACKAGE(Threads REQUIRED)
 
 #################################################
 # CHECK STRUCT MEMBERS
@@ -149,11 +149,9 @@ ENDIF()
 #################################################
 # Debug build type as default
 IF (NOT CMAKE_BUILD_TYPE)
-    message("No build type selected, using DEBUG")
-    set(CMAKE_BUILD_TYPE "DEBUG")
-    # _FORTIFY_SOURCE requires compiling with optimization
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
-endif()
+    MESSAGE("No build type selected, using DEBUG")
+    SET(CMAKE_BUILD_TYPE "DEBUG")
+ENDIF()
 
 OPTION(USRSCTP_SUPPORT "Include usrsctp support" 0)
 IF (USRSCTP_SUPPORT)
@@ -409,26 +407,36 @@ IF (HAS_WNO_ARRAY_BOUNDS)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-array-bounds")
 ENDIF()
 
+<<<<<<< HEAD
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
     # _FORTIFY_SOURCE requires compiling with optimization
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
 ENDIF()
 
+=======
+>>>>>>> origin/master
 IF (SANITIZER_ADDRESS)
-    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=address -O1 -fno-omit-frame-pointer -g -Wno-address-of-packed-member")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -O1 -fno-omit-frame-pointer -g -Wno-address-of-packed-member")
+    SET(CMAKE_BUILD_TYPE "RelWithDebInfo")
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=address -fno-omit-frame-pointer")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
 ENDIF()
 
 IF (SANITIZER_MEMORY)
     # maybe add "-fPIE -pie" here
-    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=memory -fno-omit-frame-pointer -g -Wno-address-of-packed-member -fsanitize-memory-track-origins")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -g -Wno-address-of-packed-member -fsanitize-memory-track-origins")
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=memory -fno-omit-frame-pointer -fsanitize-memory-track-origins")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -fsanitize-memory-track-origins")
+ENDIF()
+
+IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
+    MESSAGE(STATUS "Building in DEBUG mode")
+    # _FORTIFY_SOURCE requires compiling with optimization
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
 ENDIF()
 
 # LIBRARIES
 #################################################
-include_directories(.)
+INCLUDE_DIRECTORIES(.)
 
 LIST(APPEND neat_libs
     ${UV_LIB}
@@ -445,7 +453,7 @@ ENDIF()
 
 ADD_LIBRARY(neat SHARED ${neat_sources})
 
-set_target_properties(neat PROPERTIES
+SET_TARGET_PROPERTIES(neat PROPERTIES
     VERSION ${BUILD_VERSION}
     SOVERSION ${BUILD_MAJOR}
     )

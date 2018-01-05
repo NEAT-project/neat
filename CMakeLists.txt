@@ -3,7 +3,7 @@ PROJECT(libneat)
 
 set(BUILD_MAJOR "0")
 set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td178")
+set(BUILD_PATCH "1~td180")
 set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 # INSTALLATION_DIRECTORIES
@@ -407,15 +407,6 @@ IF (HAS_WNO_ARRAY_BOUNDS)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-array-bounds")
 ENDIF()
 
-<<<<<<< HEAD
-IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
-    MESSAGE(STATUS "Building in DEBUG mode")
-    # _FORTIFY_SOURCE requires compiling with optimization
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
-ENDIF()
-
-=======
->>>>>>> origin/master
 IF (SANITIZER_ADDRESS)
     SET(CMAKE_BUILD_TYPE "RelWithDebInfo")
     SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=address -fno-omit-frame-pointer")

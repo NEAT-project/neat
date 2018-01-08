@@ -2590,14 +2590,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     }
 #endif
 
-#if defined(SO_NOSIGPIPE)
-    optval = 1;
-    rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval));
-    if (rc < 0) {
-        nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_NOSIGPIPE) failed");
-    }
-#endif //  defined(SO_NOSIGPIPE)
-
     switch (newFlow->socket->stack) {
         case NEAT_STACK_SCTP_UDP:
         case NEAT_STACK_SCTP:
@@ -2801,6 +2793,14 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             }
         }
     }
+
+#if defined(SO_NOSIGPIPE)
+    optval = 1;
+    rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval));
+    if (rc < 0) {
+        nt_log(ctx, NEAT_LOG_WARNING, "%s - Call to setsockopt(SO_NOSIGPIPE) failed", __func__);
+    }
+#endif //  defined(SO_NOSIGPIPE)
 
     switch (newFlow->socket->stack) {
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS)
@@ -5340,7 +5340,7 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
 #if defined(SO_NOSIGPIPE)
     if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable)) < 0) {
-        nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_NOSIGPIPE) failed");
+        nt_log(ctx, NEAT_LOG_WARNING, "%s - Call to setsockopt(SO_NOSIGPIPE) failed", __func__);
     }
 #endif //defined(SO_NOSIGPIPE)
 

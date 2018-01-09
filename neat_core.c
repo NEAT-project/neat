@@ -774,16 +774,17 @@ neat_set_property(neat_ctx *ctx, neat_flow *flow, const char *properties)
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    props = json_loads(properties, 0, &error);
-    if (props == NULL) {
+    if (strlen(properties) != 0) {
+      props = json_loads(properties, 0, &error);
+      if (props == NULL) {
         nt_log(ctx, NEAT_LOG_DEBUG, "Error in property string, line %d col %d",
                  error.line, error.position);
         nt_log(ctx, NEAT_LOG_DEBUG, "%s", error.text);
 
         return NEAT_ERROR_BAD_ARGUMENT;
-    }
+      }
 
-    json_object_foreach(props, key, prop) {
+      json_object_foreach(props, key, prop) {
 
         // This step is not strictly required, but informs of overwritten keys
         if (json_object_del(flow->properties, key) == 0) {
@@ -791,9 +792,12 @@ neat_set_property(neat_ctx *ctx, neat_flow *flow, const char *properties)
         }
 
         json_object_set(flow->properties, key, prop);
-    }
+      }
 
-    json_decref(props);
+      json_decref(props);
+    } else {
+      nt_log(ctx, NEAT_LOG_DEBUG, "User did not specify any properties!");
+    }
 
 #if 0
     char *buffer = json_dumps(flow->properties, JSON_INDENT(2));

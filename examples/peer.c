@@ -17,12 +17,19 @@
         TODO Write receved file to disk
 
 **********************************************************************/
-
+#define QUOTE(...) #__VA_ARGS__
 static uint32_t config_buffer_size_max = 1400;
 static uint16_t config_log_level = 1;
 static uint32_t config_drop_randomly= 0;
 static uint32_t config_drop_rate= 80;
 static uint32_t config_port=6969;
+static char *config_property = QUOTE({
+    "transport": {
+        "value": ["SCTP", "TCP"],
+        "precedence": 2}
+  });
+
+
 
 #define SEGMENT_SIZE 1024
 #define SECOND 1000
@@ -739,6 +746,7 @@ main(int argc, char *argv[])
 {
     int arg, result;
     char *target_addr = NULL;
+    char *arg_property = config_property;
     static struct neat_ctx *ctx = NULL;
     static struct neat_flow *flow = NULL;
     static struct neat_flow_operations ops;
@@ -804,14 +812,12 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-#if 0
     // set properties
-    if (neat_set_property(ctx, flow, prop)) {
-        fprintf(stderr, "%s - neat_set_property failed\n", __func__);
+    if (neat_set_property(ctx, flow, arg_property)) {
+        fprintf(stderr, "%s - error: neat_set_property\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
-    }
-#endif
+    }	
 
     // set callbacks
     ops.on_connected = on_connected;
@@ -857,6 +863,10 @@ main(int argc, char *argv[])
 cleanup:
     if (ctx != NULL) {
         neat_free_ctx(ctx);
+    }
+
+    if (arg_property != config_property && arg_property != NULL) {
+        free(arg_property);
     }
     exit(result);
 }

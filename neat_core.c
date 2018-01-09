@@ -720,6 +720,8 @@ nt_free_flow(neat_flow *flow)
 
     LIST_REMOVE(flow, next_flow);
 
+
+
 #if defined(USRSCTP_SUPPORT)
     if (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
        synchronous_free(flow);
@@ -729,7 +731,6 @@ nt_free_flow(neat_flow *flow)
 
     nt_free_candidates(ctx, flow->candidate_list);
     flow->candidate_list = NULL;
-
 
     // close all listening sockets
     TAILQ_FOREACH_SAFE(listen_socket, &(flow->listen_sockets), next, listen_socket_temp) {
@@ -743,7 +744,7 @@ nt_free_flow(neat_flow *flow)
 
 #ifdef SCTP_MULTISTREAMING
     if (flow->socket->multistream) {
-        //LIST_REMOVE(flow, multistream_next_flow);
+        LIST_REMOVE(flow, multistream_next_flow);
     }
 #endif
 

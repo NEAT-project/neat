@@ -2098,7 +2098,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         return;
     }
     status = so_error;
-    nt_log(ctx, NEAT_LOG_DEBUG, "%s - Connection status: %d", __func__, status);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s - Connection status: %d - %s", __func__, status, strerror(status));
 
     he_res = calloc(1, sizeof(struct cib_he_res));
     if (!he_res)
@@ -2236,7 +2236,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         if (status == 0) {
             send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
         } else {
-           send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
+            send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
         }
 
         close(candidate->pollable_socket->fd);

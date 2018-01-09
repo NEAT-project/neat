@@ -27,16 +27,20 @@ retcode=0
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "2" "interop.nplab.de"
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "212.201.121.80"
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "2a02:c6a0:4015:11::80"
-runtest "../examples/tneat" "-L"
 
 # Tests which should fail
 retcode=1
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "buildbot.nplab.de"
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "not.resolvable.neat"
 
-
 # Platform specific tests
 unamestr=`uname`
+
+if [ "$unamestr" != "Linux" ]; then
+	retcode=0
+	runtest "../examples/tneat" "-L"
+fi
+
 if [ "$unamestr" == "Linux" ] || [ "$unamestr" == "FreeBSD" ]; then
 	retcode=0
 	runtest "../examples/client_http_get" "-P" "../examples/prop_tcp_security.json" "-p" "443" "-v" "1" "www.fh-muenster.de"

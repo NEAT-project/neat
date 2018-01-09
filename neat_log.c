@@ -102,6 +102,14 @@ nt_log(struct neat_ctx *ctx, uint8_t level, const char* format, ...)
     struct timeval tv_now, tv_diff;
 
     if (ctx == NULL) {
+#ifdef STATIC_LOG
+        printf("[STATIC_LOG] ");
+        va_list argptr;
+        va_start(argptr, format);
+        vprintf(format, argptr);
+        va_end(argptr);
+        printf("\n");
+#endif    
         return;
     }
 

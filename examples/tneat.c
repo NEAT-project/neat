@@ -39,7 +39,7 @@ static uint16_t config_mode                 = 0;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_port                 = 23232;
 static uint16_t config_log_level            = 1;
-static uint16_t config_num_flows            = 5;
+static uint16_t config_num_flows            = 1;
 static uint16_t config_max_flows            = 100;
 static uint16_t config_max_server_runs      = 0;
 static uint32_t config_low_watermark        = 0;
@@ -344,13 +344,16 @@ on_close(struct neat_flow_operations *opCB)
     if (tnf->active) {
         flows_active--;
         if (!flows_active && config_mode != NEAT_MODE_LOOP) {
-            fprintf(stderr, "%s - stopping event loop\n", __func__);
+            fprintf(stderr, "%s - stopping event loop (active)\n", __func__);
             neat_stop_event_loop(opCB->ctx);
         }
     } else {
-        server_runs++;
-        if ((config_max_server_runs > 0 && server_runs >= config_max_server_runs) || (config_mode == NEAT_MODE_LOOP && !flows_active)) {
-            fprintf(stderr, "%s - stopping event loop\n", __func__);
+        if (tnf->rcv.calls > 0) {
+            server_runs++;
+        }
+
+        if ((config_max_server_runs > 0 && server_runs >= config_max_server_runs) || (config_mode == NEAT_MODE_LOOP && server_runs >= config_num_flows)) {
+            fprintf(stderr, "%s - stopping event loop (passive)\n", __func__);
             neat_stop_event_loop(opCB->ctx);
         }
     }

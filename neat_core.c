@@ -59,7 +59,7 @@
 #include "neat_bsd_internal.h"
 #endif
 
-static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
+static void nt_update_poll_handle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
 static neat_error_code nt_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 static int nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                                   struct neat_pollable_socket *listen_socket);
@@ -620,11 +620,11 @@ synchronous_free(neat_flow *flow)
     ) {
         free(flow->socket->handle);
 #if defined(USRSCTP_SUPPORT)
-    if (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-        if (flow->socket->usrsctp_socket) {
-            usrsctp_close(flow->socket->usrsctp_socket);
+        if (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+            if (flow->socket->usrsctp_socket) {
+                usrsctp_close(flow->socket->usrsctp_socket);
+            }
         }
-    }
 #endif
         free(flow->socket);
     }
@@ -659,7 +659,7 @@ socket_handle_free_cb(uv_handle_t *handle)
             synchronous_free(flow);
         }
 #endif
-        assert(pollable_socket->sctp_streams_used == 0);
+        //assert(pollable_socket->sctp_streams_used == 0);
 
         //free(pollable_socket->handle);
         //free(pollable_socket);
@@ -720,6 +720,8 @@ nt_free_flow(neat_flow *flow)
 
     LIST_REMOVE(flow, next_flow);
 
+
+
 #if defined(USRSCTP_SUPPORT)
     if (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
        synchronous_free(flow);
@@ -729,7 +731,6 @@ nt_free_flow(neat_flow *flow)
 
     nt_free_candidates(ctx, flow->candidate_list);
     flow->candidate_list = NULL;
-
 
     // close all listening sockets
     TAILQ_FOREACH_SAFE(listen_socket, &(flow->listen_sockets), next, listen_socket_temp) {
@@ -875,13 +876,14 @@ neat_get_property(neat_ctx *ctx, neat_flow *flow, const char* name, void *ptr, s
 }
 
 
-int nt_get_stack(neat_ctx* mgr, neat_flow* flow)
+int
+nt_get_stack(neat_ctx* mgr, neat_flow* flow)
 {
     return flow->socket->stack;
 }
 
-neat_error_code neat_set_operations(neat_ctx *ctx, neat_flow *flow,
-                                    struct neat_flow_operations *ops)
+neat_error_code
+neat_set_operations(neat_ctx *ctx, neat_flow *flow, struct neat_flow_operations *ops)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -901,14 +903,15 @@ neat_error_code neat_set_operations(neat_ctx *ctx, neat_flow *flow,
     }
 #endif
 
-    updatePollHandle(ctx, flow, flow->socket->handle);
+    nt_update_poll_handle(ctx, flow, flow->socket->handle);
     return NEAT_OK;
 }
 
 /* Return statistics about the flow in JSON format
    NB - the memory allocated for the return string must be freed
    by the caller */
-neat_error_code neat_get_stats(neat_ctx *ctx, char **json_stats)
+neat_error_code
+neat_get_stats(neat_ctx *ctx, char **json_stats)
 {
       nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -941,8 +944,8 @@ nt_io_error(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
     flow->operations.on_error(&flow->operations);
 }
 
-static void io_connected(neat_ctx *ctx, neat_flow *flow,
-                         neat_error_code code)
+static void
+io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     const int stream_id = NEAT_INVALID_STREAM;
@@ -1790,7 +1793,7 @@ static neat_error_code
 nt_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void
-updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
+nt_update_poll_handle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
     struct neat_pollable_socket *pollable_socket;
     int newEvents = 0;
@@ -2096,7 +2099,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         return;
     }
     status = so_error;
-    nt_log(ctx, NEAT_LOG_DEBUG, "%s - Connection status: %d", __func__, status);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s - Connection status: %d - %s", __func__, status, strerror(status));
 
     he_res = calloc(1, sizeof(struct cib_he_res));
     if (!he_res)
@@ -2234,7 +2237,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         if (status == 0) {
             send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
         } else {
-           send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
+            send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, false);
         }
 
         close(candidate->pollable_socket->fd);
@@ -2415,7 +2418,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         }
     } else {
         flow = pollable_socket->flow;
-        updatePollHandle(ctx, flow, handle);
+        nt_update_poll_handle(ctx, flow, handle);
     }
     nt_log(ctx, NEAT_LOG_DEBUG, "%s - finished", __func__);
 }
@@ -2589,14 +2592,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
         SSL_CTX_up_ref(server->ctx);
     }
 #endif
-
-#if defined(SO_NOSIGPIPE)
-    optval = 1;
-    rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval));
-    if (rc < 0) {
-        nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_NOSIGPIPE) failed");
-    }
-#endif //  defined(SO_NOSIGPIPE)
 
     switch (newFlow->socket->stack) {
         case NEAT_STACK_SCTP_UDP:
@@ -2801,6 +2796,14 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             }
         }
     }
+
+#if defined(SO_NOSIGPIPE)
+    optval = 1;
+    rc = setsockopt(newFlow->socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval));
+    if (rc < 0) {
+        nt_log(ctx, NEAT_LOG_WARNING, "%s - Call to setsockopt(SO_NOSIGPIPE) failed", __func__);
+    }
+#endif //  defined(SO_NOSIGPIPE)
 
     switch (newFlow->socket->stack) {
 #if defined(IPPROTO_SCTP) && defined(SCTP_STATUS)
@@ -4441,7 +4444,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
                 uv_poll_start(handle, UV_READABLE, uvpollable_cb);
             } else {
                 // do normal i/o events without accept() for non connected protocols
-                updatePollHandle(ctx, flow, handle);
+                nt_update_poll_handle(ctx, flow, handle);
             }
         } else {
             flow->acceptPending = 1;
@@ -5080,7 +5083,7 @@ nt_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         return NEAT_OK;
 #endif
 
-    updatePollHandle(ctx, flow, flow->socket->handle);
+    nt_update_poll_handle(ctx, flow, flow->socket->handle);
     return NEAT_OK;
 }
 
@@ -5340,7 +5343,7 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 
 #if defined(SO_NOSIGPIPE)
     if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable)) < 0) {
-        nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_NOSIGPIPE) failed");
+        nt_log(ctx, NEAT_LOG_WARNING, "%s - Call to setsockopt(SO_NOSIGPIPE) failed", __func__);
     }
 #endif //defined(SO_NOSIGPIPE)
 

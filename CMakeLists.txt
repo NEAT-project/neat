@@ -408,7 +408,7 @@ IF (HAS_WNO_ARRAY_BOUNDS)
 ENDIF()
 
 IF (SANITIZER_ADDRESS)
-    SET(CMAKE_BUILD_TYPE "RelWithDebInfo")
+    #SET(CMAKE_BUILD_TYPE "RelWithDebInfo")
     SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=address -fno-omit-frame-pointer")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
 ENDIF()

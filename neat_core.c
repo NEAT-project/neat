@@ -1806,7 +1806,12 @@ nt_update_poll_handle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 #ifdef SCTP_MULTISTREAMING
     if (pollable_socket != NULL && pollable_socket->multistream) {
         flow = LIST_FIRST(&pollable_socket->sctp_multistream_flows);
-        nt_log(ctx, NEAT_LOG_DEBUG, "%s - multistreaming - taking first flow from ctx", __func__);
+        nt_log(ctx, NEAT_LOG_DEBUG, "%s - multistreaming - taking first flow from ctx : %p", __func__, flow);
+
+        if (!flow) {
+            nt_log(ctx, NEAT_LOG_DEBUG, "%s - multistreaming - no flow left", __func__);
+            return;
+        }
     }
 #endif
 

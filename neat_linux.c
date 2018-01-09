@@ -157,13 +157,13 @@ void linux_read_sys_mptcp_enabled(struct neat_ctx *ctx)
 
     file = fopen("/proc/sys/net/mptcp/mptcp_enabled", "r");
     if (!file) {
-        nt_log(ctx, NEAT_LOG_ERROR, "MPCP: Failed to open 'mptcp_enabled' file");
+        nt_log(ctx, NEAT_LOG_ERROR, "MPTCP: Failed to open 'mptcp_enabled' file");
         goto cleanup;
     }
 
     len = fread(buff, 1, sizeof(buff), file);
     if (ferror(file) || !feof(file) || len <= 0) {
-        nt_log(ctx, NEAT_LOG_ERROR, "MPCP: Failed to read 'mptcp_enabled' file");
+        nt_log(ctx, NEAT_LOG_ERROR, "MPTCP: Failed to read 'mptcp_enabled' file");
         goto cleanup;
     }
 
@@ -172,19 +172,19 @@ void linux_read_sys_mptcp_enabled(struct neat_ctx *ctx)
 
     switch(value) {
     case 0:
-        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_DISABLED");
+        nt_log(ctx, NEAT_LOG_INFO, "MPTCP: MPTCP_SYS_DISABLED");
         ctx->sys_mptcp_enabled = MPTCP_SYS_DISABLED;
         break;
     case 1:
-        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_ENABLED");
+        nt_log(ctx, NEAT_LOG_INFO, "MPTCP: MPTCP_SYS_ENABLED");
         ctx->sys_mptcp_enabled = MPTCP_SYS_ENABLED;
         break;
     case 2:
-        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_APP_CTRL");
+        nt_log(ctx, NEAT_LOG_INFO, "MPTCP: MPTCP_SYS_APP_CTRL");
         ctx->sys_mptcp_enabled = MPTCP_SYS_APP_CTRL;
         break;
     default:
-        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_DISABLED");
+        nt_log(ctx, NEAT_LOG_INFO, "MPTCP: MPTCP_SYS_DISABLED");
         ctx->sys_mptcp_enabled = MPTCP_SYS_DISABLED;
     }
 

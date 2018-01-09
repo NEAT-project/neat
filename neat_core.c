@@ -59,7 +59,7 @@
 #include "neat_bsd_internal.h"
 #endif
 
-static void updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
+static void nt_update_poll_handle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
 static neat_error_code nt_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 static int nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
                                   struct neat_pollable_socket *listen_socket);
@@ -743,7 +743,7 @@ nt_free_flow(neat_flow *flow)
 
 #ifdef SCTP_MULTISTREAMING
     if (flow->socket->multistream) {
-        LIST_REMOVE(flow, multistream_next_flow);
+        //LIST_REMOVE(flow, multistream_next_flow);
     }
 #endif
 
@@ -901,7 +901,7 @@ neat_error_code neat_set_operations(neat_ctx *ctx, neat_flow *flow,
     }
 #endif
 
-    updatePollHandle(ctx, flow, flow->socket->handle);
+    nt_update_poll_handle(ctx, flow, flow->socket->handle);
     return NEAT_OK;
 }
 
@@ -1790,7 +1790,7 @@ static neat_error_code
 nt_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 
 static void
-updatePollHandle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
+nt_update_poll_handle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
 {
     struct neat_pollable_socket *pollable_socket;
     int newEvents = 0;
@@ -2415,7 +2415,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         }
     } else {
         flow = pollable_socket->flow;
-        updatePollHandle(ctx, flow, handle);
+        nt_update_poll_handle(ctx, flow, handle);
     }
     nt_log(ctx, NEAT_LOG_DEBUG, "%s - finished", __func__);
 }
@@ -4441,7 +4441,7 @@ accept_resolve_cb(struct neat_resolver_results *results,
                 uv_poll_start(handle, UV_READABLE, uvpollable_cb);
             } else {
                 // do normal i/o events without accept() for non connected protocols
-                updatePollHandle(ctx, flow, handle);
+                nt_update_poll_handle(ctx, flow, handle);
             }
         } else {
             flow->acceptPending = 1;
@@ -5080,7 +5080,7 @@ nt_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         return NEAT_OK;
 #endif
 
-    updatePollHandle(ctx, flow, flow->socket->handle);
+    nt_update_poll_handle(ctx, flow, flow->socket->handle);
     return NEAT_OK;
 }
 

@@ -620,11 +620,11 @@ synchronous_free(neat_flow *flow)
     ) {
         free(flow->socket->handle);
 #if defined(USRSCTP_SUPPORT)
-    if (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
-        if (flow->socket->usrsctp_socket) {
-            usrsctp_close(flow->socket->usrsctp_socket);
+        if (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
+            if (flow->socket->usrsctp_socket) {
+                usrsctp_close(flow->socket->usrsctp_socket);
+            }
         }
-    }
 #endif
         free(flow->socket);
     }
@@ -659,7 +659,7 @@ socket_handle_free_cb(uv_handle_t *handle)
             synchronous_free(flow);
         }
 #endif
-        assert(pollable_socket->sctp_streams_used == 0);
+        //assert(pollable_socket->sctp_streams_used == 0);
 
         //free(pollable_socket->handle);
         //free(pollable_socket);
@@ -875,13 +875,14 @@ neat_get_property(neat_ctx *ctx, neat_flow *flow, const char* name, void *ptr, s
 }
 
 
-int nt_get_stack(neat_ctx* mgr, neat_flow* flow)
+int
+nt_get_stack(neat_ctx* mgr, neat_flow* flow)
 {
     return flow->socket->stack;
 }
 
-neat_error_code neat_set_operations(neat_ctx *ctx, neat_flow *flow,
-                                    struct neat_flow_operations *ops)
+neat_error_code
+neat_set_operations(neat_ctx *ctx, neat_flow *flow, struct neat_flow_operations *ops)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -908,7 +909,8 @@ neat_error_code neat_set_operations(neat_ctx *ctx, neat_flow *flow,
 /* Return statistics about the flow in JSON format
    NB - the memory allocated for the return string must be freed
    by the caller */
-neat_error_code neat_get_stats(neat_ctx *ctx, char **json_stats)
+neat_error_code
+neat_get_stats(neat_ctx *ctx, char **json_stats)
 {
       nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -941,8 +943,8 @@ nt_io_error(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
     flow->operations.on_error(&flow->operations);
 }
 
-static void io_connected(neat_ctx *ctx, neat_flow *flow,
-                         neat_error_code code)
+static void
+io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     const int stream_id = NEAT_INVALID_STREAM;

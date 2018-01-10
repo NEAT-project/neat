@@ -5371,23 +5371,23 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         if (candidate->pollable_socket->flow->isMultihoming) {
             // We fail MPTCP candidate in case MPTCP is not supported (no fallback to TCP)
             if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_DISABLED) {
-                nt_log(ctx, NEAT_LOG_WARNING, "Could not use MPTCP over for socket %d, MPTCP globaly disabled", candidate->pollable_socket->fd);
+                nt_log(ctx, NEAT_LOG_ERROR, "Could not use MPTCP over for socket %d, MPTCP globaly disabled", candidate->pollable_socket->fd);
                 return -2;
             } else if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_APP_CTRL) {
                 if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &enable, sizeof(int)) < 0) {
-                    nt_log(ctx, NEAT_LOG_WARNING, "Could not use MPTCP over for socket %d, setsockopt failed", candidate->pollable_socket->fd);
+                    nt_log(ctx, NEAT_LOG_ERROR, "Could not use MPTCP over for socket %d, setsockopt failed", candidate->pollable_socket->fd);
                     return -2;
                 }
             }
         } else {
             // For disabled multihoming, MPTCP silently falls back to TCP
             if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_ENABLED) {
-                nt_log(ctx, NEAT_LOG_WARNING, "Could not disable MPTCP for socket %d, MPTCP globaly enabled", candidate->pollable_socket->fd);
+                nt_log(ctx, NEAT_LOG_ERROR, "Could not disable MPTCP for socket %d, MPTCP globaly enabled", candidate->pollable_socket->fd);
                 return -2;
             } else if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_APP_CTRL) {
                 int disable = 0;
                 if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &disable, sizeof(int)) < 0) {
-                    nt_log(ctx, NEAT_LOG_WARNING, "Could not disable MPTCP for socket %d, setsockopt failed", candidate->pollable_socket->fd);
+                    nt_log(ctx, NEAT_LOG_ERROR, "Could not disable MPTCP for socket %d, setsockopt failed", candidate->pollable_socket->fd);
                     return -2;
                 }
             }

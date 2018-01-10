@@ -565,11 +565,13 @@ main(int argc, char *argv[])
             }
 
             NEAT_OPTARGS_DECLARE(NEAT_OPTARGS_MAX);
-	    NEAT_OPTARGS_INIT();
+	        NEAT_OPTARGS_INIT();
             if (config_fg) {
                 NEAT_OPTARG_INT(NEAT_TAG_FLOW_GROUP, config_fg);
                 NEAT_OPTARG_FLOAT(NEAT_TAG_PRIORITY, config_prio);
+#ifdef __FreeBSD__                 
                 NEAT_OPTARG_STRING(NEAT_TAG_CC_ALGORITHM, "newreno_afse");
+#endif                
 	    }
             // wait for on_connected or on_error to be invoked
             if (neat_open(ctx, flows_client[i], remote_addr, config_port, NEAT_OPTARGS, NEAT_OPTARGS_COUNT) != NEAT_OK) {

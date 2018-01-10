@@ -49,7 +49,7 @@ static char *config_property = QUOTE({
         "precedence": 2
     },
         "__he_delay": {
-        "value": 100
+        "value": 500
         }
     }
 );

@@ -119,15 +119,17 @@ delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_cb callback_
         he_delay_val = json_object_get(he_delay_property, "value");
         assert(he_delay_val);
         he_delay += json_integer_value(he_delay_val);
-        nt_log(candidate->ctx, NEAT_LOG_ERROR, "he_delay %d\n", he_delay);
+        nt_log(candidate->ctx, NEAT_LOG_INFO, "%s - delaying candidate by %d ms", __func__, he_delay);
     }
 
     candidate->prio_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
     assert(candidate->prio_timer != NULL);
     uv_timer_init(candidate->pollable_socket->flow->ctx->loop, candidate->prio_timer);
-    uv_timer_start(candidate->prio_timer, on_he_connect_req, HE_PRIO_DELAY * candidate->priority, 0);
+
     candidate->callback_fx = callback_fx;
     candidate->prio_timer->data = (void *) candidate;
+
+    uv_timer_start(candidate->prio_timer, on_he_connect_req, he_delay, 0);
 
 #if 0
     nt_log(ctx, NEAT_LOG_DEBUG,
@@ -306,7 +308,6 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
         candidate->pollable_socket->flow = flow;
 
         switch (candidate->pollable_socket->stack) {
-
             case NEAT_STACK_UDP:
             case NEAT_STACK_UDPLITE:
                 candidate->pollable_socket->type = SOCK_DGRAM;
@@ -322,50 +323,9 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
         candidate->pollable_socket->fd = -1;
         candidate->prio_timer          = NULL;
 
-#if 0
-        if (candidate->priority > 0 || 1) {
-
-            delayed_he_connect_req(candidate, callback_fx);
-            candidate->pollable_socket->flow->heConnectAttemptCount++;
-            candidate = TAILQ_NEXT(candidate, next);
-
-        } else {
-
-            int ret = candidate->pollable_socket->flow->connectfx(candidate, callback_fx);
-            if ((ret == -1) || (ret == -2)) {
-
-                nt_log(ctx, NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
-                if (ret == -2) {
-                    uv_close((uv_handle_t *)(candidate->pollable_socket->handle), free_handle_cb);
-                    candidate->pollable_socket->handle = NULL;
-                } else {
-                    free(candidate->pollable_socket->handle);
-                    candidate->pollable_socket->handle = NULL;
-                }
-                nt_log(ctx, NEAT_LOG_DEBUG, "%s:Release candidate", __func__ );
-                next_candidate = TAILQ_NEXT(candidate, next);
-                TAILQ_REMOVE(candidate_list, candidate, next);
-                nt_free_candidate(ctx, candidate);
-                candidate = next_candidate;
-            } else {
-
-                nt_log(ctx, NEAT_LOG_DEBUG, "%s: Connect successful for fd %d, ret = %d", __func__, candidate->pollable_socket->fd, ret);
-                candidate->pollable_socket->flow->heConnectAttemptCount++;
-                candidate = TAILQ_NEXT(candidate, next);
-
-            }
-
-        }
-#else
         delayed_he_connect_req(candidate, callback_fx);
         candidate->pollable_socket->flow->heConnectAttemptCount++;
         candidate = TAILQ_NEXT(candidate, next);
-#endif
-
-    }
-
-    if (flow->heConnectAttemptCount == 0) {
-        nt_io_error(flow->ctx, flow, NEAT_ERROR_IO);
     }
 
     return NEAT_ERROR_OK;

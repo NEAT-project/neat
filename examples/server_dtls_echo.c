@@ -11,25 +11,25 @@
 
 /**********************************************************************
 
-    echo server
-
-    server_echo [OPTIONS]
-
+    echo server with dtls support
     This echos an upcase version of what it receives on dtls
 
-A TLS example:
- server_echo -P NEAT_PROPERTY_REQUIRED_SECURITY,NEAT_PROPERTY_TCP_REQUIRED,NEAT_PROPERTY_IPV4_REQUIRED -v 2 -p cert.pem
+    server_dtls_echo [OPTIONS]
+    -P : neat properties file 
+    -S : buffer in byte 
+    -v : log level (1..2)
+    -p : pem file (none)
 
 **********************************************************************/
 
 static uint32_t config_buffer_size = 512;
 static uint16_t config_log_level = 0;
 static uint16_t config_number_of_streams = 1988;
-static char *config_property =
-  QUOTE(
+static uint16_t config_port = 8080;
+static char *config_property = QUOTE(
     {"transport": { "value": "UDP", "precedence": 1 },
      "security" : { "value": true, "precedence": 2 }}
-        );
+);
 
 static char *pem_file = NULL;
 
@@ -55,7 +55,8 @@ print_usage()
     printf("\t- P <filename> \tneat properties, default properties:\n%s\n", config_property);
     printf("\t- S \tbuffer in byte (%d)\n", config_buffer_size);
     printf("\t- v \tlog level 0..2 (%d)\n", config_log_level);
-    printf("\t- p \tpem file (none)\n");
+    printf("\t- c \tpem file (none)\n");
+    printf("\t- p \tport (%d)\n", config_port);
 }
 
 /*
@@ -228,7 +229,7 @@ main(int argc, char *argv[])
 
     result = EXIT_SUCCESS;
 
-    while ((arg = getopt(argc, argv, "P:S:p:v:")) != -1) {
+    while ((arg = getopt(argc, argv, "P:S:c:v:p:")) != -1) {
         switch(arg) {
         case 'P':
             if (read_file(optarg, &arg_property) < 0) {
@@ -247,7 +248,7 @@ main(int argc, char *argv[])
                 printf("option - buffer size: %d\n", config_buffer_size);
             }
             break;
-        case 'p':
+        case 'c':
             pem_file = optarg;
             if (config_log_level >= 1) {
                 printf("option - pem file: %s\n", pem_file);
@@ -257,6 +258,12 @@ main(int argc, char *argv[])
             config_log_level = atoi(optarg);
             if (config_log_level >= 1) {
                 printf("option - log level: %d\n", config_log_level);
+            }
+            break;
+        case 'p':
+            config_port = atoi(optarg);
+            if (config_log_level >= 1) {
+                printf("option - port: %d\n", config_port);
             }
             break;
         default:
@@ -320,7 +327,7 @@ main(int argc, char *argv[])
     }
 
     // wait for on_connected or on_error to be invoked
-    if (neat_accept(ctx, flow, 8080, NEAT_OPTARGS, NEAT_OPTARGS_COUNT)) {
+    if (neat_accept(ctx, flow, config_port, NEAT_OPTARGS, NEAT_OPTARGS_COUNT)) {
         fprintf(stderr, "%s - neat_accept failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;

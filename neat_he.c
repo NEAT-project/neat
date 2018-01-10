@@ -309,6 +309,7 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
         candidate->pollable_socket->fd = -1;
         candidate->prio_timer          = NULL;
 
+#if 0
         if (candidate->priority > 0 || 1) {
 
             delayed_he_connect_req(candidate, callback_fx);
@@ -342,6 +343,11 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
             }
 
         }
+#else
+        delayed_he_connect_req(candidate, callback_fx);
+        candidate->pollable_socket->flow->heConnectAttemptCount++;
+        candidate = TAILQ_NEXT(candidate, next);
+#endif
 
     }
 

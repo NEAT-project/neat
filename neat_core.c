@@ -4522,10 +4522,9 @@ neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
     }
 
     if (!local_name) {
-        local_name = "0.0.0.0";
+        local_name = "::";
     }
 
-    ;
     if ((flow->name = strdup(local_name)) == NULL) {
         return NEAT_ERROR_OUT_OF_MEMORY;
     }
@@ -4549,7 +4548,7 @@ neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
         ctx->pvd = nt_pvd_init(ctx);
     }
 
-    nt_resolve(ctx->resolver, AF_INET, flow->name, flow->port, accept_resolve_cb, flow);
+    nt_resolve(ctx->resolver, AF_UNSPEC, flow->name, flow->port, accept_resolve_cb, flow);
     return NEAT_OK;
 }
 
@@ -5729,6 +5728,12 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
         return -1;
     }
 
+	enable = 0;
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &enable, sizeof(int)) != 0) {
+        nt_log(ctx, NEAT_LOG_DEBUG, "Unable to set socket option SOL_SOCKET:IPV6_V6ONLY");
+    }
+
+	enable = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) != 0) {
         nt_log(ctx, NEAT_LOG_DEBUG, "Unable to set socket option SOL_SOCKET:SO_REUSEADDR");
     }

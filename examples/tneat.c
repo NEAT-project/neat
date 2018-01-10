@@ -40,7 +40,7 @@ static uint16_t config_chargen_offset       = 0;
 static uint16_t config_port                 = 23232;
 static uint16_t config_log_level            = 1;
 static uint16_t config_num_flows            = 10;
-static uint16_t config_max_flows            = 100;
+static uint16_t config_max_flows            = 1000;
 static uint16_t config_max_server_runs      = 0;
 static uint32_t config_low_watermark        = 0;
 static char *config_property = QUOTE({
@@ -404,6 +404,10 @@ main(int argc, char *argv[])
                 config_num_flows = atoi(optarg);
                 if (config_log_level >= 1) {
                     printf("option - number of flows: %d\n", config_num_flows);
+                }
+                if (config_num_flows > config_max_flows) {
+                    printf("number of flows exceeds max number of flows (%d) - exit\n", config_max_flows);
+                    exit(EXIT_FAILURE);
                 }
                 break;
             case 'k':

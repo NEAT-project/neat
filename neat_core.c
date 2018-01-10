@@ -1756,7 +1756,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
     }
 
     if (socket->stack == NEAT_STACK_SCTP && n == 0 && flow->readBufferSize == 0) {
-        nt_log(ctx, NEAT_LOG_WARNING, "%s - SCTP connection closed and no outstanding messages buffered", __func__);
+        //nt_log(ctx, NEAT_LOG_WARNING, "%s - SCTP connection closed and no outstanding messages buffered", __func__);
         socket->is_closed = 1;
         return READ_WITH_ZERO;
     }
@@ -2416,7 +2416,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
 
 
     if (pollable_socket->is_closed) {
-        nt_log(ctx, NEAT_LOG_WARNING, "%s - OUT", __func__);
+        //nt_log(ctx, NEAT_LOG_WARNING, "%s - OUT", __func__);
         if (!uv_is_closing((uv_handle_t *)handle)) {
             uv_poll_stop(handle);
         }

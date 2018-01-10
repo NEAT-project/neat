@@ -137,7 +137,7 @@ nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
             }
         }
     } else  {
-        printf("ERROR: Invalid property format\n");
+        fprintf(stderr, "ERROR: Invalid property format\n");
     }
 #if BANNED_ENABLED
     // If only banned protocols are specified

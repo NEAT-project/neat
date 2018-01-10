@@ -32,14 +32,14 @@
 #define NEAT_MODE_LOOP      3
 
 static uint32_t config_rcv_buffer_size      = 10240;
-static uint32_t config_snd_buffer_size      = 1024;
+static uint32_t config_snd_buffer_size      = 4096;
 static uint32_t config_message_count        = 128;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_mode                 = 0;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_port                 = 23232;
 static uint16_t config_log_level            = 1;
-static uint16_t config_num_flows            = 1;
+static uint16_t config_num_flows            = 10;
 static uint16_t config_max_flows            = 100;
 static uint16_t config_max_server_runs      = 0;
 static uint32_t config_low_watermark        = 0;
@@ -133,7 +133,6 @@ on_all_written(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = opCB->userData;
     struct timeval now, diff_time;
     double time_elapsed;
-
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -343,6 +342,8 @@ on_close(struct neat_flow_operations *opCB)
     // stop event loop if we are active part
     if (tnf->active) {
         flows_active--;
+
+        fprintf(stderr, "%d flows active\n", flows_active);
         if (!flows_active && config_mode != NEAT_MODE_LOOP) {
             fprintf(stderr, "%s - stopping event loop (active)\n", __func__);
             neat_stop_event_loop(opCB->ctx);
@@ -493,7 +494,9 @@ main(int argc, char *argv[])
         neat_log_level(ctx, NEAT_LOG_ERROR);
     } else if (config_log_level == 1){
         neat_log_level(ctx, NEAT_LOG_WARNING);
-    } else {
+    } else if (config_log_level == 2) {
+        neat_log_level(ctx, NEAT_LOG_INFO);
+    } else if (config_log_level >= 3) {
         neat_log_level(ctx, NEAT_LOG_DEBUG);
     }
 

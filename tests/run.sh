@@ -44,7 +44,7 @@ fi
 if [ "$unamestr" == "FreeBSD" ]; then
 	retcode=0
 	runtest "../examples/tneat" "-v" "1" "-P" "../examples/prop_sctp_dtls.json" "interop.fh-muenster.de"
-	runtest "../examples/tneat" "-v" "1" "-L" "-n" "1024" "-P" "../examples/prop_sctp.json"
+	runtest "../examples/tneat" "-v" "1" "-L" "-P" "../examples/prop_sctp.json"
 fi
 
 if [ "$unamestr" == "Linux" ] || [ "$unamestr" == "FreeBSD" ]; then

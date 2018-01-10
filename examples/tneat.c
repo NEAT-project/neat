@@ -14,13 +14,18 @@
     tneat - neat testing tool
 
     tneat [OPTIONS] [HOST]
+    -c : path to server certificate 
+    -f : number of outgoing flows
+    -k : path to server key 
     -l : message length in byte (client)
-    -n : number off messages to send (client)
-    -p : port
+    -L : loop mode - tneat talking to itself
+    -n : number of messages to send (client)
+    -p : port [received on|send to]
     -P : neat properties
     -R : receive buffer in byte (server)
     -T : max runtime (client)
-    -v : log level (0 .. 2)
+    -v : log level (0 .. 3)
+    -w : set low watermark 
 
 **********************************************************************/
 
@@ -43,6 +48,8 @@ static uint16_t config_num_flows            = 10;
 static uint16_t config_max_flows            = 1000;
 static uint16_t config_max_server_runs      = 0;
 static uint32_t config_low_watermark        = 0;
+static float    config_prio                 = 1.0f; 
+static uint16_t config_fg                   = 0; 
 static char *config_property = QUOTE({
     "transport": {
         "value": ["SCTP", "TCP"],
@@ -107,7 +114,7 @@ print_usage()
 
     printf("tneat [OPTIONS] [HOST]\n");
     printf("\t- c \tpath to server certificate (%s)\n", cert_file);
-    printf("\t- c \tnumber of outgoing flows (%d)\n", config_num_flows);
+    printf("\t- f \tnumber of outgoing flows (%d)\n", config_num_flows);
     printf("\t- k \tpath to server key (%s)\n", key_file);
     printf("\t- l \tsize for each message in byte (%d)\n", config_snd_buffer_size);
     printf("\t- L \tloop mode - tneat talking to itself\n");
@@ -118,6 +125,8 @@ print_usage()
     printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime_max);
     printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
     printf("\t- w \tset low watermark (%d)\n", config_low_watermark);
+    printf("\t- W \tflow priority (0..1) (w/ TCP: FreeBSD only) (%.2f)\n", config_prio); 
+    printf("\t- g \tflow group number (%d)\n", config_fg);   
 }
 
 /*
@@ -397,7 +406,7 @@ main(int argc, char *argv[])
     memset(&ops_client, 0, sizeof(ops_client));
     memset(&op_server, 0, sizeof(op_server));
 
-    while ((arg = getopt(argc, argv, "c:f:k:l:Ln:p:P:R:T:v:w:")) != -1) {
+    while ((arg = getopt(argc, argv, "c:f:k:l:Ln:p:P:R:T:v:w:W:g:")) != -1) {
         switch(arg) {
             case 'c':
                 cert_file = optarg;
@@ -479,6 +488,18 @@ main(int argc, char *argv[])
                     printf("option - low watermark: %d\n", config_low_watermark);
                 }
                 break;
+            case 'W':
+                config_prio = atof(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - flow priority: %.2f\n", config_prio);
+                }
+                break;
+            case 'g':
+                config_fg = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - flow group number: %d\n", config_fg);
+                }
+                break;	 
             default:
                 print_usage();
                 goto cleanup;
@@ -543,8 +564,15 @@ main(int argc, char *argv[])
                 remote_addr = argv[optind];
             }
 
+            NEAT_OPTARGS_DECLARE(NEAT_OPTARGS_MAX);
+	    NEAT_OPTARGS_INIT();
+            if (config_fg) {
+                NEAT_OPTARG_INT(NEAT_TAG_FLOW_GROUP, config_fg);
+                NEAT_OPTARG_FLOAT(NEAT_TAG_PRIORITY, config_prio);
+                NEAT_OPTARG_STRING(NEAT_TAG_CC_ALGORITHM, "newreno_afse");
+	    }
             // wait for on_connected or on_error to be invoked
-            if (neat_open(ctx, flows_client[i], remote_addr, config_port, NULL, 0) != NEAT_OK) {
+            if (neat_open(ctx, flows_client[i], remote_addr, config_port, NEAT_OPTARGS, NEAT_OPTARGS_COUNT) != NEAT_OK) {
                 fprintf(stderr, "Could not open flow\n");
                 exit(EXIT_FAILURE);
             }

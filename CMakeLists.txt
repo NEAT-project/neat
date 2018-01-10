@@ -184,7 +184,7 @@ IF (STATIC_LOG)
     ADD_DEFINITIONS(-DSTATIC_LOG)
 ENDIF()
 
-OPTION(FLOW_GROUPS "Include support for flow grouping" 0)
+OPTION(FLOW_GROUPS "Include support for flow grouping" 1)
 IF (FLOW_GROUPS)
     ADD_DEFINITIONS(-DFLOW_GROUPS)
 ENDIF()
@@ -194,7 +194,7 @@ IF (SCTP_MULTISTREAMING)
     ADD_DEFINITIONS(-DSCTP_MULTISTREAMING)
 ENDIF()
 
-OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 1)
+OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 0)
 
 OPTION(SOCKET_API "Include the socket API" 0)
 

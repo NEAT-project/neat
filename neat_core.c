@@ -289,8 +289,9 @@ neat_free_ctx(struct neat_ctx *nc)
     struct neat_flow *flow, *prev_flow = NULL;
     nt_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
 
-    if (!nc)
+    if (!nc) {
         return;
+    }
 
     if (nc->resolver) {
         nt_resolver_release(nc->resolver);
@@ -718,9 +719,8 @@ nt_free_flow(neat_flow *flow)
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+    nt_log(ctx, NEAT_LOG_INFO, "%s - removing %p", __func__, flow);
     LIST_REMOVE(flow, next_flow);
-
-
 
 #if defined(USRSCTP_SUPPORT)
     if (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
@@ -981,6 +981,11 @@ io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
             } else {
                 flow->socket->sctp_streams_available = MIN(status.sstat_outstrms, status.sstat_outstrms);
             }
+
+#ifdef SCTP_MULTISTREAMING
+            flow->socket->sctp_streams_used = 1;
+            flow->multistream_id = 0;
+#endif
             // number of outbound streams == number of inbound streams
             nt_log(ctx, NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->socket->sctp_streams_available);
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
@@ -1640,7 +1645,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
         if (stream_id > 0 && socket->sctp_neat_peer) {
             // felix todo: ppid check
             if ((multistream_flow = nt_sctp_get_flow_by_sid(socket, stream_id)) == NULL) {
-                nt_log(ctx, NEAT_LOG_DEBUG, "%s - new incoming flow - stream_id %d", __func__, stream_id);
+                nt_log(ctx, NEAT_LOG_WARNING, "%s - new incoming multistream flow - stream_id %d", __func__, stream_id);
 
                 neat_flow *listen_flow  = flow->socket->listen_socket->flow;
                 multistream_flow        = neat_new_flow(ctx);
@@ -1669,7 +1674,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                 multistream_flow->operations.flow           = multistream_flow;
                 multistream_flow->operations.userData       = listen_flow->operations.userData;
                 multistream_flow->multistream_id            = stream_id;
-                multistream_flow->multistream_state         = NEAT_FLOW_OPEN;
+                multistream_flow->state                     = NEAT_FLOW_OPEN;
 
                 LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, multistream_flow, multistream_next_flow);
 
@@ -1745,7 +1750,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
     }
 
     if (socket->stack == NEAT_STACK_SCTP && n == 0 && flow->readBufferSize == 0) {
-        nt_log(ctx, NEAT_LOG_INFO, "%s - SCTP connection closed and no outstanding messages buffered", __func__);
+        nt_log(ctx, NEAT_LOG_WARNING, "%s - SCTP connection closed and no outstanding messages buffered", __func__);
         socket->is_closed = 1;
         return READ_WITH_ZERO;
     }
@@ -2402,9 +2407,10 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
         // iterate through all flows
     } while (pollable_socket->multistream && flow);
 
-    nt_log(ctx, NEAT_LOG_DEBUG, "%s - OUT", __func__);
+
 
     if (pollable_socket->is_closed) {
+        nt_log(ctx, NEAT_LOG_WARNING, "%s - OUT", __func__);
         if (!uv_is_closing((uv_handle_t *)handle)) {
             uv_poll_stop(handle);
         }
@@ -5963,7 +5969,8 @@ nt_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         nt_sctp_reset_stream(flow->socket, flow->multistream_id);
 
         LIST_FOREACH(flow_itr, &flow->socket->sctp_multistream_flows, multistream_next_flow) {
-            if (flow_itr->multistream_state != NEAT_FLOW_CLOSED) {
+            //if (flow_itr->multistream_state != NEAT_FLOW_CLOSED) {
+            if (flow_itr->state != NEAT_FLOW_CLOSED) {
                 nt_log(ctx, NEAT_LOG_DEBUG, "%s - not all streams closed, skipping socket shutdown", __func__);
                 return NEAT_OK;
             }
@@ -6698,6 +6705,8 @@ neat_new_flow(neat_ctx *ctx)
 
     LIST_INSERT_HEAD(&ctx->flows, flow, next_flow);
 
+    nt_log(ctx, NEAT_LOG_INFO, "%s - new flow created: %p", __func__, flow);
+
     return flow;
 }
 
@@ -6854,14 +6863,16 @@ neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
 #ifdef SCTP_MULTISTREAMING
-    if (flow->socket->multistream && flow->multistream_state == NEAT_FLOW_OPEN) {
+    if (flow->socket->multistream && flow->state == NEAT_FLOW_OPEN) {
         // flow was not in closed state before... now it is!
         flow->socket->sctp_streams_used--;
-        flow->multistream_state = NEAT_FLOW_CLOSED;
+        //flow->multistream_state = NEAT_FLOW_CLOSED;
     }
 
+    nt_log(ctx, NEAT_LOG_WARNING, "%s - %d", __func__, flow->socket->sctp_streams_used);
+
     if (!flow->socket->multistream || flow->socket->sctp_streams_used == 0) {
-        //nt_log(ctx, NEAT_LOG_DEBUG, "%s - not multistream socket or all streams closed", __func__);
+        nt_log(ctx, NEAT_LOG_INFO, "%s - not multistream socket or all streams closed", __func__);
 #endif // SCTP_MULTISTREAMING
         if (flow->isPolling && uv_is_active((uv_handle_t*)flow->socket->handle)) {
             nt_log(ctx, NEAT_LOG_DEBUG, "%s - stopping polling", __func__);
@@ -7196,7 +7207,7 @@ nt_sctp_handle_reset_stream(struct neat_pollable_socket *socket, struct sctp_str
 
             if (flow->multistream_reset_out) {
                 // outgoing stream already closed, call neat close, stream will not be used again
-                flow->multistream_state = NEAT_FLOW_CLOSED;
+                // flow->multistream_state = NEAT_FLOW_CLOSED;
                 flow->socket->sctp_streams_used--;
                 nt_notify_close(flow);
             } else {
@@ -7216,7 +7227,7 @@ nt_sctp_handle_reset_stream(struct neat_pollable_socket *socket, struct sctp_str
 
             if (flow->multistream_reset_in) {
                 // incoming stream already closed, call neat close, stream will not be used again
-                flow->multistream_state = NEAT_FLOW_CLOSED;
+                // flow->multistream_state = NEAT_FLOW_CLOSED;
                 flow->socket->sctp_streams_used--;
                 nt_notify_close(flow);
             }

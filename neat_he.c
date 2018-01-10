@@ -230,7 +230,7 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
             multistream_socket->sctp_streams_used++;
 
             flow->multistream_id        = multistream_socket->sctp_streams_used;
-            flow->multistream_state     = NEAT_FLOW_OPEN;
+            //flow->multistream_state     = NEAT_FLOW_OPEN;
             flow->everConnected         = 1;
             flow->isPolling             = 1;
             flow->firstWritePending     = 1;

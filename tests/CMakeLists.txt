@@ -2,14 +2,11 @@
 #################################################
 LIST(APPEND neat_test_programs
     neat_resolver_example.c
-    test_echo.c
     test_close.c
 )
 
 LIST(APPEND neat_test_scripts
     run.sh
-    test_echo.sh
-    neat.supp
 )
 
 # BUILD EACH TEST

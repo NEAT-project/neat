@@ -102,6 +102,7 @@ print_usage()
 
     printf("tneat [OPTIONS] [HOST]\n");
     printf("\t- c \tpath to server certificate (%s)\n", cert_file);
+    printf("\t- c \tnumber of outgoing flows (%d)\n", config_num_flows);
     printf("\t- k \tpath to server key (%s)\n", key_file);
     printf("\t- l \tsize for each message in byte (%d)\n", config_snd_buffer_size);
     printf("\t- L \tloop mode - tneat talking to itself\n");
@@ -391,12 +392,18 @@ main(int argc, char *argv[])
     memset(&ops_client, 0, sizeof(ops_client));
     memset(&op_server, 0, sizeof(op_server));
 
-    while ((arg = getopt(argc, argv, "c:k:l:Ln:p:P:R:T:v:w:")) != -1) {
+    while ((arg = getopt(argc, argv, "c:f:k:l:Ln:p:P:R:T:v:w:")) != -1) {
         switch(arg) {
             case 'c':
                 cert_file = optarg;
                 if (config_log_level >= 1) {
                     printf("option - server certificate file: %s\n", cert_file);
+                }
+                break;
+            case 'f':
+                config_num_flows = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - number of flows: %d\n", config_num_flows);
                 }
                 break;
             case 'k':

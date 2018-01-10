@@ -112,16 +112,16 @@ delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_cb callback_
 
     int he_delay = HE_PRIO_DELAY * candidate->priority;
     json_t* he_delay_property;
-  
+    json_t* he_delay_val;
+
     he_delay_property = json_object_get(candidate->properties, "__he_delay");
     if (he_delay_property != NULL){
-      json_t* he_delay_val;      
-      val = json_object_get(he_delay_property, "value");
-      assert(he_delay_val);
-      he_delay += json_integer_value(he_delay_val); 
-      nt_log(candidate->ctx, NEAT_LOG_INFO, "he_delay %d\n", he_delay);
+        he_delay_val = json_object_get(he_delay_property, "value");
+        assert(he_delay_val);
+        he_delay += json_integer_value(he_delay_val);
+        nt_log(candidate->ctx, NEAT_LOG_ERROR, "he_delay %d\n", he_delay);
     }
-  
+
     candidate->prio_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
     assert(candidate->prio_timer != NULL);
     uv_timer_init(candidate->pollable_socket->flow->ctx->loop, candidate->prio_timer);

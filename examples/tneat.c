@@ -46,8 +46,13 @@ static uint32_t config_low_watermark        = 0;
 static char *config_property = QUOTE({
     "transport": {
         "value": ["SCTP", "TCP"],
-        "precedence": 2}
-  });
+        "precedence": 2
+    },
+        "__he_delay": {
+        "value": 100
+        }
+    }
+);
 
 
 static uint32_t flows_active    = 0;

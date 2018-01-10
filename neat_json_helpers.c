@@ -104,7 +104,7 @@ nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
 
         val = json_object_get(transports, "value");
         assert(val);
-        
+
         // transport values are either a single string e.g. "TCP",
         // or a dict of supported transport protocols ["TCP", "SCTP"]
         if (json_typeof(val) == JSON_STRING) {
@@ -137,7 +137,7 @@ nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
             }
         }
     } else  {
-        printf("ERROR: Invalid property format\n");
+        fprintf(stderr, "ERROR: Invalid property format\n");
     }
 #if BANNED_ENABLED
     // If only banned protocols are specified

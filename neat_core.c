@@ -1399,7 +1399,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                 neat_abort(ctx, flow);
                 return READ_WITH_ERROR;
             default:
-                printf("Unexpected error while reading!\n");
+                nt_log(ctx, NEAT_LOG_ERROR, "%s - Unexpected error while reading down!", __func__);
                 break;
         }
         if (flow->operations.on_readable) {
@@ -5170,7 +5170,6 @@ nt_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
                 nt_log(ctx, NEAT_LOG_DEBUG, "%s nothing scheduled", __func__);
                 if (flow->eofSeen) {
                     flow->eofSeen = 0;
-                    printf("eofSeen: return NEAT_OK\n");
                     return NEAT_OK;
                 } else {
                     return NEAT_ERROR_WOULD_BLOCK;
@@ -5939,7 +5938,7 @@ neat_dtls_shutdown(struct neat_flow_operations *opCB)
         case SSL_ERROR_SSL:
             break;
         default:
-            printf("Unexpected error while shutting down!\n");
+            nt_log(ctx, NEAT_LOG_ERROR, "%s - Unexpected error while shutting down!", __func__);
             break;
     }
     return NEAT_OK;
@@ -6013,7 +6012,7 @@ nt_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
             case SSL_ERROR_SSL:
                 break;
             default:
-                printf("Unexpected error while shutting down!\n");
+                nt_log(ctx, NEAT_LOG_ERROR, "%s - Unexpected error while shutting down!", __func__);
                 break;
         }
         return NEAT_OK;

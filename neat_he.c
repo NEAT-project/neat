@@ -112,7 +112,7 @@ delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_cb callback_
     candidate->prio_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
     assert(candidate->prio_timer != NULL);
     uv_timer_init(candidate->pollable_socket->flow->ctx->loop, candidate->prio_timer);
-    uv_timer_start(candidate->prio_timer, on_he_connect_req, 200, 0);
+    uv_timer_start(candidate->prio_timer, on_he_connect_req, HE_PRIO_DELAY * candidate->priority, 0);
     candidate->callback_fx = callback_fx;
     candidate->prio_timer->data = (void *) candidate;
 

@@ -5406,12 +5406,12 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         }
     } else if (nt_base_stack(candidate->pollable_socket->stack) == NEAT_STACK_TCP) {
         if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_ENABLED) {
-            nt_log(ctx, NEAT_LOG_WARNING, "Could not use TCP over for socket %d, MPTCP globaly enabled", candidate->pollable_socket->fd);
+            nt_log(ctx, NEAT_LOG_ERROR, "Could not use TCP over for socket %d, MPTCP globaly enabled", candidate->pollable_socket->fd);
             return -2;
         } else if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_APP_CTRL) {
             int disable = 0;
             if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &disable, sizeof(int)) < 0) {
-                nt_log(ctx, NEAT_LOG_WARNING, "Could not disable MPTCP for socket %d, setsockopt failed", candidate->pollable_socket->fd);
+                nt_log(ctx, NEAT_LOG_ERROR, "Could not disable MPTCP for socket %d, setsockopt failed", candidate->pollable_socket->fd);
                 return -2;
             }
         }

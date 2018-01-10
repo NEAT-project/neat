@@ -804,14 +804,13 @@ main(int argc, char *argv[])
         goto cleanup;
     }
 
-#if 0
     // set properties
+	const char *prop = "{\"transport\":{\"value\":[\"UDP\"]}}";
     if (neat_set_property(ctx, flow, prop)) {
         fprintf(stderr, "%s - neat_set_property failed\n", __func__);
         result = EXIT_FAILURE;
         goto cleanup;
     }
-#endif
 
     // set callbacks
     ops.on_connected = on_connected;

@@ -179,6 +179,11 @@ IF (NEAT_LOG)
     ADD_DEFINITIONS(-DNEAT_LOG)
 ENDIF()
 
+OPTION(STATIC_LOG "Enable logging with nt_log without neat context" 0)
+IF (STATIC_LOG)
+    ADD_DEFINITIONS(-DSTATIC_LOG)
+ENDIF()
+
 OPTION(FLOW_GROUPS "Include support for flow grouping" 0)
 IF (FLOW_GROUPS)
     ADD_DEFINITIONS(-DFLOW_GROUPS)

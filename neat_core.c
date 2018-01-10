@@ -722,6 +722,8 @@ nt_free_flow(neat_flow *flow)
     nt_log(ctx, NEAT_LOG_INFO, "%s - removing %p", __func__, flow);
     LIST_REMOVE(flow, next_flow);
 
+
+
 #if defined(USRSCTP_SUPPORT)
     if (nt_base_stack(flow->socket->stack) == NEAT_STACK_SCTP) {
        synchronous_free(flow);
@@ -774,16 +776,17 @@ neat_set_property(neat_ctx *ctx, neat_flow *flow, const char *properties)
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    props = json_loads(properties, 0, &error);
-    if (props == NULL) {
+    if (strlen(properties) != 0) {
+      props = json_loads(properties, 0, &error);
+      if (props == NULL) {
         nt_log(ctx, NEAT_LOG_DEBUG, "Error in property string, line %d col %d",
                  error.line, error.position);
         nt_log(ctx, NEAT_LOG_DEBUG, "%s", error.text);
 
         return NEAT_ERROR_BAD_ARGUMENT;
-    }
+      }
 
-    json_object_foreach(props, key, prop) {
+      json_object_foreach(props, key, prop) {
 
         // This step is not strictly required, but informs of overwritten keys
         if (json_object_del(flow->properties, key) == 0) {
@@ -791,9 +794,12 @@ neat_set_property(neat_ctx *ctx, neat_flow *flow, const char *properties)
         }
 
         json_object_set(flow->properties, key, prop);
-    }
+      }
 
-    json_decref(props);
+      json_decref(props);
+    } else {
+      nt_log(ctx, NEAT_LOG_DEBUG, "User did not specify any properties!");
+    }
 
 #if 0
     char *buffer = json_dumps(flow->properties, JSON_INDENT(2));
@@ -5377,23 +5383,23 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         if (candidate->pollable_socket->flow->isMultihoming) {
             // We fail MPTCP candidate in case MPTCP is not supported (no fallback to TCP)
             if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_DISABLED) {
-                nt_log(ctx, NEAT_LOG_WARNING, "Could not use MPTCP over for socket %d, MPTCP globaly disabled", candidate->pollable_socket->fd);
+                nt_log(ctx, NEAT_LOG_ERROR, "Could not use MPTCP over for socket %d, MPTCP globaly disabled", candidate->pollable_socket->fd);
                 return -2;
             } else if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_APP_CTRL) {
                 if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &enable, sizeof(int)) < 0) {
-                    nt_log(ctx, NEAT_LOG_WARNING, "Could not use MPTCP over for socket %d, setsockopt failed", candidate->pollable_socket->fd);
+                    nt_log(ctx, NEAT_LOG_ERROR, "Could not use MPTCP over for socket %d, setsockopt failed", candidate->pollable_socket->fd);
                     return -2;
                 }
             }
         } else {
             // For disabled multihoming, MPTCP silently falls back to TCP
             if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_ENABLED) {
-                nt_log(ctx, NEAT_LOG_WARNING, "Could not disable MPTCP for socket %d, MPTCP globaly enabled", candidate->pollable_socket->fd);
+                nt_log(ctx, NEAT_LOG_ERROR, "Could not disable MPTCP for socket %d, MPTCP globaly enabled", candidate->pollable_socket->fd);
                 return -2;
             } else if (candidate->ctx->sys_mptcp_enabled == MPTCP_SYS_APP_CTRL) {
                 int disable = 0;
                 if (setsockopt(candidate->pollable_socket->fd, IPPROTO_TCP, MPTCP_ENABLED, &disable, sizeof(int)) < 0) {
-                    nt_log(ctx, NEAT_LOG_WARNING, "Could not disable MPTCP for socket %d, setsockopt failed", candidate->pollable_socket->fd);
+                    nt_log(ctx, NEAT_LOG_ERROR, "Could not disable MPTCP for socket %d, setsockopt failed", candidate->pollable_socket->fd);
                     return -2;
                 }
             }
@@ -5938,7 +5944,7 @@ neat_dtls_shutdown(struct neat_flow_operations *opCB)
         case SSL_ERROR_SSL:
             break;
         default:
-            nt_log(ctx, NEAT_LOG_ERROR, "%s - Unexpected error while shutting down!", __func__);
+            nt_log(opCB->ctx, NEAT_LOG_ERROR, "%s - Unexpected error while shutting down!", __func__);
             break;
     }
     return NEAT_OK;

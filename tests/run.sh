@@ -40,7 +40,7 @@ unamestr=`uname`
 
 if [ "$unamestr" == "FreeBSD" ]; then
 	retcode=0
-	runtest "../examples/tneat" "-v" "1" "-P" "../examples/prop_sctp_dtls.json" "interop.fh-muenster.de"
+	runtest "../examples/tneat" "-P" "../examples/prop_sctp_dtls.json" "interop.fh-muenster.de"
 fi
 
 if [ "$unamestr" == "Linux" ] || [ "$unamestr" == "FreeBSD" ]; then

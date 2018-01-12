@@ -363,7 +363,7 @@ struct neat_flow
     struct neat_read_queue_head     multistream_read_queue;
     size_t                          multistream_read_queue_size;
 
-    neat_flow_states                multistream_state;
+    //neat_flow_states                multistream_state;
 #endif // SCTP_MULTISTREAMING
 };
 

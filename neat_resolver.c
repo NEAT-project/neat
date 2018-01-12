@@ -115,8 +115,7 @@ static void
 neat_resolver_close_timer(uv_handle_t *handle)
 {
     struct neat_resolver_request *request = handle->data;
-    TAILQ_REMOVE(&(request->resolver->dead_request_queue), request,
-                 next_dead_req);
+    TAILQ_REMOVE(&(request->resolver->dead_request_queue), request, next_dead_req);
     free(request);
 }
 
@@ -170,9 +169,9 @@ neat_resolver_idle_cb(uv_idle_t *handle)
         return;
     }
 
-    //Free all dead requests
+    // Free all dead requests
     for (request_itr = resolver->dead_request_queue.tqh_first;
-         request_itr != NULL;) {
+        request_itr != NULL;) {
         request_tmp = request_itr;
         request_itr = request_itr->next_req.tqe_next;
 
@@ -219,8 +218,7 @@ nt_resolver_request_cleanup(struct neat_resolver_request *request)
     //Timers need to, like file descriptors, be closed async. Thus, freeing the
     //request must be deferred until timer has been closed. No need to use idle
     //etc. here. The callback will always be run.
-    uv_close((uv_handle_t*) &(request->timeout_handle),
-             neat_resolver_close_timer);
+    uv_close((uv_handle_t*) &(request->timeout_handle), neat_resolver_close_timer);
 }
 
 static uint32_t
@@ -993,8 +991,7 @@ nt_resolve(struct neat_resolver *resolver,
     if (!strcmp("localhost", node)) {
         is_localhost = 1;
     } else {
-        is_literal = nt_resolver_helpers_check_for_literal(&(request->family),
-                                                           node);
+        is_literal = nt_resolver_helpers_check_for_literal(&(request->family), node);
 
         if (is_literal < 0) {
             free(request);

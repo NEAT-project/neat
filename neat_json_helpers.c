@@ -63,17 +63,6 @@ stack_to_string(neat_protocol_stack_type stack)
 /*
  * Parse the json structure to discover which protocols are enabled.
  *
- * There are four modes:
- * 1. One and only one protocol with precendece == 2
- * 2. Some protocols with precendece == 2, some protocols with precedence == 1
- * 3. Multiple protocols with precedence == 1
- * 4. All protocols listed are banned
- *
- * A pointer to an array of ints must be given for mode 2. This mode is intended
- * for listening sockets only. Errors will be reported when a protocol has
- * precedence == 2, otherwise the error will be silently ignored. In mode 4,
- * all protocols will be assumed to have precedence 1.
- *
  * TODO: Contemplate whether this can be written better somehow.
  */
 void
@@ -81,6 +70,7 @@ nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
                     size_t *stack_count, int *precedences)
 {
     json_t *transports, *transport;
+    json_error_t error;
     size_t i;
     neat_protocol_stack_type *stack_ptr = stacks;
     size_t count = 0;
@@ -95,6 +85,15 @@ nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
     // assert(*stack_count >= NEAT_MAX_NUM_PROTO);
 
     transports = json_object_get(json, "transport");
+    if (transports==NULL) {
+      // The transport property is missing so we do not have a transport type.
+      // This should not happen if the Policy Manager is running. We'll use the
+      // following as a fallback:
+      const char *fallback_transports = "{\"value\": [\"TCP\", \"SCTP\", \"MPTCP\"]}";
+      transports = json_loads(fallback_transports, 0, &error);
+
+      nt_log(NULL, NEAT_LOG_DEBUG, "No transport property defined. Using fallback!");
+    }
 
     if (json_is_object(transports)) {
         // new properties format
@@ -104,12 +103,13 @@ nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
 
         val = json_object_get(transports, "value");
         assert(val);
-        
-        // transport values are either a single string e.g. "TCP",
-        // or a dict of supported transport protocols ["TCP", "SCTP"]
+
+        // transport _values_ are either a single string e.g. {"value": "TCP"},
+        // or a dict of supported transport protocols e.g. {"value": ["TCP", "SCTP", "MPTCP"]}
         if (json_typeof(val) == JSON_STRING) {
             neat_protocol_stack_type stack;
             value = json_string_value(val);
+            nt_log(NULL, NEAT_LOG_DEBUG, "Transport: %s", value);
             if ((stack = string_to_stack(value)) != 0) {
                 *(stack_ptr++) = stack;
                 count++;
@@ -117,14 +117,14 @@ nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
                     *(precedences++) = precedence;
                 }
             } else {
-                // neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
+                nt_log(NULL, NEAT_LOG_DEBUG, "Unknown transport %s", value);
                 *stack_count = 0;
             }
         } else if (json_typeof(val) == JSON_ARRAY){
             json_array_foreach(val, i, transport){
                 neat_protocol_stack_type stack;
                 value = json_string_value(transport);
-                // neat_log(NEAT_LOG_DEBUG, "Transport %s", value);
+                nt_log(NULL, NEAT_LOG_DEBUG, "Transport: %s", value);
                 if ((stack = string_to_stack(value)) != 0) {
                     *(stack_ptr++) = stack;
                     count++;
@@ -132,12 +132,12 @@ nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
                         *(precedences++) = precedence;
                     }
                 } else {
-                  //neat_log(NEAT_LOG_DEBUG, "Unknown transport %s", value);
+                  nt_log(NULL, NEAT_LOG_DEBUG, "Unknown transport %s", value);
                 }
             }
         }
     } else  {
-        printf("ERROR: Invalid property format\n");
+        fprintf(stderr, "ERROR: Invalid property format\n");
     }
 #if BANNED_ENABLED
     // If only banned protocols are specified
@@ -168,13 +168,13 @@ get_property(json_t *json, const char *key, json_type expected_type)
     json_t *obj = json_object_get(json, key);
 
     if (!obj) {
-        // nt_log(NEAT_LOG_DEBUG, "Unable to find property with key \"%s\"", key);
+        nt_log(NULL, NEAT_LOG_DEBUG, "Unable to find property with key \"%s\"", key);
         return NULL;
     }
 
     obj = json_object_get(obj, "value");
     if (!obj) {
-        // nt_log(NEAT_LOG_DEBUG, "Object with key \"%s\" is missing value key");
+        nt_log(NULL, NEAT_LOG_DEBUG, "Object with key \"%s\" is missing value key");
         return NULL;
     }
 

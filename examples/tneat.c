@@ -32,22 +32,27 @@
 #define NEAT_MODE_LOOP      3
 
 static uint32_t config_rcv_buffer_size      = 10240;
-static uint32_t config_snd_buffer_size      = 1024;
+static uint32_t config_snd_buffer_size      = 4096;
 static uint32_t config_message_count        = 128;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_mode                 = 0;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_port                 = 23232;
 static uint16_t config_log_level            = 1;
-static uint16_t config_num_flows            = 5;
-static uint16_t config_max_flows            = 100;
+static uint16_t config_num_flows            = 10;
+static uint16_t config_max_flows            = 1000;
 static uint16_t config_max_server_runs      = 0;
 static uint32_t config_low_watermark        = 0;
 static char *config_property = QUOTE({
     "transport": {
         "value": ["SCTP", "TCP"],
-        "precedence": 2}
-  });
+        "precedence": 2
+    },
+        "__he_delay": {
+        "value": 500
+        }
+    }
+);
 
 
 static uint32_t flows_active    = 0;
@@ -102,6 +107,7 @@ print_usage()
 
     printf("tneat [OPTIONS] [HOST]\n");
     printf("\t- c \tpath to server certificate (%s)\n", cert_file);
+    printf("\t- c \tnumber of outgoing flows (%d)\n", config_num_flows);
     printf("\t- k \tpath to server key (%s)\n", key_file);
     printf("\t- l \tsize for each message in byte (%d)\n", config_snd_buffer_size);
     printf("\t- L \tloop mode - tneat talking to itself\n");
@@ -133,7 +139,6 @@ on_all_written(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = opCB->userData;
     struct timeval now, diff_time;
     double time_elapsed;
-
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -343,14 +348,19 @@ on_close(struct neat_flow_operations *opCB)
     // stop event loop if we are active part
     if (tnf->active) {
         flows_active--;
+
+        fprintf(stderr, "%d flows active\n", flows_active);
         if (!flows_active && config_mode != NEAT_MODE_LOOP) {
-            fprintf(stderr, "%s - stopping event loop\n", __func__);
+            fprintf(stderr, "%s - stopping event loop (active)\n", __func__);
             neat_stop_event_loop(opCB->ctx);
         }
     } else {
-        server_runs++;
-        if ((config_max_server_runs > 0 && server_runs >= config_max_server_runs) || (config_mode == NEAT_MODE_LOOP && !flows_active)) {
-            fprintf(stderr, "%s - stopping event loop\n", __func__);
+        if (tnf->rcv.calls > 0) {
+            server_runs++;
+        }
+
+        if ((config_max_server_runs > 0 && server_runs >= config_max_server_runs) || (config_mode == NEAT_MODE_LOOP && server_runs >= config_num_flows)) {
+            fprintf(stderr, "%s - stopping event loop (passive)\n", __func__);
             neat_stop_event_loop(opCB->ctx);
         }
     }
@@ -387,12 +397,22 @@ main(int argc, char *argv[])
     memset(&ops_client, 0, sizeof(ops_client));
     memset(&op_server, 0, sizeof(op_server));
 
-    while ((arg = getopt(argc, argv, "c:k:l:Ln:p:P:R:T:v:w:")) != -1) {
+    while ((arg = getopt(argc, argv, "c:f:k:l:Ln:p:P:R:T:v:w:")) != -1) {
         switch(arg) {
             case 'c':
                 cert_file = optarg;
                 if (config_log_level >= 1) {
                     printf("option - server certificate file: %s\n", cert_file);
+                }
+                break;
+            case 'f':
+                config_num_flows = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - number of flows: %d\n", config_num_flows);
+                }
+                if (config_num_flows > config_max_flows) {
+                    printf("number of flows exceeds max number of flows (%d) - exit\n", config_max_flows);
+                    exit(EXIT_FAILURE);
                 }
                 break;
             case 'k':
@@ -490,7 +510,9 @@ main(int argc, char *argv[])
         neat_log_level(ctx, NEAT_LOG_ERROR);
     } else if (config_log_level == 1){
         neat_log_level(ctx, NEAT_LOG_WARNING);
-    } else {
+    } else if (config_log_level == 2) {
+        neat_log_level(ctx, NEAT_LOG_INFO);
+    } else if (config_log_level >= 3) {
         neat_log_level(ctx, NEAT_LOG_DEBUG);
     }
 

@@ -162,12 +162,12 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
     size_t i;
     const char *family;
     struct neat_he_candidate *candidate;
-    struct neat_he_candidate *next_candidate;
     uint8_t multistream_probe = 0;
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
 #ifdef SCTP_MULTISTREAMING
+    struct neat_he_candidate *next_candidate;
     struct neat_pollable_socket *multistream_socket = NULL;
 #endif
 

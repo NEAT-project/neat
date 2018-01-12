@@ -2049,7 +2049,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     c++;
-    nt_log(ctx, NEAT_LOG_DEBUG, "Invokation count: %d", c);
+    nt_log(ctx, NEAT_LOG_DEBUG, "Invokation count: %d - flow: %p", c, flow);
 
     assert(candidate);
     assert(candidate->pollable_socket);

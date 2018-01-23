@@ -341,6 +341,7 @@ struct neat_flow
     unsigned int preserveMessageBoundaries  : 1;
     unsigned int eofSeen                    : 1;
     unsigned int skipCertVerification       : 1;
+    unsigned int tproxy                     : 1; // is transparent proxy socket
 
     unsigned int streams_requested;
 

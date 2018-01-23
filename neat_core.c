@@ -492,12 +492,26 @@ on_handle_closed(uv_handle_t *handle)
 static void
 on_handle_closed_candidate(uv_handle_t *handle)
 {
-    //nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    struct linger so_linger;
     struct neat_he_candidate *candidate = (struct neat_he_candidate *)handle->data;
+    struct neat_ctx *ctx = candidate->ctx;
+
+    so_linger.l_onoff = 1;
+    so_linger.l_linger = 0;
+
+    // Enable SO_LINGER so that the following close will abort the connection
+    // even if connection establishment has not completed. It is desired to
+    // abort any unused connections.
+    if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(struct linger)) < 0) {
+        nt_log(ctx, NEAT_LOG_DEBUG, "%s - setsockopt(SO_LINGER) failed", __func__);
+    }
+
     close(candidate->pollable_socket->fd);
+
     if (candidate->pollable_socket->dtls_data) {
         free_dtlsdata(candidate->pollable_socket->dtls_data);
     }
+
     free(candidate->pollable_socket);
     free(candidate->if_name);
     json_decref(candidate->properties);

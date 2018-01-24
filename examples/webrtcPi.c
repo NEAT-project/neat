@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <sys/time.h>
 
-
+#define QUOTE(...) #__VA_ARGS__
 /**********************************************************************
 
     WebRTC peer in neat
@@ -33,20 +33,20 @@ static uint16_t config_active               = 0;
 static uint32_t config_message_count        = 0;
 static uint16_t config_max_flows            = 100;
 
-static char          *config_property        = "\
-{\
-    \"transport\": [\
-        {\
-            \"value\": \"WEBRTC\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";
+#define BUFSIZE    2048
+static char *config_property = QUOTE(
+    {
+    "transport": {
+        "value": ["WEBRTC"],
+        "precedence": 1 
+    }
+}
+);
 
 static uint32_t flows_active = 0;
 static struct neat_signaling_context *sctx;
 
-static int pipeFd;
+//static int pipeFd;
 
 struct tneat_flow_direction {
     unsigned char *buffer;
@@ -59,9 +59,9 @@ struct tneat_flow_direction {
 struct tneat_flow {
     struct tneat_flow_direction rcv;
     struct tneat_flow_direction snd;
-    unsigned char data_buffer[256];
+    unsigned char data_buffer[BUFSIZE];
     uint32_t data_buffer_length;
-    unsigned char stored_data_buffer[256];
+    unsigned char stored_data_buffer[BUFSIZE];
     uint32_t stored_data_buffer_length;
 };
 
@@ -199,11 +199,11 @@ on_writable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
-    int n = 0;
-    char buf[256];
-    unsigned int trunc = 0, i = 0, ok = 0, j = 0;
-
-printf("peer_webrtc: on_writable\n");
+    //int n = 0;
+    //char buf[BUFSIZE];
+    //unsigned int trunc = 0, i = 0, ok = 0, j = 0;
+    //ok = 0;
+    printf("peer_webrtc: on_writable\n");
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -212,8 +212,9 @@ printf("peer_webrtc: on_writable\n");
     if (tnf->snd.calls == 0) {
         gettimeofday(&(tnf->snd.tv_first), NULL);
     }
-
+#if 0
     if (tnf->stored_data_buffer_length > 0) {
+      printf("%d bytes stored data left\n", tnf->stored_data_buffer_length);
       //  print_data_buffer((char *)tnf->stored_data_buffer, tnf->stored_data_buffer_length);
         j = 0;
         ok = 0;
@@ -233,8 +234,8 @@ printf("peer_webrtc: on_writable\n");
             }
         }
         tnf->stored_data_buffer_length = j;
-        printf("%d stored_data_buffer\n", __LINE__);
-        print_data_buffer((char *)tnf->stored_data_buffer, tnf->stored_data_buffer_length);
+      /*  printf("%d stored_data_buffer\n", __LINE__);
+        print_data_buffer((char *)tnf->stored_data_buffer, tnf->stored_data_buffer_length);*/
         if (ok == 0) {
             tnf->data_buffer_length += i;
             tnf->stored_data_buffer_length = tnf->data_buffer_length;
@@ -247,6 +248,7 @@ printf("peer_webrtc: on_writable\n");
         do {
             n = read(pipeFd, buf, sizeof(buf));
             if (n > 0) {
+            printf("%d bytes read\n", n);
                 j = 0;
                 if (tnf->stored_data_buffer_length > 0) {
                     memcpy(tnf->data_buffer, tnf->stored_data_buffer, tnf->stored_data_buffer_length);
@@ -283,13 +285,12 @@ printf("peer_webrtc: on_writable\n");
     fprintf(stderr, "read() got %u bytes, data_buffer: %s\n", strlen((const char *)tnf->data_buffer) + 1, tnf->data_buffer);
 
     if (ok == 1) {
-    printf("reset data_buffer\n");
         tnf->data_buffer_length = 0;
     }
 
-    opCB->on_writable = NULL;
-    opCB->on_all_written = on_all_written;
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
+    //opCB->on_writable = NULL;
+    //opCB->on_all_written = on_all_written;
+    //neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     printf("%d: %s\n", i, tnf->data_buffer);
 
@@ -299,20 +300,23 @@ printf("peer_webrtc: on_writable\n");
     gettimeofday(&(tnf->snd.tv_last), NULL);
 
     if (config_log_level >= 2) {
-        printf("%s: neat_write - # %u - %lu byte\n", opCB->label, tnf->snd.calls, strlen((const char *)tnf->data_buffer));
+        printf("%s: neat_write - # %u - %zu byte\n", opCB->label, tnf->snd.calls, strlen((const char *)tnf->data_buffer));
         if (config_log_level >= 4) {
             printf("neat_write - content\n");
             //fwrite(data_buffer_0, sizeof(char), strlen(str), stdout);
             printf("\n");
         }
     }
-
-    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *)tnf->data_buffer, strlen((const char *)tnf->data_buffer), NULL, 0);
+#else
+    tnf->data_buffer_length = snprintf((char *)tnf->data_buffer, BUFSIZE, "{\"y\": 0.0026707183569669724, \"x\": -0.008392412215471268, \"valcount\": %d, \"z\": 1.0232830047607422}\r\n", tnf->snd.calls++);
+    //tnf->data_buffer[tnf->data_buffer_length] = 0;
+#endif
+    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *)tnf->data_buffer, strlen((const char *)tnf->data_buffer) + 1, NULL, 0);
+    printf("%s", tnf->data_buffer);
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: code %d\n", __func__, (int)code);
         return on_error(opCB);
     }
-
     return NEAT_OK;
 }
 
@@ -330,7 +334,7 @@ on_connected(struct neat_flow_operations *opCB)
     if (config_log_level >= 1) {
         fprintf(stderr, "%s() - connection established\n", __func__);
     }
-
+#if 0
     pipeFd = open("../../examples/pipedata.fifo", O_RDONLY);
     if (pipeFd == -1) {
         printf("Could not open pipe\n");
@@ -339,12 +343,11 @@ on_connected(struct neat_flow_operations *opCB)
     int flags = fcntl(pipeFd, F_GETFL);
     flags |= O_NONBLOCK;
     fcntl(pipeFd, F_SETFL, flags);
-
+#endif
     if ((opCB->userData = calloc(1, sizeof(struct tneat_flow))) == NULL) {
         fprintf(stderr, "%s - could not allocate tneat_flow\n", __func__);
         exit(EXIT_FAILURE);
     }
-
     tnf = opCB->userData;
 
   /*  if ((tnf->snd.buffer = malloc(config_snd_buffer_size)) == NULL) {

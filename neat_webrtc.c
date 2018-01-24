@@ -68,7 +68,7 @@ void transport_upcall_handler(
     if (client->ready_to_close == 1) {
         client_stop(client);
         rawrtc_close();
-        neat_notify_close(client->listening_flow);
+        nt_notify_close(client->listening_flow);
     }
 }
 
@@ -339,7 +339,7 @@ void data_channel_close_handler(
             if (!strcmp(client->flows[i]->label, channel->label)) {
                 client->flows[i]->state = NEAT_FLOW_CLOSED;
                 client->n_flows--;
-                neat_notify_close(client->flows[i]->flow);
+                nt_notify_close(client->flows[i]->flow);
             }
         }
     }
@@ -438,7 +438,7 @@ static void dtls_transport_state_change_handler(
     if (client->role == RAWRTC_ICE_ROLE_CONTROLLING && client->ready_to_close == 1) {
         client_stop(client);
         rawrtc_close();
-        neat_notify_close(client->listening_flow);
+        nt_notify_close(client->listening_flow);
     }
 }
 

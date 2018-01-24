@@ -1,0 +1,10 @@
+{
+    "transport":
+    {
+        "value": ["SCTP", "SCTP/UDP"],
+        "precedence": 1
+    },
+    "__he_delay": {
+        "value": 500
+    }
+}

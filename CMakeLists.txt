@@ -1,10 +1,10 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(libneat)
 
-set(BUILD_MAJOR "0")
-set(BUILD_MINOR "0")
-set(BUILD_PATCH "1~td161")
-set(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
+SET(BUILD_MAJOR "0")
+SET(BUILD_MINOR "0")
+SET(BUILD_PATCH "1~td161")
+SET(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
 # INSTALLATION_DIRECTORIES
 #################################################
@@ -38,18 +38,19 @@ SET(CMAKE_INSTALL_MANDIR "share/man"
 # PACKAGING
 #################################################
 
-set(CPACK_SOURCE_GENERATOR "TGZ")
-set(CPACK_SOURCE_PACKAGE_FILE_NAME
+SET(CPACK_SOURCE_GENERATOR "TGZ")
+SET(CPACK_SOURCE_PACKAGE_FILE_NAME
    "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
-set(CPACK_SOURCE_IGNORE_FILES
+SET(CPACK_SOURCE_IGNORE_FILES
    "${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}-*;${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}_*;/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;.cmake$;.tar.gz$;/_CPack_Packages;/Makefile$;~$;/build-deb;/clean-deb;/filter-empty-entries;/make-symbols;/make-ppa;/make-deb;/debian.conf;/make-rpm;/rpm.conf;${CPACK_SOURCE_IGNORE_FILES}")
-include(CPack)
+INCLUDE(CPack)
 
-add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
+ADD_CUSTOM_TARGET(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
 
 INCLUDE(CheckIncludeFile)
 INCLUDE(CheckStructHasMember)
 INCLUDE(CheckTypeSize)
+INCLUDE(CheckCCompilerFlag)
 SET(CMAKE_MACOSX_RPATH 1)
 
 # SOURCES + HEADERS
@@ -114,7 +115,7 @@ ELSE()
 
 ENDIF()
 
-find_package(Threads REQUIRED)
+FIND_PACKAGE(Threads REQUIRED)
 
 #################################################
 # CHECK STRUCT MEMBERS
@@ -148,10 +149,8 @@ ENDIF()
 #################################################
 # Debug build type as default
 IF (NOT CMAKE_BUILD_TYPE)
-    message("No build type selected, using DEBUG")
-    set(CMAKE_BUILD_TYPE "DEBUG")
-    # _FORTIFY_SOURCE requires compiling with optimization
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
+    MESSAGE("No build type selected, using DEBUG")
+    SET(CMAKE_BUILD_TYPE "DEBUG")
 ENDIF()
 
 OPTION(USRSCTP_SUPPORT "Include usrsctp support" 0)
@@ -168,9 +167,21 @@ IF (USRSCTP_SUPPORT)
     MESSAGE("USRSCTP found: " ${USRSCTP_LIB})
 ENDIF()
 
+OPTION(MPTCP_SUPPORT "Include MPTCP support" 0)
+IF (MPTCP_SUPPORT)
+    MESSAGE(STATUS "Included MPTCP support")
+    ADD_DEFINITIONS(-DMPTCP_SUPPORT)
+ENDIF()
+
+
 OPTION(NEAT_LOG "enable NEAT log module" 1)
 IF (NEAT_LOG)
     ADD_DEFINITIONS(-DNEAT_LOG)
+ENDIF()
+
+OPTION(STATIC_LOG "Enable logging with nt_log without neat context" 0)
+IF (STATIC_LOG)
+    ADD_DEFINITIONS(-DSTATIC_LOG)
 ENDIF()
 
 OPTION(FLOW_GROUPS "Include support for flow grouping" 0)
@@ -178,7 +189,7 @@ IF (FLOW_GROUPS)
     ADD_DEFINITIONS(-DFLOW_GROUPS)
 ENDIF()
 
-OPTION(SCTP_MULTISTREAMING "Include support for SCTP multistreaming" 0)
+OPTION(SCTP_MULTISTREAMING "Include support for SCTP multistreaming" 1)
 IF (SCTP_MULTISTREAMING)
     ADD_DEFINITIONS(-DSCTP_MULTISTREAMING)
 ENDIF()
@@ -204,6 +215,16 @@ IF (SWIG_PYTHON)
 ENDIF()
 
 OPTION(WEBRTC_SUPPORT "Include WebRTC support" 1)
+
+OPTION(SANITIZER_ADDRESS "Compile with address sanitizer" 0)
+
+OPTION(SANITIZER_MEMORY "Compile with memory sanitizer" 0)
+
+IF (SANITIZER_ADDRESS AND SANITIZER_MEMORY)
+    MESSAGE(FATAL_ERROR "Can not compile with both sanitizer options")
+ENDIF()
+
+
 
 # REQUIREMENTS
 #################################################
@@ -245,7 +266,10 @@ IF (OPENSSL_SUPPORT)
                     ADD_DEFINITIONS(-DNEAT_SCTP_DTLS)
                 ENDIF()
             ENDIF()
-
+            if (OPENSSL_ROOT_DIR)
+                # if a custom dir was set, specify the include path too
+                SET(CMAKE_C_FLAGS "-I${OPENSSL_ROOT_DIR}/include")
+            ENDIF()
         ENDIF()
     ENDIF()
 ENDIF()
@@ -259,9 +283,11 @@ IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         MESSAGE("LIBMNL found: " ${MNL_LIB})
     ENDIF()
     FIND_LIBRARY(SCTP_LIB sctp)
-    IF(EXISTS "/proc/sys/net/mptcp/mptcp_enabled")
-        MESSAGE(STATUS "MPTCP found")
-        ADD_DEFINITIONS(-DMPTCP_SUPPORT)
+    IF (NOT MPTCP_SUPPORT)
+        IF(EXISTS "/proc/sys/net/mptcp/mptcp_enabled")
+            MESSAGE(STATUS "MPTCP found")
+            ADD_DEFINITIONS(-DMPTCP_SUPPORT)
+        ENDIF()
     ENDIF()
 ENDIF()
 
@@ -323,10 +349,100 @@ IF (HAVE_SCTP_EVENT_SUBSCRIBE)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_SCTP_EVENT_SUBSCRIBE")
 ENDIF()
 
+CHECK_INCLUDE_FILE(sys/epoll.h HAVE_SYS_EPOLL_H)
+IF (HAVE_SYS_EPOLL_H)
+    ADD_DEFINITIONS(-DHAVE_SYS_EPOLL_H)
+ENDIF()
+
 # COMPILER FLAGS
 #################################################
-SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings")
+# -Wno-array-bounds is unfortunate, but caused by https://bugs.llvm.org/show_bug.cgi?id=20144
+SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror")
+
+CHECK_C_COMPILER_FLAG(-Wfloat-equal HAS_WFLOAT_EQUAL)
+IF (HAS_WFLOAT_EQUAL)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wfloat-equal")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wfloat-equal")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wshadow HAS_WSHADOW)
+IF (HAS_WSHADOW)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wshadow")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wpointer-arith HAS_WPOINTER_ARITIH)
+IF (HAS_WPOINTER_ARITIH)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wpointer-arith")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wpointer-arith")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wunreachable-code HAS_WUNREACHABLE_CODE)
+IF (HAS_WUNREACHABLE_CODE)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wunreachable-code")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunreachable-code")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Winit-self HAS_WINIT_SELF)
+IF (HAS_WINIT_SELF)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Winit-self")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Winit-self")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-unused-function HAS_WNO_UNUSED_FUNCTION)
+IF (HAS_WNO_UNUSED_FUNCTION)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-unused-function")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-unused-parameter HAS_WNO_UNUSED_PARAMETER)
+IF (HAS_WNO_UNUSED_PARAMETER)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-unused-parameter")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-overlength-strings HAS_WNO_OVERLENGTH_STRINGS)
+IF (HAS_WNO_OVERLENGTH_STRINGS)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-overlength-strings")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-overlength-strings")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-unused-command-line-argument HAS_WNO_UNUSED_COMMAND_LINE_ARGUMENT)
+IF (HAS_WNO_UNUSED_COMMAND_LINE_ARGUMENT)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-unused-command-line-argument")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-unreachable-code HAS_WNO_UNREACHABLE_CODE)
+IF (HAS_WNO_UNREACHABLE_CODE)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-unreachable-code")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unreachable-code")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-parentheses-equality HAS_WNO_PARANTHESES_EQUALITY)
+IF (HAS_WNO_PARANTHESES_EQUALITY)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-parentheses-equality")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-parentheses-equality")
+ENDIF()
+
+CHECK_C_COMPILER_FLAG(-Wno-array-bounds HAS_WNO_ARRAY_BOUNDS)
+IF (HAS_WNO_ARRAY_BOUNDS)
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-array-bounds")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-array-bounds")
+ENDIF()
+
+IF (SANITIZER_ADDRESS)
+    #SET(CMAKE_BUILD_TYPE "RelWithDebInfo")
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=address -fno-omit-frame-pointer")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+ENDIF()
+
+IF (SANITIZER_MEMORY)
+    # maybe add "-fPIE -pie" here
+    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=memory -fno-omit-frame-pointer -fsanitize-memory-track-origins")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -fsanitize-memory-track-origins")
+ENDIF()
 
 IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     MESSAGE(STATUS "Building in DEBUG mode")
@@ -336,7 +452,7 @@ ENDIF()
 
 # LIBRARIES
 #################################################
-include_directories(.)
+INCLUDE_DIRECTORIES(.)
 
 LIST(APPEND neat_libs
     ${UV_LIB}
@@ -364,7 +480,7 @@ ENDIF()
 
 ADD_LIBRARY(neat SHARED ${neat_sources})
 
-set_target_properties(neat PROPERTIES
+SET_TARGET_PROPERTIES(neat PROPERTIES
     VERSION ${BUILD_VERSION}
     SOVERSION ${BUILD_MAJOR}
     )
@@ -383,7 +499,7 @@ ENDIF()
 MESSAGE("Install directory: ${CMAKE_INSTALL_PREFIX}")
 
 INSTALL(TARGETS neat neat-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
-INSTALL(FILES ${neat_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+INSTALL(FILES "neat.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
 # INCLUDE EXAMPLES AND TESTS FOLDER

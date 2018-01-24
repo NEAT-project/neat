@@ -14,7 +14,7 @@ in the `neat/policy` directory. See `./neatpmd -h` for more options.
 
 NEAT properties are the basic building block of the NEAT Policy Manager. Properties are essentially `key|value` pairs used to label or describe any entity referenced by the components of the PM. These include user requirements passed through the NEAT API, features enforced by policies as well as information about supported protocols and network characteristics maintained in the CIB. 
 
-Properties also contain meta attributes such as a `score` denoting the importance or weight of the property and a `precedence`, indicating whether a property is mandatory or optional. The syntax and behaviour of NEAT properties is documented [here](doc/NEAT_properties.md).
+Properties also contain meta attributes such as a `score` denoting the importance or weight of the property and a `precedence`, indicating whether a property is mandatory or optional. The syntax and behaviour of NEAT properties is documented [**here**](doc/NEAT_properties.md).
 
 
 ## NEAT Policies
@@ -26,7 +26,7 @@ Policies are based around NEAT properties. In addition to some metadata, each po
 
 NEAT profiles are functionally identical to NEAT policies but are applied earlier in the Policy Manager workflow.
 
-For more details refer to [NEAT policies](doc/NEAT_policies.md).
+For more details refer to [**NEAT policies**](doc/NEAT_policies.md).
 
 ## Policy Manager Workflow
 
@@ -52,6 +52,10 @@ After the lookups the PM ranks the resulting candidates by the sum of the scores
 ## CIB format
 
 [See CIB documentation](doc/CIB_format.md)
+
+## Policy Manager Interface (PI)
+
+[See PI documentation](doc/pm_interface.md)
 
 # Example
 

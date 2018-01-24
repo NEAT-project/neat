@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <sys/time.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
     HTTP-GET client in neat
@@ -43,23 +45,18 @@ static uint8_t       config_json_stats       = 0;
 static uint16_t      config_port             = 80;
 static char          request[512];
 static uint32_t      flows_active           = 0;
-static char          *config_property       = "\
-{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ],\
-    \"multihoming\": {\
-        \"value\": true,\
-        \"precedence\": 1\
-    }\
-}";
+static char          *config_property       = QUOTE(
+    {
+    "transport": {
+        "value": ["TCP", "SCTP"],
+        "precedence": 1 },
+    "multihoming": {
+        "value": true,
+        "precedence": 1
+    }
+}
+);
+
 static unsigned char *buffer                 = NULL;
 
 struct stat_flow {

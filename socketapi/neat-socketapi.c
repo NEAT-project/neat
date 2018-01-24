@@ -44,9 +44,10 @@
 #include <errno.h>
 #include <assert.h>
 #include <netdb.h>
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
-#if defined(HAVE_NETINET_SCTP_H) && !defined(USRSCTP_SUPPORT)
+#if defined(HAVE_NETINET_SCTP_H)
 #include <netinet/sctp.h>
 #endif
 
@@ -109,6 +110,36 @@ int nsa_socket(int domain, int type, int protocol, const char* properties)
       errno = ENXIO;
    }
    return(result);
+}
+
+
+/* ###### NEAT nsa_socketpair() implementation ########################### */
+int nsa_socketpair(int domain, int type, int protocol, int sv[2], const char* properties)
+{
+   if(nsa_initialize() != NULL) {
+      int sysFDs[2];
+      if(socketpair(domain, type, protocol, (int*)&sysFDs) == 0) {
+         pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
+         sv[0] = nsa_socket_internal(0, 0, 0, sysFDs[0], NULL, -1);
+         if(sv[0] >= 0) {
+            sv[1] = nsa_socket_internal(0, 0, 0, sysFDs[1], NULL, -1);
+            if(sv[1] >= 0) {
+               pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+               return(0);
+            }
+            nsa_close(sv[0]);
+            sv[0] = -1;
+         }
+         errno = ENOMEM;
+         close(sysFDs[0]);
+         close(sysFDs[1]);
+         pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
+      }
+   }
+   else {
+      errno = ENXIO;
+   }
+   return(-1);
 }
 
 
@@ -396,8 +427,8 @@ int nsa_listen(int sockfd, int backlog)
 }
 
 
-/* ###### NEAT accept() implementation ################################### */
-int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+/* ###### NEAT accept4() implementation ################################## */
+int nsa_accept4(int sockfd, struct sockaddr* addr, socklen_t* addrlen, int flags)
 {
    GET_NEAT_SOCKET(sockfd)
    if(neatSocket->ns_flow != NULL) {
@@ -443,6 +474,17 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 
                result = newSocket->ns_descriptor;
 
+               if(flags != 0) {
+                  int socketFlags = fcntl(newSocket->ns_descriptor, F_GETFL, 0);
+                  if(flags & SOCK_NONBLOCK) {
+                      socketFlags |= O_NONBLOCK;
+                  }
+                  if(flags & SOCK_CLOEXEC) {
+                      socketFlags |= O_CLOEXEC;
+                  }
+                  fcntl(newSocket->ns_descriptor, F_SETFL, socketFlags);
+               }
+
                /* ====== Fill in peer address ============================ */
                if(addrlen != NULL) {
                   if(nsa_getpeername(newSocket->ns_descriptor, addr, addrlen) < 0) {
@@ -473,6 +515,13 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
    else {
       return(accept(neatSocket->ns_socket_sd, addr, addrlen));
    }
+}
+
+
+/* ###### NEAT accept() implementation ################################### */
+int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+{
+   return(nsa_accept4(sockfd, addr, addrlen, 0));
 }
 
 
@@ -765,93 +814,4 @@ int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen)
 int nsa_getpeername(int sockfd, struct sockaddr* name, socklen_t* namelen)
 {
    return(nsa_getlpname(sockfd, name, namelen, 0));
-}
-
-
-/* ###### NEAT open() implementation ##################################### */
-int nsa_open(const char* pathname, int flags, mode_t mode)
-{
-   const int fd = open(pathname, flags, mode);
-   if(fd >= 0) {
-      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-
-      int       result;
-      const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
-      if(newFD >= 0) {
-         result = newFD;
-      }
-      else {
-         errno = ENOMEM;
-         close(fd);
-         result = -1;
-      }
-
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-      return(result);
-   }
-   return(-1);
-}
-
-
-/* ###### NEAT creat() implementation #################################### */
-int nsa_creat(const char* pathname, mode_t mode)
-{
-   const int fd = creat(pathname, mode);
-   if(fd >= 0) {
-      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-
-      int       result;
-      const int newFD = nsa_socket_internal(0, 0, 0, fd, NULL, -1);
-      if(newFD >= 0) {
-         result = newFD;
-      }
-      else {
-         errno = ENOMEM;
-         close(fd);
-         result = -1;
-      }
-
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-      return(result);
-   }
-   return(-1);
-}
-
-
-/* ###### NEAT ioctl() implementation #################################### */
-int nsa_ioctl(int fd, int request, const void* argp)
-{
-   GET_NEAT_SOCKET(fd)
-   if(neatSocket->ns_flow != NULL) {
-      errno = EOPNOTSUPP;
-      return(-1);
-   }
-   else {
-      return(ioctl(neatSocket->ns_socket_sd, fd, request, argp));
-   }
-}
-
-
-/* ###### NEAT pipe() implementation ##################################### */
-int nsa_pipe(int fds[2])
-{
-   int sysFDs[2];
-   if(pipe((int*)&sysFDs) == 0) {
-      pthread_mutex_lock(&gSocketAPIInternals->nsi_socket_set_mutex);
-      fds[0] = nsa_socket_internal(0, 0, 0, sysFDs[0], NULL, 0);
-      if(fds[0] >= 0) {
-         fds[1] = nsa_socket_internal(0, 0, 0, sysFDs[1], NULL, 0);
-         if(fds[1] >= 0) {
-            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-            return(0);
-         }
-         nsa_close(fds[0]);
-         fds[0] = -1;
-      }
-      errno = ENOMEM;
-      close(sysFDs[0]);
-      close(sysFDs[1]);
-      pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
-   }
-   return(-1);
 }

@@ -6,7 +6,7 @@
 struct neat_resolver;
 
 uint8_t neat_resolver_add_initial_servers(struct neat_resolver *resolver);
-void neat_resolver_resolv_conf_updated(uv_fs_event_t *handle,
+void nt_resolver_resolv_conf_updated(uv_fs_event_t *handle,
         const char *filename, int events, int status);
 
 #endif

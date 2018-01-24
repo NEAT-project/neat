@@ -125,19 +125,6 @@ struct neat_tlv {
     } value;
 };
 
-// Flags to use for neat_flow_init()
-#define NEAT_PRESERVE_MSG_BOUNDARIES    (1 << 0)
-#define NEAT_USE_SECURE_INTERFACE       (1 << 1)
-
-struct neat_flow_security {
-    int security; // 1 = secure connection required, 2 = secure connection optional
-    int verification; // 1 = required, 2 = optional
-    const char* certificate; // filename for certificate
-    const char* key; // filename for key
-    const char** tls_versions; // list of tls versions available to use
-    const char** ciphers; // list of ciphers available to use
-};
-
 NEAT_EXTERN struct neat_flow *neat_new_flow(struct neat_ctx *ctx);
 
 NEAT_EXTERN neat_error_code neat_set_operations(struct neat_ctx *ctx,
@@ -177,6 +164,7 @@ NEAT_EXTERN neat_error_code neat_secure_identity(struct neat_ctx *ctx, struct ne
                                      const char *filename, int pemType);
 NEAT_EXTERN neat_error_code neat_set_qos(struct neat_ctx *ctx,
                     struct neat_flow *flow, uint8_t qos);
+NEAT_EXTERN int neat_get_qos(struct neat_ctx *ctx, struct neat_flow *flow);
 NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
                     struct neat_flow *flow, uint8_t ecn);
 NEAT_EXTERN neat_error_code neat_set_low_watermark(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t watermark);

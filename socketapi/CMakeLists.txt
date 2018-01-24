@@ -6,6 +6,7 @@ LIST(APPEND neat_socketapi_headers
 
 LIST(APPEND neat_socketapi_sources
    neat-socketapi.c
+   neat-socketapi-file.c
    neat-socketapi-internals.c
    neat-socketapi-io.c
    neat-socketapi-poll.c
@@ -14,6 +15,9 @@ LIST(APPEND neat_socketapi_sources
    eventsignal.c
    redblacktree.c
 )
+
+# Define *64() functions
+ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
 
 
 # PROGRAMS LIST

@@ -205,6 +205,7 @@ union neat_notification {
    struct neat_data_arrive      nn_data_arrive;
 };
 
+struct epoll_event;
 
 #ifdef __cplusplus
 extern "C" {
@@ -218,6 +219,7 @@ int nsa_unmap_socket(int neatSD);
 
 /* ====== Connection Establishment and Teardown ========================== */
 int nsa_socket(int domain, int type, int protocol, const char* properties);
+int nsa_socketpair(int domain, int type, int protocol, int sv[2], const char* properties);
 int nsa_close(int sockfd);
 int nsa_fcntl(int sockfd, int cmd, ...);
 int nsa_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen,
@@ -234,6 +236,7 @@ int nsa_connectn(int sockfd, const char* name, const uint16_t port, neat_assoc_t
                  struct neat_tlv* opt, const int optcnt);
 int nsa_listen(int sockfd, int backlog);
 int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen);
+int nsa_accept4(int sockfd, struct sockaddr* addr, socklen_t* addrlen, int flags);
 int nsa_peeloff(int sockfd, neat_assoc_t id);
 int nsa_shutdown(int sockfd, int how);
 
@@ -250,6 +253,13 @@ int nsa_set_secure_identity(int sockfd, const char* pem);
 
 /* ====== Input/Output Handling ========================================== */
 ssize_t nsa_write(int fd, const void* buf, size_t len);
+ssize_t nsa_writev(int fd, const struct iovec* iov, int iovcnt);
+ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset);
+ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt, off_t offset);
+#ifdef _LARGEFILE64_SOURCE
+ssize_t nsa_pwrite64(int fd, const void* buf, size_t len, off64_t offset);
+ssize_t nsa_pwritev64(int fd, const struct iovec* iov, int iovcnt, off64_t offset);
+#endif
 ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags);
 ssize_t nsa_sendto(int sockfd, const void* buf, size_t len, int flags,
                    const struct sockaddr* to, socklen_t tolen);
@@ -260,6 +270,13 @@ ssize_t nsa_sendv(int sockfd, struct iovec* iov, int iovcnt,
                   int flags);
 
 ssize_t nsa_read(int fd, void* buf, size_t len);
+ssize_t nsa_readv(int fd, const struct iovec* iov, int iovcnt);
+ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset);
+ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt, off_t offset);
+#ifdef _LARGEFILE64_SOURCE
+ssize_t nsa_pread64(int fd, void* buf, size_t len, off64_t offset);
+ssize_t nsa_preadv64(int fd, const struct iovec* iov, int iovcnt, off64_t offset);
+#endif
 ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags);
 ssize_t nsa_recvfrom(int sockfd, void* buf, size_t len, int flags,
                      struct sockaddr* from, socklen_t* fromlen);
@@ -273,6 +290,12 @@ ssize_t nsa_recvv(int sockfd, struct iovec* iov, int iovcnt,
 int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout);
 int nsa_select(int n, fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
                struct timeval* timeout);
+int nsa_epoll_create(int size);
+int nsa_epoll_create1(int flags);
+int nsa_epoll_ctl(int epfd, int op, int fd, struct epoll_event* event);
+int nsa_epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout);
+int nsa_epoll_pwait(int epfd, struct epoll_event *events, int maxevents,
+                    int timeout, const sigset_t* ss);
 
 /* ====== Address Handling =============================================== */
 int nsa_getsockname(int sockfd, struct sockaddr* name, socklen_t* namelen);
@@ -285,6 +308,26 @@ void nsa_freepaddrs(struct sockaddr* addrs);
 /* ====== Miscellaneous ================================================== */
 int nsa_open(const char* pathname, int flags, mode_t mode);
 int nsa_creat(const char* pathname, mode_t mode);
+int nsa_lockf(int fd, int cmd, off_t len);
+#ifdef _LARGEFILE64_SOURCE
+int nsa_lockf64(int fd, int cmd, off64_t len);
+#endif
+int nsa_flock(int fd, int operation);
+int nsa_fstat(int fd, struct stat* buf);
+long nsa_fpathconf(int fd, int name);
+int nsa_fchown(int fd, uid_t owner, gid_t group);
+int nsa_fsync(int fd);
+int nsa_fdatasync(int fd);
+int nsa_syncfs(int fd);
+int nsa_dup(int oldfd);
+int nsa_dup2(int oldfd, int newfd);
+int nsa_dup3(int oldfd, int newfd, int flags);
+off_t nsa_lseek(int fd, off_t offset, int whence);
+int nsa_ftruncate(int fd, off_t length);
+#ifdef _LARGEFILE64_SOURCE
+off64_t nsa_lseek64(int fd, off64_t offset, int whence);
+int nsa_ftruncate64(int fd, off64_t length);
+#endif
 int nsa_pipe(int fds[2]);
 int nsa_ioctl(int fd, int request, const void* argp);
 

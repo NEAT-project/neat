@@ -1,0 +1,9 @@
+{
+    "transport":  {
+        "value": "TCP",
+        "precedence": 1
+    },
+    "__he_delay": {
+        "value": 500
+    }
+}

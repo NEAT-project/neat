@@ -8,7 +8,7 @@ import cib
 try:
     import netifaces
 except ImportError as e:
-    e.msg = "netifaces is not installed, but is needed to generate local CIBs"
+    e.msg = "netifaces module is not installed, but is needed to generate local CIBs"
     raise
 
 

@@ -30,9 +30,9 @@ wants. A typical first step is to resolve a domain name.
 
 ## Requirements :point_up:
 * `cmake`
-* `libuv`
+* `libuv` (version 1.9 or later)
 * `ldns`
-* `ljansson`
+* `ljansson` (version 2.7 or later)
 * `libmnl (linux only)`
 * `libsctp-dev (linux only, for kernel SCTP support)`
 * `swig (for generating Python bindings)`

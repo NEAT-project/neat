@@ -370,28 +370,28 @@ void data_channel_handler(
 
     // Set handler argument & handlers
     if (rawrtc_data_channel_set_arg(channel, channel_helper) != RAWRTC_CODE_SUCCESS)              {
-        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set arg");
+        nt_log(client->ctx, NEAT_LOG_ERROR, "Could not set arg");
         exit (-1);
     }
     if (rawrtc_data_channel_set_open_handler(channel, default_data_channel_open_handler) != RAWRTC_CODE_SUCCESS) {
-        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not open handler");
+        nt_log(client->ctx, NEAT_LOG_ERROR, "Could not open handler");
         exit (-1);
     }
     if (rawrtc_data_channel_set_buffered_amount_low_handler(
             channel, default_data_channel_buffered_amount_low_handler)!= RAWRTC_CODE_SUCCESS) {
-        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set buffered amount low");
+        nt_log(client->ctx, NEAT_LOG_ERROR, "Could not set buffered amount low");
         exit (-1);
     }
     if (rawrtc_data_channel_set_error_handler(channel, default_data_channel_error_handler)!= RAWRTC_CODE_SUCCESS) {
-        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set error handler");
+        nt_log(client->ctx, NEAT_LOG_ERROR, "Could not set error handler");
         exit (-1);
     }
     if (rawrtc_data_channel_set_close_handler(channel, data_channel_close_handler)!= RAWRTC_CODE_SUCCESS) {
-        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set close handler");
+        nt_log(client->ctx, NEAT_LOG_ERROR, "Could not set close handler");
         exit (-1);
     }
     if (rawrtc_data_channel_set_message_handler(channel, data_channel_message_handler)!= RAWRTC_CODE_SUCCESS) {
-        neat_log(client->ctx, NEAT_LOG_ERROR, "Could not set message handler");
+        nt_log(client->ctx, NEAT_LOG_ERROR, "Could not set message handler");
         exit (-1);
     }
     struct neat_flow *newFlow = neat_new_flow(client->ctx);
@@ -474,7 +474,7 @@ static void sctp_transport_state_change_handler(
                 if (rawrtc_data_channel_parameters_create(
                     &channel_parameters, data_channel_negotiated->label,
                     RAWRTC_DATA_CHANNEL_TYPE_RELIABLE_UNORDERED, 0, NULL, false, 0)  != RAWRTC_CODE_SUCCESS)              {
-                    neat_log(client->ctx, NEAT_LOG_ERROR, "Could not create channel parameters parameters");
+                    nt_log(client->ctx, NEAT_LOG_ERROR, "Could not create channel parameters parameters");
                     exit (-1);
                 }
                 if (rawrtc_data_channel_create(
@@ -486,13 +486,13 @@ static void sctp_transport_state_change_handler(
                     data_channel_close_handler,
                     data_channel_message_handler,
                     data_channel_negotiated) != RAWRTC_CODE_SUCCESS) {
-                    neat_log(client->ctx, NEAT_LOG_ERROR, "Error creating data channel");
+                    nt_log(client->ctx, NEAT_LOG_ERROR, "Error creating data channel");
                     exit (-1);
                 } else {
-                    neat_log(client->ctx, NEAT_LOG_DEBUG, "Created data channel successfully");
+                    nt_log(client->ctx, NEAT_LOG_DEBUG, "Created data channel successfully");
                 }
                 if (rawrtc_dtls_parameters_get_role(&role, client->local_parameters.dtls_parameters) != RAWRTC_CODE_SUCCESS) {
-                    neat_log(client->ctx, NEAT_LOG_ERROR, "Could not get role");
+                    nt_log(client->ctx, NEAT_LOG_ERROR, "Could not get role");
                     exit (-1);
                 }
               //  client->active_flow->peer_connection = client;
@@ -530,33 +530,33 @@ static void client_get_parameters(
     // Get local ICE parameters
     if (rawrtc_ice_gatherer_get_local_parameters(
             &local_parameters->ice_parameters, client->gatherer) != RAWRTC_CODE_SUCCESS)              {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not get local parameters");
+            nt_log(client->ctx, NEAT_LOG_ERROR, "Could not get local parameters");
             exit (-1);
         }
 
     // Get local ICE candidates
     if (rawrtc_ice_gatherer_get_local_candidates(
             &local_parameters->ice_candidates, client->gatherer) != RAWRTC_CODE_SUCCESS)              {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not get local candidates");
+            nt_log(client->ctx, NEAT_LOG_ERROR, "Could not get local candidates");
             exit (-1);
         }
 
     // Get local DTLS parameters
     if (rawrtc_dtls_transport_get_local_parameters(
             &local_parameters->dtls_parameters, client->dtls_transport) != RAWRTC_CODE_SUCCESS)              {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not get local dtls parameters");
+            nt_log(client->ctx, NEAT_LOG_ERROR, "Could not get local dtls parameters");
             exit (-1);
         }
     // Get local SCTP parameters
     if (rawrtc_sctp_transport_get_capabilities(
             &local_parameters->sctp_parameters.capabilities) != RAWRTC_CODE_SUCCESS) {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not get sctp capabilities");
+            nt_log(client->ctx, NEAT_LOG_ERROR, "Could not get sctp capabilities");
             exit (-1);
         }
 
     if (rawrtc_sctp_transport_get_port(
             &local_parameters->sctp_parameters.port, client->sctp_transport) != RAWRTC_CODE_SUCCESS)              {
-            neat_log(client->ctx, NEAT_LOG_ERROR, "Could not get sctp port");
+            nt_log(client->ctx, NEAT_LOG_ERROR, "Could not get sctp port");
             exit (-1);
         }
 }
@@ -648,10 +648,10 @@ static void client_init(
 
      // Generate certificates
     if (rawrtc_certificate_generate(&pc->certificate, NULL) != RAWRTC_CODE_SUCCESS) {
-        neat_log(pc->ctx, NEAT_LOG_ERROR, "Error generating certificate");
+        nt_log(pc->ctx, NEAT_LOG_ERROR, "Error generating certificate");
         exit (-1);
     } else {
-        neat_log(pc->ctx, NEAT_LOG_DEBUG, "Certificate generated successfully");
+        nt_log(pc->ctx, NEAT_LOG_DEBUG, "Certificate generated successfully");
     }
     certificates[0] = pc->certificate;
 
@@ -661,49 +661,49 @@ static void client_init(
             &pc->gatherer, pc->gather_options,
             default_ice_gatherer_state_change_handler, default_ice_gatherer_error_handler,
             ice_gatherer_local_candidate_handler, pc) != RAWRTC_CODE_SUCCESS) {
-        neat_log(pc->ctx, NEAT_LOG_ERROR, "Error creating ice gatherer");
+        nt_log(pc->ctx, NEAT_LOG_ERROR, "Error creating ice gatherer");
         exit (-1);
     } else {
-        neat_log(pc->ctx, NEAT_LOG_DEBUG, "Ice gatherer created successfully");
+        nt_log(pc->ctx, NEAT_LOG_DEBUG, "Ice gatherer created successfully");
     }
 
     if (rawrtc_ice_transport_create(
             &pc->ice_transport, pc->gatherer,
             default_ice_transport_state_change_handler,
             default_ice_transport_candidate_pair_change_handler, pc) != RAWRTC_CODE_SUCCESS) {
-        neat_log(pc->ctx, NEAT_LOG_ERROR, "Error creating ice transport");
+        nt_log(pc->ctx, NEAT_LOG_ERROR, "Error creating ice transport");
         exit (-1);
     } else {
-        neat_log(pc->ctx, NEAT_LOG_DEBUG, "Ice transport created successfully");
+        nt_log(pc->ctx, NEAT_LOG_DEBUG, "Ice transport created successfully");
     }
 
     // Create DTLS transport
     if (rawrtc_dtls_transport_create(
             &pc->dtls_transport, pc->ice_transport, certificates, ARRAY_SIZE(certificates),
             default_dtls_transport_state_change_handler, default_dtls_transport_error_handler, pc) != RAWRTC_CODE_SUCCESS) {
-        neat_log(pc->ctx, NEAT_LOG_ERROR, "Error creating dtls transport");
+        nt_log(pc->ctx, NEAT_LOG_ERROR, "Error creating dtls transport");
         exit (-1);
     } else {
-        neat_log(pc->ctx, NEAT_LOG_DEBUG, "DTLS transport created successfully");
+        nt_log(pc->ctx, NEAT_LOG_DEBUG, "DTLS transport created successfully");
     }
 
     // Create SCTP transport
     if (rawrtc_sctp_transport_create(
             &pc->sctp_transport, pc->dtls_transport, pc->local_parameters.sctp_parameters.port,
             data_channel_handler, sctp_transport_state_change_handler, transport_upcall_handler, pc) != RAWRTC_CODE_SUCCESS) {
-        neat_log(pc->ctx, NEAT_LOG_ERROR, "Error creating SCTP transport");
+        nt_log(pc->ctx, NEAT_LOG_ERROR, "Error creating SCTP transport");
         exit (-1);
     } else {
-        neat_log(pc->ctx, NEAT_LOG_DEBUG, "SCTP transport created successfully");
+        nt_log(pc->ctx, NEAT_LOG_DEBUG, "SCTP transport created successfully");
     }
 
         // Get data transport
     if (rawrtc_sctp_transport_get_data_transport(
             &pc->data_transport, pc->sctp_transport) != RAWRTC_CODE_SUCCESS) {
-        neat_log(pc->ctx, NEAT_LOG_ERROR, "Error getting SCTP data transport");
+        nt_log(pc->ctx, NEAT_LOG_ERROR, "Error getting SCTP data transport");
         exit (-1);
     } else {
-        neat_log(pc->ctx, NEAT_LOG_DEBUG, "Got SCTP data transport successfully");
+        nt_log(pc->ctx, NEAT_LOG_DEBUG, "Got SCTP data transport successfully");
     }
     rawrtc_mem_deref(pc->gatherer);
     rawrtc_mem_deref(pc->sctp_transport);
@@ -714,10 +714,10 @@ static void client_start_gathering(
 ) {
     // Start gathering
     if (rawrtc_ice_gatherer_gather(pc->gatherer, NULL) != RAWRTC_CODE_SUCCESS) {
-        neat_log(pc->ctx, NEAT_LOG_ERROR, "Error gathering candidates");
+        nt_log(pc->ctx, NEAT_LOG_ERROR, "Error gathering candidates");
         exit (-1);
     } else {
-        neat_log(pc->ctx, NEAT_LOG_DEBUG, "Ice candidates gathered successfully");
+        nt_log(pc->ctx, NEAT_LOG_DEBUG, "Ice candidates gathered successfully");
     }
     rawrtc_mem_deref(pc->gatherer);
 }
@@ -730,7 +730,7 @@ neat_webrtc_write_to_channel(struct neat_ctx *ctx,
             struct neat_tlv optional[],
             unsigned int opt_count)
 {
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     struct mbuf *buf = rawrtc_mbuf_alloc(amt);
 
     if(rawrtc_mbuf_write_mem(buf, (const uint8_t *)buffer, (size_t)amt) != 0) {
@@ -760,7 +760,7 @@ neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t peer_role
     enum rawrtc_ice_role role;
     char* const stun_google_com_urls[] = {"stun:stun.l.google.com:19302",
                                           "stun:stun1.l.google.com:19302"};
-    neat_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (peer.max_flows == 0) {
         peer.ice_candidate_types = ice_candidate_types;
@@ -787,7 +787,7 @@ neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t peer_role
         }
 
         if (rawrtc_init() != RAWRTC_CODE_SUCCESS) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Error initializing RawRTC");
+            nt_log(ctx, NEAT_LOG_ERROR, "Error initializing RawRTC");
             exit (-1);
         }
 
@@ -798,14 +798,14 @@ neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t peer_role
         rawrtc_alloc_fds(128);
 
         if (rawrtc_ice_gather_options_create(&gather_options, RAWRTC_ICE_GATHER_POLICY_ALL) != RAWRTC_CODE_SUCCESS) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Error creating ice_gather_options");
+            nt_log(ctx, NEAT_LOG_ERROR, "Error creating ice_gather_options");
             exit (-1);
         }
 
         if (rawrtc_ice_gather_options_add_server(
             gather_options, stun_google_com_urls, ARRAY_SIZE(stun_google_com_urls),
             NULL, NULL, RAWRTC_ICE_CREDENTIAL_TYPE_NONE) != RAWRTC_CODE_SUCCESS) {
-            neat_log(ctx, NEAT_LOG_ERROR, "Error adding server");
+            nt_log(ctx, NEAT_LOG_ERROR, "Error adding server");
             exit (-1);
         }
 
@@ -839,7 +839,7 @@ neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t peer_role
                 if (rawrtc_data_channel_parameters_create(
                     &channel_parameters, data_channel_negotiated->label,
                     RAWRTC_DATA_CHANNEL_TYPE_RELIABLE_UNORDERED, 0, NULL, false, 0)  != RAWRTC_CODE_SUCCESS)              {
-                    neat_log(peer.ctx, NEAT_LOG_ERROR, "Could not create channel parameters parameters");
+                    nt_log(peer.ctx, NEAT_LOG_ERROR, "Could not create channel parameters parameters");
                     exit (-1);
                 }
                 if (rawrtc_data_channel_create(
@@ -848,10 +848,10 @@ neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t peer_role
                     default_data_channel_open_handler,    default_data_channel_buffered_amount_low_handler,
                     default_data_channel_error_handler, data_channel_close_handler,
                     data_channel_message_handler, data_channel_negotiated) != RAWRTC_CODE_SUCCESS) {
-                    neat_log(peer.ctx, NEAT_LOG_ERROR, "Error creating data channel");
+                    nt_log(peer.ctx, NEAT_LOG_ERROR, "Error creating data channel");
                     exit (-1);
                 } else {
-                    neat_log(peer.ctx, NEAT_LOG_DEBUG, "Created data channel successfully");
+                    nt_log(peer.ctx, NEAT_LOG_DEBUG, "Created data channel successfully");
                 }
 
                 rawrtc_mem_deref(peer.data_transport);

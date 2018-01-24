@@ -6,6 +6,8 @@
 #include "util.h"
 #include <errno.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
     echo server
@@ -22,22 +24,12 @@ A TLS example:
 static uint32_t config_buffer_size = 512;
 static uint16_t config_log_level = 1;
 static uint16_t config_number_of_streams = 1988;
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"SCTP/UDP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";\
+
+static char *config_property = QUOTE({
+    "transport": {
+        "value": ["TCP", "SCTP", "SCTP/UDP"],
+        "precedence": 2}
+});
 
 static char *pem_file = NULL;
 

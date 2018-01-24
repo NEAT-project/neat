@@ -6,7 +6,7 @@
 
 // #define NEAT_KEYVAL(key,value) ("{ \"" #key "\": " #value" }")
 
-void neat_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
+void nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
                          size_t *stack_count, int *precedences);
 
 json_t* get_property(json_t *json, const char *key, json_type expected_type);

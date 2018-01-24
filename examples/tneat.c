@@ -7,6 +7,8 @@
 #include <sys/time.h>
 #include <errno.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
     tneat - neat testing tool
@@ -30,35 +32,35 @@
 #define NEAT_MODE_LOOP      3
 
 static uint32_t config_rcv_buffer_size      = 10240;
-static uint32_t config_snd_buffer_size      = 1024;
-static uint32_t config_message_count        = 1;
+static uint32_t config_snd_buffer_size      = 4096;
+static uint32_t config_message_count        = 128;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_mode                 = 0;
 static uint16_t config_chargen_offset       = 0;
 static uint16_t config_port                 = 23232;
 static uint16_t config_log_level            = 1;
 static uint16_t config_num_flows            = 10;
-static uint16_t config_max_flows            = 100;
+static uint16_t config_max_flows            = 1000;
 static uint16_t config_max_server_runs      = 0;
 static uint32_t config_low_watermark        = 0;
-static char *config_property = "\
-{\
-    \"transport\": [\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        },\
-        {\
-            \"value\": \"SCTP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";
+static char *config_property = QUOTE({
+    "transport": {
+        "value": ["SCTP", "TCP"],
+        "precedence": 2
+    },
+        "__he_delay": {
+        "value": 500
+        }
+    }
+);
 
-static uint32_t flows_active = 0;
-static uint32_t server_runs = 0;
-static char *cert_file = NULL;
-static char *key_file = NULL;
+
+static uint32_t flows_active    = 0;
+static uint32_t server_runs     = 0;
+static char *cert_file          = NULL;
+static char *key_file           = NULL;
+static char *loop_hostname      = "127.0.0.1";
+static int result               = EXIT_SUCCESS;
 
 /*
     macro - tvp-uvp=vvp
@@ -105,6 +107,7 @@ print_usage()
 
     printf("tneat [OPTIONS] [HOST]\n");
     printf("\t- c \tpath to server certificate (%s)\n", cert_file);
+    printf("\t- c \tnumber of outgoing flows (%d)\n", config_num_flows);
     printf("\t- k \tpath to server key (%s)\n", key_file);
     printf("\t- l \tsize for each message in byte (%d)\n", config_snd_buffer_size);
     printf("\t- L \tloop mode - tneat talking to itself\n");
@@ -126,6 +129,7 @@ on_error(struct neat_flow_operations *opCB)
 
     fprintf(stderr, "%s()\n", __func__);
     neat_stop_event_loop(opCB->ctx);
+    result = EXIT_FAILURE;
     return NEAT_OK;
 }
 
@@ -135,7 +139,6 @@ on_all_written(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = opCB->userData;
     struct timeval now, diff_time;
     double time_elapsed;
-
 
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
@@ -345,14 +348,19 @@ on_close(struct neat_flow_operations *opCB)
     // stop event loop if we are active part
     if (tnf->active) {
         flows_active--;
+
+        fprintf(stderr, "%d flows active\n", flows_active);
         if (!flows_active && config_mode != NEAT_MODE_LOOP) {
-            fprintf(stderr, "%s - stopping event loop\n", __func__);
+            fprintf(stderr, "%s - stopping event loop (active)\n", __func__);
             neat_stop_event_loop(opCB->ctx);
         }
     } else {
-        server_runs++;
-        if ((config_max_server_runs > 0 && server_runs >= config_max_server_runs) || (config_mode == NEAT_MODE_LOOP && !flows_active)) {
-            fprintf(stderr, "%s - stopping event loop\n", __func__);
+        if (tnf->rcv.calls > 0) {
+            server_runs++;
+        }
+
+        if ((config_max_server_runs > 0 && server_runs >= config_max_server_runs) || (config_mode == NEAT_MODE_LOOP && server_runs >= config_num_flows)) {
+            fprintf(stderr, "%s - stopping event loop (passive)\n", __func__);
             neat_stop_event_loop(opCB->ctx);
         }
     }
@@ -365,12 +373,9 @@ on_close(struct neat_flow_operations *opCB)
         free(tnf->rcv.buffer);
     }
 
-    if (tnf) {
-        free(tnf);
-    }
+    free(tnf);
 
     fprintf(stderr, "%s - flow closed OK!\n", __func__);
-
     return NEAT_OK;
 }
 
@@ -385,20 +390,29 @@ main(int argc, char *argv[])
     struct neat_flow_operations ops_client[config_max_flows];
     struct neat_flow_operations op_server;
 
-    int arg, result;
+    int arg;
     char *arg_property = config_property;
+    char *remote_addr = NULL;
 
     memset(&ops_client, 0, sizeof(ops_client));
     memset(&op_server, 0, sizeof(op_server));
 
-    result = EXIT_SUCCESS;
-
-    while ((arg = getopt(argc, argv, "c:k:l:Ln:p:P:R:T:v:w:")) != -1) {
+    while ((arg = getopt(argc, argv, "c:f:k:l:Ln:p:P:R:T:v:w:")) != -1) {
         switch(arg) {
             case 'c':
                 cert_file = optarg;
                 if (config_log_level >= 1) {
                     printf("option - server certificate file: %s\n", cert_file);
+                }
+                break;
+            case 'f':
+                config_num_flows = atoi(optarg);
+                if (config_log_level >= 1) {
+                    printf("option - number of flows: %d\n", config_num_flows);
+                }
+                if (config_num_flows > config_max_flows) {
+                    printf("number of flows exceeds max number of flows (%d) - exit\n", config_max_flows);
+                    exit(EXIT_FAILURE);
                 }
                 break;
             case 'k':
@@ -496,7 +510,9 @@ main(int argc, char *argv[])
         neat_log_level(ctx, NEAT_LOG_ERROR);
     } else if (config_log_level == 1){
         neat_log_level(ctx, NEAT_LOG_WARNING);
-    } else {
+    } else if (config_log_level == 2) {
+        neat_log_level(ctx, NEAT_LOG_INFO);
+    } else if (config_log_level >= 3) {
         neat_log_level(ctx, NEAT_LOG_DEBUG);
     }
 
@@ -521,8 +537,14 @@ main(int argc, char *argv[])
             ops_client[i].userData = &result; // allow on_error to modify the result variable
             neat_set_operations(ctx, flows_client[i], &(ops_client[i]));
 
+            if (config_mode == NEAT_MODE_LOOP) {
+                remote_addr = loop_hostname;
+            } else {
+                remote_addr = argv[optind];
+            }
+
             // wait for on_connected or on_error to be invoked
-            if (neat_open(ctx, flows_client[i], argv[optind], config_port, NULL, 0) != NEAT_OK) {
+            if (neat_open(ctx, flows_client[i], remote_addr, config_port, NULL, 0) != NEAT_OK) {
                 fprintf(stderr, "Could not open flow\n");
                 exit(EXIT_FAILURE);
             }

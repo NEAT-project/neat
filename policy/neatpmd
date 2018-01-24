@@ -36,7 +36,8 @@ parser.add_argument('--pib', type=str, default=None, help='specify directory in 
 parser.add_argument('--sock', type=str, default=None, help='set path for Unix domain sockets')
 parser.add_argument('--controller', type=str, default=None, help='set URL of controller REST API')
 parser.add_argument('--rest-ip', type=str, default=None, help='set local management IP:PORT for external REST calls')
-parser.add_argument('--debug', type=bool, default=None, help='enable debugging')
+parser.add_argument('--debug', action='store_true', help='enable debugging')
+parser.add_argument('--no-cache', action='store_false', help='disable CIB caching of HE results')
 parser.add_argument('--rest', type=bool, default=None, help='enable REST API')
 parser.add_argument('--bypass', type=bool, default=False, help='enable debugging')
 parser.add_argument('-v', dest='log_level', type=int, default=2, help='set verbosity level')
@@ -60,8 +61,12 @@ if args.rest_ip:
         PM.REST_PORT = int(ip_port[1])
 if args.debug:
     PM.DEBUG = args.debug
+    if PM.DEBUG:
+        print("DEBUGGING ENABLED")
 if args.rest:
     PM.REST_ENABLE = args.rest
+
+PM.CIB_CACHE = args.no_cache
 
 try:
     os.makedirs(os.path.dirname(PM.DOMAIN_SOCK), exist_ok=True)
@@ -245,6 +250,21 @@ def process_request(reqs, num_candidates=10):
                 candidates.append(c)
         print('    Policy lookup returned %d candidates:' % len(candidates))
 
+    # post process candidates
+
+    # Each candidate must only contain a single transport protocol. Expand sets to individual candidates.
+    tmp_list = []
+    for candidate in candidates:
+        transport = candidate.get("transport").value
+        if isinstance(transport, set):
+            for t in transport:
+                c = deepcopy(candidate)
+                c["transport"].value = t
+                tmp_list.append(c)
+        else:
+            tmp_list.append(candidate)
+    candidates = tmp_list
+
     # TODO handle 'to_controller' property, wait for controller response
     candidates.sort(key=attrgetter('score'), reverse=True)
     top_candidates = candidates[:num_candidates]
@@ -260,7 +280,6 @@ def process_request(reqs, num_candidates=10):
 
     # TODO check if candidates contain the minimum src/dst/transport tuple
     print(policy.term_separator())
-
     return top_candidates
 
 
@@ -335,9 +354,7 @@ class PMProtocol(asyncio.Protocol):
             candidates_json = '[' + ', '.join(j) + ']\n'
         except TypeError:
             return
-
         data = candidates_json.encode(encoding='utf-8')
-
         self.transport.write(data)
         self.transport.close()
 

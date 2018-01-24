@@ -54,7 +54,7 @@ neat_linux_parse_nlattr(const struct nlattr *attr, void *data)
 //relevant information, which is parsed to OS-independent
 //neat_addr_update_src_list
 static neat_error_code
-neat_linux_handle_addr(struct neat_ctx *ctx, struct nlmsghdr *nl_hdr)
+nt_linux_handle_addr(struct neat_ctx *ctx, struct nlmsghdr *nl_hdr)
 {
     struct ifaddrmsg *ifm = (struct ifaddrmsg*) mnl_nlmsg_get_payload(nl_hdr);
     const struct nlattr *attr_table[IFA_MAX+1];
@@ -76,7 +76,7 @@ neat_linux_handle_addr(struct neat_ctx *ctx, struct nlmsghdr *nl_hdr)
 
     if (mnl_attr_parse(nl_hdr, sizeof(struct ifaddrmsg),
                 neat_linux_parse_nlattr, &tb_storage) != MNL_CB_OK) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Failed to parse nlattr for msg of type %d",
+        nt_log(ctx, NEAT_LOG_ERROR, "Failed to parse nlattr for msg of type %d",
                 __func__, nl_hdr->nlmsg_type);
         return NEAT_ERROR_OK;
     }
@@ -99,7 +99,7 @@ neat_linux_handle_addr(struct neat_ctx *ctx, struct nlmsghdr *nl_hdr)
 
     //TODO: Should this function be a callback instead? Will we have multiple
     //addresses handlers/types of context?
-    return neat_addr_update_src_list(ctx, &src_addr, ifm->ifa_index,
+    return nt_addr_update_src_list(ctx, (struct sockaddr*) &src_addr, ifm->ifa_index,
                                      nl_hdr->nlmsg_type == RTM_NEWADDR,
                                      ifm->ifa_prefixlen, ifa_pref, ifa_valid);
 }
@@ -117,7 +117,7 @@ neat_linux_nl_alloc(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
 
 //libuv dgram socket callback. Only checks if message is of right type and then
 //call function for parsing message
-static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
+static void nt_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
         const uv_buf_t *buf, const struct sockaddr *addr, unsigned int flags)
 {
     struct neat_ctx *nc = (struct neat_ctx*) handle->data;
@@ -128,7 +128,7 @@ static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
     while (mnl_nlmsg_ok(nl_hdr, numbytes)) {
         if (nl_hdr->nlmsg_type == RTM_NEWADDR ||
             nl_hdr->nlmsg_type == RTM_DELADDR) {
-            neat_ctx_fail_on_error(nc, neat_linux_handle_addr(nc, nl_hdr));
+            nt_ctx_fail_on_error(nc, nt_linux_handle_addr(nc, nl_hdr));
         } else if (nl_hdr->nlmsg_type == NLMSG_DONE) {
             nc->src_addr_dump_done = 1;
         }
@@ -138,7 +138,7 @@ static void neat_linux_nl_recv(uv_udp_t *handle, ssize_t nread,
 }
 
 //Out cleanup callback, nothing interesting here
-static void neat_linux_cleanup(struct neat_ctx *nc)
+static void nt_linux_cleanup(struct neat_ctx *nc)
 {
     if (nc->mnl_sock)
         mnl_socket_close(nc->mnl_sock);
@@ -146,38 +146,87 @@ static void neat_linux_cleanup(struct neat_ctx *nc)
     free(nc->mnl_rcv_buf);
 }
 
+#ifdef MPTCP_SUPPORT
+// Find out if MPTCP is supported and enabled on the machine
+void linux_read_sys_mptcp_enabled(struct neat_ctx *ctx)
+{
+    FILE *file = NULL;
+    char buff[4];
+    long value;
+    size_t len;
+
+    file = fopen("/proc/sys/net/mptcp/mptcp_enabled", "r");
+    if (!file) {
+        nt_log(ctx, NEAT_LOG_ERROR, "MPCP: Failed to open 'mptcp_enabled' file");
+        goto cleanup;
+    }
+
+    len = fread(buff, 1, sizeof(buff), file);
+    if (ferror(file) || !feof(file) || len <= 0) {
+        nt_log(ctx, NEAT_LOG_ERROR, "MPCP: Failed to read 'mptcp_enabled' file");
+        goto cleanup;
+    }
+
+    buff[len] = '\0';
+    value = strtol(buff, NULL, 0);
+
+    switch(value) {
+    case 0:
+        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_DISABLED");
+        ctx->sys_mptcp_enabled = MPTCP_SYS_DISABLED;
+        break;
+    case 1:
+        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_ENABLED");
+        ctx->sys_mptcp_enabled = MPTCP_SYS_ENABLED;
+        break;
+    case 2:
+        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_APP_CTRL");
+        ctx->sys_mptcp_enabled = MPTCP_SYS_APP_CTRL;
+        break;
+    default:
+        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_DISABLED");
+        ctx->sys_mptcp_enabled = MPTCP_SYS_DISABLED;
+    }
+
+cleanup:
+    if (file) {
+        fclose(file);
+    }
+}
+#endif // MPTCP_SUPPORT
+
 //Initialize the Linux-specific part of the context. All is related to
 //libmnl/netfilter
-struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *ctx)
+struct neat_ctx *nt_linux_init_ctx(struct neat_ctx *ctx)
 {
     //TODO: Consider allocator function
     if ((ctx->mnl_rcv_buf = calloc(1, MNL_SOCKET_BUFFER_SIZE)) == NULL) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Failed to allocate netlink buffer", __func__);
+        nt_log(ctx, NEAT_LOG_ERROR, "Failed to allocate netlink buffer", __func__);
         return NULL;
     }
 
     //Configure netlink and start requesting addresses
     if ((ctx->mnl_sock = mnl_socket_open(NETLINK_ROUTE)) == NULL) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Failed to allocate netlink socket", __func__);
+        nt_log(ctx, NEAT_LOG_ERROR, "Failed to allocate netlink socket", __func__);
         return NULL;
     }
 
     if (mnl_socket_bind(ctx->mnl_sock, (1 << (RTNLGRP_IPV4_IFADDR - 1)) |
                 (1 << (RTNLGRP_IPV6_IFADDR - 1)), 0)) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Failed to bind netlink socket", __func__);
+        nt_log(ctx, NEAT_LOG_ERROR, "Failed to bind netlink socket", __func__);
         return NULL;
     }
 
     //We need to build a list of all available source addresses as soon as
     //possible. It is started here
     if (neat_linux_request_addrs(ctx->mnl_sock) <= 0) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Failed to request addresses", __func__);
+        nt_log(ctx, NEAT_LOG_ERROR, "Failed to request addresses", __func__);
         return NULL;
     }
 
     //Add socket to event loop
     if (uv_udp_init(ctx->loop, &(ctx->uv_nl_handle))) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Failed to initialize uv UDP handle", __func__);
+        nt_log(ctx, NEAT_LOG_ERROR, "Failed to initialize uv UDP handle", __func__);
         return NULL;
     }
 
@@ -185,17 +234,21 @@ struct neat_ctx *neat_linux_init_ctx(struct neat_ctx *ctx)
     ctx->uv_nl_handle.data = ctx;
 
     if (uv_udp_open(&(ctx->uv_nl_handle), mnl_socket_get_fd(ctx->mnl_sock))) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Could not add netlink socket to uv", __func__);
+        nt_log(ctx, NEAT_LOG_ERROR, "Could not add netlink socket to uv", __func__);
         return NULL;
     }
 
     if (uv_udp_recv_start(&(ctx->uv_nl_handle), neat_linux_nl_alloc,
-                neat_linux_nl_recv)) {
-        neat_log(ctx, NEAT_LOG_ERROR, "Could not start receiving netlink packets", __func__);
+                nt_linux_nl_recv)) {
+        nt_log(ctx, NEAT_LOG_ERROR, "Could not start receiving netlink packets", __func__);
         return NULL;
     }
 
-    ctx->cleanup = neat_linux_cleanup;
+    ctx->cleanup = nt_linux_cleanup;
+
+#ifdef MPTCP_SUPPORT
+    linux_read_sys_mptcp_enabled(ctx);
+#endif // MPTCP_SUPPORT
 
     //Configure netlink socket, add to event loop and start dumping
     return ctx;
@@ -208,7 +261,7 @@ int linux_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
     int tcp_info_length;
     struct tcp_info tcpi;
 
-    neat_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     tcp_info_length = sizeof(struct tcp_info);
     if (getsockopt(flow->socket->fd, SOL_TCP, TCP_INFO, (void *)&tcpi,

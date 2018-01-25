@@ -8,14 +8,15 @@
 #include <errno.h>
 
 #ifdef WEBRTC_SUPPORT
-static char *config_property = "{\
-    \"transport\": [\
-        {\
-            \"value\": \"TCP\",\
-            \"precedence\": 1\
-        }\
-    ]\
-}";
+#define QUOTE(...) #__VA_ARGS__
+static char *config_property = QUOTE(
+{
+    "transport":  {
+        "value": ["TCP"],
+        "precedence": 1
+    }
+}
+);
 
 static neat_error_code signaling_on_connected(struct neat_flow_operations *opCB);
 static neat_error_code signaling_on_close(struct neat_flow_operations *opCB);

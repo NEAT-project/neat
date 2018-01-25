@@ -770,51 +770,47 @@ nt_free_flow(neat_flow *flow)
 neat_error_code
 neat_set_property(neat_ctx *ctx, neat_flow *flow, const char *properties)
 {
-    json_t *prop, *props, *value;
+    json_t *prop, *props;
+    json_t *val;
     json_error_t error;
     const char *key;
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s - %s", __func__, properties);
 
     if (strlen(properties) != 0) {
-      props = json_loads(properties, 0, &error);
-      if (props == NULL) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "Error in property string, line %d col %d",
-                 error.line, error.position);
-        nt_log(ctx, NEAT_LOG_DEBUG, "%s", error.text);
+        props = json_loads(properties, 0, &error);
+        if (props == NULL) {
+            nt_log(ctx, NEAT_LOG_DEBUG, "Error in property string, line %d col %d",
+            error.line, error.position);
+            nt_log(ctx, NEAT_LOG_DEBUG, "%s", error.text);
 
-        return NEAT_ERROR_BAD_ARGUMENT;
-      }
-
-      json_object_foreach(props, key, prop) {
-          
-          if (strcmp(key, "transport") == 0) {
-              for (uint16_t i = 0; i < json_array_size(prop); i++) {
-                  value = json_object_get(json_array_get(prop, i), "value");
-                  if (strcmp(json_string_value(value), "WEBRTC") == 0) {
-                      if (json_array_size(prop) > 1) {
-                          nt_log(ctx, NEAT_LOG_ERROR, "WEBRTC must be the only transport stack.");
-                          return NEAT_ERROR_UNABLE;
-                      } else {
-                          flow->webrtcEnabled = true;
-                      }
-                  } else {
-                      flow->webrtcEnabled = false;
-                  }
-              }
-          }
-
-        // This step is not strictly required, but informs of overwritten keys
-        if (json_object_del(flow->properties, key) == 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "Existing property %s was overwritten!", key);
+            return NEAT_ERROR_BAD_ARGUMENT;
         }
 
-        json_object_set(flow->properties, key, prop);
-      }
+        json_object_foreach(props, key, prop) {
+            nt_log(ctx, NEAT_LOG_ERROR, "%s - VLABLA 2", __func__);
+            if (strcmp(key, "transport") == 0) {
+                val = json_object_get(prop, "value");
+                assert(val);
+                if (json_typeof(val) == JSON_STRING) {
+                    if (strcmp(json_string_value(val), "WEBRTC") == 0) {
+                        flow->webrtcEnabled = true;
+                    }
+                }
+            }
 
-      json_decref(props);
+            // This step is not strictly required, but informs of overwritten keys
+            if (json_object_del(flow->properties, key) == 0) {
+                nt_log(ctx, NEAT_LOG_DEBUG, "Existing property %s was overwritten!", key);
+            }
+
+            json_object_set(flow->properties, key, prop);
+        }
+
+        json_decref(props);
     } else {
-      nt_log(ctx, NEAT_LOG_DEBUG, "User did not specify any properties!");
+        nt_log(ctx, NEAT_LOG_DEBUG, "User did not specify any properties!");
     }
 
 #if 0
@@ -5168,7 +5164,7 @@ nt_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         SKIP_OPTARG(NEAT_TAG_UNORDERED_SEQNUM)
         SKIP_OPTARG(NEAT_TAG_TRANSPORT_STACK)
     HANDLE_OPTIONAL_ARGUMENTS_END();
-    
+
     if (flow->socket->stack == NEAT_STACK_WEBRTC) {
         assert(flow->readBuffer);
         if (flow->readBufferSize > amt) {
@@ -5400,7 +5396,7 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #endif
     protocol = nt_stack_to_protocol(nt_base_stack(candidate->pollable_socket->stack));
     if (protocol == 0) {
-        nt_log(ctx, NEAT_LOG_INFO, "Stack %d not supported", candidate->pollable_socket->stack);
+        nt_log(ctx, NEAT_LOG_WARNING, "Stack (%s) %d not supported", stack_to_string(candidate->pollable_socket->stack), candidate->pollable_socket->stack);
         return -1;
     }
     if ((candidate->pollable_socket->fd =
@@ -5799,7 +5795,7 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
 
     protocol = nt_stack_to_protocol(nt_base_stack(listen_socket->stack));
     if (protocol == 0) {
-        nt_log(ctx, NEAT_LOG_INFO, "Stack %d not supported", listen_socket->stack);
+        nt_log(ctx, NEAT_LOG_WARNING, "Stack (%s) %d not supported", stack_to_string(listen_socket->stack), listen_socket->stack);
         return -1;
     }
 

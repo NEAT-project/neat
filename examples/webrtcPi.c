@@ -35,10 +35,10 @@ static uint16_t config_max_flows            = 100;
 
 #define BUFSIZE    2048
 static char *config_property = QUOTE(
-    {
-    "transport": {
-        "value": ["WEBRTC"],
-        "precedence": 1 
+{
+    "transport":  {
+        "value": "WEBRTC",
+        "precedence": 1
     }
 }
 );

@@ -78,24 +78,32 @@ static void client_start_transports(
     struct parameters* const remote_parameters = &client->remote_parameters;
 
     // Start ICE transport
-    if (rawrtc_ice_transport_start(
+    enum rawrtc_code ret = rawrtc_ice_transport_start(
             client->ice_transport, client->gatherer, remote_parameters->ice_parameters,
-            client->role) != RAWRTC_CODE_SUCCESS) {
+            client->role);
+    printf("trans:ret=%d\n", ret);
+    if (ret != RAWRTC_CODE_SUCCESS) {
         printf("Error starting ice transport \n");
         exit (-1);
     }
 
     // Start DTLS transport
-    if (rawrtc_dtls_transport_start(
-            client->dtls_transport, remote_parameters->dtls_parameters) != RAWRTC_CODE_SUCCESS) {
+    ret = rawrtc_dtls_transport_start(
+            client->dtls_transport, remote_parameters->dtls_parameters);
+
+   printf("dtls:ret=%d\n", ret);
+    if (ret != RAWRTC_CODE_SUCCESS) {
         printf("Error starting dtls transport \n");
         exit (-1);
     }
 
     // Start SCTP transport
-    if (rawrtc_sctp_transport_start(
+    ret = rawrtc_sctp_transport_start(
             client->sctp_transport, remote_parameters->sctp_parameters.capabilities,
-            remote_parameters->sctp_parameters.port) != RAWRTC_CODE_SUCCESS) {
+            remote_parameters->sctp_parameters.port);
+
+    printf("sctp:ret=%d\n", ret);
+    if (ret != RAWRTC_CODE_SUCCESS) {
         printf("Error starting SCTP transport \n");
         exit (-1);
     }
@@ -111,7 +119,8 @@ static void parse_param_from_signaling_server(struct neat_ctx *ctx, struct neat_
     struct rawrtc_ice_candidates* ice_candidates = NULL;
     struct rawrtc_dtls_parameters* dtls_parameters = NULL;
     struct sctp_parameters sctp_parameters;
-
+printf("parse_param_from_signaling_server\n");
+printf("state client->gatherer=%d\n", client->gatherer->state == RAWRTC_ICE_GATHERER_CLOSED);
     // Get dict from JSON
     error = get_json_buffer(&dict, params);
     if (error) {
@@ -142,9 +151,11 @@ static void parse_param_from_signaling_server(struct neat_ctx *ctx, struct neat_
     client->remote_parameters.ice_candidates = rawrtc_mem_ref(ice_candidates);
     client->remote_parameters.dtls_parameters = rawrtc_mem_ref(dtls_parameters);
     memcpy(&client->remote_parameters.sctp_parameters, &sctp_parameters, sizeof(sctp_parameters));
+    printf("vor client_set_parameters\n");
     client_set_parameters(client);
+    printf("vor client_start_transports\n");
     client_start_transports(client);
-
+printf("nach client_start_transports\n");
 out:
     // Un-reference
     rawrtc_mem_deref(dtls_parameters);
@@ -600,8 +611,8 @@ static void print_local_parameters(
     rawrtc_mem_deref(node);
 
     // Print JSON
-    rawrtc_dbg_info("Local Parameters:\n%H\n", rawrtc_json_encode_odict, dict);
-
+ //   rawrtc_dbg_info("Local Parameters:\n%H\n", rawrtc_json_encode_odict, dict);
+printf("nach localParameters\n");
     // Un-reference
     rawrtc_mem_deref(dict);
 
@@ -627,15 +638,21 @@ static void ice_gatherer_local_candidate_handler(
         void* const arg
 ) {
     struct peer_connection* const client = arg;
+    nt_log(client->ctx, NEAT_LOG_DEBUG, "ice_gatherer_local_candidate_handler");
     // Print local candidate
     default_ice_gatherer_local_candidate_handler(candidate, url, arg);
 
     // Add to other client as remote candidate (if type enabled)
     // Print local parameters (if last candidate)
     if (!candidate) {
+    nt_log(client->ctx, NEAT_LOG_DEBUG, "!candidate?");
     //    print_local_parameters(client,  NULL);
+    nt_log(client->ctx, NEAT_LOG_DEBUG, "print_local_parameters");
         print_local_parameters(client, client->listening_flow->operations.userData);
+        nt_log(client->ctx, NEAT_LOG_DEBUG, "vor webrtc_io_parameters");
         webrtc_io_parameters(client->ctx, client->listening_flow, NEAT_OK);
+    } else {
+        nt_log(client->ctx, NEAT_LOG_DEBUG, "candidate");
     }
 }
 
@@ -719,6 +736,7 @@ static void client_start_gathering(
     } else {
         nt_log(pc->ctx, NEAT_LOG_DEBUG, "Ice candidates gathered successfully");
     }
+    printf("client_start_gathering gatherClosed=%d\n", pc->gatherer->state==RAWRTC_ICE_GATHERER_CLOSED);
     rawrtc_mem_deref(pc->gatherer);
 }
 

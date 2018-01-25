@@ -31,7 +31,7 @@ static uint16_t config_log_level            = 1;
 static uint16_t config_num_flows            = 1;
 static uint16_t config_active               = 0;
 static uint32_t config_message_count        = 0;
-static uint16_t config_max_flows            = 100;
+static uint16_t config_max_flows            = 1;
 
 #define BUFSIZE    2048
 static char *config_property = QUOTE(

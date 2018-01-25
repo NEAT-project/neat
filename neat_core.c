@@ -7434,6 +7434,7 @@ void webrtc_io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 
 void webrtc_io_parameters(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 {
+nt_log(ctx, NEAT_LOG_WARNING, "%s", __func__);
     int stream_id   = -1;
     if (flow->operations.on_parameters) {
         READYCALLBACKSTRUCT;

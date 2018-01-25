@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/time.h>
+#include "gyropi.h"
+
 
 #define QUOTE(...) #__VA_ARGS__
 /**********************************************************************
@@ -449,6 +451,8 @@ main(int argc, char *argv[])
     int i = 0;
     struct neat_tlv options[1];
     char name[20];
+    float gyro_x, gyro_y, gyro_z;
+    int returncodefuermichael;
 
     struct neat_flow *flows[config_max_flows];
     struct neat_flow_operations ops[config_max_flows];
@@ -462,6 +466,13 @@ main(int argc, char *argv[])
     memset(&ops, 0, sizeof(ops));
 
     result = EXIT_SUCCESS;
+
+    sensehat_init();
+    returncodefuermichael = sensehat_get_gyro(&gyro_x, &gyro_y, &gyro_z);
+    fprintf(stderr, "returncodefuermichael = %d\n", returncodefuermichael);
+    fprintf(stderr, "x: %f - y: %f - z: %f\n", gyro_x, gyro_y, gyro_z);
+    exit(EXIT_FAILURE);
+
 
     while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:")) != -1) {
         switch(arg) {

@@ -24,15 +24,11 @@
 
 **********************************************************************/
 
-
-static uint32_t config_rcv_buffer_size      = 10240;
-static uint32_t config_snd_buffer_size      = 1024;
 static uint32_t config_runtime_max          = 0;
 static uint16_t config_port                 = 23232;
 static uint16_t config_log_level            = 1;
 static uint16_t config_num_flows            = 1;
 static uint16_t config_active               = 0;
-static uint32_t config_message_count        = 0;
 static uint16_t config_max_flows            = 100;
 
 #define BUFSIZE    2048
@@ -62,11 +58,6 @@ struct tneat_flow {
     struct tneat_flow_direction snd;
 };
 
-struct rgb {
-    char r[3];
-    char g[3];
-    char b[3];
-};
 static neat_error_code on_close(struct neat_flow_operations *opCB);
 static neat_error_code on_writable(struct neat_flow_operations *opCB);
 
@@ -84,8 +75,6 @@ print_usage()
     printf("\t- n \tmax number of messages to send (%d)\n", config_message_count);
     printf("\t- p \tport [receive on|send to] (%d)\n", config_port);
     printf("\t- P \tneat properties (%s)\n", config_property);
-    printf("\t- R \treceive buffer in byte (%d)\n", config_rcv_buffer_size);
-    printf("\t- T \tmax runtime in seconds (%d)\n", config_runtime_max);
     printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
 }
 
@@ -116,7 +105,6 @@ on_readable(struct neat_flow_operations *opCB)
     uint32_t buffer_filled;
     char buffer[BUFSIZ];
     neat_error_code code;
-printf("peer_webrtc: on_readable\n");
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -149,37 +137,16 @@ static neat_error_code
 on_all_written(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
-    struct timeval now, diff_time;
-    double time_elapsed;
 
-printf("peer_webrtc: on_all_written\n");
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    gettimeofday(&now, NULL);
-    timersub(&(tnf->snd.tv_last), &(tnf->snd.tv_first), &diff_time);
-    time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
-printf("sndCalls=%d message_count=%d time=%f config_runtime_max=%d\n", tnf->snd.calls, config_message_count, time_elapsed, config_runtime_max);
-    // runtime- or message-limit reached
-    if (time_elapsed >= config_runtime_max) {
-        neat_close(opCB->ctx, opCB->flow);
-    } else {
-        opCB->on_writable = on_writable;
-        opCB->on_all_written = NULL;
-        neat_set_operations(opCB->ctx, opCB->flow, opCB);
-    }
-    return NEAT_OK;
-}
+    opCB->on_writable = on_writable;
+    opCB->on_all_written = NULL;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
-void print_data_buffer(char *buffer, int len)
-{
-    int i;
-    printf("buffer= ");
-    for (i = 0; i < len; i++) {
-        printf("%c", buffer[i]);
-    }
-    printf("\n");
+    return NEAT_OK;
 }
 
 /*
@@ -193,28 +160,23 @@ on_writable(struct neat_flow_operations *opCB)
     int n;
     float gyro_x, gyro_y, gyro_z;
     char buf[BUFSIZE];
-    
+
     printf("peer_webrtc: on_writable\n");
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    if (tnf->snd.calls == 0) {
-        gettimeofday(&(tnf->snd.tv_first), NULL);
-    }
-
     if (sensehat_get_gyro(&gyro_x, &gyro_y, &gyro_z)) {
-        return NEAT_OK; 
+        return NEAT_OK;
     }
 
     n = snprintf(buf, BUFSIZE, "{\"x\": %f, \"y\": %f, \"z\": %f, \"valcount\": %d}\r\n", gyro_x, gyro_y, gyro_z, tnf->snd.calls++);
     code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) buf, n, NULL, 0);
-    
+
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: code %d\n", __func__, (int)code);
         return on_error(opCB);
     }
-
 
     return NEAT_OK;
 }
@@ -228,7 +190,6 @@ on_connected(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = NULL;
 
-    printf("!!!!!!!Connected!!!!!!\n");
     if (config_log_level >= 1) {
         fprintf(stderr, "%s() - connection established\n", __func__);
     }
@@ -248,47 +209,16 @@ on_connected(struct neat_flow_operations *opCB)
     opCB->on_readable = on_readable;
     opCB->on_writable = on_writable;
 
-    flows_active++;
     neat_set_operations(opCB->ctx, opCB->flow, opCB);
-
     return NEAT_OK;
 }
 
 static neat_error_code
 on_close(struct neat_flow_operations *opCB)
 {
-    printf("on_close\n");
     struct tneat_flow *tnf = opCB->userData;
-    char buffer_filesize_human[32];
-    double time_elapsed;
-    struct timeval diff_time;
 
     fprintf(stderr, "%s\n", __func__);
-
-    if (tnf == NULL && flows_active == 0) {
-        fprintf(stderr, "%s - stopping event loop\n", __func__);
-        neat_stop_event_loop(opCB->ctx);
-        return NEAT_OK;
-    }
-
-    timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
-    time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
-
-    printf("flow closed - read statistics\n");
-    printf("\tbytes\t\t: %u\n", tnf->rcv.bytes);
-    printf("\trcv-calls\t: %u\n", tnf->rcv.calls);
-    printf("\tduration\t: %.2fs\n", time_elapsed);
-    printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
-
-    // write print statistics
-    timersub(&(tnf->snd.tv_last), &(tnf->snd.tv_first), &diff_time);
-    time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
-
-    printf("flow closed - write statistics\n");
-    printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
-    printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
-    printf("\tduration\t: %.2fs\n", time_elapsed);
-    printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
 
     if (tnf) {
         free(tnf);
@@ -296,10 +226,6 @@ on_close(struct neat_flow_operations *opCB)
     }
 
     fprintf(stderr, "%s - flow closed OK!\n", __func__);
-
-    // stop event loop if we are active part
-    flows_active--;
-    printf("active flows left: %d\n", flows_active);
 
     return NEAT_OK;
 }

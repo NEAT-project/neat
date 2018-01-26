@@ -39,7 +39,7 @@ IF(WEBRTC_SUPPORT)
     LIST(APPEND neat_programs
         peer_webrtc.c
         peer_webrtc_signaling.c
-	signaling.c
+        signaling.c
         webrtcPi.c
     )
 ENDIF()
@@ -54,8 +54,9 @@ FOREACH (source_file ${neat_programs})
         util.c
         picohttpparser.c
         webrtc_signaling.c
+        gyropi.cpp
     )
-    TARGET_LINK_LIBRARIES(${source_file_we} neat)
+    TARGET_LINK_LIBRARIES(${source_file_we} neat RTIMULib)
     INSTALL(TARGETS             ${source_file_we}
             RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/libneat
             BUNDLE DESTINATION  ${CMAKE_INSTALL_LIBDIR}/libneat)

@@ -435,7 +435,7 @@ enum rawrtc_code get_json_stdin(
 
     // Decode JSON
     if (rawrtc_json_decode_odict(dictp, 16, buffer, length, 3) != RAWRTC_CODE_SUCCESS) {
-    	return RAWRTC_CODE_NO_VALUE;
+        return RAWRTC_CODE_NO_VALUE;
     }
     return RAWRTC_CODE_SUCCESS;
 }
@@ -1203,14 +1203,8 @@ void set_sctp_parameters(
 /*
  * Get the ICE role from a string.
  */
-enum rawrtc_code get_ice_role(
-        enum rawrtc_ice_role* const rolep, // de-referenced
-        uint8_t role
-      //  char const* const str
-) {
-    // Get ICE role
-  //  switch (str[0]) {
-  	switch (role) {
+enum rawrtc_code get_ice_role(enum rawrtc_ice_role* const rolep, uint8_t role) {
+    switch (role) {
         case 0:
             *rolep = RAWRTC_ICE_ROLE_CONTROLLED;
             return RAWRTC_CODE_SUCCESS;

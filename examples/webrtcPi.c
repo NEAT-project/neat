@@ -24,12 +24,11 @@
 
 **********************************************************************/
 
-static uint32_t config_runtime_max          = 0;
 static uint16_t config_port                 = 23232;
 static uint16_t config_log_level            = 1;
-static uint16_t config_num_flows            = 1;
 static uint16_t config_active               = 0;
 static uint16_t config_max_flows            = 100;
+static uint16_t config_num_flows            = 1;
 
 #define BUFSIZE    2048
 static char *config_property = QUOTE(
@@ -41,7 +40,6 @@ static char *config_property = QUOTE(
 }
 );
 
-static uint32_t flows_active = 0;
 static struct neat_signaling_context *sctx;
 
 //static int pipeFd;
@@ -72,7 +70,6 @@ print_usage()
     }
 
     printf("tneat [OPTIONS] [HOST]\n");
-    printf("\t- n \tmax number of messages to send (%d)\n", config_message_count);
     printf("\t- p \tport [receive on|send to] (%d)\n", config_port);
     printf("\t- P \tneat properties (%s)\n", config_property);
     printf("\t- v \tlog level 0..3 (%d)\n", config_log_level);
@@ -136,8 +133,6 @@ on_readable(struct neat_flow_operations *opCB)
 static neat_error_code
 on_all_written(struct neat_flow_operations *opCB)
 {
-    struct tneat_flow *tnf = opCB->userData;
-
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
@@ -260,18 +255,6 @@ main(int argc, char *argv[])
 
     while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:")) != -1) {
         switch(arg) {
-        case 'l':
-            config_snd_buffer_size = atoi(optarg);
-            if (config_log_level >= 1) {
-                printf("option - send buffer size: %d\n", config_snd_buffer_size);
-            }
-            break;
-        case 'n':
-            config_message_count = atoi(optarg);
-            if (config_log_level >= 1) {
-                printf("option - message limit: %d\n", config_message_count);
-            }
-            break;
         case 'p':
             config_port = atoi(optarg);
             if (config_log_level >= 1) {
@@ -287,18 +270,6 @@ main(int argc, char *argv[])
             }
             if (config_log_level >= 1) {
                 printf("option - properties: %s\n", arg_property);
-            }
-            break;
-        case 'R':
-            config_rcv_buffer_size = atoi(optarg);
-            if (config_log_level >= 1) {
-                printf("option - receive buffer size: %d\n", config_rcv_buffer_size);
-            }
-            break;
-        case 'T':
-            config_runtime_max = atoi(optarg);
-            if (config_log_level >= 1) {
-                printf("option - runtime limit: %d\n", config_runtime_max);
             }
             break;
         case 'v':

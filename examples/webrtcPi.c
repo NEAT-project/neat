@@ -51,7 +51,6 @@ static struct neat_signaling_context *sctx;
 //static int pipeFd;
 
 struct tneat_flow_direction {
-    unsigned char *buffer;
     uint32_t calls;
     uint32_t bytes;
     struct timeval tv_first;
@@ -61,10 +60,6 @@ struct tneat_flow_direction {
 struct tneat_flow {
     struct tneat_flow_direction rcv;
     struct tneat_flow_direction snd;
-    unsigned char data_buffer[BUFSIZE];
-    uint32_t data_buffer_length;
-    unsigned char stored_data_buffer[BUFSIZE];
-    uint32_t stored_data_buffer_length;
 };
 
 struct rgb {
@@ -118,18 +113,15 @@ on_parameters(struct neat_flow_operations *opCB)
 static neat_error_code
 on_readable(struct neat_flow_operations *opCB)
 {
-    struct tneat_flow *tnf = opCB->userData;
     uint32_t buffer_filled;
-   // struct timeval diff_time;
+    char buffer[BUFSIZ];
     neat_error_code code;
-  //  char buffer_filesize_human[32];
-  //  double time_elapsed;
 printf("peer_webrtc: on_readable\n");
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    code = neat_read(opCB->ctx, opCB->flow, tnf->rcv.buffer, config_rcv_buffer_size, &buffer_filled, NULL, 0);
+    code = neat_read(opCB->ctx, opCB->flow, (unsigned char *) &buffer, BUFSIZ, &buffer_filled, NULL, 0);
     if (code) {
         if (code == NEAT_ERROR_WOULD_BLOCK) {
             fprintf(stderr, "%s - neat_read warning: NEAT_ERROR_WOULD_BLOCK\n", __func__);
@@ -141,16 +133,13 @@ printf("peer_webrtc: on_readable\n");
     }
 
     if (buffer_filled > 0) {
-        // we got data!
-
         if (config_log_level >= 2) {
             printf("%s: neat_read  - %d byte\n", opCB->label, buffer_filled);
             if (config_log_level >= 4) {
-                fwrite(tnf->rcv.buffer, sizeof(char), buffer_filled, stdout);
+                fwrite(&buffer, sizeof(char), buffer_filled, stdout);
                 printf("\n");
             }
         }
-    // peer disconnected
     }
 
     return NEAT_OK;
@@ -201,124 +190,32 @@ on_writable(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
-    //int n = 0;
-    //char buf[BUFSIZE];
-    //unsigned int trunc = 0, i = 0, ok = 0, j = 0;
-    //ok = 0;
+    int n;
+    float gyro_x, gyro_y, gyro_z;
+    char buf[BUFSIZE];
+    
     printf("peer_webrtc: on_writable\n");
     if (config_log_level >= 2) {
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    // record first send call
     if (tnf->snd.calls == 0) {
         gettimeofday(&(tnf->snd.tv_first), NULL);
     }
-#if 0
-    if (tnf->stored_data_buffer_length > 0) {
-      printf("%d bytes stored data left\n", tnf->stored_data_buffer_length);
-      //  print_data_buffer((char *)tnf->stored_data_buffer, tnf->stored_data_buffer_length);
-        j = 0;
-        ok = 0;
-        for (i = 0; i < tnf->stored_data_buffer_length; i++) {
-            if (ok == 0) {
-                tnf->data_buffer[tnf->data_buffer_length + i] = tnf->stored_data_buffer[i];
-                if (tnf->stored_data_buffer[i] == '\0') {
-                    ok = 1;
-                    tnf->data_buffer_length += i;
-                }
-            } else {
-                tnf->stored_data_buffer[j] =  tnf->stored_data_buffer[i];
-                j++;
-                if (j == tnf->stored_data_buffer_length) {
-                    trunc = 1;
-                }
-            }
-        }
-        tnf->stored_data_buffer_length = j;
-      /*  printf("%d stored_data_buffer\n", __LINE__);
-        print_data_buffer((char *)tnf->stored_data_buffer, tnf->stored_data_buffer_length);*/
-        if (ok == 0) {
-            tnf->data_buffer_length += i;
-            tnf->stored_data_buffer_length = tnf->data_buffer_length;
-            memcpy(tnf->stored_data_buffer, tnf->data_buffer, tnf->data_buffer_length);
-            tnf->data_buffer_length = 0;
-        }
+
+    if (sensehat_get_gyro(&gyro_x, &gyro_y, &gyro_z)) {
+        return NEAT_OK; 
     }
 
-    if (ok == 0) {
-        do {
-            n = read(pipeFd, buf, sizeof(buf));
-            if (n > 0) {
-            printf("%d bytes read\n", n);
-                j = 0;
-                if (tnf->stored_data_buffer_length > 0) {
-                    memcpy(tnf->data_buffer, tnf->stored_data_buffer, tnf->stored_data_buffer_length);
-                    tnf->data_buffer_length = tnf->stored_data_buffer_length;
-                    tnf->stored_data_buffer_length = 0;
-                   // print_data_buffer((char *)tnf->data_buffer, tnf->data_buffer_length);
-                }
-                for (i = 0; i < (unsigned int) n; i++) {
-                    if (ok == 0) {
-                        tnf->data_buffer[tnf->data_buffer_length + i] = buf[i];
-                        if (buf[i] == '\0') {
-                            ok = 1;
-                            tnf->data_buffer_length += i;
-                        }
-                    } else {
-                        tnf->stored_data_buffer[tnf->stored_data_buffer_length + j] = buf[i];
-                        j++;
-                        if (j == (unsigned int)n) {
-                           trunc = 1;
-                        }
-                    }
-                }
-                tnf->stored_data_buffer_length = j;
-                if (ok == 0) {
-                    tnf->data_buffer_length += i;
-                    memcpy(tnf->stored_data_buffer, tnf->data_buffer, tnf->data_buffer_length);
-                    tnf->data_buffer_length = 0;
-                }
-            }
-        } while ((ok == 0 && trunc == 1) || (n == -1 && errno == EAGAIN));
-    }
-
-
-    fprintf(stderr, "read() got %u bytes, data_buffer: %s\n", strlen((const char *)tnf->data_buffer) + 1, tnf->data_buffer);
-
-    if (ok == 1) {
-        tnf->data_buffer_length = 0;
-    }
-
-    //opCB->on_writable = NULL;
-    //opCB->on_all_written = on_all_written;
-    //neat_set_operations(opCB->ctx, opCB->flow, opCB);
-
-    printf("%d: %s\n", i, tnf->data_buffer);
-
-    // increase stats
-    tnf->snd.calls++;
-    tnf->snd.bytes += strlen((const char *)tnf->data_buffer);
-    gettimeofday(&(tnf->snd.tv_last), NULL);
-
-    if (config_log_level >= 2) {
-        printf("%s: neat_write - # %u - %zu byte\n", opCB->label, tnf->snd.calls, strlen((const char *)tnf->data_buffer));
-        if (config_log_level >= 4) {
-            printf("neat_write - content\n");
-            //fwrite(data_buffer_0, sizeof(char), strlen(str), stdout);
-            printf("\n");
-        }
-    }
-#else
-    tnf->data_buffer_length = snprintf((char *)tnf->data_buffer, BUFSIZE, "{\"y\": 0.0026707183569669724, \"x\": -0.008392412215471268, \"valcount\": %d, \"z\": 1.0232830047607422}\r\n", tnf->snd.calls++);
-    //tnf->data_buffer[tnf->data_buffer_length] = 0;
-#endif
-    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *)tnf->data_buffer, strlen((const char *)tnf->data_buffer) + 1, NULL, 0);
-    printf("%s", tnf->data_buffer);
+    n = snprintf(buf, BUFSIZE, "{\"x\": %f, \"y\": %f, \"z\": %f, \"valcount\": %d}\r\n", gyro_x, gyro_y, gyro_z, tnf->snd.calls++);
+    code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) buf, n, NULL, 0);
+    
     if (code != NEAT_OK) {
         fprintf(stderr, "%s - neat_write error: code %d\n", __func__, (int)code);
         return on_error(opCB);
     }
+
+
     return NEAT_OK;
 }
 
@@ -330,44 +227,22 @@ static neat_error_code
 on_connected(struct neat_flow_operations *opCB)
 {
     struct tneat_flow *tnf = NULL;
-  //  neat_error_code code;
 
- printf("!!!!!!!Connected!!!!!!\n");
+    printf("!!!!!!!Connected!!!!!!\n");
     if (config_log_level >= 1) {
         fprintf(stderr, "%s() - connection established\n", __func__);
     }
-#if 0
-    pipeFd = open("../../examples/pipedata.fifo", O_RDONLY);
-    if (pipeFd == -1) {
-        printf("Could not open pipe\n");
-        exit(EXIT_FAILURE);
-    }
-    int flags = fcntl(pipeFd, F_GETFL);
-    flags |= O_NONBLOCK;
-    fcntl(pipeFd, F_SETFL, flags);
-#endif
     if ((opCB->userData = calloc(1, sizeof(struct tneat_flow))) == NULL) {
         fprintf(stderr, "%s - could not allocate tneat_flow\n", __func__);
         exit(EXIT_FAILURE);
     }
     tnf = opCB->userData;
 
-  /*  if ((tnf->snd.buffer = malloc(config_snd_buffer_size)) == NULL) {
-        fprintf(stderr, "%s - could not allocate send buffer\n", __func__);
-        exit(EXIT_FAILURE);
-    }*/
-
-    if ((tnf->rcv.buffer = malloc(config_rcv_buffer_size)) == NULL) {
-        fprintf(stderr, "%s - could not allocate receive buffer\n", __func__);
-        exit(EXIT_FAILURE);
-    }
-
     // reset stats
     tnf->snd.calls = 0;
     tnf->snd.bytes = 0;
     tnf->rcv.calls = 0;
     tnf->rcv.bytes = 0;
-    tnf->stored_data_buffer_length = 0;
 
     // set callbacks
     opCB->on_readable = on_readable;
@@ -415,17 +290,6 @@ on_close(struct neat_flow_operations *opCB)
     printf("\tduration\t: %.2fs\n", time_elapsed);
     printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
 
-    // cleanup
-    if (tnf->snd.buffer) {
-        free(tnf->snd.buffer);
-        tnf->snd.buffer = NULL;
-    }
-
-    if (tnf->rcv.buffer) {
-        free(tnf->rcv.buffer);
-        tnf->rcv.buffer = NULL;
-    }
-
     if (tnf) {
         free(tnf);
         tnf = 0;
@@ -436,10 +300,6 @@ on_close(struct neat_flow_operations *opCB)
     // stop event loop if we are active part
     flows_active--;
     printf("active flows left: %d\n", flows_active);
-  /*  if (config_active && !flows_active) {
-        fprintf(stderr, "%s - stopping event loop\n", __func__);
-        neat_stop_event_loop(opCB->ctx);
-    }*/
 
     return NEAT_OK;
 }
@@ -471,8 +331,6 @@ main(int argc, char *argv[])
     returncodefuermichael = sensehat_get_gyro(&gyro_x, &gyro_y, &gyro_z);
     fprintf(stderr, "returncodefuermichael = %d\n", returncodefuermichael);
     fprintf(stderr, "x: %f - y: %f - z: %f\n", gyro_x, gyro_y, gyro_z);
-    exit(EXIT_FAILURE);
-
 
     while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:")) != -1) {
         switch(arg) {

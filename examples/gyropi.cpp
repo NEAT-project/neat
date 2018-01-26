@@ -1,3 +1,4 @@
+#ifdef HAVE_RTIMULIB_H
 #include "RTIMULib.h"
 
 static RTIMUSettings *settings;
@@ -48,3 +49,14 @@ extern "C" int sensehat_get_gyro(float *x, float *y, float *z) {
  
     return 0;
 }
+#else
+
+extern "C" int sensehat_init(void) {
+    return 0;
+}
+
+extern "C" int sensehat_get_gyro(float &x, float &y, float &z) {
+    return 0;
+}
+
+#endif

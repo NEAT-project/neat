@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/time.h>
-#include "gyropi.h"
 
+#include "gyropi.h"
 
 #define QUOTE(...) #__VA_ARGS__
 /**********************************************************************

@@ -39,7 +39,7 @@ IF(WEBRTC_SUPPORT)
     LIST(APPEND neat_programs
         peer_webrtc.c
         peer_webrtc_signaling.c
-	signaling.c
+        signaling.c
         webrtcPi.c
     )
 ENDIF()

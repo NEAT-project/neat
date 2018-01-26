@@ -814,7 +814,7 @@ neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t peer_role
         peer.gather_options = gather_options;
         peer.role = role;
 
-	    // Initialise client
+        // Initialise client
         client_init(&peer);
 
 

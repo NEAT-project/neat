@@ -4093,7 +4093,7 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
         OPTIONAL_FLOAT(NEAT_TAG_PRIORITY, priority)
         OPTIONAL_STRING(NEAT_TAG_CC_ALGORITHM, cc_algorithm)
 #if defined(WEBRTC_SUPPORT)
-	OPTIONAL_STRING(NEAT_TAG_CHANNEL_NAME, channel_name)
+        OPTIONAL_STRING(NEAT_TAG_CHANNEL_NAME, channel_name)
 #endif
     HANDLE_OPTIONAL_ARGUMENTS_END();
 

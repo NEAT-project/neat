@@ -492,12 +492,14 @@ on_handle_closed(uv_handle_t *handle)
 static void
 on_handle_closed_candidate(uv_handle_t *handle)
 {
-    //nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     struct neat_he_candidate *candidate = (struct neat_he_candidate *)handle->data;
+
     close(candidate->pollable_socket->fd);
+
     if (candidate->pollable_socket->dtls_data) {
         free_dtlsdata(candidate->pollable_socket->dtls_data);
     }
+
     free(candidate->pollable_socket);
     free(candidate->if_name);
     json_decref(candidate->properties);
@@ -510,16 +512,24 @@ nt_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
 {
     struct neat_he_sockopt *sockopt;
     struct neat_he_sockopt *tmp;
+    struct linger so_linger;
+
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (candidate == NULL) {
         return;
     }
 
+    // Enable SO_LINGER so that the following close will abort the connection.
+    // It is desired to abort any unused connections.
+    so_linger.l_onoff = 1;
+    so_linger.l_linger = 0;
+
     if (candidate->prio_timer != NULL) {
         uv_timer_stop(candidate->prio_timer);
         uv_close((uv_handle_t *) candidate->prio_timer, on_handle_closed);
     }
+
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
 
@@ -540,10 +550,22 @@ nt_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
         } else {
             if (candidate->pollable_socket->fd == -1) {
                 nt_log(ctx, NEAT_LOG_DEBUG,"%s: Candidate does not use a socket", __func__);
+#if defined(USRSCTP_SUPPORT)
+                if (candidate->pollable_socket->usrsctp_socket != NULL) {
+                    if (usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(struct linger)) < 0) {
+                        nt_log(ctx, NEAT_LOG_DEBUG, "%s - usrsctp_setsockopt(SO_LINGER) failed", __func__);
+                    }
+
+                    usrsctp_close(candidate->pollable_socket->usrsctp_socket);
+                }
+#endif
                 free(candidate->pollable_socket->handle);
             } else if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
                 nt_log(ctx, NEAT_LOG_DEBUG,"%s: Release candidate after closing (%d)", __func__,
                        candidate->pollable_socket->fd);
+                if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(struct linger)) < 0) {
+                    nt_log(ctx, NEAT_LOG_DEBUG, "%s - setsockopt(SO_LINGER) failed", __func__);
+                }
                 candidate->pollable_socket->handle->data = candidate;
                 uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed_candidate);
                 return;

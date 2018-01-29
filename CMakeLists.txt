@@ -173,7 +173,6 @@ IF (MPTCP_SUPPORT)
     ADD_DEFINITIONS(-DMPTCP_SUPPORT)
 ENDIF()
 
-
 OPTION(NEAT_LOG "enable NEAT log module" 1)
 IF (NEAT_LOG)
     ADD_DEFINITIONS(-DNEAT_LOG)
@@ -194,7 +193,7 @@ IF (SCTP_MULTISTREAMING)
     ADD_DEFINITIONS(-DSCTP_MULTISTREAMING)
 ENDIF()
 
-OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 0)
+OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 1)
 
 OPTION(SOCKET_API "Include the socket API" 0)
 
@@ -204,13 +203,11 @@ IF (SWIG_PYTHON)
     INCLUDE(${SWIG_USE_FILE})
     FIND_PACKAGE(PythonLibs 2.7 REQUIRED)
     INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
-
     INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
     SET(CMAKE_SWIG_FLAGS "")
     SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}  -Wno-error=shadow -Wno-error=pedantic")
 
-    #SET_SOURCE_FILES_PROPERTIES(neat_swig.i PROPERTIES CPLUSPLUS ON)
     SET_SOURCE_FILES_PROPERTIES(neat_swig.i PROPERTIES SWIG_FLAGS "-includeall")
 ENDIF()
 
@@ -360,7 +357,6 @@ ENDIF()
 
 # COMPILER FLAGS
 #################################################
-# -Wno-array-bounds is unfortunate, but caused by https://bugs.llvm.org/show_bug.cgi?id=20144
 SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror")
 

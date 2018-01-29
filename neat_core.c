@@ -811,7 +811,6 @@ neat_set_property(neat_ctx *ctx, neat_flow *flow, const char *properties)
         }
 
         json_object_foreach(props, key, prop) {
-            nt_log(ctx, NEAT_LOG_ERROR, "%s - VLABLA 2", __func__);
             if (strcmp(key, "transport") == 0) {
                 val = json_object_get(prop, "value");
                 assert(val);

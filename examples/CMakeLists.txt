@@ -33,6 +33,7 @@ LIST(APPEND neat_property_examples
     prop_tcp_security.json
     prop_streaming_mode.json
     prop_message_mode.json
+    webrtcDCExample.sh
 )
 
 IF (WEBRTC_SUPPORT)

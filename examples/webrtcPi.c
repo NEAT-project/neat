@@ -173,6 +173,10 @@ on_writable(struct neat_flow_operations *opCB)
         return on_error(opCB);
     }
 
+    opCB->on_writable = NULL;
+    opCB->on_all_written = on_all_written;
+    neat_set_operations(opCB->ctx, opCB->flow, opCB);
+
     return NEAT_OK;
 }
 
@@ -232,8 +236,6 @@ main(int argc, char *argv[])
     int i = 0;
     struct neat_tlv options[1];
     char name[20];
-    float gyro_x, gyro_y, gyro_z;
-    int returncodefuermichael;
 
     struct neat_flow *flows[config_max_flows];
     struct neat_flow_operations ops[config_max_flows];
@@ -249,9 +251,6 @@ main(int argc, char *argv[])
     result = EXIT_SUCCESS;
 
     sensehat_init();
-    returncodefuermichael = sensehat_get_gyro(&gyro_x, &gyro_y, &gyro_z);
-    fprintf(stderr, "returncodefuermichael = %d\n", returncodefuermichael);
-    fprintf(stderr, "x: %f - y: %f - z: %f\n", gyro_x, gyro_y, gyro_z);
 
     while ((arg = getopt(argc, argv, "l:n:p:P:R:T:v:")) != -1) {
         switch(arg) {
@@ -263,8 +262,7 @@ main(int argc, char *argv[])
             break;
         case 'P':
             if (read_file(optarg, &arg_property) < 0) {
-                fprintf(stderr, "Unable to read properties from %s: %s",
-                        optarg, strerror(errno));
+                fprintf(stderr, "Unable to read properties from %s: %s", optarg, strerror(errno));
                 result = EXIT_FAILURE;
                 goto cleanup;
             }
@@ -345,7 +343,6 @@ main(int argc, char *argv[])
         result = EXIT_FAILURE;
         goto cleanup;
     }
-printf("neat_accept returned\n");
 
     for (i = 0; i < config_num_flows; i++) {
         if (config_port == 0) {
@@ -388,7 +385,6 @@ printf("neat_accept returned\n");
 
     // cleanup
 cleanup:
-printf("cleanup\n");
 
     if (config_log_level >= 1) {
         printf("freeing ctx bye bye!\n");

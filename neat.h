@@ -73,9 +73,11 @@ struct neat_flow_operations {
     neat_flow_operations_fx on_aborted;
     neat_flow_operations_fx on_timeout;
     neat_flow_operations_fx on_close;
+    neat_flow_operations_fx on_parameters;
     neat_cb_send_failure_t on_send_failure;
     neat_cb_flow_slowdown_t on_slowdown;
     neat_cb_flow_rate_hint_t on_rate_hint;
+    char *label;
 
     struct neat_ctx *ctx;
     struct neat_flow *flow;
@@ -106,6 +108,7 @@ enum neat_tlv_tag {
     NEAT_TAG_FLOW_GROUP,
     NEAT_TAG_CC_ALGORITHM,
     NEAT_TAG_TRANSPORT_STACK,
+    NEAT_TAG_CHANNEL_NAME,
 
     NEAT_TAG_LAST
 };
@@ -165,7 +168,9 @@ NEAT_EXTERN int neat_get_qos(struct neat_ctx *ctx, struct neat_flow *flow);
 NEAT_EXTERN neat_error_code neat_set_ecn(struct neat_ctx *ctx,
                     struct neat_flow *flow, uint8_t ecn);
 NEAT_EXTERN neat_error_code neat_set_low_watermark(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t watermark);
-
+#if defined(WEBRTC_SUPPORT)
+NEAT_EXTERN neat_error_code neat_send_remote_parameters(struct neat_ctx *ctx, struct neat_flow *flow, char* params);
+#endif
 
 #define NEAT_ERROR_OK               (0)
 #define NEAT_OK                     NEAT_ERROR_OK
@@ -279,7 +284,8 @@ typedef enum {
     NEAT_STACK_TCP,
     NEAT_STACK_MPTCP,
     NEAT_STACK_SCTP,
-    NEAT_STACK_SCTP_UDP
+    NEAT_STACK_SCTP_UDP,
+    NEAT_STACK_WEBRTC
 } neat_protocol_stack_type;
 
 

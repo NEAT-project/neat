@@ -173,7 +173,6 @@ IF (MPTCP_SUPPORT)
     ADD_DEFINITIONS(-DMPTCP_SUPPORT)
 ENDIF()
 
-
 OPTION(NEAT_LOG "enable NEAT log module" 1)
 IF (NEAT_LOG)
     ADD_DEFINITIONS(-DNEAT_LOG)
@@ -204,15 +203,15 @@ IF (SWIG_PYTHON)
     INCLUDE(${SWIG_USE_FILE})
     FIND_PACKAGE(PythonLibs 2.7 REQUIRED)
     INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
-
     INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
     SET(CMAKE_SWIG_FLAGS "")
     SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}  -Wno-error=shadow -Wno-error=pedantic")
 
-    #SET_SOURCE_FILES_PROPERTIES(neat_swig.i PROPERTIES CPLUSPLUS ON)
     SET_SOURCE_FILES_PROPERTIES(neat_swig.i PROPERTIES SWIG_FLAGS "-includeall")
 ENDIF()
+
+OPTION(WEBRTC_SUPPORT "Include WebRTC support" 1)
 
 OPTION(SANITIZER_ADDRESS "Compile with address sanitizer" 0)
 
@@ -221,7 +220,6 @@ OPTION(SANITIZER_MEMORY "Compile with memory sanitizer" 0)
 IF (SANITIZER_ADDRESS AND SANITIZER_MEMORY)
     MESSAGE(FATAL_ERROR "Can not compile with both sanitizer options")
 ENDIF()
-
 
 
 # REQUIREMENTS
@@ -297,6 +295,24 @@ ELSE()
     MESSAGE(STATUS "jansson found: " ${JANSSON_LIB})
 ENDIF()
 
+IF (WEBRTC_SUPPORT)
+    SET(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${RAWRTC_PREFIX}/include)
+    SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${RAWRTC_PREFIX}/lib)
+    INCLUDE_DIRECTORIES(${INCLUDE_DIRECTORIES} ${RAWRTC_PREFIX}/include)
+
+    CHECK_INCLUDE_FILE(rawrtc.h HAVE_RAWRTC_H)
+    FIND_LIBRARY(RAWRTC_LIB rawrtc)
+
+    IF (NOT HAVE_RAWRTC_H OR NOT RAWRTC_LIB)
+        MESSAGE(WARNING "rawrtc.h not found - rawrtc installed?")
+        SET(WEBRTC_SUPPORT 0)
+    ELSE()
+        MESSAGE(STATUS "rawrtc found: " ${RAWRTC_LIB})
+        ADD_DEFINITIONS(-DWEBRTC_SUPPORT)
+        LIST(APPEND neat_sources neat_webrtc.c neat_webrtc_tools.c)
+    ENDIF()
+ENDIF()
+
 CHECK_INCLUDE_FILE(netinet/sctp.h HAVE_NETINET_SCTP_H)
 IF (HAVE_NETINET_SCTP_H)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NETINET_SCTP_H")
@@ -334,9 +350,13 @@ IF (HAVE_SYS_EPOLL_H)
     ADD_DEFINITIONS(-DHAVE_SYS_EPOLL_H)
 ENDIF()
 
+CHECK_INCLUDE_FILE_CXX(RTIMULib.h HAVE_RTIMULIB_H)
+IF (HAVE_RTIMULIB_H)
+    ADD_DEFINITIONS(-DHAVE_RTIMULIB_H)
+ENDIF()
+
 # COMPILER FLAGS
 #################################################
-# -Wno-array-bounds is unfortunate, but caused by https://bugs.llvm.org/show_bug.cgi?id=20144
 SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror")
 
@@ -438,9 +458,20 @@ LIST(APPEND neat_libs
     ${UV_LIB}
     ${LDNS_LIB}
     ${JANSSON_LIB}
-    ${OPENSSL_SSL_LIBRARY}
-    ${OPENSSL_CRYPTO_LIBRARY}
     )
+
+IF (OPENSSL_SUPPORT)
+    LIST(APPEND neat_libs
+        ${OPENSSL_SSL_LIBRARY}
+        ${OPENSSL_CRYPTO_LIBRARY}
+        )
+ENDIF()
+
+IF (WEBRTC_SUPPORT)
+    LIST(APPEND neat_libs
+        ${RAWRTC_LIB}
+    )
+ENDIF()
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     LIST(APPEND neat_libs ${MNL_LIB})

@@ -14,7 +14,7 @@
 #include "neat_security.h"
 
 #if defined(NEAT_USETLS) || defined(NEAT_SCTP_DTLS)
-typedef unsigned int bool;
+//typedef unsigned int bool;
 #define true 1
 #define false 0
 

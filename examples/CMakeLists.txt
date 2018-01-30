@@ -33,7 +33,17 @@ LIST(APPEND neat_property_examples
     prop_tcp_security.json
     prop_streaming_mode.json
     prop_message_mode.json
+    webrtcDCExample.sh
 )
+
+IF (WEBRTC_SUPPORT)
+    LIST(APPEND neat_programs
+        peer_webrtc.c
+        peer_webrtc_signaling.c
+        signaling.c
+        webrtcPi.c
+    )
+ENDIF()
 
 # BUILD EACH PROGRAM
 #################################################
@@ -44,12 +54,18 @@ FOREACH (source_file ${neat_programs})
         ${source_file}
         util.c
         picohttpparser.c
+        webrtc_signaling.c
+        gyropi.cpp
     )
     TARGET_LINK_LIBRARIES(${source_file_we} neat)
+    IF (HAVE_RTIMULIB_H)
+        TARGET_LINK_LIBRARIES(${source_file_we} RTIMULib)
+    ENDIF()
     INSTALL(TARGETS             ${source_file_we}
             RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/libneat
             BUNDLE DESTINATION  ${CMAKE_INSTALL_LIBDIR}/libneat)
 ENDFOREACH ()
+
 
 # COPY EXAMPLE PROPERTY FILES
 #################################################

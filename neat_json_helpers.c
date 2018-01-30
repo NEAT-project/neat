@@ -34,6 +34,7 @@ static struct neat_transport_property neat_transports[] = {
     {"UDP-lite", NEAT_STACK_UDPLITE},
     {"UDPLITE", NEAT_STACK_UDPLITE},
     {"SCTP/UDP", NEAT_STACK_SCTP_UDP},
+    {"WEBRTC", NEAT_STACK_WEBRTC}
 };
 
 neat_protocol_stack_type
@@ -85,7 +86,7 @@ nt_find_enabled_stacks(json_t *json, neat_protocol_stack_type *stacks,
     // assert(*stack_count >= NEAT_MAX_NUM_PROTO);
 
     transports = json_object_get(json, "transport");
-    if (transports==NULL) {
+    if (transports == NULL) {
       // The transport property is missing so we do not have a transport type.
       // This should not happen if the Policy Manager is running. We'll use the
       // following as a fallback:

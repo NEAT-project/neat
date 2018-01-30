@@ -173,9 +173,9 @@ on_writable(struct neat_flow_operations *opCB)
         return on_error(opCB);
     }
 
-    opCB->on_writable = NULL;
-    opCB->on_all_written = on_all_written;
-    neat_set_operations(opCB->ctx, opCB->flow, opCB);
+    //opCB->on_writable = NULL;
+    //opCB->on_all_written = on_all_written;
+    //neat_set_operations(opCB->ctx, opCB->flow, opCB);
 
     return NEAT_OK;
 }

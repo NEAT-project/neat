@@ -27,7 +27,7 @@ retcode=0
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "2" "interop.nplab.de"
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "212.201.121.80"
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "2a02:c6a0:4015:11::80"
-runtest "../examples/tneat" "-L -v 3"
+runtest "../examples/tneat" "-L" "-v" "3"
 runtest "../examples/tneat" "-L" "-P" "../examples/prop_tcp_delayed.json"
 
 # Tests which should fail

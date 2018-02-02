@@ -110,7 +110,8 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
     TAG_STRING(NEAT_TAG_PRIORITY),
     TAG_STRING(NEAT_TAG_FLOW_GROUP),
     TAG_STRING(NEAT_TAG_CC_ALGORITHM),
-    TAG_STRING(NEAT_TAG_TRANSPORT_STACK)
+    TAG_STRING(NEAT_TAG_TRANSPORT_STACK),
+    TAG_STRING(NEAT_TAG_CHANNEL_NAME)
 };
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -492,12 +493,14 @@ on_handle_closed(uv_handle_t *handle)
 static void
 on_handle_closed_candidate(uv_handle_t *handle)
 {
-    //nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     struct neat_he_candidate *candidate = (struct neat_he_candidate *)handle->data;
+
     close(candidate->pollable_socket->fd);
+
     if (candidate->pollable_socket->dtls_data) {
         free_dtlsdata(candidate->pollable_socket->dtls_data);
     }
+
     free(candidate->pollable_socket);
     free(candidate->if_name);
     json_decref(candidate->properties);
@@ -510,16 +513,24 @@ nt_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
 {
     struct neat_he_sockopt *sockopt;
     struct neat_he_sockopt *tmp;
+    struct linger so_linger;
+
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (candidate == NULL) {
         return;
     }
 
+    // Enable SO_LINGER so that the following close will abort the connection.
+    // It is desired to abort any unused connections.
+    so_linger.l_onoff = 1;
+    so_linger.l_linger = 0;
+
     if (candidate->prio_timer != NULL) {
         uv_timer_stop(candidate->prio_timer);
         uv_close((uv_handle_t *) candidate->prio_timer, on_handle_closed);
     }
+
     free(candidate->pollable_socket->dst_address);
     free(candidate->pollable_socket->src_address);
 
@@ -540,10 +551,22 @@ nt_free_candidate(struct neat_ctx *ctx, struct neat_he_candidate *candidate)
         } else {
             if (candidate->pollable_socket->fd == -1) {
                 nt_log(ctx, NEAT_LOG_DEBUG,"%s: Candidate does not use a socket", __func__);
+#if defined(USRSCTP_SUPPORT)
+                if (candidate->pollable_socket->usrsctp_socket != NULL) {
+                    if (usrsctp_setsockopt(candidate->pollable_socket->usrsctp_socket, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(struct linger)) < 0) {
+                        nt_log(ctx, NEAT_LOG_DEBUG, "%s - usrsctp_setsockopt(SO_LINGER) failed", __func__);
+                    }
+
+                    usrsctp_close(candidate->pollable_socket->usrsctp_socket);
+                }
+#endif
                 free(candidate->pollable_socket->handle);
             } else if (!uv_is_closing((uv_handle_t*)candidate->pollable_socket->handle)) {
                 nt_log(ctx, NEAT_LOG_DEBUG,"%s: Release candidate after closing (%d)", __func__,
                        candidate->pollable_socket->fd);
+                if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(struct linger)) < 0) {
+                    nt_log(ctx, NEAT_LOG_DEBUG, "%s - setsockopt(SO_LINGER) failed", __func__);
+                }
                 candidate->pollable_socket->handle->data = candidate;
                 uv_close((uv_handle_t*)candidate->pollable_socket->handle, on_handle_closed_candidate);
                 return;
@@ -600,7 +623,6 @@ synchronous_free(neat_flow *flow)
     if (flow->cc_algorithm) {
         free((char*)flow->cc_algorithm);
     }
-
     if (flow->resolver_results) {
         nt_log(flow->ctx, NEAT_LOG_DEBUG, "%s - neat_resolver_free_results", __func__);
         nt_resolver_free_results(flow->resolver_results);
@@ -771,34 +793,45 @@ neat_error_code
 neat_set_property(neat_ctx *ctx, neat_flow *flow, const char *properties)
 {
     json_t *prop, *props;
+    json_t *val;
     json_error_t error;
     const char *key;
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s - %s", __func__, properties);
 
     if (strlen(properties) != 0) {
-      props = json_loads(properties, 0, &error);
-      if (props == NULL) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "Error in property string, line %d col %d",
-                 error.line, error.position);
-        nt_log(ctx, NEAT_LOG_DEBUG, "%s", error.text);
+        props = json_loads(properties, 0, &error);
+        if (props == NULL) {
+            nt_log(ctx, NEAT_LOG_DEBUG, "Error in property string, line %d col %d",
+            error.line, error.position);
+            nt_log(ctx, NEAT_LOG_DEBUG, "%s", error.text);
 
-        return NEAT_ERROR_BAD_ARGUMENT;
-      }
-
-      json_object_foreach(props, key, prop) {
-
-        // This step is not strictly required, but informs of overwritten keys
-        if (json_object_del(flow->properties, key) == 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "Existing property %s was overwritten!", key);
+            return NEAT_ERROR_BAD_ARGUMENT;
         }
 
-        json_object_set(flow->properties, key, prop);
-      }
+        json_object_foreach(props, key, prop) {
+            if (strcmp(key, "transport") == 0) {
+                val = json_object_get(prop, "value");
+                assert(val);
+                if (json_typeof(val) == JSON_STRING) {
+                    if (strcmp(json_string_value(val), "WEBRTC") == 0) {
+                        flow->webrtcEnabled = true;
+                    }
+                }
+            }
 
-      json_decref(props);
+            // This step is not strictly required, but informs of overwritten keys
+            if (json_object_del(flow->properties, key) == 0) {
+                nt_log(ctx, NEAT_LOG_DEBUG, "Existing property %s was overwritten!", key);
+            }
+
+            json_object_set(flow->properties, key, prop);
+        }
+
+        json_decref(props);
     } else {
-      nt_log(ctx, NEAT_LOG_DEBUG, "User did not specify any properties!");
+        nt_log(ctx, NEAT_LOG_DEBUG, "User did not specify any properties!");
     }
 
 #if 0
@@ -1011,6 +1044,9 @@ io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
             break;
         case NEAT_STACK_SCTP_UDP:
             snprintf(proto, 16, "SCTP/UDP");
+            break;
+        case NEAT_STACK_WEBRTC:
+            snprintf(proto, 16, "WebRTC");
             break;
         default:
             snprintf(proto, 16, "stack%d", flow->socket->stack);
@@ -4035,6 +4071,9 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     int group = 0;
     float priority = 0.5f;
     const char *cc_algorithm = NULL;
+#if defined(WEBRTC_SUPPORT)
+    const char *channel_name = NULL;
+#endif
     json_t *multihoming = NULL;
     json_t *val = NULL;
     json_t *security = NULL;
@@ -4052,6 +4091,9 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
         OPTIONAL_INTEGER(NEAT_TAG_FLOW_GROUP, group)
         OPTIONAL_FLOAT(NEAT_TAG_PRIORITY, priority)
         OPTIONAL_STRING(NEAT_TAG_CC_ALGORITHM, cc_algorithm)
+#if defined(WEBRTC_SUPPORT)
+        OPTIONAL_STRING(NEAT_TAG_CHANNEL_NAME, channel_name)
+#endif
     HANDLE_OPTIONAL_ARGUMENTS_END();
 
     if (stream_count > 1) {
@@ -4119,7 +4161,17 @@ neat_open(neat_ctx *ctx, neat_flow *flow, const char *name, uint16_t port,
     }
 
 #if 1
-    send_properties_to_pm(ctx, flow);
+    if (flow->webrtcEnabled) {
+#if defined(WEBRTC_SUPPORT)
+        nt_log(ctx, NEAT_LOG_DEBUG, "WEBRTC enabled\n");
+        flow->state = NEAT_FLOW_OPEN;
+        neat_webrtc_gather_candidates(ctx, flow, port, channel_name);
+#else
+        assert(false);
+#endif
+    } else {
+        send_properties_to_pm(ctx, flow);
+    }
 #else
     // TODO: Add name resolution call
     nt_resolve(ctx->resolver, AF_UNSPEC, flow->name, flow->port,
@@ -4523,6 +4575,12 @@ neat_accept(struct neat_ctx *ctx, struct neat_flow *flow,
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
+#if defined(WEBRTC_SUPPORT)
+    if (flow->webrtcEnabled) {
+        neat_set_listening_flow(ctx, flow);
+        return NEAT_OK;
+    }
+#endif
     if (flow->name) {
         return NEAT_ERROR_BAD_ARGUMENT;
     }
@@ -4850,6 +4908,8 @@ nt_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif // defined(SCTP_PRINFO)
 #endif // defined(SCTP_SNDINFO) || defined (SCTP_SNDRCV)
 
+    memset(&msghdr, 0, sizeof(msghdr));
+    memset(&iov, 0, sizeof(iov));
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -5072,6 +5132,9 @@ nt_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 #endif
         if (rv < 0 ) {
             nt_log(ctx, NEAT_LOG_WARNING, "%s - sending failed - %s", __func__, strerror(errno));
+            if (errno == ENOENT) {
+                flow->isClosing = 1;
+            }
             if (errno != EWOULDBLOCK) {
                 return NEAT_ERROR_IO;
             }
@@ -5125,6 +5188,24 @@ nt_read_from_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         SKIP_OPTARG(NEAT_TAG_UNORDERED_SEQNUM)
         SKIP_OPTARG(NEAT_TAG_TRANSPORT_STACK)
     HANDLE_OPTIONAL_ARGUMENTS_END();
+
+    if (flow->socket->stack == NEAT_STACK_WEBRTC) {
+        assert(flow->readBuffer);
+        if (flow->readBufferSize > amt) {
+            /* this can only happen if message boundaries are not preserved */
+            *actualAmt = amt;
+            memcpy(buffer, flow->readBuffer, amt);
+            /* This is very inefficient, we should also use a offset */
+            memmove(flow->readBuffer, flow->readBuffer + amt, flow->readBufferSize - amt);
+            flow->readBufferSize -= amt;
+        } else {
+            *actualAmt = flow->readBufferSize;
+            memcpy(buffer, flow->readBuffer, flow->readBufferSize);
+            flow->readBufferSize = 0;
+            flow->readBufferMsgComplete = 0;
+        }
+        goto end;
+    }
 
     if ((nt_base_stack(flow->socket->stack) == NEAT_STACK_UDP) ||
         (nt_base_stack(flow->socket->stack) == NEAT_STACK_UDPLITE) ||
@@ -5278,6 +5359,7 @@ int nt_stack_to_protocol(neat_protocol_stack_type stack)
             return IPPROTO_TCP;
 #ifdef IPPROTO_SCTP
         case NEAT_STACK_SCTP_UDP:
+        case NEAT_STACK_WEBRTC:
         case NEAT_STACK_SCTP:
             return IPPROTO_SCTP;
 #endif
@@ -5297,7 +5379,8 @@ nt_base_stack(neat_protocol_stack_type stack)
         case NEAT_STACK_SCTP:
             return stack;
         case NEAT_STACK_SCTP_UDP:
-            return NEAT_STACK_SCTP;
+        case NEAT_STACK_WEBRTC:
+            return NEAT_STACK_WEBRTC;
         default:
             return 0;
     }
@@ -5337,7 +5420,7 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
 #endif
     protocol = nt_stack_to_protocol(nt_base_stack(candidate->pollable_socket->stack));
     if (protocol == 0) {
-        nt_log(ctx, NEAT_LOG_INFO, "Stack %d not supported", candidate->pollable_socket->stack);
+        nt_log(ctx, NEAT_LOG_WARNING, "Stack (%s) %d not supported", stack_to_string(candidate->pollable_socket->stack), candidate->pollable_socket->stack);
         return -1;
     }
     if ((candidate->pollable_socket->fd =
@@ -5736,7 +5819,7 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
 
     protocol = nt_stack_to_protocol(nt_base_stack(listen_socket->stack));
     if (protocol == 0) {
-        nt_log(ctx, NEAT_LOG_INFO, "Stack %d not supported", listen_socket->stack);
+        nt_log(ctx, NEAT_LOG_WARNING, "Stack (%s) %d not supported", stack_to_string(listen_socket->stack), listen_socket->stack);
         return -1;
     }
 
@@ -6566,6 +6649,12 @@ neat_write(struct neat_ctx *ctx,
             unsigned int opt_count)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+#if defined(WEBRTC_SUPPORT)
+    if (flow->socket->stack == NEAT_STACK_WEBRTC) {
+        flow->notifyDrainPending = 1;
+        return neat_webrtc_write_to_channel(ctx, flow, buffer, amt, optional, opt_count);
+    }
+#endif // #if defined(WEBRTC_SUPPORT)
 
 #ifdef SCTP_MULTISTREAMING
     assert(flow->multistream_reset_out == false);
@@ -6631,6 +6720,12 @@ neat_shutdown(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
     flow->isClosing = 1;
+
+#if defined(WEBRTC_SUPPORT)
+    if (flow->webrtcEnabled) {
+        return rawrtc_stop_client(flow->peer_connection);
+    }
+#endif
 
     if (flow->isDraining) {
         return NEAT_OK;
@@ -6837,7 +6932,6 @@ nt_notify_close(neat_flow *flow)
         READYCALLBACKSTRUCT;
         flow->operations.on_close(&flow->operations);
     }
-
     // this was the last callback - free all ressources
     nt_free_flow(flow);
 }
@@ -6866,6 +6960,12 @@ neat_error_code
 neat_close(struct neat_ctx *ctx, struct neat_flow *flow)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
+#if defined(WEBRTC_SUPPORT)
+    if (flow->webrtcEnabled) {
+        return rawrtc_close_flow(flow, flow->peer_connection);
+    }
+#endif
 
 #ifdef SCTP_MULTISTREAMING
     if (flow->socket->multistream && flow->state == NEAT_FLOW_OPEN) {
@@ -7327,3 +7427,42 @@ nt_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid)
 }
 
 #endif // SCTP_MULTISTREAMING
+
+#if defined(WEBRTC_SUPPORT)
+void webrtc_io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
+{
+    flow->socket->usrsctp_socket = flow->peer_connection->sctp_transport->socket;
+    flow->socket->stack = NEAT_STACK_WEBRTC;
+    flow->socket->family = AF_CONN;
+    io_connected(ctx, flow, code);
+}
+
+void webrtc_io_readable(neat_ctx *ctx, neat_flow *flow, neat_error_code code, void *buffer, size_t size)
+{
+    int stream_id   = -1;
+    if (resize_read_buffer(flow) != READ_OK) {
+        nt_log(ctx, NEAT_LOG_WARNING, "%s - Could not resize read buffer", __func__);
+    }
+     memcpy(flow->readBuffer + flow->readBufferSize, buffer, size);
+     flow->readBufferSize += size;
+    if (flow->operations.on_readable) {
+        READYCALLBACKSTRUCT;
+        flow->operations.on_readable(&flow->operations);
+    }
+}
+
+void webrtc_io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
+{
+    io_writable(ctx, flow, code);
+}
+
+void webrtc_io_parameters(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
+{
+nt_log(ctx, NEAT_LOG_WARNING, "%s", __func__);
+    int stream_id   = -1;
+    if (flow->operations.on_parameters) {
+        READYCALLBACKSTRUCT;
+        flow->operations.on_parameters(&flow->operations);
+    }
+}
+#endif

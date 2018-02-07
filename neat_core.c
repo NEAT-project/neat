@@ -5843,6 +5843,7 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
         nt_log(ctx, NEAT_LOG_DEBUG, "Unable to set socket option SOL_SOCKET:SO_REUSEPORT");
     }
 
+#ifdef __linux__
     if (flow->tproxy) {
         // Mark that this socket can be used for transparent proxying
         // This allows the socket to accept connections for non-local IPs
@@ -5852,6 +5853,7 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
             nt_log(ctx, NEAT_LOG_DEBUG, "Socket option SOL_IP:IP_TRANSPARENT set OK");
         }
     }
+#endif // __linux__
 
     len = (socklen_t)sizeof(int);
     if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {

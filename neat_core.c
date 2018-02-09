@@ -5365,6 +5365,36 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEPORT) failed");
     }
 
+    {
+        int toro = 1;
+        if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_KEEPALIVE, &toro, sizeof(toro)) < 0) {
+            nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SOL_SOCKET/SO_KEEPALIVE) failed");
+        } else {
+            nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SOL_SOCKET/SO_KEEPALIVE) SUCCEEDED");
+        }
+
+        toro = 10;
+        if (setsockopt(candidate->pollable_socket->fd, SOL_TCP, TCP_KEEPIDLE, &toro, sizeof(toro)) < 0) {
+            nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SOL_TCP/TCP_KEEPIDLE) failed");
+        } else {
+            nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SOL_TCP/TCP_KEEPIDLE) SUCCEEDED");
+        }
+
+        toro = 10;
+        if (setsockopt(candidate->pollable_socket->fd, SOL_TCP, TCP_KEEPINTVL, &toro, sizeof(toro)) < 0) {
+            nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SOL_TCP/TCP_KEEPINTVL) failed");
+        } else {
+            nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SOL_TCP/TCP_KEEPINTVL) SUCCEEDED");
+        }
+
+        toro = 10;
+        if (setsockopt(candidate->pollable_socket->fd, SOL_TCP, TCP_KEEPCNT, &toro, sizeof(toro)) < 0) {
+            nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SOL_TCP/TCP_KEEPCNT) failed");
+        } else {
+            nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SOL_TCP/TCP_KEEPCNT) SUCCEEDED");
+        }
+    }
+
 #if defined(SO_NOSIGPIPE)
     if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable)) < 0) {
         nt_log(ctx, NEAT_LOG_WARNING, "%s - Call to setsockopt(SO_NOSIGPIPE) failed", __func__);

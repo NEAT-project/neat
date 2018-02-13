@@ -317,63 +317,65 @@ on_close(struct neat_flow_operations *opCB)
 
     fprintf(stderr, "%s\n", __func__);
 
-    if (tnf->active == 0) {
-        // print statistics
-        timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
-        time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+    if (tnf) {
+        if (tnf->active == 0) {
+            // print statistics
+            timersub(&(tnf->rcv.tv_last), &(tnf->rcv.tv_first), &diff_time);
+            time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
 
-        //rintf("%u, %u, %.2f, %.2f, %s\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
-        printf("flow closed - statistics\n");
-        printf("\tbytes\t\t: %u\n", tnf->rcv.bytes);
-        printf("\trcv-calls\t: %u\n", tnf->rcv.calls);
-        printf("\tduration\t: %.2fs\n", time_elapsed);
-        if (time_elapsed > 0.0) {
-            printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+            //rintf("%u, %u, %.2f, %.2f, %s\n", tnf->rcv.bytes, tnf->rcv.calls, time_elapsed, tnf->rcv.bytes/time_elapsed, filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+            printf("flow closed - statistics\n");
+            printf("\tbytes\t\t: %u\n", tnf->rcv.bytes);
+            printf("\trcv-calls\t: %u\n", tnf->rcv.calls);
+            printf("\tduration\t: %.2fs\n", time_elapsed);
+            if (time_elapsed > 0.0) {
+                printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->rcv.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+            }
+
+        } else {
+            // print statistics
+            timersub(&(tnf->snd.tv_last), &(tnf->snd.tv_first), &diff_time);
+            time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+
+            printf("flow closed - statistics\n");
+            printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
+            printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
+            printf("\tduration\t: %.2fs\n", time_elapsed);
+            if (time_elapsed > 0.0) {
+                printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+            }
         }
 
-    } else {
-        // print statistics
-        timersub(&(tnf->snd.tv_last), &(tnf->snd.tv_first), &diff_time);
-        time_elapsed = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+        // stop event loop if we are active part
+        if (tnf->active) {
+            flows_active--;
 
-        printf("flow closed - statistics\n");
-        printf("\tbytes\t\t: %u\n", tnf->snd.bytes);
-        printf("\tsnd-calls\t: %u\n", tnf->snd.calls);
-        printf("\tduration\t: %.2fs\n", time_elapsed);
-        if (time_elapsed > 0.0) {
-            printf("\tbandwidth\t: %s/s\n", filesize_human(tnf->snd.bytes/time_elapsed, buffer_filesize_human, sizeof(buffer_filesize_human)));
+            fprintf(stderr, "%d flows active\n", flows_active);
+            if (!flows_active && config_mode != NEAT_MODE_LOOP) {
+                fprintf(stderr, "%s - stopping event loop (active)\n", __func__);
+                neat_stop_event_loop(opCB->ctx);
+            }
+        } else {
+            if (tnf->rcv.calls > 0) {
+                server_runs++;
+            }
+
+            if ((config_max_server_runs > 0 && server_runs >= config_max_server_runs) || (config_mode == NEAT_MODE_LOOP && server_runs >= config_num_flows)) {
+                fprintf(stderr, "%s - stopping event loop (passive)\n", __func__);
+                neat_stop_event_loop(opCB->ctx);
+            }
         }
+
+        if (tnf->snd.buffer) {
+            free(tnf->snd.buffer);
+        }
+
+        if (tnf->rcv.buffer) {
+            free(tnf->rcv.buffer);
+        }
+
+        free(tnf);
     }
-
-    // stop event loop if we are active part
-    if (tnf->active) {
-        flows_active--;
-
-        fprintf(stderr, "%d flows active\n", flows_active);
-        if (!flows_active && config_mode != NEAT_MODE_LOOP) {
-            fprintf(stderr, "%s - stopping event loop (active)\n", __func__);
-            neat_stop_event_loop(opCB->ctx);
-        }
-    } else {
-        if (tnf->rcv.calls > 0) {
-            server_runs++;
-        }
-
-        if ((config_max_server_runs > 0 && server_runs >= config_max_server_runs) || (config_mode == NEAT_MODE_LOOP && server_runs >= config_num_flows)) {
-            fprintf(stderr, "%s - stopping event loop (passive)\n", __func__);
-            neat_stop_event_loop(opCB->ctx);
-        }
-    }
-
-    if (tnf->snd.buffer) {
-        free(tnf->snd.buffer);
-    }
-
-    if (tnf->rcv.buffer) {
-        free(tnf->rcv.buffer);
-    }
-
-    free(tnf);
 
     fprintf(stderr, "%s - flow closed OK!\n", __func__);
     return NEAT_OK;

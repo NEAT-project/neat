@@ -5365,7 +5365,7 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SO_REUSEPORT) failed");
     }
 
-    {
+    /*{
         int toro = 1;
         if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_KEEPALIVE, &toro, sizeof(toro)) < 0) {
             nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SOL_SOCKET/SO_KEEPALIVE) failed");
@@ -5393,7 +5393,7 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         } else {
             nt_log(ctx, NEAT_LOG_DEBUG, "Call to setsockopt(SOL_TCP/TCP_KEEPCNT) SUCCEEDED");
         }
-    }
+    }*/
 
 #if defined(SO_NOSIGPIPE)
     if (setsockopt(candidate->pollable_socket->fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable)) < 0) {
@@ -5584,6 +5584,7 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         // Fallthrough to case NEAT_STACK_SCTP:
 #else
         close(candidate->pollable_socket->fd);
+        nt_log(ctx, NEAT_LOG_WARNING, "SCTP/UDP unavailable on other platforms");
         return -1; // Unavailable on other platforms
 #endif
     case NEAT_STACK_SCTP:

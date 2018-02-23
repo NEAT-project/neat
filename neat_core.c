@@ -6852,7 +6852,9 @@ nt_prepare_sctp_socket(struct neat_ctx* ctx, int fd) {
     struct sctp_assoc_value assoc_value;
 #endif
 
+#if defined(SCTP_FRAGMENT_INTERLEAVE) || defined(SCTP_NODELAY) || defined(SCTP_RECVRCVINFO) || defined(SCTP_RECVNXTINFO)
     int optval;
+#endif
 
 #ifdef SCTP_ADAPTATION_LAYER
     // Set adaptation layer indication

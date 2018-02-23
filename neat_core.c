@@ -5759,7 +5759,7 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
             }
 
 #else
-            close(candidate->pollable_socket->fd);
+            close(fd);
             nt_log(ctx, NEAT_LOG_ERROR, "%s - NEAT_STACK_SCTP_UDP unsupported on this platform", __func__);
             return -1; // Unavailable on other platforms
 #endif
@@ -6847,26 +6847,35 @@ neat_set_low_watermark(struct neat_ctx *ctx, struct neat_flow *flow, uint32_t wa
 
 static int
 nt_prepare_sctp_socket(struct neat_ctx* ctx, int fd) {
+
+#if defined(SCTP_INTERLEAVING_SUPPORTED) || defined(SCTP_ENABLE_STREAM_RESET)
     struct sctp_assoc_value assoc_value;
-    struct sctp_setadaptation adaptation;
+#endif
+
     int optval;
 
+#ifdef SCTP_ADAPTATION_LAYER
     // Set adaptation layer indication
+    struct sctp_setadaptation adaptation;
     memset(&adaptation, 0, sizeof(adaptation));
     adaptation.ssb_adaptation_ind = SCTP_ADAPTATION_NEAT;
     if (setsockopt(fd, IPPROTO_SCTP, SCTP_ADAPTATION_LAYER, &adaptation, sizeof(adaptation)) < 0) {
         nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ADAPTATION_LAYER) failed - %s", strerror(errno));
         return(NEAT_ERROR_INTERNAL);
     }
+#endif
     //candidate->pollable_socket->sctp_notification_wait = 1;
 
+#ifdef SCTP_FRAGMENT_INTERLEAVE
     // Enable fragment interleaving
     optval = 2;
     if (setsockopt(fd, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, &optval, sizeof(optval)) < 0) {
         nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_FRAGMENT_INTERLEAVE) failed - %s", strerror(errno));
         return(NEAT_ERROR_INTERNAL);
     }
+#endif
 
+#ifdef SCTP_INTERLEAVING_SUPPORTED
     // Enable anciliarry data when receiving data from SCTP
     memset(&assoc_value, 0, sizeof(assoc_value));
     assoc_value.assoc_value = 1;
@@ -6874,7 +6883,9 @@ nt_prepare_sctp_socket(struct neat_ctx* ctx, int fd) {
         nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_INTERLEAVING_SUPPORTED) failed - %s", strerror(errno));
         return(NEAT_ERROR_INTERNAL);
     }
+#endif
 
+#ifdef SCTP_ENABLE_STREAM_RESET
     // Enable Stream Reset extension
     memset(&assoc_value, 0, sizeof(assoc_value));
     assoc_value.assoc_value = SCTP_ENABLE_RESET_STREAM_REQ;
@@ -6882,12 +6893,15 @@ nt_prepare_sctp_socket(struct neat_ctx* ctx, int fd) {
         nt_log(ctx, NEAT_LOG_ERROR, "Call to setsockopt(SCTP_ENABLE_STREAM_RESET) failed - %s", strerror(errno));
         return(NEAT_ERROR_INTERNAL);
     }
+#endif
 
+#ifdef SCTP_NODELAY
     optval = 1;
     if (setsockopt(fd, IPPROTO_SCTP, SCTP_NODELAY, &optval, sizeof(optval))) {
         nt_log(ctx, NEAT_LOG_WARNING, "%s - setsockopt(SCTP_NODELAY) failed: %s", __func__, strerror(errno));
         return(NEAT_ERROR_INTERNAL);
     }
+#endif
 
 // NUR OHNE SECURITY!!
 #if 0
@@ -6897,24 +6911,25 @@ nt_prepare_sctp_socket(struct neat_ctx* ctx, int fd) {
     }
 #endif
 
-#if defined(SCTP_RECVRCVINFO)
+#ifdef SCTP_RECVRCVINFO
     // Enable anciliarry data when receiving data from SCTP
     optval = 1;
     if (setsockopt(fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &optval, sizeof(optval)) < 0) {
         nt_log(ctx, NEAT_LOG_WARNING, "%s - setsockopt(SCTP_RECVRCVINFO) failed: %s", __func__, strerror(errno));
         return(NEAT_ERROR_INTERNAL);
     }
-#endif // defined(SCTP_RECVRCVINFO)
-#if defined(SCTP_RECVNXTINFO)
+#endif
+
+#ifdef SCTP_RECVNXTINFO
     // Enable anciliarry data when receiving data from SCTP
     optval = 1;
     if (setsockopt(fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &optval, sizeof(optval)) < 0) {
         nt_log(ctx, NEAT_LOG_WARNING, "%s - setsockopt(SCTP_RECVNXTINFO) failed: %s", __func__, strerror(errno));
         return(NEAT_ERROR_INTERNAL);
     }
-#endif // defined(SCTP_RECVRCVINFO)
+#endif
 
-#if defined(SCTP_INITMSG)
+#ifdef SCTP_INITMSG
     struct sctp_initmsg init;
     memset(&init, 0, sizeof(init));
 
@@ -6929,7 +6944,7 @@ nt_prepare_sctp_socket(struct neat_ctx* ctx, int fd) {
     }
 
     nt_log(ctx, NEAT_LOG_DEBUG, "SCTP stream negotiation - offering : %d in / %d out", init.sinit_max_instreams, init.sinit_num_ostreams);
-#endif //defined(SCTP_INITMSG)
+#endif
 
     nt_sctp_init_events(fd);
 

@@ -71,8 +71,7 @@ on_he_connect_req(uv_timer_t *handle)
     uv_close((uv_handle_t *) candidate->prio_timer, free_handle_cb);
     candidate->prio_timer = NULL;
 
-    int ret = candidate->pollable_socket->flow->connectfx(candidate,
-                   candidate->callback_fx);
+    int ret = candidate->pollable_socket->flow->connectfx(candidate, candidate->callback_fx);
     if ((ret == -1) || (ret == -2)) {
 
         nt_log(ctx, NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);

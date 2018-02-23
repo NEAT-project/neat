@@ -5695,7 +5695,7 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
     }
 
     assert(candidate->pollable_socket->handle->data == candidate);
-    uv_poll_start(candidate->pollable_socket->handle, UV_READABLE, callback_fx);
+    uv_poll_start(candidate->pollable_socket->handle, UV_READABLE | UV_WRITABLE, callback_fx);
 
     return 0;
 }

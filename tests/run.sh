@@ -38,15 +38,15 @@ runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "not.resolvabl
 # Platform specific tests
 unamestr=`uname`
 
-if [ "$unamestr" == "FreeBSD" ]; then
-	retcode=0
-	runtest "../examples/tneat" "-P" "../examples/prop_sctp_dtls.json" "interop.fh-muenster.de"
-fi
-
 if [ "$unamestr" == "Linux" ] || [ "$unamestr" == "FreeBSD" ]; then
 	retcode=0
 	runtest "../examples/client_http_get" "-P" "../examples/prop_tcp_security.json" "-p" "443" "-v" "1" "www.fh-muenster.de"
 	runtest "../examples/tneat" "-L" "-P" "../examples/prop_sctp_delayed.json"
+fi
+
+if [ "$unamestr" == "FreeBSD" ]; then
+	retcode=0
+	runtest "../examples/tneat" "-P" "../examples/prop_sctp_dtls.json" "interop.fh-muenster.de"
 fi
 
 if [ "$unamestr" == "Darwin" ]; then

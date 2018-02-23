@@ -6961,7 +6961,11 @@ nt_prepare_sctp_socket(struct neat_ctx* ctx, int fd) {
     nt_log(ctx, NEAT_LOG_DEBUG, "SCTP stream negotiation - offering : %d in / %d out", init.sinit_max_instreams, init.sinit_num_ostreams);
 #endif
 
+#ifdef USRSCTP_SUPPORT
+    assert(false);
+#else
     nt_sctp_init_events(fd);
+#endif
 
     return(NEAT_ERROR_OK);
 }

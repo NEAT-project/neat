@@ -1215,6 +1215,14 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
 #ifdef SCTP_ASSOC_SUPPORTS_RE_CONFIG
                 case SCTP_ASSOC_SUPPORTS_RE_CONFIG:
                     nt_log(ctx, NEAT_LOG_DEBUG, "\t- RE-CONFIG");
+                    if (flow->socket->sctp_stream_reset) {
+                        flow->socket->multistream = 1;
+                        flow->socket->flow = NULL;
+
+                        assert(LIST_EMPTY(&flow->socket->sctp_multistream_flows));
+                        LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, flow, multistream_next_flow);
+                        nt_log(ctx, NEAT_LOG_INFO, "Multistreaming enabled");
+                    }
                     break;
 #endif // SCTP_ASSOC_SUPPORTS_RE_CONFIG
                 default:
@@ -1297,16 +1305,21 @@ handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
             nt_log(ctx, NEAT_LOG_DEBUG, "Got SCTP adaptation indication event");
             struct sctp_adaptation_event *adaptation = (struct sctp_adaptation_event *) notfn;
             if (adaptation->sai_adaptation_ind == SCTP_ADAPTATION_NEAT) {
+                nt_log(ctx, NEAT_LOG_INFO, "Peer is NEAT enabled");
 #ifdef SCTP_MULTISTREAMING
                 flow->socket->sctp_neat_peer = 1;
-                flow->socket->multistream = 1;
-                flow->socket->flow = NULL;
+                if (flow->socket->sctp_stream_reset) {
+                    flow->socket->multistream = 1;
+                    flow->socket->flow = NULL;
 
-                assert(LIST_EMPTY(&flow->socket->sctp_multistream_flows));
-                LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, flow, multistream_next_flow);
+                    assert(LIST_EMPTY(&flow->socket->sctp_multistream_flows));
+                    LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, flow, multistream_next_flow);
+                    nt_log(ctx, NEAT_LOG_INFO, "Multistreaming enabled");
+                }
+
                 //nt_hook_mulitstream_flows(flow);
 #endif // SCTP_MULTISTREAMING
-                nt_log(ctx, NEAT_LOG_INFO, "Peer is NEAT enabled");
+
             }
             break;
         case SCTP_PARTIAL_DELIVERY_EVENT:

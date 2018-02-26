@@ -1966,6 +1966,8 @@ install_security(struct neat_he_candidate *candidate)
     json_t *noVerify = NULL, *noVerifyVal = NULL;
     struct neat_ctx *ctx = flow->ctx;
 
+    nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+
     if ((security = json_object_get(candidate->properties, "security")) != NULL &&
         (val = json_object_get(security, "value")) != NULL &&
         json_typeof(val) == JSON_TRUE)
@@ -1975,7 +1977,7 @@ install_security(struct neat_he_candidate *candidate)
             (noVerify = json_object_get(candidate->properties, "verification")) != NULL &&
             (noVerifyVal = json_object_get(noVerify, "value")) != NULL &&
             json_typeof(noVerifyVal) == JSON_FALSE) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "Flow disables cert verification");
+            nt_log(ctx, NEAT_LOG_INFO, "Flow disables cert verification");
             flow->skipCertVerification = 1;
         }
 

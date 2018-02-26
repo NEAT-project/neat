@@ -1021,11 +1021,6 @@ io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
             } else {
                 flow->socket->sctp_streams_available = MIN(status.sstat_outstrms, status.sstat_outstrms);
             }
-
-#ifdef SCTP_MULTISTREAMING
-            flow->socket->sctp_streams_used = 1;
-            flow->multistream_id = 0;
-#endif
             // number of outbound streams == number of inbound streams
             nt_log(ctx, NEAT_LOG_INFO, "%s - SCTP - number of streams: %d", __func__, flow->socket->sctp_streams_available);
 #endif // defined(IPPROTO_SCTP) && defined(SCTP_STATUS) && !defined(USRSCTP_SUPPORT)
@@ -1215,10 +1210,13 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
 #ifdef SCTP_ASSOC_SUPPORTS_RE_CONFIG
                 case SCTP_ASSOC_SUPPORTS_RE_CONFIG:
                     nt_log(ctx, NEAT_LOG_DEBUG, "\t- RE-CONFIG");
+                    flow->socket->sctp_stream_reset = 1;
 #ifdef SCTP_MULTISTREAMING
-                    if (flow->socket->sctp_stream_reset) {
+                    if (flow->socket->sctp_neat_peer) {
                         flow->socket->multistream = 1;
                         flow->socket->flow = NULL;
+                        flow->socket->sctp_streams_used = 1;
+                        flow->multistream_id = 0;
 
                         assert(LIST_EMPTY(&flow->socket->sctp_multistream_flows));
                         LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, flow, multistream_next_flow);
@@ -1313,6 +1311,8 @@ handle_sctp_event(neat_flow *flow, union sctp_notification *notfn)
                 if (flow->socket->sctp_stream_reset) {
                     flow->socket->multistream = 1;
                     flow->socket->flow = NULL;
+                    flow->socket->sctp_streams_used = 1;
+                    flow->multistream_id = 0;
 
                     assert(LIST_EMPTY(&flow->socket->sctp_multistream_flows));
                     LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, flow, multistream_next_flow);
@@ -1703,7 +1703,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
         if (stream_id > 0 && socket->sctp_neat_peer) {
             // felix todo: ppid check
             if ((multistream_flow = nt_sctp_get_flow_by_sid(socket, stream_id)) == NULL) {
-                nt_log(ctx, NEAT_LOG_WARNING, "%s - new incoming multistream flow - stream_id %d", __func__, stream_id);
+                nt_log(ctx, NEAT_LOG_INFO, "%s - new incoming multistream flow - stream_id %d", __func__, stream_id);
 
                 neat_flow *listen_flow  = flow->socket->listen_socket->flow;
                 multistream_flow        = neat_new_flow(ctx);
@@ -2884,10 +2884,7 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
             } else {
                 newFlow->socket->sctp_streams_available = MIN(status.sstat_instrms, status.sstat_outstrms);
             }
-#ifdef SCTP_MULTISTREAMING
-            newFlow->socket->sctp_streams_used = 1;
-            newFlow->multistream_id = 0;
-#endif
+
             // number of outbound streams == number of inbound streams
             nt_log(ctx, NEAT_LOG_DEBUG, "%s - SCTP - number of streams: %d", __func__, newFlow->socket->sctp_streams_available);
             break;
@@ -4962,6 +4959,7 @@ nt_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
 #ifdef SCTP_MULTISTREAMING
     // multistream stream_id override - not very pretty
+    nt_log(ctx, NEAT_LOG_WARNING, "%s - MULTISTREAM ID = %d", __func__, flow->multistream_id);
     if (flow->multistream_id) {
         stream_id = flow->multistream_id;
     }
@@ -5868,7 +5866,6 @@ nt_shutdown_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow)
         nt_sctp_reset_stream(flow->socket, flow->multistream_id);
 
         LIST_FOREACH(flow_itr, &flow->socket->sctp_multistream_flows, multistream_next_flow) {
-            //if (flow_itr->multistream_state != NEAT_FLOW_CLOSED) {
             if (flow_itr->state != NEAT_FLOW_CLOSED) {
                 nt_log(ctx, NEAT_LOG_DEBUG, "%s - not all streams closed, skipping socket shutdown", __func__);
                 return NEAT_OK;
@@ -6922,11 +6919,12 @@ nt_prepare_sctp_socket(struct neat_ctx* ctx, struct neat_pollable_socket* pollab
     }
 #endif
 
-// NUR OHNE SECURITY!!
-#if 0
-    optval = 1;
-    if (setsockopt(fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &optval, sizeof(optval)) == 0) {
-        candidate->pollable_socket->sctp_explicit_eor = 1;
+#ifdef SCTP_EXPLICIT_EOR
+    if (!pollable_socket->flow->security_needed) {
+        optval = 1;
+        if (setsockopt(pollable_socket->fd, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, &optval, sizeof(optval)) == 0) {
+            pollable_socket->sctp_explicit_eor = 1;
+        }
     }
 #endif
 

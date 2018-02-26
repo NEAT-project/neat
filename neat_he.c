@@ -96,11 +96,7 @@ on_he_connect_req(uv_timer_t *handle)
             nt_free_candidate(ctx, candidate);
         }
     } else {
-
-        nt_log(ctx, NEAT_LOG_DEBUG,
-            "%s: Connect successful for fd %d, ret = %d",
-            __func__,
-            candidate->pollable_socket->fd, ret);
+        nt_log(ctx, NEAT_LOG_DEBUG, "%s: Connect successful for fd %d, ret = %d", __func__, candidate->pollable_socket->fd, ret);
     }
 }
 
@@ -237,12 +233,11 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
 #ifdef SCTP_MULTISTREAMING
         // check if there is already a piggyback assoc
         if ((multistream_socket = nt_find_multistream_socket(ctx, flow)) != NULL) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "%s - using piggyback assoc", __func__);
             // we have a piggyback assoc...
 
             LIST_INSERT_HEAD(&multistream_socket->sctp_multistream_flows, flow, multistream_next_flow);
-            multistream_socket->sctp_streams_used++;
 
+            multistream_socket->sctp_streams_used++;
             flow->multistream_id        = multistream_socket->sctp_streams_used;
             //flow->multistream_state     = NEAT_FLOW_OPEN;
             flow->everConnected         = 1;
@@ -250,6 +245,7 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
             flow->firstWritePending     = 1;
 
             //json_incref(flow->properties);
+            nt_log(ctx, NEAT_LOG_INFO, "%s - using piggyback assoc - %p - new multistream id: %d", __func__, multistream_socket, flow->multistream_id);
 
             flow->socket = multistream_socket;
 

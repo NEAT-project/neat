@@ -268,7 +268,6 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
 
             flow->multistream_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
             assert(flow->multistream_timer != NULL);
-            flow->multistream_check = 1;
 
             uv_timer_init(flow->ctx->loop, flow->multistream_timer);
             uv_timer_start(flow->multistream_timer, on_delayed_he_open, 200, 0);

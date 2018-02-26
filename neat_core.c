@@ -5710,7 +5710,7 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
     struct sctp_udpencaps encaps;
 #endif
     int enable = 1;
-    int fd, protocol, size;
+    int protocol, size;
     socklen_t len;
     const socklen_t slen = (listen_socket->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
 
@@ -5722,15 +5722,15 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
         return -1;
     }
 
-    if ((fd = socket(listen_socket->family, listen_socket->type, protocol)) < 0) {
+    if ((listen_socket->fd = socket(listen_socket->family, listen_socket->type, protocol)) < 0) {
         nt_log(ctx, NEAT_LOG_ERROR, "%s: opening listening socket failed - %s", __func__, strerror(errno));
         return -1;
     }
 
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) != 0) {
+    if (setsockopt(listen_socket->fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) != 0) {
         nt_log(ctx, NEAT_LOG_DEBUG, "Unable to set socket option SOL_SOCKET:SO_REUSEADDR");
     }
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int)) != 0) {
+    if (setsockopt(listen_socket->fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int)) != 0) {
         nt_log(ctx, NEAT_LOG_DEBUG, "Unable to set socket option SOL_SOCKET:SO_REUSEPORT");
     }
 
@@ -5738,7 +5738,7 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
     if (flow->tproxy) {
         // Mark that this socket can be used for transparent proxying
         // This allows the socket to accept connections for non-local IPs
-        if (setsockopt(fd, SOL_IP, IP_TRANSPARENT, &enable, sizeof(int)) != 0) {
+        if (setsockopt(listen_socket->fd, SOL_IP, IP_TRANSPARENT, &enable, sizeof(int)) != 0) {
            nt_log(ctx, NEAT_LOG_ERROR, "Unable to set socket option SOL_IP:IP_TRANSPARENT");
         } else {
             nt_log(ctx, NEAT_LOG_DEBUG, "Socket option SOL_IP:IP_TRANSPARENT set OK");
@@ -5747,7 +5747,7 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
 #endif // __linux__
 
     len = (socklen_t)sizeof(int);
-    if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
+    if (getsockopt(listen_socket->fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == 0) {
         listen_socket->write_size = size;
     } else {
         nt_log(ctx, NEAT_LOG_DEBUG, "Unable to get socket option SOL_SOCKET:SO_SNDBUF");
@@ -5755,7 +5755,7 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
     }
 
     len = (socklen_t)sizeof(int);
-    if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
+    if (getsockopt(listen_socket->fd, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0) {
         nt_log(ctx, NEAT_LOG_INFO, "%s - RCVBUF %d", __func__, size);
         listen_socket->read_size = size;
     } else {
@@ -5769,12 +5769,12 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
             memset(&encaps, 0, sizeof(struct sctp_udpencaps));
             encaps.sue_address.ss_family = AF_INET;
             encaps.sue_port = htons(SCTP_UDP_TUNNELING_PORT);
-            if (setsockopt(fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps)) < 0) {
+            if (setsockopt(listen_socket->fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, (const void*)&encaps, (socklen_t)sizeof(struct sctp_udpencaps)) < 0) {
                 nt_log(ctx, NEAT_LOG_WARNING, "%s - setsockopt(SCTP_REMOTE_UDP_ENCAPS_PORT) failed: %s", __func__, strerror(errno));
             }
 
 #else
-            close(fd);
+            close(listen_socket->fd);
             nt_log(ctx, NEAT_LOG_ERROR, "%s - NEAT_STACK_SCTP_UDP unsupported on this platform", __func__);
             return -1; // Unavailable on other platforms
 #endif
@@ -5790,20 +5790,20 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
     }
 
     if (listen_socket->stack == NEAT_STACK_UDP || listen_socket->stack == NEAT_STACK_UDPLITE) {
-        if (bind(fd, (struct sockaddr *)(&listen_socket->src_sockaddr), slen) == -1) {
+        if (bind(listen_socket->fd, (struct sockaddr *)(&listen_socket->src_sockaddr), slen) == -1) {
             nt_log(ctx, NEAT_LOG_ERROR, "%s: (%s) bind failed - %s", __func__, (listen_socket->stack == NEAT_STACK_UDP ? "UDP" : "UDPLite"), strerror(errno));
-            close(fd);
+            close(listen_socket->fd);
             return -1;
         }
     } else {
-        if (bind(fd, (struct sockaddr *)(&listen_socket->src_sockaddr), slen) == -1 || listen(fd, 100) == -1) {
+        if (bind(listen_socket->fd, (struct sockaddr *)(&listen_socket->src_sockaddr), slen) == -1 || listen(listen_socket->fd, 100) == -1) {
             nt_log(ctx, NEAT_LOG_ERROR, "%s: bind/listen failed - %s", __func__, strerror(errno));
-            close(fd);
+            close(listen_socket->fd);
             return -1;
         }
     }
 
-    return fd;
+    return listen_socket->fd;
 }
 
 #ifdef NEAT_SCTP_DTLS

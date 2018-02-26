@@ -699,10 +699,12 @@ nt_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
     SSL_load_error_strings();
 
     if (isClient) {
+        nt_log(ctx, NEAT_LOG_INFO, "%s - acting as DTLS client", __func__);
         private->ctx = SSL_CTX_new(DTLS_client_method());
-        SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
+        SSL_CTX_set_verify(private->ctx, SSL_VERIFY_NONE, NULL);
         tls_init_trust_list(private->ctx);
     } else {
+        nt_log(ctx, NEAT_LOG_INFO, "%s - acting as DTLS server", __func__);
         private->ctx = SSL_CTX_new(DTLS_server_method());
         // SSL_CTX_set_ecdh_auto(private->ctx, 1);
 

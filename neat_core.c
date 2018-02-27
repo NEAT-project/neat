@@ -1210,8 +1210,8 @@ handle_sctp_assoc_change(neat_flow *flow, struct sctp_assoc_change *sac)
 #ifdef SCTP_ASSOC_SUPPORTS_RE_CONFIG
                 case SCTP_ASSOC_SUPPORTS_RE_CONFIG:
                     nt_log(ctx, NEAT_LOG_DEBUG, "\t- RE-CONFIG");
-                    flow->socket->sctp_stream_reset = 1;
 #ifdef SCTP_MULTISTREAMING
+                    flow->socket->sctp_stream_reset = 1;
                     if (flow->socket->sctp_neat_peer) {
                         flow->socket->multistream = 1;
                         flow->socket->flow = NULL;

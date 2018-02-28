@@ -4968,8 +4968,8 @@ nt_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
 
 #ifdef SCTP_MULTISTREAMING
     // multistream stream_id override - not very pretty
-    nt_log(ctx, NEAT_LOG_WARNING, "%s - MULTISTREAM ID = %d", __func__, flow->multistream_id);
     if (flow->multistream_id) {
+        nt_log(ctx, NEAT_LOG_DEBUG, "%s - MULTISTREAM ID = %d", __func__, flow->multistream_id);
         stream_id = flow->multistream_id;
     }
 #endif // SCTP_MULTISTREAMING

@@ -24,9 +24,10 @@ function runtest {
 
 # Tests which should succeed
 retcode=0
-runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "2" "interop.nplab.de"
+runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "interop.nplab.de"
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "212.201.121.80"
 runtest "../examples/client_http_get" "-u" "/cgi-bin/he" "-v" "1" "2a02:c6a0:4015:11::80"
+runtest "../examples/client_http_get" "-u" "/files/32M" "-v" "1" "interop.nplab.de"
 runtest "../examples/tneat" "-L"
 runtest "../examples/tneat" "-L" "-P" "../examples/prop_tcp_delayed.json"
 
@@ -42,6 +43,7 @@ if [ "$unamestr" == "Linux" ] || [ "$unamestr" == "FreeBSD" ]; then
 	retcode=0
 	runtest "../examples/client_http_get" "-P" "../examples/prop_tcp_security.json" "-p" "443" "-v" "1" "www.fh-muenster.de"
 	runtest "../examples/tneat" "-L" "-P" "../examples/prop_sctp_delayed.json"
+	runtest "../examples/client_http_get" "-P" "../examples/prop_sctp.json" "-u" "/files/32M" "-v" "1" "interop.nplab.de"
 fi
 
 if [ "$unamestr" == "FreeBSD" ]; then

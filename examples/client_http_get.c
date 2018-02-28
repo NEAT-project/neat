@@ -398,12 +398,12 @@ main(int argc, char *argv[])
 
 cleanup:
 
-    for (i = 0; i < num_flows; i++) {
-        free(ops[i].userData);
-    }
-
     if (ctx != NULL) {
         neat_free_ctx(ctx);
+    }
+
+    for (i = 0; i < num_flows; i++) {
+        free(ops[i].userData);
     }
 
     if (arg_property) {

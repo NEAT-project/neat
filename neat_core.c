@@ -322,6 +322,11 @@ neat_free_ctx(struct neat_ctx *nc)
             flow->closefx(flow->ctx, flow);
         }
 
+        if (flow->operations.on_close) {
+            //READYCALLBACKSTRUCT;
+            flow->operations.on_close(&flow->operations);
+        }
+
         nt_free_flow(flow);
         prev_flow = flow;
     }
@@ -1076,6 +1081,7 @@ io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
         code = nt_write_flush(ctx, flow);
         if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
             nt_log(ctx, NEAT_LOG_ERROR, "error : %d", code);
+            nt_notify_aborted(flow);
             nt_io_error(ctx, flow, code);
             return;
         }
@@ -2394,6 +2400,8 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
                 return;
             } else if (so_error == ECONNRESET) {
                 nt_notify_aborted(flow);
+            } else if (so_error == EPIPE) {
+                nt_notify_aborted(flow);
             }
         }
 
@@ -2482,6 +2490,7 @@ void uvpollable_cb(uv_poll_t *handle, int status, int events)
             assert(false);
 #endif
         } else {
+            flow->closefx(flow->ctx, flow);
             nt_notify_close(flow);
         }
     } else {

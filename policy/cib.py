@@ -471,15 +471,15 @@ class CIB(object):
         assert isinstance(input_properties, PropertyArray)
         candidates = [input_properties]
         for e in self.rows:
-            try:
-                # FIXME better check whether all input properties are included in row - improve matching
-                # ignore optional properties in input request
-                required_pa = PropertyArray(
-                    *(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
-                if len(required_pa & e) != len(required_pa):
-                    continue
-            except ImmutablePropertyError:
-                continue
+#            try:
+#                # FIXME better check whether all input properties are included in row - improve matching
+#                # ignore optional properties in input request
+#                required_pa = PropertyArray(
+#                    *(p for p in input_properties.values() if p.precedence == NEATProperty.IMMUTABLE))
+#                if len(required_pa & e) != len(required_pa):
+#                    continue
+#            except ImmutablePropertyError:
+#                continue
             try:
                 candidate = e + input_properties
                 candidate.cib_node = e.cib_node

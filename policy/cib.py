@@ -480,6 +480,7 @@ class CIB(object):
 #            except ImmutablePropertyError:
 #                continue
             try:
+                logging.info("CIB row: " + str(e))
                 candidate = e + input_properties
                 candidate.cib_node = e.cib_node
                 candidates.append(candidate)

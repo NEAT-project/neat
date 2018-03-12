@@ -94,6 +94,6 @@ class STYLES(object):
 
 
 class CHARS(object):
-    RIGHT_ARROW = '⟶' if UTF else '>>'
-    LINE_SEPARATOR = '═' if UTF else '='
-    DASH = '─' if UTF else '-'
+    RIGHT_ARROW =  '>>'
+    LINE_SEPARATOR = '='
+    DASH = '-'

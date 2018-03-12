@@ -478,8 +478,6 @@ class NEATProperty(object):
             score_str = '%-.1f' % self.score
         else:
             score_str = ''
-        # use subscript UTF8 characters
-        score_str = STYLES.BOLD_START + score_str + STYLES.BOLD_END
 
         if self.evaluated:
             keyval_str = STYLES.UNDERLINE_START + keyval_str + STYLES.UNDERLINE_END
@@ -576,7 +574,7 @@ class PropertyArray(dict):
         # sort alphabetically by property key
         str_list = [str(i) for i in sorted(list(self.values()), key=lambda v: v.key.lower())]
         j = CHARS.DASH * 2
-        return '├─' + j.join(str_list) + '─┤'
+        return '|-' + j.join(str_list) + '-|'
 
 
 def __merge_properties(properties):

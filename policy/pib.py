@@ -330,7 +330,7 @@ class PIB(list):
                             updated_candidates.append(updated_candidate)
                         except ImmutablePropertyError as e:
                             logging.info(
-                                ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *CANDIDATE REJECTED*' + PM.STYLES.BOLD_END + ' (%s)' % str(e))
+                                ' ' * 4 + policy_info + ' *CANDIDATE REJECTED*' + ' (%s)' % str(e))
                             continue
                 else:
                     updated_candidates.append(cand)

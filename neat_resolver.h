@@ -11,7 +11,7 @@
 //Timeout for complete DNS query
 #define DNS_TIMEOUT             5000
 //Timeout after first good reply
-#define DNS_RESOLVED_TIMEOUT    100
+#define DNS_RESOLVED_TIMEOUT    500
 #define DNS_LITERAL_TIMEOUT     1
 #define DNS_ADDRESS_TIMEOUT     100
 #define DNS_BUF_SIZE            1472

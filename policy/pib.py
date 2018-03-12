@@ -8,7 +8,7 @@ import sys
 import time
 
 import pmdefaults as PM
-from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError, term_separator
+from policy import PropertyArray, PropertyMultiArray, dict_to_properties, ImmutablePropertyError
 
 PIB_EXTENSIONS = ('.policy', '.profile', '.pib')
 
@@ -26,8 +26,7 @@ def load_policy_json(filename):
         logging.error('Policy ' + filename + ' not found.')
         raise NEATPIBError(e)
     except json.decoder.JSONDecodeError as e:
-        logging.error('Error parsing policy file ' + filename)
-        print(e)
+        logging.error('Error parsing policy file ' + filename + ": " + str(e))
         raise NEATPIBError(e)
 
     p = NEATPolicy(policy_dict)
@@ -331,7 +330,7 @@ class PIB(list):
                             updated_candidates.append(updated_candidate)
                         except ImmutablePropertyError as e:
                             logging.info(
-                                ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *CANDIDATE REJECTED*' + PM.STYLES.FORMAT_END + ' (%s)' % str(e))
+                                ' ' * 4 + policy_info + PM.STYLES.BOLD_START + ' *CANDIDATE REJECTED*' + PM.STYLES.BOLD_END + ' (%s)' % str(e))
                             continue
                 else:
                     updated_candidates.append(cand)
@@ -340,10 +339,10 @@ class PIB(list):
         return candidates
 
     def dump(self):
-        print(term_separator("PIB START"))
+        logging.info("----- PIB START -----")
         for p in self.policies:
-            print(str(p))
-        print(term_separator("PIB END"))
+            logging.info(str(p))
+        logging.info("----- PIB END -----")
 
 
 if __name__ == "__main__":

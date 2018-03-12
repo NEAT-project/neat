@@ -82,7 +82,7 @@ class PropertyTests(unittest.TestCase):
 
         pa2 = PropertyArray()
         pa2.add(np4, np5, NEATProperty(('moo', 'bar')))
-        print(pa1)
+        logging.info(str(pa1))
 
         # properties names use lower case internally
         self.assertEqual(pa1['mtu'].value, 10000)
@@ -96,7 +96,7 @@ class PropertyTests(unittest.TestCase):
         pma = PropertyMultiArray()
         for p in req[0]:
             pma.add(p)
-        print(pma)
+        logging.info(str(pma))
 
     def test_property_nested_arrays(self):
         pa = PropertyArray()
@@ -116,7 +116,7 @@ class PropertyTests(unittest.TestCase):
             pma = PropertyMultiArray()
             for property in r:
                 pma.add(property)
-            print(pma)
+            logging.info(str(pma))
             pma_list.append(pma)
 
     def test_default_pib_cib(self):

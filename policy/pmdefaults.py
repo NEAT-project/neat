@@ -72,15 +72,25 @@ CONTROLLER_PASS = 'admin'
 CONTROLLER_ANNOUNCE = 3 * 60
 
 
+#class STYLES(object):
+#    DARK_GRAY_START = '\033[90m'
+ #   LIGHT_GRAY_START = '\033[37m'
+ #   BOLD_START = '\033[1m'
+ #   BOLD_END = '\033[21m'
+ #   UNDERLINE_START = '\033[4m'
+ #   UNDERLINE_END = '\033[24m'
+ #   STRIKETHROUGH_START = '\033[9m'
+ #   FORMAT_END = '\033[0m'
+
 class STYLES(object):
-    DARK_GRAY_START = '\033[90m'
-    LIGHT_GRAY_START = '\033[37m'
-    BOLD_START = '\033[1m'
-    BOLD_END = '\033[21m'
-    UNDERLINE_START = '\033[4m'
-    UNDERLINE_END = '\033[24m'
-    STRIKETHROUGH_START = '\033[9m'
-    FORMAT_END = '\033[0m'
+    DARK_GRAY_START = ''
+    LIGHT_GRAY_START = ''
+    BOLD_START = '*'
+    BOLD_END = '*'
+    UNDERLINE_START = '__'
+    UNDERLINE_END = '__'
+    #STRIKETHROUGH_START = '--'
+    FORMAT_END = ''
 
 
 class CHARS(object):

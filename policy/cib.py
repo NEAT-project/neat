@@ -9,7 +9,7 @@ from collections import ChainMap
 
 import pmdefaults as PM
 from pmdefaults import *
-from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError, term_separator
+from policy import NEATProperty, PropertyArray, PropertyMultiArray, ImmutablePropertyError
 
 CIB_EXPIRED = 2
 
@@ -27,8 +27,7 @@ def load_json(filename):
     try:
         j = json.load(cib_file)
     except json.decoder.JSONDecodeError as e:
-        logging.error("Could not parse CIB file " + filename)
-        print(e)
+        logging.error("Could not parse CIB file: " + str(e))
         return
     return j
 
@@ -424,7 +423,7 @@ class CIB(object):
         try:
             cs = CIBNode(json_slim)
         except CIBEntryError as e:
-            print(e)
+            logging.error("Failed to create CIB node: " + str(e))
             return
 
         # no not import cache nodes if disabled
@@ -490,12 +489,12 @@ class CIB(object):
         return sorted(candidates, key=operator.attrgetter('score'), reverse=True)[:candidate_num]
 
     def dump(self, show_all=False):
-        print(term_separator("CIB START"))
+        logging.info("========== CIB START ==========")
         # ============================================================================
         for i, e in enumerate(self.rows):
-            print("%3i. %s" % (i, str(e)))
+            logging.info("%3i. %s" % (i, str(e)))
         # ============================================================================
-        print(term_separator("CIB END"))
+        logging.info("========== CIB END ==========")
 
     def __repr__(self):
         return 'CIB<%d>' % (len(self.nodes))
@@ -513,7 +512,7 @@ if __name__ == "__main__":
 
     for uid in cib.roots:
         z = cib[uid].resolve_links([])
-        print(z)
+        logging.info(str(z))
 
     query = PropertyArray()
     test_request_str = '{"MTU": {"value": [1500, Infinity]}, "low_latency": {"precedence": 2, "value": true}, "remote_ip": {"precedence": 2, "value": "10:54:1.23"}, "transport": {"value": "TCP"}}'
@@ -523,5 +522,5 @@ if __name__ == "__main__":
 
     candidates = cib.lookup(query)
     for i in candidates:
-        print(i)
+        logging.info(str(i))
         # print(i, i.cib_node, i.score)

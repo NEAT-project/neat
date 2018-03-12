@@ -56,7 +56,7 @@ async def controller_announce():
     while True:
         sleep_time = min(random.expovariate(1 / PM.CONTROLLER_ANNOUNCE), PM.CONTROLLER_ANNOUNCE * 3)
 
-        print("Notifying controller at %s (repeat in %1.0fs)" % (PM.CONTROLLER_REST, sleep_time))
+        logging.info("Notifying controller at %s (repeat in %1.0fs)" % (PM.CONTROLLER_REST, sleep_time))
 
         conn = aiohttp.TCPConnector(local_addr=(PM.REST_IP, 0))
         auth = aiohttp.BasicAuth(PM.CONTROLLER_USER, PM.CONTROLLER_PASS)
@@ -68,11 +68,11 @@ async def controller_announce():
                     # logging.debug('announce addr: %s:%s' % resp.connection._protocol.transport.get_extra_info('sockname'))
                     if resp.status != 200:
                         logging.warning("Controller provided an invalid response")
-                        print(resp)
+                        logging.info(str(resp))
                     html = await resp.text()
 
             except (ValueError, aiohttp.ClientConnectionError) as e:
-                print(e)
+                logging.error(str(e))
 
         await asyncio.sleep(sleep_time)
 
@@ -246,11 +246,11 @@ def init_rest_server(asyncio_loop, profiles_ref, cib_ref, pib_ref, rest_port=Non
     handler = pmrest.make_handler()
 
     f = asyncio_loop.create_server(handler, PM.REST_IP, PM.REST_PORT)
-    print("Initializing REST server on %s:%d" % (PM.REST_IP, PM.REST_PORT))
+    logging.info("Initializing REST server on %s:%d" % (PM.REST_IP, PM.REST_PORT))
     try:
         server = asyncio_loop.run_until_complete(f)
     except OSError as e:
-        print(e)
+        logging.error(str(e))
         return
 
     asyncio.ensure_future(controller_announce())

@@ -149,10 +149,10 @@ class PropertyValue(object):
                 range_end - range_start > 0
                 self._value = (range_start, range_end)
             except KeyError as e:
-                print(e)
+                logging.error(str(e))
                 raise IndexError("Invalid property range definition")
             except TypeError as e:
-                print(e)
+                logging.error(str(e))
                 raise IndexError("Invalid property range definition: ranges should be numeric")
             self.is_range = True
         # old-style numeric ranges stored as tuples
@@ -479,7 +479,7 @@ class NEATProperty(object):
         else:
             score_str = ''
         # use subscript UTF8 characters
-        score_str = STYLES.BOLD_START + score_str.translate(SUB) + STYLES.BOLD_END
+        score_str = STYLES.BOLD_START + score_str + STYLES.BOLD_END
 
         if self.evaluated:
             keyval_str = STYLES.UNDERLINE_START + keyval_str + STYLES.UNDERLINE_END

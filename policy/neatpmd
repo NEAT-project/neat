@@ -22,7 +22,7 @@ try:
     resthelper_loaded = True
     import resthelper
 except ImportError as e:
-    print(e.msg)
+    logging.error(e.msg)
     resthelper_loaded = False
 
 # make sure output works on terminals without UTF support
@@ -62,7 +62,7 @@ if args.rest_ip:
 if args.debug:
     PM.DEBUG = args.debug
     if PM.DEBUG:
-        print("DEBUGGING ENABLED")
+        logging.info("DEBUGGING ENABLED")
 if args.rest:
     PM.REST_ENABLE = args.rest
 
@@ -74,7 +74,7 @@ try:
     os.makedirs(os.path.dirname(PM.CIB_SOCK), exist_ok=True)
 
 except OSError as e:
-    print(e)
+    logging.error(e)
     raise SystemExit()
 
 # unlink sockets if they already exist
@@ -86,7 +86,7 @@ try:
     if os.path.exists(PM.CIB_SOCK):
         os.unlink(PM.CIB_SOCK)
 except OSError as e:
-    print(e)
+    logging.error(e)
     raise SystemExit()
 
 
@@ -195,7 +195,7 @@ def process_request(reqs, num_candidates=10):
     for r in requests:
         process_special_properties(r)
 
-    print('Received %d NEAT requests' % len(requests))
+    logging.error('Received %d NEAT requests' % len(requests))
     for r in requests:
         logging.debug(str(r))
 
@@ -220,35 +220,35 @@ def process_request(reqs, num_candidates=10):
     # main lookup sequence
     # --------------------
     for i, request in enumerate(requests):
-        print(policy.term_separator("processing request %d/%d" % (i + 1, len(requests)), offset=0, line_char='─'))
-        print("%s" % request)
+        logging.info("----- processing request %d/%d ----- " % (i + 1, len(requests)))
+        logging.info("%s" % request)
 
-        print('Profile lookup...')
+        logging.info('Profile lookup...')
         updated_requests = profiles.lookup(request, tag='(profile)')
 
-        print('    Profile lookup returned %d candidates:' % len(updated_requests))
+        logging.info('    Profile lookup returned %d candidates:' % len(updated_requests))
         for ur in updated_requests:
             logging.debug("updated request %s" % (ur))
 
         cib_candidates = []
-        print('CIB lookup...')
+        logging.info('CIB lookup...')
         for ur in updated_requests:
             for c in cib.lookup(ur):
                 if c in cib_candidates: continue
                 cib_candidates.append(c)
 
         cib_candidates.sort(key=attrgetter('score'), reverse=True)
-        print('    CIB lookup returned %d candidates:' % len(cib_candidates))
+        logging.info('    CIB lookup returned %d candidates:' % len(cib_candidates))
         for c in cib_candidates:
             logging.debug('   %s %.1f %.1f' % (c, *c.score))
 
-        print('PIB lookup...')
+        logging.info('PIB lookup...')
         for j, candidate in enumerate(cib_candidates):
             cand_id = 'on CIB candidate %s' % (j + 1)
             for c in pib.lookup(candidate, tag=cand_id):
                 if c in candidates: continue
                 candidates.append(c)
-        print('    Policy lookup returned %d candidates:' % len(candidates))
+        logging.info('    Policy lookup returned %d candidates:' % len(candidates))
 
     # post process candidates
 
@@ -272,14 +272,14 @@ def process_request(reqs, num_candidates=10):
     for candidate in top_candidates:
         cleanup_special_properties(candidate)
 
-    print(policy.term_separator(line_char='─'))
-    print("%d candidates generated" % (len(candidates)))
-    print(policy.term_separator('Top %d' % num_candidates))
+    logging.info("-----")
+    logging.info("%d candidates generated" % (len(candidates)))
+    logging.info("-----  Top %d -----" % (num_candidates))
     for candidate in top_candidates:
-        print(candidate, 'score: %d|%d' % candidate.score)
+        logging.info(candidate, 'score: %d|%d' % candidate.score)
 
     # TODO check if candidates contain the minimum src/dst/transport tuple
-    print(policy.term_separator())
+    logging.info("-----")
     return top_candidates
 
 
@@ -361,12 +361,12 @@ class PMProtocol(asyncio.Protocol):
 
 def signal_handler():
     print()
-    print(policy.term_separator('ENTERING INTERACTIVE DEBUG MODE', line_char='#'))
+    print('#### ENTERING INTERACTIVE DEBUG MODE #####')
     print()
     import code
     code.interact(local=globals(), banner='use Ctrl-D to exit debug mode')
     print()
-    print(policy.term_separator('EXITING INTERACTIVE DEBUG MODE', line_char='#'))
+    print('##### EXITING INTERACTIVE DEBUG MODE #####')
     print()
 
 
@@ -422,13 +422,13 @@ if __name__ == "__main__":
     os.chmod(PM.PIB_SOCK, 0o777)
     os.chmod(PM.CIB_SOCK, 0o777)
 
-    print('Accepting PM requests on {} ...'.format(server.sockets[0].getsockname()))
-    print('Accepting PIB updates on {} ...'.format(pib_server.sockets[0].getsockname()))
-    print('Accepting CIB updates on {} ...'.format(cib_server.sockets[0].getsockname()))
+    logging.info('Accepting PM requests on {} ...'.format(server.sockets[0].getsockname()))
+    logging.info('Accepting PIB updates on {} ...'.format(pib_server.sockets[0].getsockname()))
+    logging.info('Accepting CIB updates on {} ...'.format(cib_server.sockets[0].getsockname()))
     try:
         loop.run_forever()
     except KeyboardInterrupt:
-        print("\nQuitting policy manager.")
+        logging.info("\nQuitting policy manager.")
 
     try:
         # Close the servers

@@ -276,7 +276,7 @@ def process_request(reqs, num_candidates=10):
     logging.info("%d candidates generated" % (len(candidates)))
     logging.info("-----  Top %d -----" % (num_candidates))
     for candidate in top_candidates:
-        logging.info(candidate, 'score: %d|%d' % candidate.score)
+        logging.info(candidate + 'score: %d|%d' % candidate.score)
 
     # TODO check if candidates contain the minimum src/dst/transport tuple
     logging.info("-----")

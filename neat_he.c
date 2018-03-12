@@ -71,8 +71,7 @@ on_he_connect_req(uv_timer_t *handle)
     uv_close((uv_handle_t *) candidate->prio_timer, free_handle_cb);
     candidate->prio_timer = NULL;
 
-    int ret = candidate->pollable_socket->flow->connectfx(candidate,
-                   candidate->callback_fx);
+    int ret = candidate->pollable_socket->flow->connectfx(candidate, candidate->callback_fx);
     if ((ret == -1) || (ret == -2)) {
 
         nt_log(ctx, NEAT_LOG_DEBUG, "%s: Connect failed with ret = %d", __func__, ret);
@@ -97,11 +96,7 @@ on_he_connect_req(uv_timer_t *handle)
             nt_free_candidate(ctx, candidate);
         }
     } else {
-
-        nt_log(ctx, NEAT_LOG_DEBUG,
-            "%s: Connect successful for fd %d, ret = %d",
-            __func__,
-            candidate->pollable_socket->fd, ret);
+        nt_log(ctx, NEAT_LOG_DEBUG, "%s: Connect successful for fd %d, ret = %d", __func__, candidate->pollable_socket->fd, ret);
     }
 }
 
@@ -238,12 +233,11 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
 #ifdef SCTP_MULTISTREAMING
         // check if there is already a piggyback assoc
         if ((multistream_socket = nt_find_multistream_socket(ctx, flow)) != NULL) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "%s - using piggyback assoc", __func__);
             // we have a piggyback assoc...
 
             LIST_INSERT_HEAD(&multistream_socket->sctp_multistream_flows, flow, multistream_next_flow);
-            multistream_socket->sctp_streams_used++;
 
+            multistream_socket->sctp_streams_used++;
             flow->multistream_id        = multistream_socket->sctp_streams_used;
             //flow->multistream_state     = NEAT_FLOW_OPEN;
             flow->everConnected         = 1;
@@ -251,6 +245,7 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
             flow->firstWritePending     = 1;
 
             //json_incref(flow->properties);
+            nt_log(ctx, NEAT_LOG_INFO, "%s - using piggyback assoc - %p - new multistream id: %d", __func__, multistream_socket, flow->multistream_id);
 
             flow->socket = multistream_socket;
 
@@ -273,7 +268,6 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
 
             flow->multistream_timer = (uv_timer_t *) calloc(1, sizeof(uv_timer_t));
             assert(flow->multistream_timer != NULL);
-            flow->multistream_check = 1;
 
             uv_timer_init(flow->ctx->loop, flow->multistream_timer);
             uv_timer_start(flow->multistream_timer, on_delayed_he_open, 200, 0);

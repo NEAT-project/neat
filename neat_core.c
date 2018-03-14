@@ -933,8 +933,11 @@ neat_set_operations(neat_ctx *ctx, neat_flow *flow, struct neat_flow_operations 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     if (&flow->operations != ops) {
+        int transport_protocol = flow->operations.transport_protocol;
+
         // only copy when not trying to set the same ops again
         flow->operations = *ops;
+        flow->operations.transport_protocol = transport_protocol;
     }
 
     if (flow->socket == NULL) {
@@ -1056,6 +1059,7 @@ io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 
     nt_log(ctx, NEAT_LOG_INFO, "Connected: %s/%s", proto, (flow->socket->family == AF_INET ? "IPv4" : "IPv6"));
 
+    flow->operations.transport_protocol = flow->socket->stack;
     flow->state = NEAT_FLOW_OPEN;
 
     if (flow->operations.on_connected) {

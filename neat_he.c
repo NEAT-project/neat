@@ -113,7 +113,7 @@ delayed_he_connect_req(struct neat_he_candidate *candidate, uv_poll_cb callback_
     if (he_delay_property != NULL){
         he_delay_val = json_object_get(he_delay_property, "value");
         assert(he_delay_val);
-        he_delay += json_integer_value(he_delay_val);
+        he_delay = json_integer_value(he_delay_val) * candidate->priority;
         nt_log(candidate->ctx, NEAT_LOG_INFO, "%s - delaying candidate by %d ms", __func__, he_delay);
     }
 

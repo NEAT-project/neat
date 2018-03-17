@@ -64,6 +64,7 @@ struct neat_flow_operations {
 
     neat_error_code status;
     uint16_t stream_id;
+    int transport_protocol;
     neat_flow_operations_fx on_connected;
     neat_flow_operations_fx on_error;
     neat_flow_operations_fx on_readable;

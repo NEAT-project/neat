@@ -55,17 +55,17 @@ extern "C" int sensehat_init(void) {
     return 0;
 }
 
-extern "C" int sensehat_get_gyro(int &roll, int &pitch, int &yaw) {
+extern "C" int sensehat_get_gyro(int *roll, int *pitch, int *yaw) {
     if (roll) {
-        *roll = 1.0;
+        *roll = 1;
     }
 
     if (pitch) {
-        *pitch = 2.0;
+        *pitch = 2;
     }
 
     if (yaw) {
-        *yaw = 3.0;
+        *yaw = 3;
     }
     return 0;
 }

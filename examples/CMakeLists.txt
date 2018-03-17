@@ -43,7 +43,7 @@ IF (WEBRTC_SUPPORT)
         peer_webrtc_signaling.c
         signaling.c
         webrtcPi.c
-        example.c
+        sensehat_test.c
     )
 ENDIF()
 

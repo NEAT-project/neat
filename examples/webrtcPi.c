@@ -153,7 +153,7 @@ on_writable(struct neat_flow_operations *opCB)
     struct tneat_flow *tnf = opCB->userData;
     neat_error_code code;
     int n;
-    float gyro_x, gyro_y, gyro_z;
+    int roll, pitch, yaw;
     char buf[BUFSIZE];
 
     printf("peer_webrtc: on_writable\n");
@@ -161,11 +161,11 @@ on_writable(struct neat_flow_operations *opCB)
         fprintf(stderr, "%s()\n", __func__);
     }
 
-    if (sensehat_get_gyro(&gyro_x, &gyro_y, &gyro_z)) {
+    if (sensehat_get_gyro(&roll, &pitch, &yaw)) {
         return NEAT_OK;
     }
 
-    n = snprintf(buf, BUFSIZE, "{\"x\": %f, \"y\": %f, \"z\": %f, \"valcount\": %d}\r\n", gyro_x, gyro_y, gyro_z, tnf->snd.calls++);
+    n = snprintf(buf, BUFSIZE, "{\"roll\": %d, \"pitch\": %d, \"yaw\": %d, \"valcount\": %d}\r\n", roll, pitch, yaw, tnf->snd.calls++);
     code = neat_write(opCB->ctx, opCB->flow, (const unsigned char *) buf, n, NULL, 0);
 
     if (code != NEAT_OK) {

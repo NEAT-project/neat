@@ -18,6 +18,7 @@ LIST(APPEND neat_programs
     minimal_client.c
     minimal_server.c
     minimal_server2.c
+
 )
 
 LIST(APPEND neat_property_examples
@@ -42,6 +43,7 @@ IF (WEBRTC_SUPPORT)
         peer_webrtc_signaling.c
         signaling.c
         webrtcPi.c
+        sensehat_test.c
     )
 ENDIF()
 

@@ -5,6 +5,6 @@
 #endif
 
 EXTERNC int sensehat_init(void);
-EXTERNC int sensehat_get_gyro(float *x, float *y, float *z);
+EXTERNC int sensehat_get_gyro(int *roll, int *pitch, int *yaw);
 
 #undef EXTERNC

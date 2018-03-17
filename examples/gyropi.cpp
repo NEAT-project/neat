@@ -20,13 +20,13 @@ extern "C" int sensehat_init(void) {
     //  this is a convenient place to change fusion parameters
     imu->setSlerpPower(0.02);
     imu->setGyroEnable(true);
-    imu->setAccelEnable(true);
-    imu->setCompassEnable(true);
+    imu->setAccelEnable(false);
+    imu->setCompassEnable(false);
 
     return 0;
 }
 
-extern "C" int sensehat_get_gyro(float *x, float *y, float *z) {
+extern "C" int sensehat_get_gyro(int *roll, int *pitch, int *yaw ) {
     RTIMU_DATA imuData;
 
     if (!imu->IMURead()) {
@@ -34,19 +34,19 @@ extern "C" int sensehat_get_gyro(float *x, float *y, float *z) {
     }
 
     imuData = imu->getIMUData();
-    fprintf(stderr, "Sample %s\n", RTMath::displayDegrees("", imuData.fusionPose));
-    if (x) {
-        *x = RTMATH_RAD_TO_DEGREE * imuData.fusionPose.x();
-    }
-    
-    if (y) { 
-        *y = RTMATH_RAD_TO_DEGREE * imuData.fusionPose.y();
+
+    if (roll) {
+        *roll = (int) (RTMATH_RAD_TO_DEGREE * imuData.fusionPose.x());
     }
 
-    if (z) {
-        *z = RTMATH_RAD_TO_DEGREE * imuData.fusionPose.z();
+    if (pitch) {
+        *pitch = (int) (RTMATH_RAD_TO_DEGREE * imuData.fusionPose.y());
     }
- 
+
+    if (yaw) {
+        *yaw = (int) (RTMATH_RAD_TO_DEGREE * imuData.fusionPose.z());
+    }
+
     return 0;
 }
 #else
@@ -55,7 +55,18 @@ extern "C" int sensehat_init(void) {
     return 0;
 }
 
-extern "C" int sensehat_get_gyro(float &x, float &y, float &z) {
+extern "C" int sensehat_get_gyro(int *roll, int *pitch, int *yaw) {
+    if (roll) {
+        *roll = 1;
+    }
+
+    if (pitch) {
+        *pitch = 2;
+    }
+
+    if (yaw) {
+        *yaw = 3;
+    }
     return 0;
 }
 

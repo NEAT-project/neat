@@ -48,11 +48,9 @@ void transport_upcall_handler(
     struct rawrtc_sctp_transport* const transport = arg;
     struct peer_connection* const client = transport->arg;
     int events = -1;
-    int ignore_events = 0;
+    events = webrtc_upcall_handler(socket, arg, flags);
 
-    events = webrtc_upcall_handler(socket, arg, flags, ignore_events);
-
-    while (events) {
+    while (events > 0) {
         if (events == SCTP_EVENT_WRITE) {
             for (int i = 0; i < (int)client->max_flows; i++) {
                 if (client->flows[i]->state == NEAT_FLOW_OPEN &&
@@ -61,9 +59,7 @@ void transport_upcall_handler(
                 }
             }
         }
-        ignore_events |= events;
-        events = webrtc_upcall_handler(socket, arg, flags, ignore_events);
-        events &= ~ignore_events;
+        events = webrtc_upcall_handler(socket, arg, flags);
     }
     if (client->ready_to_close == 1) {
         client_stop(client);

@@ -48,9 +48,10 @@ void transport_upcall_handler(
     struct rawrtc_sctp_transport* const transport = arg;
     struct peer_connection* const client = transport->arg;
     int events = -1;
+    int count = 0;
     events = webrtc_upcall_handler(socket, arg, flags);
 
-    while (events > 0) {
+    while (events > 0 && count++ < 10) {
         if (events == SCTP_EVENT_WRITE) {
             for (int i = 0; i < (int)client->max_flows; i++) {
                 if (client->flows[i]->state == NEAT_FLOW_OPEN &&
@@ -77,7 +78,6 @@ static void client_start_transports(
     enum rawrtc_code ret = rawrtc_ice_transport_start(
             client->ice_transport, client->gatherer, remote_parameters->ice_parameters,
             client->role);
-    printf("trans:ret=%d\n", ret);
     if (ret != RAWRTC_CODE_SUCCESS) {
         printf("Error starting ice transport \n");
         exit (-1);
@@ -87,7 +87,6 @@ static void client_start_transports(
     ret = rawrtc_dtls_transport_start(
             client->dtls_transport, remote_parameters->dtls_parameters);
 
-   printf("dtls:ret=%d\n", ret);
     if (ret != RAWRTC_CODE_SUCCESS) {
         printf("Error starting dtls transport \n");
         exit (-1);
@@ -98,7 +97,6 @@ static void client_start_transports(
             client->sctp_transport, remote_parameters->sctp_parameters.capabilities,
             remote_parameters->sctp_parameters.port);
 
-    printf("sctp:ret=%d\n", ret);
     if (ret != RAWRTC_CODE_SUCCESS) {
         printf("Error starting SCTP transport \n");
         exit (-1);
@@ -115,8 +113,7 @@ static void parse_param_from_signaling_server(struct neat_ctx *ctx, struct neat_
     struct rawrtc_ice_candidates* ice_candidates = NULL;
     struct rawrtc_dtls_parameters* dtls_parameters = NULL;
     struct sctp_parameters sctp_parameters;
-printf("parse_param_from_signaling_server\n");
-printf("state client->gatherer=%d\n", client->gatherer->state == RAWRTC_ICE_GATHERER_CLOSED);
+
     // Get dict from JSON
     error = get_json_buffer(&dict, params);
     if (error) {
@@ -147,11 +144,8 @@ printf("state client->gatherer=%d\n", client->gatherer->state == RAWRTC_ICE_GATH
     client->remote_parameters.ice_candidates = rawrtc_mem_ref(ice_candidates);
     client->remote_parameters.dtls_parameters = rawrtc_mem_ref(dtls_parameters);
     memcpy(&client->remote_parameters.sctp_parameters, &sctp_parameters, sizeof(sctp_parameters));
-    printf("vor client_set_parameters\n");
     client_set_parameters(client);
-    printf("vor client_start_transports\n");
     client_start_transports(client);
-printf("nach client_start_transports\n");
 out:
     // Un-reference
     rawrtc_mem_deref(dtls_parameters);
@@ -608,7 +602,6 @@ static void print_local_parameters(
 
     // Print JSON
  //   rawrtc_dbg_info("Local Parameters:\n%H\n", rawrtc_json_encode_odict, dict);
-printf("nach localParameters\n");
     // Un-reference
     rawrtc_mem_deref(dict);
 
@@ -755,7 +748,6 @@ neat_webrtc_write_to_channel(struct neat_ctx *ctx,
     int i = 0;
     for (i = 0; i < (int)pc->max_flows; i++) {
         if (pc->flows[i]->state == NEAT_FLOW_OPEN && pc->flows[i]->flow == flow) {
-            printf("send %zu bytes on %s \n", buf->end, pc->flows[i]->label);
             rawrtc_data_channel_send(pc->flows[i]->channel, buf, true);
             rawrtc_mem_deref(buf);
             break;

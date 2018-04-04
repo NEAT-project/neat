@@ -35,11 +35,11 @@ NEAT Sockets API
 </address>
 </author>
 
-<date day="29" month="September" year="2017" />
+<date day="30" month="October" year="2017" />
 <keyword>Internet-Draft</keyword>
 
 <abstract>
-<t>This document describes a BSD Sockets-like API on top of the callback-based NEAT Core API. This facilitates porting existing applications to use a subset of NEAT's functionality.</t>
+<t>This document describes a BSD Sockets-like API on top of the callback-based NEAT User API. This facilitates porting existing applications to use a subset of NEAT's functionality.</t>
 </abstract>
 
 
@@ -49,9 +49,8 @@ NEAT Sockets API
 
 
 <section title="Introduction">
-   <t>The NEAT project <xref target="NEAT-D1.1" />, <xref target="I-D.ietf-taps-transports-usage" />, <xref target="I-D.gjessing-taps-minset" />, <xref target="NEAT-Website" /> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network “services” offered to applications – such as reliability, low-delay communication or security – to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion.</t>
-   <t>This document describes the NEAT Sockets API on top of the callback-based NEAT Core API <xref target="NEAT-D1.1" />,  <xref  target="NEAT-D1.2" />,  <xref target="NEAT-D2.1" />,  <xref target="NEAT-D2.2" />.
-   It provides a BSD Sockets-like API that facilitates porting existing applications to use a subset of NEAT's functionality.</t>
+   <t>The NEAT project <xref target="ANRW2017" />, <xref target="NEAT-D1.1" />, <xref target="I-D.ietf-taps-transports-usage" />, <xref target="I-D.gjessing-taps-minset" />, <xref target="NEAT-Website" /> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network “services” offered to applications – such as reliability, low-delay communication or security – to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion.</t>
+   <t>This document describes the NEAT Sockets API on top of the callback-based NEAT User API <xref target="I-D.fairhurst-taps-neat" />. It provides a BSD Sockets-like API that facilitates porting existing applications to use a subset of NEAT's functionality. For further information on NEAT, see also <xref target="ANRW2017" />, <xref target="NEAT-D1.1" />,  <xref  target="NEAT-D1.2" />,  <xref target="NEAT-D2.1" />,  <xref target="NEAT-D2.2" />.</t>
 
 <section title="Conventions">
 <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in <xref target="RFC2119"/>.</t>
@@ -116,7 +115,7 @@ int nsa_unmap_socket(int neatSD)</artwork></figure>
 <section title="Connection Establishment and Teardown">
 
 <section title="nsa_socket()">
- <t>nsa_socket() creates a new NEAT socket. The NEAT socket can either be a wrapper around the NEAT Core API (if properties are specified) or be a wrapper around a system socket (if no properties are specified).</t>
+ <t>nsa_socket() creates a new NEAT socket. The NEAT socket can either be a wrapper around the NEAT User API (if properties are specified) or be a wrapper around a system socket (if no properties are specified).</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_socket(int domain, int type, int protocol,
@@ -487,6 +486,57 @@ ssize_t nsa_write(int fd, const void* buf, size_t len)</artwork></figure>
  <t>See the write() documentation for details.</t>
 </section>
 
+<section title="nsa_writev()">
+ <t>nsa_writev() sends data over a given connected NEAT socket. The data is provided by an iovec structure.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_writev(int fd, const struct iovec* iov, int iovcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="sockfd:">NEAT socket descriptor.</t>
+      <t hangText="iov:">Data to send provided as iovec structures.</t>
+      <t hangText="iovcnt:">Number of provided iovec structures.</t>
+   </list>
+ </t>
+ <t>nsa_writev() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the writev() documentation for details.</t>
+</section>
+
+<section title="nsa_pwrite()">
+ <t>nsa_pwrite() is a wrapper around the pwrite() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset)</artwork></figure>
+ <t>See the pwrite() documentation for details.</t>
+</section>
+
+<section title="nsa_pwrite64()">
+ <t>nsa_pwrite64() is a wrapper around the pwrite64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off64_t offset)</artwork></figure>
+ <t>See the pwrite64() documentation for details.</t>
+</section>
+
+<section title="nsa_pwritev()">
+ <t>nsa_pwritev() is a wrapper around the pwritev() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
+                    off_t offset)</artwork></figure>
+ <t>See the pwritev() documentation for details.</t>
+</section>
+
+<section title="nsa_pwritev64()">
+ <t>nsa_pwritev64() is a wrapper around the pwritev64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
+                    off64_t offset)</artwork></figure>
+ <t>See the pwritev64() documentation for details.</t>
+</section>
+
 <section title="nsa_send()">
  <t>nsa_send() sends data over a given connected NEAT socket.</t>
  <t>Function Prototype:</t>
@@ -566,7 +616,7 @@ ssize_t nsa_sendv(int sockfd, struct iovec* iov, int iovcnt,
       <t hangText="flags:">Optional flags (0, if there are none).</t>
    </list>
  </t>
- <t>nsa_sendmsg() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>nsa_sendv() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
  <t>See the sctp_sendv() documentation for details.</t>
 </section>
 
@@ -585,6 +635,57 @@ ssize_t nsa_read(int fd, void* buf, size_t len)</artwork></figure>
  </t>
  <t>nsa_read() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
  <t>See the read() documentation for details.</t>
+</section>
+
+<section title="nsa_readv()">
+ <t>nsa_readv() reads data from a given connected NEAT socket.  The data information buffers are provided by an iovec structure.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_readv(int fd, const struct iovec* iov, int iovcnt)</artwork></figure>
+ <t>Arguments:</t>
+ <t>
+   <list style="hanging">
+      <t hangText="fd:">NEAT socket descriptor.</t>
+      <t hangText="iov:">Data to send provided as iovec structures.</t>
+      <t hangText="iovcnt:">Number of provided iovec structures.</t>
+   </list>
+ </t>
+ <t>nsa_readv() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+ <t>See the readv() documentation for details.</t>
+</section>
+
+<section title="nsa_pread()">
+ <t>nsa_pread() is a wrapper around the pread() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)</artwork></figure>
+ <t>See the pread() documentation for details.</t>
+</section>
+
+<section title="nsa_pread64()">
+ <t>nsa_pread64() is a wrapper around the pread64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)</artwork></figure>
+ <t>See the pread64() documentation for details.</t>
+</section>
+
+<section title="nsa_preadv()">
+ <t>nsa_preadv() is a wrapper around the preadv() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
+                   off64_t offset)</artwork></figure>
+ <t>See the preadv() documentation for details.</t>
+</section>
+
+<section title="nsa_preadv64()">
+ <t>nsa_preadv64() is a wrapper around the preadv64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
+                   off64_t offset)</artwork></figure>
+ <t>See the preadv64() documentation for details.</t>
 </section>
 
 <section title="nsa_recv()">
@@ -809,6 +910,8 @@ void nsa_freepaddrs(struct sockaddr* addrs)</artwork></figure>
 
 <section title="Miscellaneous">
 
+<t>This section contains miscellaneous wrapper functions, mostly around file I/O. Since Unix file descriptors are used together with socket descriptors in functions like poll(), select(), etc., it is necessary to wrap functions handling file descriptors as well.</t>
+
 <section title="nsa_open()">
  <t>nsa_open() is a wrapper around the open() call, returning a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
@@ -825,6 +928,102 @@ int nsa_creat(const char* pathname, mode_t mode)</artwork></figure>
  <t>See the creat() documentation for details.</t>
 </section>
 
+<section title="nsa_lockf()">
+ <t>nsa_lockf() is a wrapper around the lockf() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_lockf(int fd, int cmd, off_t len)</artwork></figure>
+ <t>See the lockf() documentation for details.</t>
+</section>
+
+<section title="nsa_lockf64()">
+ <t>nsa_lockf64() is a wrapper around the lockf64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_lockf(int fd, int cmd, off64_t len)</artwork></figure>
+ <t>See the lockf64() documentation for details.</t>
+</section>
+
+<section title="nsa_flock()">
+ <t>nsa_flock() is a wrapper around the flock() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_flock(int fd, int operation)</artwork></figure>
+ <t>See the flock() documentation for details.</t>
+</section>
+
+<section title="nsa_fstat()">
+ <t>nsa_fstat() is a wrapper around the fstat() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_fstat(int fd, struct stat* buf)</artwork></figure>
+ <t>See the fstat() documentation for details.</t>
+</section>
+
+<section title="nsa_fpathconf()">
+ <t>nsa_fpathconf() is a wrapper around the fpathconf() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+long nsa_fpathconf(int fd, int name)</artwork></figure>
+ <t>See the fpathconf() documentation for details.</t>
+</section>
+
+<section title="nsa_fchown()">
+ <t>nsa_fchown() is a wrapper around the fchown() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_fchown(int fd, uid_t owner, gid_t group)</artwork></figure>
+ <t>See the fchown() documentation for details.</t>
+</section>
+
+<section title="nsa_fsync()">
+ <t>nsa_fsync() is a wrapper around the fsync() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_fsync(int fd)</artwork></figure>
+ <t>See the fsync() documentation for details.</t>
+</section>
+
+<section title="nsa_fdatasync()">
+ <t>nsa_fdatasync() is a wrapper around the fdatasync() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_fdatasync(int fd)</artwork></figure>
+ <t>See the fdatasync() documentation for details.</t>
+</section>
+
+<section title="nsa_syncfs()">
+ <t>nsa_syncfs() is a wrapper around the syncfs() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_syncfs(int fd)</artwork></figure>
+ <t>See the syncfs() documentation for details.</t>
+</section>
+
+<section title="nsa_dup2()">
+ <t>nsa_dup2() is a wrapper around the dup2() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_dup2(int oldfd, int newfd)</artwork></figure>
+ <t>See the dup2() documentation for details.</t>
+</section>
+
+<section title="nsa_dup3()">
+ <t>nsa_dup3() is a wrapper around the dup3() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_dup3(int oldfd, int newfd, int flags)</artwork></figure>
+ <t>See the dup3() documentation for details.</t>
+</section>
+
+<section title="nsa_dup()">
+ <t>nsa_dup() is a wrapper around the dup() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_dup(int oldfd)</artwork></figure>
+ <t>See the dup() documentation for details.</t>
+</section>
+
 <section title="nsa_lseek()">
  <t>nsa_lseek() is a wrapper around the lseek() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
@@ -833,12 +1032,28 @@ off_t nsa_lseek(int fd, off_t offset, int whence)</artwork></figure>
  <t>See the lseek() documentation for details.</t>
 </section>
 
+<section title="nsa_lseek64()">
+ <t>nsa_lseek64() is a wrapper around the lseek64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+off_t nsa_lseek(int fd, off64_t offset, int whence)</artwork></figure>
+ <t>See the lseek64() documentation for details.</t>
+</section>
+
 <section title="nsa_truncate()">
  <t>nsa_truncate() is a wrapper around the truncate() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
 int nsa_ftruncate(int fd, off_t length)</artwork></figure>
  <t>See the truncate() documentation for details.</t>
+</section>
+
+<section title="nsa_truncate64()">
+ <t>nsa_truncate64() is a wrapper around the truncate64() call, using a NEAT socket descriptor instead.</t>
+ <t>Function Prototype:</t>
+ <figure><artwork>
+int nsa_ftruncate(int fd, off64_t length)</artwork></figure>
+ <t>See the truncate64() documentation for details.</t>
 </section>
 
 <section title="nsa_pipe()">
@@ -862,7 +1077,7 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 
 <section title="Code Examples">
  <t>
- Running code examples can be found in the NEAT Git repository:
+    Running code examples can be found in the NEAT Git repository, with some tutorial material in <xref target="Haikou2017-NEAT" />:
  <list style="hanging">
     <t>URL: <eref target="https://github.com/NEAT-project/neat">https://github.com/NEAT-project/neat</eref></t>
     <t>Branch: <eref target="https://github.com/NEAT-project/neat/tree/dreibh/neat-socketapi">dreibh/neat-socketapi</eref></t>
@@ -888,8 +1103,10 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 
 <section title="Acknowledgments">
 <t>
-   The authors would like to thank
-   (ADD NAMES HERE)
+   The author would like to thank
+   David Ros,
+   Michael Welzl, and
+   Xing Zhou
    for their support.
 </t>
 </section>
@@ -904,6 +1121,7 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
  <?rfc include="reference.RFC.2119" ?>
  <?rfc include="reference.RFC.6458" ?>
  <?rfc include="reference.I-D.gjessing-taps-minset" ?>
+ <?rfc include="reference.I-D.fairhurst-taps-neat" ?>
  <?rfc include="reference.I-D.ietf-taps-transports-usage" ?>
 </references>
 
@@ -913,6 +1131,8 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 
  <?rfc include="NEAT-Website" ?>
  <?rfc include="NorNet-Website" ?>
+ <?rfc include="Haikou2017-NEAT" ?>
+ <?rfc include="ANRW2017" ?>
 
  <?rfc include="NEAT-D1.1" ?>
  <?rfc include="NEAT-D1.2" ?>

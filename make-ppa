@@ -20,7 +20,7 @@
 # Contact: dreibh@iem.uni-due.de
 
 ./clean-deb
-./make-deb xenial zesty artful bionic unstable
+./make-deb xenial zesty artful bionic cosmic unstable
 changeFiles=`ls *.changes`
 for changeFile in $changeFiles ; do
    if [[ $changeFile =~ .*[0-9](ppa|ubuntu)[0-9].* ]] ; then

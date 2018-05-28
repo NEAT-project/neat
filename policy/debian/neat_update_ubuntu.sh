@@ -14,3 +14,6 @@ sudo cp -v ~/neat/policy/examples/pib/* /etc/neat/pib/
 
 sudo service neatpmd restart
 /etc/init.d/neatpmd status
+
+sudo cp /home/neat/neat/policy/debian/services/neat_http_server.service /lib/systemd/system
+

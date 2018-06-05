@@ -3,7 +3,7 @@
 NEAT_DIR=~/neat
 
 mkdir -p $NEAT_DIR/build
-cd $NEAT_DIR/neat
+cd $NEAT_DIR
 git pull
 cd $NEAT_DIR/build
 cmake ..

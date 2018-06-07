@@ -346,7 +346,8 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)</artwork><
   </t>
  <t>Function Prototype:</t>
  <figure><artwork>
-int nsa_accept4(int sockfd, struct sockaddr* addr, socklen_t* addrlen,
+int nsa_accept4(int sockfd,
+                struct sockaddr* addr, socklen_t* addrlen,
                 int flags)</artwork></figure>
  <t>Arguments:</t>
  <t>
@@ -514,7 +515,8 @@ ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset)</artwork><
  <t>nsa_pwrite64() is a wrapper around the pwrite64() call, using a NEAT socket descriptor instead.</t>
  <t>Function Prototype:</t>
  <figure><artwork>
-ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off64_t offset)</artwork></figure>
+ssize_t nsa_pwrite(int fd, const void* buf, size_t len,
+                   off64_t offset)</artwork></figure>
  <t>See the pwrite64() documentation for details.</t>
 </section>
 

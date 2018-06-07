@@ -3,11 +3,12 @@ PROJECT(libneat)
 
 SET(BUILD_MAJOR "0")
 SET(BUILD_MINOR "0")
-SET(BUILD_PATCH "1~td161")
+SET(BUILD_PATCH "1~td191")
 SET(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
+#############################################################################
 # INSTALLATION_DIRECTORIES
-#################################################
+#############################################################################
 
 SET(CMAKE_INSTALL_BINDIR_DOC        "user executables [PREFIX/bin]")
 SET(CMAKE_INSTALL_SBINDIR_DOC       "system admin executables [EPREFIX/sbin]")
@@ -35,8 +36,9 @@ SET(CMAKE_INSTALL_INCLUDEDIR "include"
 SET(CMAKE_INSTALL_MANDIR "share/man"
     CACHE PATH ${CMAKE_INSTALL_MANDIR_DOC})
 
+#############################################################################
 # PACKAGING
-#################################################
+#############################################################################
 
 SET(CPACK_SOURCE_GENERATOR "TGZ")
 SET(CPACK_SOURCE_PACKAGE_FILE_NAME
@@ -53,8 +55,9 @@ INCLUDE(CheckTypeSize)
 INCLUDE(CheckCCompilerFlag)
 SET(CMAKE_MACOSX_RPATH 1)
 
+#############################################################################
 # SOURCES + HEADERS
-#################################################
+#############################################################################
 LIST(APPEND neat_headers
     neat.h
     neat_queue.h
@@ -78,8 +81,9 @@ LIST(APPEND neat_sources
     tls-trust.c
 )
 
+#############################################################################
 # OS DEPENDENT
-#################################################
+#############################################################################
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     MESSAGE(${CMAKE_SYSTEM_NAME} " supported")
     ADD_DEFINITIONS("-D_DEFAULT_SOURCE")
@@ -117,9 +121,9 @@ ENDIF()
 
 FIND_PACKAGE(Threads REQUIRED)
 
-#################################################
+#############################################################################
 # CHECK STRUCT MEMBERS
-#################################################
+#############################################################################
 CHECK_STRUCT_HAS_MEMBER("struct sockaddr" "sa_len" "sys/types.h;sys/socket.h" HAVE_SA_LEN)
 IF (HAVE_SA_LEN)
     MESSAGE(STATUS "HAVE_SA_LEN")
@@ -144,9 +148,9 @@ IF (HAVE_SS_LEN)
     ADD_DEFINITIONS(-DHAVE_SS_LEN)
 ENDIF()
 
-#################################################
+#############################################################################
 # CHECK OPTIONS
-#################################################
+#############################################################################
 # Debug build type as default
 IF (NOT CMAKE_BUILD_TYPE)
     MESSAGE("No build type selected, using DEBUG")
@@ -222,8 +226,9 @@ IF (SANITIZER_ADDRESS AND SANITIZER_MEMORY)
 ENDIF()
 
 
+#############################################################################
 # REQUIREMENTS
-#################################################
+#############################################################################
 CHECK_INCLUDE_FILE(uv.h HAVE_SYS_UV_H)
 FIND_LIBRARY(UV_LIB uv)
 
@@ -355,8 +360,9 @@ IF (HAVE_RTIMULIB_H)
     ADD_DEFINITIONS(-DHAVE_RTIMULIB_H)
 ENDIF()
 
+#############################################################################
 # COMPILER FLAGS
-#################################################
+#############################################################################
 SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror")
 
@@ -450,8 +456,9 @@ IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
 ENDIF()
 
+#############################################################################
 # LIBRARIES
-#################################################
+#############################################################################
 INCLUDE_DIRECTORIES(.)
 
 LIST(APPEND neat_libs
@@ -494,16 +501,18 @@ IF (SWIG_PYTHON)
     SWIG_LINK_LIBRARIES(neat ${neat_libs} ${PYTHON_LIBRARIES})
 ENDIF()
 
+#############################################################################
 # INSTALL
-#################################################
+#############################################################################
 MESSAGE("Install directory: ${CMAKE_INSTALL_PREFIX}")
 
 INSTALL(TARGETS neat neat-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
 INSTALL(FILES "neat.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
+#############################################################################
 # INCLUDE EXAMPLES AND TESTS FOLDER
-#################################################
+#############################################################################
 IF (SOCKET_API)
     ADD_SUBDIRECTORY(socketapi)
 ENDIF()

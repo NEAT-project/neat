@@ -7,7 +7,7 @@
 <?rfc strict="no" ?>
 <?rfc symrefs="no" ?>
 
-<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-02.txt">
+<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-03.txt">
 
 <?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
 
@@ -20,12 +20,11 @@ NEAT Sockets API
 
 <!-- ************** THOMAS DREIBHOLZ *************** -->
 <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz">
-<organization abbrev="Simula Research Laboratory">Simula Research Laboratory, Network Systems Group</organization>
+<organization abbrev="Simula@OsloMet">Simula Metropolitan Centre for Digital Engineering</organization>
 <address>
 <postal>
-   <street>Martin Linges vei 17</street>
-   <city>1364 Fornebu</city>
-   <region>Akershus</region>
+   <street>Pilestredet 52</street>
+   <city>0167 Oslo</city>
    <country>Norway</country>
 </postal>
 <phone>+47-6782-8200</phone>
@@ -35,7 +34,7 @@ NEAT Sockets API
 </address>
 </author>
 
-<date day="30" month="October" year="2017" />
+<date day="7" month="June" year="2018" />
 <keyword>Internet-Draft</keyword>
 
 <abstract>
@@ -1102,6 +1101,8 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 </section>
 
 <section title="Acknowledgments">
+<t>This work was partially funded by the European Union's Horizon 2020 research and innovation programme under grant agreement No. 644334 (NEAT). The views expressed are solely those of the author(s).</t>
+
 <t>
    The author would like to thank
    David Ros,

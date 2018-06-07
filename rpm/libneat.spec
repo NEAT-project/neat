@@ -1,5 +1,5 @@
 Name: libneat
-Version: 0.0.1~td170
+Version: 0.0.1~td191
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -35,6 +35,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-build
 Summary: NEAT (Core API Development Files)
 Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
+Requires: libuv-devel
 
 %description devel
  The NEAT project wants to achieve a complete redesign of the way in which
@@ -87,7 +88,7 @@ Requires: %{name} = %{version}-%{release}
  features as they evolve.
  This package contains the library for the NEAT Sockets API.
 
- 
+
 %package socketapi-devel
 Summary: NEAT (Socket API Development Files)
 Group: Development/Libraries

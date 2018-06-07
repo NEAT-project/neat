@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+
+<reference anchor='I-D.fairhurst-taps-neat'>
+<front>
+<title>The NEAT Interface to Transport Services</title>
+
+<author initials='G' surname='Fairhurst' fullname='Gorry Fairhurst'>
+    <organization />
+</author>
+
+<date month='October' day='30' year='2017' />
+
+</front>
+
+<seriesInfo name='Internet-Draft' value='draft-fairhurst-taps-neat-00' />
+<format type='TXT'
+        target='http://www.ietf.org/internet-drafts/draft-fairhurst-taps-neat-00.txt' />
+</reference>

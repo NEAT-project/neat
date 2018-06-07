@@ -11,6 +11,7 @@ references:
 
 $(txtfiles):	%.txt: %.xml
 	xml2rfc $< $@ --text
+	sed -i -e "s/&#263;/c/g" $@
 	./idnits $@
 
 $(htmlfiles):	%.html: %.xml

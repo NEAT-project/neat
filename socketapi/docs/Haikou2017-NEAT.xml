@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
+<reference anchor="Haikou2017-NEAT" target="https://www.simula.no/file/haikou2017-neat-introductionpdf/download">
+	<front>
+		<title>A Practical Introduction to NEAT at Hainan University</title>
+		<author initials="T." surname="Dreibholz" fullname="Thomas&#160;Dreibholz" />
+		<date day="17" month="April" year="2017" />
+	</front>
+	<seriesInfo name="" value="Invited Talk at Hainan University, College of Information Science and Technology&#160;(CIST)" />
+	<format type="PDF" octets="886012" target="https://www.simula.no/file/haikou2017-neat-introductionpdf/download" />
+</reference>
+

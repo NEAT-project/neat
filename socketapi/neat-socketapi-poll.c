@@ -226,6 +226,10 @@ int nsa_select(int             n,
 }
 
 
+#ifdef HAVE_SYS_EPOLL_H
+
+#include <sys/epoll.h>
+
 /* ###### NEAT epoll_create() implementation ############################# */
 int nsa_epoll_create(int size)
 {
@@ -260,3 +264,5 @@ int nsa_epoll_pwait(int epfd, struct epoll_event *events, int maxevents,
 {
    abort();   // FIXME: to be implemented!
 }
+
+#endif

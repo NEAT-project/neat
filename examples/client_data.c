@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <uv.h>
 
+#define QUOTE(...) #__VA_ARGS__
+
 /**********************************************************************
 
     simple neat traffic generator
@@ -36,8 +38,7 @@ static uint16_t config_json_stats = 1;
 static uint16_t config_timeout = 0;
 static uint16_t config_number_of_streams = 1207;
 static char *config_primary_dest_addr = NULL;
-static char *config_property = "{\"transport\": {\"value\":\"reliable\", \"precedence\":2}}";
-
+static char *config_property = QUOTE({"transport": {"value":"reliable", "precedence":2}});
 
 
 struct std_buffer {

@@ -42,16 +42,11 @@ def on_connected(ops):
     return NEAT_OK
 
 properties = """{
-    "transport": [
+    "transport":
         {
-            "value": "SCTP",
-            "precedence": 1
-        },
-        {
-            "value": "TCP",
+            "value": ["SCTP", SCTP],
             "precedence": 1
         }
-    ]
 }"""
 
 if __name__ == "__main__":

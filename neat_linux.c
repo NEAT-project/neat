@@ -99,7 +99,7 @@ nt_linux_handle_addr(struct neat_ctx *ctx, struct nlmsghdr *nl_hdr)
 
     //TODO: Should this function be a callback instead? Will we have multiple
     //addresses handlers/types of context?
-    return nt_addr_update_src_list(ctx, &src_addr, ifm->ifa_index,
+    return nt_addr_update_src_list(ctx, (struct sockaddr*) &src_addr, ifm->ifa_index,
                                      nl_hdr->nlmsg_type == RTM_NEWADDR,
                                      ifm->ifa_prefixlen, ifa_pref, ifa_valid);
 }
@@ -145,6 +145,55 @@ static void nt_linux_cleanup(struct neat_ctx *nc)
 
     free(nc->mnl_rcv_buf);
 }
+
+#ifdef MPTCP_SUPPORT
+// Find out if MPTCP is supported and enabled on the machine
+void linux_read_sys_mptcp_enabled(struct neat_ctx *ctx)
+{
+    FILE *file = NULL;
+    char buff[4];
+    long value;
+    size_t len;
+
+    file = fopen("/proc/sys/net/mptcp/mptcp_enabled", "r");
+    if (!file) {
+        nt_log(ctx, NEAT_LOG_ERROR, "MPCP: Failed to open 'mptcp_enabled' file");
+        goto cleanup;
+    }
+
+    len = fread(buff, 1, sizeof(buff), file);
+    if (ferror(file) || !feof(file) || len <= 0) {
+        nt_log(ctx, NEAT_LOG_ERROR, "MPCP: Failed to read 'mptcp_enabled' file");
+        goto cleanup;
+    }
+
+    buff[len] = '\0';
+    value = strtol(buff, NULL, 0);
+
+    switch(value) {
+    case 0:
+        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_DISABLED");
+        ctx->sys_mptcp_enabled = MPTCP_SYS_DISABLED;
+        break;
+    case 1:
+        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_ENABLED");
+        ctx->sys_mptcp_enabled = MPTCP_SYS_ENABLED;
+        break;
+    case 2:
+        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_APP_CTRL");
+        ctx->sys_mptcp_enabled = MPTCP_SYS_APP_CTRL;
+        break;
+    default:
+        nt_log(ctx, NEAT_LOG_INFO, "MPCP: MPTCP_SYS_DISABLED");
+        ctx->sys_mptcp_enabled = MPTCP_SYS_DISABLED;
+    }
+
+cleanup:
+    if (file) {
+        fclose(file);
+    }
+}
+#endif // MPTCP_SUPPORT
 
 //Initialize the Linux-specific part of the context. All is related to
 //libmnl/netfilter
@@ -196,6 +245,10 @@ struct neat_ctx *nt_linux_init_ctx(struct neat_ctx *ctx)
     }
 
     ctx->cleanup = nt_linux_cleanup;
+
+#ifdef MPTCP_SUPPORT
+    linux_read_sys_mptcp_enabled(ctx);
+#endif // MPTCP_SUPPORT
 
     //Configure netlink socket, add to event loop and start dumping
     return ctx;

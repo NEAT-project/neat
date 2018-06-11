@@ -54,7 +54,9 @@ on_pm_close(void* data)
     free(pm_context->output_buffer);
     free(pm_context->ipc_context);
 
-    uv_close((uv_handle_t*)pm_context->timer, on_timer_close);
+    if (!uv_is_closing((uv_handle_t*)pm_context->timer)) {
+        uv_close((uv_handle_t*)pm_context->timer, on_timer_close);
+    }
 
     free(pm_context);
 }

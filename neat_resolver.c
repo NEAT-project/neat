@@ -115,8 +115,7 @@ static void
 neat_resolver_close_timer(uv_handle_t *handle)
 {
     struct neat_resolver_request *request = handle->data;
-    TAILQ_REMOVE(&(request->resolver->dead_request_queue), request,
-                 next_dead_req);
+    TAILQ_REMOVE(&(request->resolver->dead_request_queue), request, next_dead_req);
     free(request);
 }
 
@@ -170,9 +169,9 @@ neat_resolver_idle_cb(uv_idle_t *handle)
         return;
     }
 
-    //Free all dead requests
+    // Free all dead requests
     for (request_itr = resolver->dead_request_queue.tqh_first;
-         request_itr != NULL;) {
+        request_itr != NULL;) {
         request_tmp = request_itr;
         request_itr = request_itr->next_req.tqe_next;
 
@@ -219,8 +218,67 @@ nt_resolver_request_cleanup(struct neat_resolver_request *request)
     //Timers need to, like file descriptors, be closed async. Thus, freeing the
     //request must be deferred until timer has been closed. No need to use idle
     //etc. here. The callback will always be run.
-    uv_close((uv_handle_t*) &(request->timeout_handle),
-             neat_resolver_close_timer);
+    uv_close((uv_handle_t*) &(request->timeout_handle), neat_resolver_close_timer);
+}
+
+static uint32_t
+nt_resolver_localhost_populate_results(struct neat_resolver_request *request,
+                                       struct neat_resolver_results *result_list)
+{
+    uint32_t num_resolved_addrs = 0;
+    char *tmp_literal;
+    struct neat_addr *nsrc_addr = NULL;
+    struct sockaddr_storage dst_addr;
+    union {
+        struct sockaddr_in *dst_addr4;
+        struct sockaddr_in6 *dst_addr6;
+    } u;
+    void *dst_addr_pton = NULL;
+
+
+    for (nsrc_addr = request->resolver->nc->src_addrs.lh_first;
+         nsrc_addr != NULL; nsrc_addr = nsrc_addr->next_addr.le_next) {
+
+        //Do not use deprecated addresses
+        if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref) {
+            continue;
+        }
+
+        if (nsrc_addr->family == AF_INET) {
+            tmp_literal = "127.0.0.1";
+        } else {
+            tmp_literal = "::1";
+        }
+
+        if (nsrc_addr->family == AF_INET) {
+            u.dst_addr4 = (struct sockaddr_in*) &dst_addr;
+            memset(u.dst_addr4, 0, sizeof(struct sockaddr_in));
+            u.dst_addr4->sin_family = AF_INET;
+#ifdef HAVE_SIN_LEN
+            u.dst_addr4->sin_len = sizeof(struct sockaddr_in);
+#endif
+            dst_addr_pton = &(u.dst_addr4->sin_addr);
+        } else {
+            u.dst_addr6 = (struct sockaddr_in6*) &dst_addr;
+            memset(u.dst_addr6, 0, sizeof(struct sockaddr_in6));
+            u.dst_addr6->sin6_family = AF_INET6;
+#ifdef HAVE_SIN6_LEN
+            u.dst_addr6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
+            dst_addr_pton = &(u.dst_addr6->sin6_addr);
+        }
+
+        if(!inet_pton(nsrc_addr->family, tmp_literal, dst_addr_pton)) {
+            continue;
+        }
+
+        num_resolved_addrs += nt_resolver_helpers_fill_results(request,
+                                                               result_list,
+                                                               nsrc_addr,
+                                                               dst_addr);
+    }
+
+    return num_resolved_addrs;
 }
 
 static uint32_t
@@ -239,6 +297,11 @@ nt_resolver_literal_populate_results(struct neat_resolver_request *request,
     //nt_log(NEAT_LOG_DEBUG, "%s", __func__);
 
     char *tmp = strdup(request->domain_name);
+
+    if (!tmp) {
+        return 0;
+    }
+
     char *ptr = NULL;
     char *address_name = strtok_r((char *)tmp, ",", &ptr);
     while (address_name != NULL) {
@@ -262,7 +325,11 @@ nt_resolver_literal_populate_results(struct neat_resolver_request *request,
 
         //We already know that this will be successful, it was checked in the
         //literal-check performed earlier
-        inet_pton(request->family, address_name, dst_addr_pton);
+        if (inet_pton(request->family, address_name, dst_addr_pton) != 1) {
+            // inet_pton failed - skip address
+            address_name = strtok_r(NULL, ",", &ptr);
+            continue;
+        }
 
         for (nsrc_addr = request->resolver->nc->src_addrs.lh_first;
             nsrc_addr != NULL; nsrc_addr = nsrc_addr->next_addr.le_next) {
@@ -274,15 +341,14 @@ nt_resolver_literal_populate_results(struct neat_resolver_request *request,
             if (nsrc_addr->family == AF_INET6 && !nsrc_addr->u.v6.ifa_pref)
                 continue;
 
-            num_resolved_addrs += nt_resolver_helpers_fill_results(request,
-                                                                     result_list,
-                                                                     nsrc_addr,
-                                                                     dst_addr);
+            num_resolved_addrs += nt_resolver_helpers_fill_results(request, result_list, nsrc_addr, dst_addr);
         }
 
         address_name = strtok_r(NULL, ",", &ptr);
     }
-    free (tmp);
+
+    free(tmp);
+
     return num_resolved_addrs;
 }
 
@@ -335,19 +401,20 @@ nt_resolver_timeout_shared(uv_timer_t *handle)
     struct neat_resolver_results *result_list;
     uint32_t num_resolved_addrs = 0;
 
+
     //If resolver is marked for deletion, then ignore any new replies
     if (request->resolver->free_resolver)
         return;
 
     //DNS timeout, call DNS callback with timeout error code
-    if (!request->is_literal && !request->name_resolved_timeout) {
+    if (!request->is_literal && !request->is_localhost && !request->name_resolved_timeout) {
         request->resolve_cb(NULL, NEAT_RESOLVER_TIMEOUT, request->user_data);
         nt_resolver_request_cleanup(request);
         return;
     }
 
     //There were no addresses available, so return error
-    if (request->is_literal && !ctx->src_addr_cnt) {
+    if ((request->is_literal || request->is_localhost) && !ctx->src_addr_cnt) {
         if (ctx->src_addr_dump_done) {
             request->resolve_cb(NULL, NEAT_RESOLVER_ERROR, request->user_data);
             nt_resolver_request_cleanup(request);
@@ -371,6 +438,9 @@ nt_resolver_timeout_shared(uv_timer_t *handle)
 
     if (request->is_literal) {
         num_resolved_addrs = nt_resolver_literal_populate_results(request,
+                                                                    result_list);
+    } else if (request->is_localhost) {
+        num_resolved_addrs = nt_resolver_localhost_populate_results(request,
                                                                     result_list);
     } else {
         num_resolved_addrs = nt_resolver_populate_results(request,
@@ -461,6 +531,15 @@ nt_resolver_mark_pair_del(struct neat_resolver *resolver,
         uv_idle_start(&(resolver->idle_handle), neat_resolver_idle_cb);
 }
 
+static void
+nt_resolver_start_timeout(struct neat_resolver_src_dst_addr *pair)
+{
+    uv_timer_stop(&(pair->request->timeout_handle));
+    uv_timer_start(&(pair->request->timeout_handle), neat_resolver_timeout_cb,
+                   pair->request->resolver->dns_t2, 0);
+    pair->request->name_resolved_timeout = 1;
+}
+
 //Receive and parse a DNS reply
 //TODO: Refactor and make large parts helper function?
 static void
@@ -477,6 +556,7 @@ neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
     ldns_buffer *host_addr = NULL;
     ldns_rdf *rdf_result = NULL;
     ldns_rr_type rr_type;
+    ldns_pkt_rcode rcode;
     size_t retval, rr_count, i;
     uint8_t num_resolved = 0, pton_failed = 0;
     struct sockaddr_in *addr4;
@@ -489,6 +569,16 @@ neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
 
     if (retval != LDNS_STATUS_OK)
         return;
+
+    rcode = ldns_pkt_get_rcode(dns_reply);
+
+    if (rcode != LDNS_RCODE_NOERROR) {
+        nt_log(pair->request->resolver->nc, NEAT_LOG_DEBUG, "DNS error code %u",
+               rcode);
+        nt_resolver_start_timeout(pair);
+        ldns_pkt_free(dns_reply);
+        return;
+    }
 
     if (pair->src_addr->family == AF_INET)
         rr_type = LDNS_RR_TYPE_A;
@@ -575,10 +665,7 @@ neat_resolver_dns_recv_cb(uv_udp_t* handle, ssize_t nread,
     ldns_pkt_free(dns_reply);
 
     if (num_resolved && !pair->request->name_resolved_timeout){
-        uv_timer_stop(&(pair->request->timeout_handle));
-        uv_timer_start(&(pair->request->timeout_handle), neat_resolver_timeout_cb,
-                pair->request->resolver->dns_t2, 0);
-        pair->request->name_resolved_timeout = 1;
+        nt_resolver_start_timeout(pair);
     }
 }
 
@@ -821,7 +908,7 @@ nt_start_request(struct neat_resolver *resolver,
 
     //node is a literal, so we will just wait a short while for address list to
     //be populated
-    if (request->is_literal) {
+    if (request->is_literal || request->is_localhost) {
         if(uv_timer_start(&(request->timeout_handle),
                           nt_resolver_literal_timeout_cb,
                           DNS_LITERAL_TIMEOUT, 0))
@@ -870,7 +957,7 @@ nt_resolve(struct neat_resolver *resolver,
                 void *user_data)
 {
     struct neat_resolver_request *request;
-    int8_t is_literal = 0;
+    int8_t is_literal = 0, is_localhost = 0;
 
     //nt_log(NEAT_LOG_DEBUG, "%s", __func__);
 
@@ -901,15 +988,19 @@ nt_resolve(struct neat_resolver *resolver,
     uv_timer_init(resolver->nc->loop, &(request->timeout_handle));
     request->timeout_handle.data = request;
 
-    is_literal = nt_resolver_helpers_check_for_literal(&(request->family),
-                                                         node);
+    if (!strcmp("localhost", node)) {
+        is_localhost = 1;
+    } else {
+        is_literal = nt_resolver_helpers_check_for_literal(&(request->family), node);
 
-    if (is_literal < 0) {
-        free(request);
-        return RETVAL_FAILURE;
+        if (is_literal < 0) {
+            free(request);
+            return RETVAL_FAILURE;
+        }
     }
 
     request->is_literal = is_literal;
+    request->is_localhost = is_localhost;
 
     LIST_INIT(&(request->resolver_pairs));
 

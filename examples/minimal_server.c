@@ -29,7 +29,7 @@ on_writable(struct neat_flow_operations *opCB)
 {
     const unsigned char message[] = "Hello, this is NEAT!";
     neat_write(opCB->ctx, opCB->flow, message, 20, NULL, 0);
-    opCB->on_writable = NULL; 
+    opCB->on_writable = NULL;
     return NEAT_OK;
 }
 
@@ -58,7 +58,17 @@ main(int argc, char *argv[])
     struct neat_flow_operations ops;
 
     ctx  = neat_init_ctx();
+    if (!ctx) {
+        fprintf(stderr, "neat_init_ctx failed\n");
+        return EXIT_FAILURE;
+    }
+
     flow = neat_new_flow(ctx);
+    if (!flow) {
+        fprintf(stderr, "neat_new_flow failed\n");
+        return EXIT_FAILURE;
+    }
+
     memset(&ops, 0, sizeof(ops));
 
     ops.on_readable  = on_readable;

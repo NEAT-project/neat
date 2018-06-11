@@ -10,6 +10,10 @@
 #include "neat_security.h"
 #include "neat_pm_socket.h"
 
+#ifdef WEBRTC_SUPPORT
+#include "neat_webrtc_tools.h"
+#endif
+
 #ifdef __linux__
     #include "neat_linux.h"
 #endif //  __linux__
@@ -33,6 +37,19 @@
     #define NEAT_INTERNAL_USRSCTP
 #endif // USRSCTP_SUPPORT
 
+#define _unused(x) ((void)(x))
+
+#ifdef MPTCP_SUPPORT
+    #define MPTCP_SYS_DISABLED (0) // MPTCP is disabled globaly on the system or not installed
+    #define MPTCP_SYS_ENABLED (1) // MPTCP is enabled globaly on the system
+    #define MPTCP_SYS_APP_CTRL (2) // MPTCP is controlled by the application
+                               // via MPTCP_ENABLED (value 42) socket option
+    #define NEAT_INTERNAL_MPTCP \
+        int sys_mptcp_enabled;
+#else // MPTCP_SUPPORT
+    #define NEAT_INTERNAL_MPTCP
+#endif // MPTCP_SUPPORT
+
 #include "neat_log.h"
 #include "neat_stat.h"
 
@@ -44,7 +61,7 @@
     uint8_t src_addr_dump_done; \
     uint16_t __pad
 
-#define NEAT_MAX_NUM_PROTO  4
+#define NEAT_MAX_NUM_PROTO  5
 #define MAX_LOCAL_ADDR      64
 
 struct neat_event_cb;
@@ -93,6 +110,7 @@ struct neat_ctx
     NEAT_INTERNAL_CTX;
     NEAT_INTERNAL_OS;
     NEAT_INTERNAL_USRSCTP
+    NEAT_INTERNAL_MPTCP
 };
 
 void nt_ctx_fail_on_error(struct neat_ctx *nc, neat_error_code error);
@@ -145,7 +163,8 @@ typedef enum {
     NEAT_FLOW_CLOSED = 1,
     NEAT_FLOW_CONNECTING,
     NEAT_FLOW_OPEN,
-    NEAT_FLOW_CLOSING
+    NEAT_FLOW_CLOSING,
+    NEAT_FLOW_WAITING
 } neat_flow_states;
 
 #define NEAT_STACK_MAX_NUM              6
@@ -213,7 +232,7 @@ struct neat_pollable_socket
 {
     struct neat_flow    *flow;
 
-#if defined(USRSCTP_SUPPORT)
+#if defined(USRSCTP_SUPPORT) || defined(WEBRTC_SUPPORT)
     struct socket *usrsctp_socket;
 #endif
 
@@ -231,15 +250,15 @@ struct neat_pollable_socket
     struct sockaddr_storage src_sockaddr;
     socklen_t               src_len;
 
-
-   struct sockaddr_storage local_addr[MAX_LOCAL_ADDR];
-   unsigned int nr_local_addr;
+    struct sockaddr_storage local_addr[MAX_LOCAL_ADDR];
+    unsigned int nr_local_addr;
 
     size_t      write_limit;        // maximum to write if the socket supports partial writes
     size_t      write_size;         // send buffer size
     size_t      read_size;          // receive buffer size
 
     uint8_t                     multistream;            // multistreaming active
+    uint8_t                     is_closed;
 
     unsigned int                sctp_explicit_eor : 1;
     unsigned int                sctp_partial_reliability : 1;
@@ -290,10 +309,10 @@ struct neat_flow
     struct neat_flow_statistics flow_stats;
 
     // The memory buffer for reading. Used of SCTP reassembly.
-    unsigned char   *readBuffer;    // memory for read buffer
-    size_t          readBufferSize;        // amount of received data
-    size_t          readBufferAllocation;  // size of buffered allocation
-    int             readBufferMsgComplete;    // it contains a complete user message
+    unsigned char   *readBuffer;            // memory for read buffer
+    size_t          readBufferSize;         // amount of received data
+    size_t          readBufferAllocation;   // size of buffered allocation
+    int             readBufferMsgComplete;  // it contains a complete user message
 
     json_t *properties;
     json_t *user_ips;
@@ -303,7 +322,6 @@ struct neat_flow
     neat_accept_impl    acceptfx;
     neat_connect_impl   connectfx;
     neat_close_impl     closefx;
-    neat_listen_impl    listenfx;
     neat_shutdown_impl  shutdownfx;
 
     uint8_t heConnectAttemptCount;
@@ -320,7 +338,7 @@ struct neat_flow
     unsigned int everConnected              : 1;
     unsigned int isDraining                 : 1;
     unsigned int isServer                   : 1; // i.e. created via accept()
-    unsigned int isSCTPMultihoming          : 1;
+    unsigned int isMultihoming              : 1;
     unsigned int security_needed            : 1;
     unsigned int isSCTPIdata                : 1;
     unsigned int isClosing                  : 1;
@@ -328,6 +346,8 @@ struct neat_flow
     unsigned int preserveMessageBoundaries  : 1;
     unsigned int eofSeen                    : 1;
     unsigned int skipCertVerification       : 1;
+    unsigned int webrtcEnabled              : 1;
+    unsigned int tproxy                     : 1; // is transparent proxy socket
 
     unsigned int streams_requested;
 
@@ -350,8 +370,11 @@ struct neat_flow
     struct neat_read_queue_head     multistream_read_queue;
     size_t                          multistream_read_queue_size;
 
-    neat_flow_states                multistream_state;
+    //neat_flow_states                multistream_state;
 #endif // SCTP_MULTISTREAMING
+    // WebRTC
+    uint8_t role; //just temporary
+    struct peer_connection *peer_connection;
 };
 
 typedef struct neat_flow neat_flow;
@@ -647,4 +670,15 @@ neat_error_code nt_dtls_connect(neat_ctx *ctx, neat_flow *flow);
 neat_error_code copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_socket *socket);
 neat_error_code nt_sctp_open_stream(struct neat_pollable_socket *socket, uint16_t sid);
 
+/* Declarations for WebRTC */
+#if defined(WEBRTC_SUPPORT)
+void neat_webrtc_gather_candidates(neat_ctx *ctx, neat_flow *flow, uint16_t role, const char *channel_name);
+void neat_set_listening_flow(neat_ctx *ctx, neat_flow *flow);
+void webrtc_io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
+void webrtc_io_readable(neat_ctx *ctx, neat_flow *flow, neat_error_code code, void *buffer, size_t size);
+void webrtc_io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
+neat_error_code neat_webrtc_write_to_channel(struct neat_ctx *ctx, struct neat_flow *flow,
+    const unsigned char *buffer, uint32_t amt, struct neat_tlv optional[], unsigned int opt_count);
+void webrtc_io_parameters(neat_ctx *ctx, neat_flow *flow, neat_error_code code);
+#endif // #if defined(WEBRTC_SUPPORT)
 #endif

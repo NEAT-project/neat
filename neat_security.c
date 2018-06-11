@@ -14,7 +14,7 @@
 #include "neat_security.h"
 
 #if defined(NEAT_USETLS) || defined(NEAT_SCTP_DTLS)
-typedef unsigned int bool;
+//typedef unsigned int bool;
 #define true 1
 #define false 0
 
@@ -189,7 +189,7 @@ handshake(struct neat_ctx *ctx,
 
     int err = SSL_do_handshake(private->ssl);
     if (err == 1) {
-        nt_log(ctx, NEAT_LOG_WARNING, "%s - handshake failed", __func__);
+        nt_log(ctx, NEAT_LOG_INFO, "%s - handshake successfull", __func__);
         return NEAT_OK;
     }
 
@@ -632,6 +632,7 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
     nt_log(opCB->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     struct security_data *private;
+    int ret;
     private = (struct security_data *) opCB->flow->socket->dtls_data->userData;
 
     if (private->state == DTLS_CONNECTING &&
@@ -647,6 +648,19 @@ neat_dtls_handshake(struct neat_flow_operations *opCB)
         opCB->flow->operations.on_connected = NULL;
         neat_set_operations(opCB->ctx, opCB->flow, &opCB->flow->operations);
         uvpollable_cb(opCB->flow->socket->handle, NEAT_OK, UV_WRITABLE | UV_READABLE);
+    } else {
+        ret = SSL_do_handshake(private->ssl);
+        if (ret <= 0) {
+            switch (SSL_get_error(private->ssl, ret)) {
+                case SSL_ERROR_WANT_READ:
+                    uvpollable_cb(opCB->flow->socket->handle, NEAT_OK, UV_READABLE);
+                    break;
+                case SSL_ERROR_WANT_WRITE:
+                    uvpollable_cb(opCB->flow->socket->handle, NEAT_OK, UV_WRITABLE);
+                    break;
+                default: break;
+            }
+        }
     }
 
     return NEAT_OK;
@@ -658,8 +672,21 @@ nt_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
 {
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    struct security_data *private = calloc (1, sizeof (struct security_data));
-    struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
+    struct security_data *private   = calloc (1, sizeof (struct security_data));
+    struct neat_dtls_data *dtls     = calloc (1, sizeof( struct neat_dtls_data));
+
+    if (!private || !dtls) {
+        if (private) {
+            free(private);
+        }
+
+        if (dtls) {
+            free(dtls);
+        }
+
+        nt_log(ctx, NEAT_LOG_ERROR, "%s - calloc failed", __func__);
+        return NEAT_ERROR_SECURITY;
+    }
 
     dtls->dtor = neat_dtls_dtor;
     private->inputBIO = NULL;
@@ -672,10 +699,12 @@ nt_dtls_install(neat_ctx *ctx, struct neat_pollable_socket *sock)
     SSL_load_error_strings();
 
     if (isClient) {
+        nt_log(ctx, NEAT_LOG_INFO, "%s - acting as DTLS client", __func__);
         private->ctx = SSL_CTX_new(DTLS_client_method());
-        SSL_CTX_set_verify(private->ctx, SSL_VERIFY_PEER, NULL);
+        SSL_CTX_set_verify(private->ctx, SSL_VERIFY_NONE, NULL);
         tls_init_trust_list(private->ctx);
     } else {
+        nt_log(ctx, NEAT_LOG_INFO, "%s - acting as DTLS server", __func__);
         private->ctx = SSL_CTX_new(DTLS_server_method());
         // SSL_CTX_set_ecdh_auto(private->ctx, 1);
 
@@ -754,38 +783,52 @@ nt_dtls_connect(neat_ctx *ctx, neat_flow *flow)
     }
 
     private->state = DTLS_CONNECTING;
-    SSL_do_handshake(private->ssl);
 
     // these will eventually be popped back onto the stack when dtls is setup
     flow->operations.on_writable = neat_dtls_handshake;
-    if (flow->isServer) {
-        flow->operations.on_readable = neat_dtls_handshake;
-    } else {
-        flow->operations.on_readable = NULL;
-    }
+    flow->operations.on_readable = neat_dtls_handshake;
     flow->operations.on_connected = NULL;
     neat_set_operations(ctx, flow, &flow->operations);
 
     flow->socket->handle->data = flow->socket;
 
-    uvpollable_cb(flow->socket->handle, NEAT_OK, UV_READABLE | UV_WRITABLE);
+    if (flow->isServer) {
+        uvpollable_cb(flow->socket->handle, NEAT_OK, UV_READABLE);
+    } else {
+        uvpollable_cb(flow->socket->handle, NEAT_OK, UV_WRITABLE);
+    }
+    neat_dtls_handshake(&flow->operations);
     return NEAT_OK;
 }
 
 neat_error_code
 copy_dtls_data(struct neat_pollable_socket *newSocket, struct neat_pollable_socket *socket)
 {
-    struct security_data *private = calloc (1, sizeof (struct security_data));
-    struct neat_dtls_data *dtls = calloc (1, sizeof( struct neat_dtls_data));
-    dtls->dtor = neat_dtls_dtor;
-    private->inputBIO = NULL;
-    private->outputBIO = NULL;
-    struct security_data *server = (struct security_data *) socket->dtls_data->userData;
-    private->ctx = server->ctx;
-    private->ssl = server->ssl;
-    private->dtlsBIO = server->dtlsBIO;
-    dtls->userData = private;
-    newSocket->dtls_data = dtls;
+    struct security_data *private   = calloc (1, sizeof(struct security_data));
+    struct neat_dtls_data *dtls     = calloc (1, sizeof(struct neat_dtls_data));
+
+    if (!private || !dtls) {
+        if (private) {
+            free(private);
+        }
+
+        if (dtls) {
+            free(dtls);
+        }
+
+        return NEAT_ERROR_SECURITY;
+    }
+
+    dtls->dtor                      = neat_dtls_dtor;
+    private->inputBIO               = NULL;
+    private->outputBIO              = NULL;
+    struct security_data *server    = (struct security_data *) socket->dtls_data->userData;
+    private->ctx                    = server->ctx;
+    private->ssl                    = server->ssl;
+    private->dtlsBIO                = server->dtlsBIO;
+    dtls->userData                  = private;
+    newSocket->dtls_data            = dtls;
+
     return NEAT_OK;
 }
 

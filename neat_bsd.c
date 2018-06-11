@@ -130,7 +130,7 @@ nt_bsd_get_addresses(struct neat_ctx *ctx)
             }
         }
         rc = nt_addr_update_src_list(ctx,
-                                       (struct sockaddr_storage *)ifa->ifa_addr,
+                                       ifa->ifa_addr,
                                        cached_ifindex,
                                        1,
                                        0,
@@ -241,7 +241,7 @@ neat_bsd_route_recv(uv_udp_t *handle,
     }
 
     rc = nt_addr_update_src_list(ctx,
-                                   (struct sockaddr_storage *)rti_info[RTAX_IFA],
+                                   rti_info[RTAX_IFA],
                                    ifa->ifam_index,
                                    ifa->ifam_type == RTM_NEWADDR ? 1 : 0,
                                    0,
@@ -343,7 +343,7 @@ int bsd_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
 
     nt_log(flow->ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
-    
+
 //    if (getsockopt(flow->socket->fd, IPPROTO_TCP, TCP_CONNECTION_INFO, (void *)&tcpi,
 //                   (socklen_t *)&tcp_info_length ))
 //        return 1; /* failed! */
@@ -377,4 +377,3 @@ int bsd_get_tcp_info(neat_flow *flow, struct neat_tcp_info *neat_tcp_info)
 #endif
     return 0;
 }
-

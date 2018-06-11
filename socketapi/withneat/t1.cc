@@ -40,7 +40,7 @@ int main(int argc, char** argv)
 //    vtest2("Test", 5, 4, 3, 2, 1, 0);
 
    int fd = open("/tmp/x0.txt", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-   printf("fd=%d\n", fd);
+   printf("t1: fd=%d\n", fd);
    if(fd > 0) {
       ssize_t w = write(fd, "Test", 4);
       if(w < 0) { puts("Write Error!"); }

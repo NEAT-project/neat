@@ -43,8 +43,8 @@ before_script:
     if [ $TRAVIS_OS_NAME = linux ]; then
       if [ ! -e $HOME/libuv-v1.9.1/Makefile ]; then
         (cd $HOME && \
-        wget archive.ubuntu.com/ubuntu/pool/universe/libu/libuv1/libuv1_1.9.1.orig.tar.gz && \
-        tar -xzf libuv1_1.9.1.orig.tar.gz && \
+        curl -O https://dist.libuv.org/dist/v1.9.1/libuv-v1.9.1.tar.gz && \
+        tar xzf libuv-v1.9.1.tar.gz && \
         cd libuv-v1.9.1 && \
         sh autogen.sh && \
         ./configure && \

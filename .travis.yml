@@ -169,22 +169,28 @@ matrix:
     # ###### Other ##########################################################
 
     # ====== MacOS X ========================================================
-    #- os: osx
-    #  osx_image: xcode9.4
-    #  compiler: clang
-    #  group: travis_latest
+    - os: osx
+      compiler: clang
 
 
 before_install:
   - |
-    ci/before-install
-
+    if [ "${TRAVIS_OS_NAME}" != "osx" ] ; then
+       travis_wait 60 ci/before-install
+    else
+       travis_wait 60 ci/before-install libuv ldns jansson swig
+    fi
 
 install:
   - |
-    ci/install
+    travis_wait 60 ci/install
 
 
 script:
   - |
-    ci/build
+    if [ "${TRAVIS_OS_NAME}" != "osx" ] ; then
+       travis_wait 60 ci/build
+    else
+       travis_wait 60 ci/build -DOPENSSL_ROOT_DIR=/usr/local/ssl
+    fi
+    travis_wait 60 ci/test

@@ -7,16 +7,16 @@ export TRAVIS_OS_NAME="linux"
 # export VARIANT="debian"
 # export TOOL="pbuilder"
 
-export DOCKER="ubuntu:bionic"
+export DOCKER="ubuntu:cosmic"
 export VARIANT="ubuntu"
-export TOOL="compile"
+export TOOL="pbuilder"
 
-# export DOCKER="fedora:29"
+# export DOCKER="fedora:30"
 # export VARIANT="fedora"
 # export TOOL="mock"
 
 
-SCRIPTS="before-install install build"
+SCRIPTS="before-install install build test"
 # SCRIPTS="install"
 
 for script in $SCRIPTS ; do

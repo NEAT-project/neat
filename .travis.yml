@@ -116,9 +116,9 @@ script:
         fi
 
 # whitelist branches to avoid testing feature branches twice (as branch and as pull request)
-branches:
-    only:
-        - master
+#branches:
+#    only:
+#        - master
 
 notifications:
   email: false

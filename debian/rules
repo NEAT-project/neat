@@ -12,7 +12,7 @@ override_dh_auto_configure:
 override_dh_auto_build:
 
 	# PYTHONPATH=. http_proxy='127.0.0.1:9' sphinx-build -N -bhtml docs/ docs/_build/html # HTML generator
-	# !!! FIXME: python-recommonmark is not available in any recent Ubuntu distribution.
+	# !!! python-recommonmark is not available in any recent Ubuntu distribution.
 	# Exotic experimental package with further exotic dependencies -> Skipping documentation at the moment ...
 	mkdir -p docs/_build/html
 

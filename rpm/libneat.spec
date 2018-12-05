@@ -9,6 +9,8 @@ Source: %{name}-%{version}.tar.gz
 
 AutoReqProv: on
 BuildRequires: cmake
+BuildRequires: gcc
+BuildRequires: gcc-c++
 BuildRequires: jansson-devel
 BuildRequires: ldns-devel
 BuildRequires: libmnl-devel

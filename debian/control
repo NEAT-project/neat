@@ -12,7 +12,7 @@ Build-Depends: cmake,
                libssl-dev,
                libusrsctp-dev,
                libuv1-dev (>= 1.0.2)
-Standards-Version: 4.1.1
+Standards-Version: 4.2.1
 Vcs-Browser: https://github.com/NEAT-project/neat
 Vcs-Git: https://github.com/NEAT-project/neat.git
 Homepage: https://github.com/NEAT-project/neat

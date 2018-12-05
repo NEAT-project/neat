@@ -1,0 +1,28 @@
+#!/bin/bash -e
+
+export TRAVIS_OS_NAME="linux"
+
+
+# export DOCKER="debian:stretch"
+# export VARIANT="debian"
+# export TOOL="pbuilder"
+
+export DOCKER="ubuntu:cosmic"
+export VARIANT="ubuntu"
+export TOOL="pbuilder"
+
+# export DOCKER="fedora:30"
+# export VARIANT="fedora"
+# export TOOL="mock"
+
+
+SCRIPTS="before-install install build test"
+# SCRIPTS="install"
+
+for script in $SCRIPTS ; do
+   sudo env \
+      TRAVIS_OS_NAME="$TRAVIS_OS_NAME" \
+      DOCKER="$DOCKER" \
+      VARIANT="$VARIANT" \
+      TOOL="$TOOL" ci/${script}
+done

@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
+<reference anchor="NEAT-D1.3" target="https://www.neat-project.org/wp-content/uploads/2015/05/D1.3.pdf">
+	<front>
+		<title>Final Version of Services and APIs</title>
+		<author initials="M." surname="Welzl" fullname="Michael&#160;Welzl" />
+		<author initials="D." surname="Damjanović" fullname="Dragana&#160;Damjanović" />
+		<author initials="G." surname="Fairhurst" fullname="Gorry&#160;Fairhurst" />
+		<author initials="D." surname="Hayes" fullname="David&#160;Hayes" />
+		<author initials="T." surname="Jones" fullname="Tom&#160;Jones" />
+		<author initials="D." surname="Ros" fullname="David&#160;Ros" />
+		<author initials="M." surname="Tüxen" fullname="Michael&#160;Tüxen" />
+		<author initials="F." surname="Weinrank" fullname="Felix&#160;Weinrank" />
+		<date day="30" month="October" year="2017" />
+	</front>
+	<seriesInfo name="Deliverable" value="D1.3" />
+	<format type="PDF" octets="405098" target="https://www.neat-project.org/wp-content/uploads/2015/05/D1.3.pdf" />
+</reference>
+

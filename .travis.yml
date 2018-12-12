@@ -217,10 +217,10 @@ matrix:
    # ###### Other ###########################################################
 
    # ====== MacOS X ========================================================
-   # - name: "MacOS X"
-   #   os: osx
-   #   compiler: clang
-   #   group: travis_latest
+   - name: "MacOS X"
+     os: osx
+     compiler: clang
+     group: travis_latest
 
 
 before_install:
@@ -243,4 +243,4 @@ script:
     else
        travis_wait 60 ci/build -DOPENSSL_ROOT_DIR=/usr/local/ssl
     fi
-    # travis_wait 60 ci/test
+    travis_wait 60 ci/test

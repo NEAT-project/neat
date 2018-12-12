@@ -71,23 +71,6 @@ matrix:
      group: travis_latest
      env: DOCKER="ubuntu:xenial" VARIANT="ubuntu" TOOL="pbuilder"
 
-   # ====== Ubuntu 14.04 (Trusty Tahr) ======================================
-   - name: "Ubuntu 14.04 (Trusty Tahr) with GCC"
-     os: linux
-     dist: xenial
-     group: travis_latest
-     env: DOCKER="ubuntu:trusty" VARIANT="ubuntu" TOOL="compile" COMPILER_C="gcc" COMPILER_CXX="g++"
-   - name: "Ubuntu 14.04 (Trusty Tahr) with Clang"
-     os: linux
-     dist: xenial
-     group: travis_latest
-     env: DOCKER="ubuntu:trusty" VARIANT="ubuntu" TOOL="compile" COMPILER_C="clang" COMPILER_CXX="clang++"
-   - name: "Ubuntu 14.04 (Trusty Tahr) packaging with pbuilder"
-     os: linux
-     dist: xenial
-     group: travis_latest
-     env: DOCKER="ubuntu:trusty" VARIANT="ubuntu" TOOL="pbuilder"
-
 
     # ###### Debian Linux ###################################################
 

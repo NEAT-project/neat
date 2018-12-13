@@ -239,8 +239,7 @@ install:
 script:
   - |
     if [ "${TRAVIS_OS_NAME}" != "osx" ] ; then
-       travis_wait 60 ci/build
+       travis_wait 60 ci/build && travis_wait 60 ci/test
     else
-       travis_wait 60 ci/build -DOPENSSL_ROOT_DIR=/usr/local/ssl
+       travis_wait 60 ci/build -DOPENSSL_ROOT_DIR=/usr/local/ssl && travis_wait 60 ci/test
     fi
-    travis_wait 60 ci/test

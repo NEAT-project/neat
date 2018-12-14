@@ -225,15 +225,15 @@ matrix:
 
 before_install:
   - |
-    if [ "${TRAVIS_OS_NAME}" != "osx" ] ; then
-       travis_wait 60 ci/before-install
-    else
-       travis_wait 60 ci/before-install libuv ldns jansson swig
-    fi
+    travis_wait 60 ci/before-install
 
 install:
   - |
-    travis_wait 60 ci/install
+    if [ "${TRAVIS_OS_NAME}" != "osx" ] ; then
+       travis_wait 60 ci/install
+    else
+       travis_wait 60 ci/install libuv ldns jansson swig
+    fi
 
 
 script:

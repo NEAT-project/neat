@@ -24,6 +24,7 @@ CONTAINER="ubuntu-test"
 
 # ###### Linux ##############################################################
 if [ "${TRAVIS_OS_NAME}" == "linux" ] ; then
+
    if [ "${DOCKER}" != "" ] ; then
       # NOTE: Using tmpfs for pbuilder and mock!
       # The build machine therefore needs a sufficient amount of RAM!
@@ -39,11 +40,11 @@ if [ "${TRAVIS_OS_NAME}" == "linux" ] ; then
       sudo docker ps
    fi
 
+
 # ###### Other ##############################################################
 elif [ "${TRAVIS_OS_NAME}" == "osx" ] ; then
+   echo "Nothing to be done here."
 
-   brew update
-   brew install $@
 
 # ###### Error ##############################################################
 else

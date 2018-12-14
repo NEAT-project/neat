@@ -21,6 +21,8 @@
 
 CONTAINER="ubuntu-test"
 UBUNTU_MIRROR="archive.ubuntu.com"
+RETRY_MAXTRIALS=5
+RETRY_PAUSE=30
 
 
 # ###### Linux ##############################################################
@@ -32,9 +34,9 @@ if [ "${TRAVIS_OS_NAME}" == "linux" ] ; then
       # ====== Ubuntu Linux =================================================
       if [ "${VARIANT}" == "ubuntu" -o "${VARIANT}" == "debian" ] ; then
          APT_UPDATE='env LANG=C.UTF-8 apt-get update -o Acquire::GzipIndexes=false'
-         APT_INSTALL="env LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive ci/retry -t 5 -p 30 -- apt-get install -y -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef --no-install-recommends"
-         APT_UPGRADE="env LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive ci/retry -t 5 -p 30 -- apt-get dist-upgrade -y -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef --no-install-recommends"
-         APT_ADD_REPOSITORY="env LANG=C.UTF-8 ci/retry -t 5 -p 30 -- apt-add-repository -y"
+         APT_INSTALL="env LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive ci/retry -t ${RETRY_MAXTRIALS} -p ${RETRY_PAUSE} -- apt-get install -y -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef --no-install-recommends"
+         APT_UPGRADE="env LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive ci/retry -t ${RETRY_MAXTRIALS} -p ${RETRY_PAUSE} -- apt-get dist-upgrade -y -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef --no-install-recommends"
+         APT_ADD_REPOSITORY="env LANG=C.UTF-8 ci/retry -t ${RETRY_MAXTRIALS} -p ${RETRY_PAUSE} -- apt-add-repository -y"
 
          # ====== Prepare container =========================================
          echo "###### Preparing container ... ########################################"
@@ -77,8 +79,8 @@ if [ "${TRAVIS_OS_NAME}" == "linux" ] ; then
          if [ "${VARIANT}" == "ubuntu" -o "${VARIANT}" == "debian" ] ; then
             echo "Ubuntu/Debian: adding ${distribution}-backports ..."
             # NOTE: backports may be unavailable -> ignore error on apt-get update!
-            sudo docker exec ${CONTAINER} ${APT_ADD_REPOSITORY} "deb ${mirror} ${distribution}-updates main universe"
-            sudo docker exec ${CONTAINER} ${APT_ADD_REPOSITORY} "deb ${mirror} ${distribution}-backports main universe"
+            sudo docker exec ${CONTAINER} ${APT_ADD_REPOSITORY} "\"deb ${mirror} ${distribution}-updates main universe\""
+            sudo docker exec ${CONTAINER} ${APT_ADD_REPOSITORY} "\"deb ${mirror} ${distribution}-backports main universe\""
             sudo docker exec ${CONTAINER} eatmydata ${APT_UPDATE} || true
             sudo docker exec ${CONTAINER} eatmydata ${APT_UPGRADE}
          fi
@@ -163,12 +165,12 @@ EOF"
          # ====== Fedora: set up compiler ===================================
          if [ "${TOOL}" == "compile" ] ; then
             sudo docker exec ${CONTAINER} env LANG=C.UTF-8 \
-               ci/retry -t 5 -p 30 -- dnf install -y make clang ${FEDORA_DEPS}
+               ci/retry -t ${RETRY_MAXTRIALS} -p ${RETRY_PAUSE} -- dnf install -y make clang ${FEDORA_DEPS}
 
          # ====== Fedora: set up pbuilder ===================================
          elif [ "${TOOL}" == "mock" ] ; then
             sudo docker exec ${CONTAINER} env LANG=C.UTF-8 \
-               ci/retry -t 5 -p 30 -- dnf install -y make findutils fedora-release mock rpmdevtools ${FEDORA_DEPS}
+               ci/retry -t ${RETRY_MAXTRIALS} -p ${RETRY_PAUSE} -- dnf install -y make findutils fedora-release mock rpmdevtools ${FEDORA_DEPS}
 
          else
             echo >&2 "ERROR: Invalid setting of TOOL=${TOOL}"
@@ -185,14 +187,14 @@ EOF"
    # ====== Travis CI standard Ubuntu Linux machine =========================
    # That is: not using Docker
    else
-      env LANG=C.UTF-8 ci/retry -t 5 -p 30 -- sudo apt-get update
-      env LANG=C.UTF-8 ci/retry -t 5 -p 30 -- sudo ci/get-dependencies ubuntu --install
+      env LANG=C.UTF-8 ci/retry -t ${RETRY_MAXTRIALS} -p ${RETRY_PAUSE} -- sudo apt-get update
+      env LANG=C.UTF-8 ci/retry -t ${RETRY_MAXTRIALS} -p ${RETRY_PAUSE} -- sudo ci/get-dependencies ubuntu --install
 
       # ====== Coverity Scan ================================================
       if [ "${TOOL}" == "coverity" ] ; then
          mkdir coverity
          cd coverity
-         ../ci/retry -t 5 -p 30 -- wget --no-verbose https://scan.coverity.com/download/linux64 --post-data "token=${COVERITY_SCAN_TOKEN}&project=${COVERITY_PROJECT}" -O coverity_tool.tar.gz
+         ../ci/retry -t ${RETRY_MAXTRIALS} -p ${RETRY_PAUSE} -- wget --no-verbose https://scan.coverity.com/download/linux64 --post-data "token=${COVERITY_SCAN_TOKEN}&project=${COVERITY_PROJECT}" -O coverity_tool.tar.gz
          if [ $? -ne 0 ] ; then
             echo 2>&1 "ERROR: Download of Coverity Scan analysis tool failed!"
             exit 1
@@ -207,6 +209,7 @@ EOF"
 
 # ###### Other ##############################################################
 elif [ "${TRAVIS_OS_NAME}" == "osx" ] ; then
+
    brew update
    brew install $@
 

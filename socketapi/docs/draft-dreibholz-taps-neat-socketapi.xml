@@ -7,7 +7,7 @@
 <?rfc strict="no" ?>
 <?rfc symrefs="no" ?>
 
-<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-03.txt">
+<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-04.txt">
 
 <?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
 
@@ -34,7 +34,7 @@ NEAT Sockets API
 </address>
 </author>
 
-<date day="7" month="June" year="2018" />
+<date day="19" month="January" year="2019" />
 <keyword>Internet-Draft</keyword>
 
 <abstract>

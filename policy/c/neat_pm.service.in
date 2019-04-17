@@ -1,0 +1,12 @@
+[Unit]
+Description=NEAT Policy Manager Service
+After=network.target
+
+[Service]
+Type=simple
+Restart=no
+User=$ENV{USER}
+ExecStart=${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/neatpmd
+
+[Install]
+WantedBy=multi-user.target

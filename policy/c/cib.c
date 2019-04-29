@@ -405,23 +405,29 @@ cib_lookup(json_t *input_props)
     json_t *prop;
 
     size_t i, j;
+    bool match = false;
 
-    json_array_append(candidate_array, input_props);
+    //json_array_append(candidate_array, input_props);
 
     json_array_foreach(cib_rows, i, row) {
         json_array_foreach(row, j, prop) {
             write_log(__FILE__, __func__, LOG_DEBUG,"---------- PROCESSING ROW (%d,%d) ---------", i, j);
-            candidate = json_deep_copy(input_props); // Make new copy of input props
+            candidate = json_deep_copy(input_props);
             
             if(merge_properties(prop, candidate, 0))
             {
                 write_log(__FILE__, __func__, LOG_DEBUG,"New candidate added.");
                 json_array_append_new(candidate_array, candidate);
+                match = true;
             } else {
                 write_log(__FILE__, __func__, LOG_DEBUG,"Discarding candidate.");
                 json_decref(candidate);
             }
         }
+    }
+    if(!match) {
+        // Only retain old candidate if lookup was not successful
+        json_array_append(candidate_array, input_props);
     }
 
     return candidate_array;

@@ -7,7 +7,7 @@
 <?rfc strict="no" ?>
 <?rfc symrefs="no" ?>
 
-<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-04.txt">
+<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-05">
 
 <?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
 
@@ -25,16 +25,17 @@ NEAT Sockets API
 <postal>
    <street>Pilestredet 52</street>
    <city>0167 Oslo</city>
+   <region>Oslo</region>
    <country>Norway</country>
 </postal>
 <phone>+47-6782-8200</phone>
 <facsimile>+47-6782-8201</facsimile>
 <email>dreibh@simula.no</email>
-<uri>https://simula.no/people/dreibh</uri>
+<uri>https://www.simula.no/people/dreibh</uri>
 </address>
 </author>
 
-<date day="19" month="January" year="2019" />
+<date />
 <keyword>Internet-Draft</keyword>
 
 <abstract>

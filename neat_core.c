@@ -2201,6 +2201,17 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         assert(flow->socket);
 
+        /* Cancel candidates which has not already begun setting up a connection */
+        struct neat_he_candidate *np;
+        for (np = candidate_list->tqh_first; np != NULL; np = TAILQ_NEXT(np, next)) {
+            if (np != candidate) {
+                if (np->prio_timer != NULL) {
+                    TAILQ_REMOVE(candidate_list, np, next);
+                    nt_free_candidate(ctx, np);
+                }
+            }
+        }
+
         send_result_connection_attempt_to_pm(flow->ctx, flow, he_res, true);
 
         // Transfer this handle to the "main" polling callback
@@ -2239,6 +2250,17 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
         nt_log(ctx, NEAT_LOG_DEBUG, "First successful connect (flow->hefirstConnect)");
 
         assert(flow->socket);
+
+        /* Cancel candidates which has not already begun setting up a connection */
+        struct neat_he_candidate *np;
+        for (np = candidate_list->tqh_first; np != NULL; np = TAILQ_NEXT(np, next)) {
+            if (np != candidate) {
+                if (np->prio_timer != NULL) {
+                    TAILQ_REMOVE(candidate_list, np, next);
+                    nt_free_candidate(ctx, np);
+                }
+            }
+        }
 
         // TODO: Security code should be wired back in
 
@@ -3021,6 +3043,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
         if ((candidate->pollable_socket->dst_address = strdup(remote_ip)) == NULL)
             goto out_of_memory;
 
+        candidate->prio_timer                   = NULL;
         candidate->pollable_socket->port        = flow->port;
         candidate->pollable_socket->stack       = stack;
         candidate->if_idx                       = if_idx;

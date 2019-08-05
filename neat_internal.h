@@ -580,6 +580,8 @@ struct neat_event_cb {
 neat_error_code neat_he_lookup(neat_ctx *ctx, neat_flow *flow, uv_poll_cb callback_fx);
 neat_error_code nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_list, uv_poll_cb callback_fx);
 
+void free_handle_cb(uv_handle_t *handle);
+
 // Internal routines for hooking up lower-level services/modules with
 // API callbacks:
 void nt_notify_cc_congestion(neat_flow *flow, int ecn, uint32_t rate);

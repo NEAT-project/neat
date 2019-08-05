@@ -51,7 +51,7 @@ he_print_results(struct neat_resolver_results *results)
 }
 
 
-static void
+void
 free_handle_cb(uv_handle_t *handle)
 {
     free(handle);

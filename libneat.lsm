@@ -1,0 +1,25 @@
+Begin4
+Title:          neat
+Version:        0.0.1~td196
+Entered-date:   2019-08-05
+Description:    The NEAT project wants to achieve a complete redesign of the
+                way in which Internet applications interact with the network.
+                Our goal is to allow network “services” offered to
+                applications – such as reliability, low-delay communication or
+                security – to be dynamically tailored based on application
+                demands, current network conditions, hardware capabilities or
+                local policies, and also to support the integration of new
+                network functionality in an evolutionary fashion, without
+                applications having to be rewritten. This architectural
+                change will make the Internet truly "enhanceable", by
+                allowing applications to seamlessly and more easily take
+                advantage of new network features as they evolve.
+Keywords:       NEAT Project
+Author:         dreibh@simula.no (Thomas Dreibholz)
+Maintained-by:  dreibh@simula.no (Thomas Dreibholz)
+Primary-site:   https://packages.nntb.no/software/neat
+                67557 kB neat-0.6.3.tar.xz
+Original-site:  https://www.neat-project.org
+Platforms:      Linux
+Copying-policy: BSD-3-clause
+End

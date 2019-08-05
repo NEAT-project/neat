@@ -2203,7 +2203,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         /* Cancel candidates which has not already begun setting up a connection */
         struct neat_he_candidate *np;
-        for (np = candidate_list->tqh_first; np != NULL; np = TAILQ_NEXT(np, next)) {
+        for (np = candidate_list->tqh_first; np != NULL; np = TAILQ_NEXT(candidate, next)) {
             if (np != candidate) {
                 if (np->prio_timer != NULL) {
                     TAILQ_REMOVE(candidate_list, np, next);
@@ -2253,7 +2253,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         /* Cancel candidates which has not already begun setting up a connection */
         struct neat_he_candidate *np;
-        for (np = candidate_list->tqh_first; np != NULL; np = TAILQ_NEXT(np, next)) {
+        for (np = candidate_list->tqh_first; np != NULL; np = TAILQ_NEXT(candidate, next)) {
             if (np != candidate) {
                 if (np->prio_timer != NULL) {
                     TAILQ_REMOVE(candidate_list, np, next);

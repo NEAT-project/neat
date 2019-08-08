@@ -1,2 +1,3 @@
 usr/include/neat.h
-usr/lib/*/libneat*.so
+usr/lib/*/libneat-static.a
+usr/lib/*/libneat.so

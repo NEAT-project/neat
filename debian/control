@@ -17,12 +17,13 @@ Vcs-Git: https://github.com/NEAT-project/neat.git
 Homepage: https://github.com/NEAT-project/neat
 
 Package: libneat0
+Section: libs
 Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends}
 Description: NEAT Core API
  The NEAT project wants to achieve a complete redesign of the way in which
- Internet applications interact with the network. Our goal is to allow network
+ Internet applications interact with the network. The goal is to allow network
  “services” offered to applications – such as reliability, low-delay
  communication or security – to be dynamically tailored based on application
  demands, current network conditions, hardware capabilities or local policies,
@@ -35,6 +36,7 @@ Description: NEAT Core API
  This package contains the shared library for the NEAT Core API.
 
 Package: libneat-dev
+Section: libdevel
 Architecture: any
 Depends: libneat0 (= ${binary:Version}),
          libuv1-dev (>= 1.0.2),
@@ -42,7 +44,7 @@ Depends: libneat0 (= ${binary:Version}),
          ${shlibs:Depends}
 Description: NEAT Core API Development Files
  The NEAT project wants to achieve a complete redesign of the way in which
- Internet applications interact with the network. Our goal is to allow network
+ Internet applications interact with the network. The goal is to allow network
  “services” offered to applications – such as reliability, low-delay
  communication or security – to be dynamically tailored based on application
  demands, current network conditions, hardware capabilities or local policies,
@@ -54,14 +56,14 @@ Description: NEAT Core API Development Files
  .
  This package contains the development files for the NEAT Core API.
 
-Package: libneat-docs
+Package: libneat-doc
 Architecture: all
 Section: doc
 Depends: ${misc:Depends},
          ${sphinxdoc:Depends}
 Description: NEAT Core API Documentation
  The NEAT project wants to achieve a complete redesign of the way in which
- Internet applications interact with the network. Our goal is to allow network
+ Internet applications interact with the network. The goal is to allow network
  “services” offered to applications – such as reliability, low-delay
  communication or security – to be dynamically tailored based on application
  demands, current network conditions, hardware capabilities or local policies,
@@ -80,7 +82,7 @@ Depends: libneat0 (= ${binary:Version}),
          ${shlibs:Depends}
 Description: NEAT Core API Examples
  The NEAT project wants to achieve a complete redesign of the way in which
- Internet applications interact with the network. Our goal is to allow network
+ Internet applications interact with the network. The goal is to allow network
  “services” offered to applications – such as reliability, low-delay
  communication or security – to be dynamically tailored based on application
  demands, current network conditions, hardware capabilities or local policies,
@@ -93,13 +95,14 @@ Description: NEAT Core API Examples
  This package contains the built examples for the NEAT Core API.
 
 Package: libneat-socketapi0
+Section: libs
 Architecture: any
 Depends: libneat0 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
 Description: NEAT Sockets API
  The NEAT project wants to achieve a complete redesign of the way in which
- Internet applications interact with the network. Our goal is to allow network
+ Internet applications interact with the network. The goal is to allow network
  “services” offered to applications – such as reliability, low-delay
  communication or security – to be dynamically tailored based on application
  demands, current network conditions, hardware capabilities or local policies,
@@ -112,6 +115,7 @@ Description: NEAT Sockets API
  This package contains the shared library for the NEAT Sockets API.
 
 Package: libneat-socketapi-dev
+Section: libdevel
 Architecture: any
 Depends: libneat-dev (= ${binary:Version}),
          libneat-socketapi0 (= ${binary:Version}),
@@ -119,7 +123,7 @@ Depends: libneat-dev (= ${binary:Version}),
          ${shlibs:Depends}
 Description: NEAT Sockets API Development Files
  The NEAT project wants to achieve a complete redesign of the way in which
- Internet applications interact with the network. Our goal is to allow network
+ Internet applications interact with the network. The goal is to allow network
  “services” offered to applications – such as reliability, low-delay
  communication or security – to be dynamically tailored based on application
  demands, current network conditions, hardware capabilities or local policies,
@@ -138,7 +142,7 @@ Depends: libneat0 (= ${binary:Version}),
          ${shlibs:Depends}
 Description: NEAT Sockets API Examples
  The NEAT project wants to achieve a complete redesign of the way in which
- Internet applications interact with the network. Our goal is to allow network
+ Internet applications interact with the network. The goal is to allow network
  “services” offered to applications – such as reliability, low-delay
  communication or security – to be dynamically tailored based on application
  demands, current network conditions, hardware capabilities or local policies,

@@ -1,1 +1,3 @@
 usr/include/neat-socketapi.h
+usr/lib/*/libneat-socketapi-static.a
+usr/lib/*/libneat-socketapi.so

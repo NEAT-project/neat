@@ -4,7 +4,7 @@ Version:        0.9.0
 Entered-date:   2019-08-05
 Description:    The NEAT project wants to achieve a complete redesign of the
                 way in which Internet applications interact with the network.
-                Our goal is to allow network “services” offered to
+                The goal is to allow network “services” offered to
                 applications – such as reliability, low-delay communication
                 or security – to be dynamically tailored based on application
                 demands, current network conditions, hardware capabilities or

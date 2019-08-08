@@ -2948,7 +2948,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
         transport = json_string_value(get_property(value, "transport", JSON_STRING));
         // FIXME transport must be a single value, need to handle errors
         if ((stack = string_to_stack(transport)) == 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "Unkown transport stack %s", transport);
+            nt_log(ctx, NEAT_LOG_DEBUG, "Unknown transport stack %s", transport);
             continue;
         }
 

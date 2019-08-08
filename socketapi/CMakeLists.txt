@@ -21,10 +21,10 @@ ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
 
 
 # PROGRAMS LIST
-#################################################
-#LIST(APPEND neat_socketapi_programs
-#   t1.cc t2.cc
-#)
+################################################
+LIST(APPEND neat_socketapi_programs
+  t2.cc
+)
 
 
 # LIBRARIES

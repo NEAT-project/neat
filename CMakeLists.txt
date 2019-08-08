@@ -1,42 +1,23 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0.2)
 PROJECT(libneat)
 
 SET(BUILD_MAJOR "0")
 SET(BUILD_MINOR "0")
-SET(BUILD_PATCH "1~td161")
+SET(BUILD_PATCH "1~td199")
 SET(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
+
+#############################################################################
 # INSTALLATION_DIRECTORIES
-#################################################
+#############################################################################
 
-SET(CMAKE_INSTALL_BINDIR_DOC        "user executables [PREFIX/bin]")
-SET(CMAKE_INSTALL_SBINDIR_DOC       "system admin executables [EPREFIX/sbin]")
-SET(CMAKE_INSTALL_DATADIR_DOC       "read-only architecture-independent data [PREFIX/share]")
-SET(CMAKE_INSTALL_SYSCONFDIR_DOC    "read-only single-machine data [PREFIX/etc]")
-SET(CMAKE_INSTALL_LOCALSTATEDIR_DOC "modifiable single-machine data [PREFIX/var]")
-SET(CMAKE_INSTALL_LIBDIR_DOC        "object code libraries [PREFIX/lib]")
-SET(CMAKE_INSTALL_INCLUDEDIR_DOC    "read-only includes [PREFIX/include]")
-SET(CMAKE_INSTALL_MANDIR_DOC        "man documentation [PREFIX/share/man]")
+# See: https://cmake.org/cmake/help/v3.0/module/GNUInstallDirs.html
+INCLUDE(GNUInstallDirs)
 
-SET(CMAKE_INSTALL_BINDIR "bin"
-    CACHE PATH ${CMAKE_INSTALL_BINDIR_DOC})
-SET(CMAKE_INSTALL_SBINDIR "sbin"
-    CACHE PATH ${CMAKE_INSTALL_SBINDIR_DOC})
-SET(CMAKE_INSTALL_DATADIR "share"
-    CACHE PATH ${CMAKE_INSTALL_DATADIR_DOC})
-SET(CMAKE_INSTALL_SYSCONFDIR "etc"
-    CACHE PATH ${CMAKE_INSTALL_SYSCONFDIR_DOC})
-SET(CMAKE_INSTALL_LOCALSTATEDIR "var"
-    CACHE PATH ${CMAKE_INSTALL_LOCALSTATEDIR_DOC})
-SET(CMAKE_INSTALL_LIBDIR "lib"
-    CACHE PATH ${CMAKE_INSTALL_LIBDIR_DOC})
-SET(CMAKE_INSTALL_INCLUDEDIR "include"
-    CACHE PATH ${CMAKE_INSTALL_INCLUDEDIR_DOC})
-SET(CMAKE_INSTALL_MANDIR "share/man"
-    CACHE PATH ${CMAKE_INSTALL_MANDIR_DOC})
 
+#############################################################################
 # PACKAGING
-#################################################
+#############################################################################
 
 SET(CPACK_SOURCE_GENERATOR "TGZ")
 SET(CPACK_SOURCE_PACKAGE_FILE_NAME
@@ -78,8 +59,11 @@ LIST(APPEND neat_sources
     tls-trust.c
 )
 
+
+#############################################################################
 # OS DEPENDENT
-#################################################
+#############################################################################
+
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     MESSAGE(${CMAKE_SYSTEM_NAME} " supported")
     ADD_DEFINITIONS("-D_DEFAULT_SOURCE")
@@ -116,6 +100,7 @@ ELSE()
 ENDIF()
 
 FIND_PACKAGE(Threads REQUIRED)
+
 
 #################################################
 # CHECK STRUCT MEMBERS
@@ -357,8 +342,9 @@ ENDIF()
 
 # COMPILER FLAGS
 #################################################
-SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror")
+# -Wno-array-bounds is unfortunate, but caused by https://bugs.llvm.org/show_bug.cgi?id=20144
+SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unreachable-code -Wno-array-bounds")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unreachable-code")
 
 CHECK_C_COMPILER_FLAG(-Wfloat-equal HAS_WFLOAT_EQUAL)
 IF (HAS_WFLOAT_EQUAL)

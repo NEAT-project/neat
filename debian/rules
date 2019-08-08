@@ -7,12 +7,12 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 	# --with=sphinxdoc
 
 override_dh_auto_configure:
-	dh_auto_configure -- -DSOCKET_API=1 -DUSRSCTP_SUPPORT=1 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1
+	dh_auto_configure -- -DSOCKET_API=1 -DUSRSCTP_SUPPORT=0 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1
 
 override_dh_auto_build:
 
 	# PYTHONPATH=. http_proxy='127.0.0.1:9' sphinx-build -N -bhtml docs/ docs/_build/html # HTML generator
-	# !!! FIXME: python-recommonmark is not available in any recent Ubuntu distribution.
+	# !!! python-recommonmark is not available in any recent Ubuntu distribution.
 	# Exotic experimental package with further exotic dependencies -> Skipping documentation at the moment ...
 	mkdir -p docs/_build/html
 

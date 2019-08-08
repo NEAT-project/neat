@@ -1,1 +1,1 @@
-usr/lib/libneat.so.*
+usr/lib/*/libneat.so.*

@@ -1,1 +1,1 @@
-usr/lib/libneat-socketapi.so.*
+usr/lib/*/libneat-socketapi.so.*

@@ -1,0 +1,28 @@
+Begin4
+Title:          libneat
+Version:        0.0.1~td199
+Entered-date:   2019-08-08
+Description:    The NEAT project wants to achieve a complete redesign of the
+                way in which Internet applications interact with the network.
+                The goal is to allow network “services” offered to
+                applications – such as reliability, low-delay communication
+                or security – to be dynamically tailored based on application
+                demands, current network conditions, hardware capabilities or
+                local policies, and also to support the integration of new
+                network functionality in an evolutionary fashion, without
+                applications having to be rewritten. This architectural change
+                will make the Internet truly "enhanceable", by allowing
+                applications to seamlessly and more easily take advantage of
+                new network features as they evolve.
+                This package contains the shared library for the NEAT APIs
+                libraries and example programs.
+                See https://www.neat-project.org for details on NEAT!
+Keywords:       NEAT Project
+Author:         dreibh@simula.no (Thomas Dreibholz)
+Maintained-by:  dreibh@simula.no (Thomas Dreibholz)
+Primary-site:   https://packages.nntb.no/software/libneat
+                525 kB libneat-0.0.1~td199.tar.gz
+Original-site:  https://www.neat-project.org
+Platforms:      Linux
+Copying-policy: GPL-3+
+End

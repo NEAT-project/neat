@@ -3,8 +3,8 @@ NEAT Socket API Example Programs
 
 httpget: simple HTTP/1.1 GET
 ----------------------------
- 
- Example: httpget www.nntb.no 80 /
+
+ Example: httpget http://1.2.3.4:8888/test.html
 
 
 httpserver1: simple HTTP server, just handling one connection at a time

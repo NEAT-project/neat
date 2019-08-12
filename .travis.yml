@@ -37,22 +37,6 @@ matrix:
      group: travis_latest
      env: DOCKER="ubuntu:disco" VARIANT="ubuntu" TOOL="pbuilder"
 
-   # ====== Ubuntu 18.10 (Cosmic Cuttlefish) ================================
-   - name: "Ubuntu 18.10 (Cosmic Cuttlefish) with GCC"
-     os: linux
-     dist: xenial
-     group: travis_latest
-     env: DOCKER="ubuntu:cosmic" VARIANT="ubuntu" TOOL="compile" COMPILER_C="gcc" COMPILER_CXX="g++"
-   - name: "Ubuntu 18.10 (Cosmic Cuttlefish) with Clang"
-     os: linux
-     dist: xenial
-     group: travis_latest
-     env: DOCKER="ubuntu:cosmic" VARIANT="ubuntu" TOOL="compile" COMPILER_C="clang" COMPILER_CXX="clang++"
-   - name: "Ubuntu 18.10 (Cosmic Cuttlefish) packaging with pbuilder"
-     dist: xenial
-     group: travis_latest
-     env: DOCKER="ubuntu:cosmic" VARIANT="ubuntu" TOOL="pbuilder"
-
    # ====== Ubuntu 18.04 (Bionic Beaver) ====================================
    - name: "Ubuntu 18.04 (Bionic Beaver) with GCC"
      os: linux
@@ -258,21 +242,21 @@ matrix:
 
 before_install:
   - |
-    travis_wait 60 ci/before-install
+    travis_wait 60 travis_retry ci/before-install
 
 install:
   - |
     if [ "${TRAVIS_OS_NAME}" != "osx" ] ; then
-       travis_wait 60 ci/install
+       travis_wait 60 travis_retry ci/install
     else
-       travis_wait 60 ci/install libuv ldns jansson swig
+       travis_wait 60 travis_retry ci/install libuv ldns jansson swig
     fi
 
 
 script:
   - |
     if [ "${TRAVIS_OS_NAME}" != "osx" ] ; then
-       travis_wait 60 ci/build && travis_wait 60 ci/test
+       travis_wait 60 travis_retry ci/build && travis_wait 60 travis_retry ci/test
     else
-       travis_wait 60 ci/build -DOPENSSL_ROOT_DIR=/usr/local/ssl && travis_wait 60 ci/test
+       travis_wait 60 travis_retry ci/build -DOPENSSL_ROOT_DIR=/usr/local/ssl && travis_wait 60 travis_retry ci/test
     fi

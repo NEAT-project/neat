@@ -2203,10 +2203,13 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         /* Cancel candidates which has not already begun setting up a connection */
         struct neat_he_candidate *np;
-        for (np = TAILQ_NEXT(candidate, next); np != NULL; np = TAILQ_NEXT(candidate, next)) {
-            if (np->prio_timer != NULL) {
-                TAILQ_REMOVE(candidate_list, np, next);
-                nt_free_candidate(ctx, np);
+        struct neat_he_candidate *tvar;
+        TAILQ_FOREACH_SAFE(np, candidate_list, next, tvar) {
+            if (np != candidate) {
+                if (np->prio_timer != NULL) {
+                    TAILQ_REMOVE(candidate_list, np, next);
+                    nt_free_candidate(ctx, np);
+                }
             }
         }
 
@@ -2251,10 +2254,13 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
         /* Cancel candidates which has not already begun setting up a connection */
         struct neat_he_candidate *np;
-        for (np = TAILQ_NEXT(candidate, next); np != NULL; np = TAILQ_NEXT(candidate, next)) {
-            if (np->prio_timer != NULL) {
-                TAILQ_REMOVE(candidate_list, np, next);
-                nt_free_candidate(ctx, np);
+        struct neat_he_candidate *tvar;
+        TAILQ_FOREACH_SAFE(np, candidate_list, next, tvar) {
+            if (np != candidate) {
+                if (np->prio_timer != NULL) {
+                    TAILQ_REMOVE(candidate_list, np, next);
+                    nt_free_candidate(ctx, np);
+                }
             }
         }
 

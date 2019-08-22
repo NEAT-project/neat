@@ -10,10 +10,14 @@ MAINTAINER=	dreibh@iem.uni-due.de
 COMMENT=	NEAT Project
 
 LICENSE=	BSD
-LICENSE_FILE=	${WRKSRC}/COPYING
+# LICENSE_FILE=	${WRKSRC}/COPYING
 
 USES=		cmake
 USE_LDCONFIG=	yes
+
+LIB_DEPENDS=    libjansson.so:devel/jansson \
+                libldns.so:dns/ldns \
+                libuv.so:devel/libuv
 
 CMAKE_ARGS+=    -DSOCKET_API=1 -DUSRSCTP_SUPPORT=0 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1
 

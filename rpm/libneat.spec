@@ -1,5 +1,5 @@
 Name: libneat
-Version: 0.0.1~td201
+Version: 1.0.0~td0
 Release: 1
 Summary: NEAT Project
 License: BSD

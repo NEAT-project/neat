@@ -313,6 +313,7 @@ ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt, off_t offset)
 
 
 #ifdef _LARGEFILE64_SOURCE
+#ifdef __linux__
 /* ###### NEAT pwrite64() implementation ################################# */
 ssize_t nsa_pwrite64(int fd, const void* buf, size_t len, off64_t offset)
 {
@@ -352,6 +353,7 @@ ssize_t nsa_pwritev64(int fd, const struct iovec* iov, int iovcnt, off64_t offse
       return(pwritev64(neatSocket->ns_socket_sd, iov, iovcnt, offset));
    }
 }
+#endif
 #endif
 
 
@@ -482,6 +484,7 @@ ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt, off_t offset)
 
 
 #ifdef _LARGEFILE64_SOURCE
+#ifdef __linux__
 /* ###### NEAT pread64() implementation ################################## */
 ssize_t nsa_pread64(int fd, void* buf, size_t len, off64_t offset)
 {
@@ -521,6 +524,7 @@ ssize_t nsa_preadv64(int fd, const struct iovec* iov, int iovcnt, off64_t offset
       return(preadv64(neatSocket->ns_socket_sd, iov, iovcnt, offset));
    }
 }
+#endif
 #endif
 
 

@@ -47,6 +47,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#ifdef __APPLE__
+#define off64_t off_t
+#endif
+
 #include <neat.h>
 
 

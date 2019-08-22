@@ -2,9 +2,9 @@
 # $FreeBSD$
 
 PORTNAME=	libneat
-PORTVERSION=	0.0.1~td200
+PORTVERSION=	0.0.1~td201
 CATEGORIES=	net
-MASTER_SITES=	https://packages.nntb.no/software/libneat
+MASTER_SITES=	https://packages.nntb.no/software/libneat/
 
 MAINTAINER=	dreibh@iem.uni-due.de
 COMMENT=	NEAT Project
@@ -12,13 +12,15 @@ COMMENT=	NEAT Project
 LICENSE=	BSD
 # LICENSE_FILE=	${WRKSRC}/COPYING
 
-USES=		cmake
+LIB_DEPENDS=    libjansson.so:devel/jansson \
+		libldns.so:dns/ldns \
+		libuv.so:devel/libuv
+
+USES=		cmake ssl
 USE_LDCONFIG=	yes
 
-LIB_DEPENDS=    libjansson.so:devel/jansson \
-                libldns.so:dns/ldns \
-                libuv.so:devel/libuv
+CMAKE_ARGS+=    -DSOCKET_API=1 -DUSRSCTP_SUPPORT=0 -DWEBRTC_SUPPORT=0 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1
 
-CMAKE_ARGS+=    -DSOCKET_API=1 -DUSRSCTP_SUPPORT=0 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1
+PLIST_SUB=      VERSION=${PORTVERSION}
 
 .include <bsd.port.mk>

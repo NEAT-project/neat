@@ -40,9 +40,6 @@ set_target_properties(neat-socketapi PROPERTIES
 
 ADD_LIBRARY(neat-socketapi-static STATIC ${neat_socketapi_sources})
 
-if(THREADS_HAVE_PTHREAD_ARG)
-   TARGET_COMPILE_OPTIONS(PUBLIC neat-socketapi "-pthread")
-endif()
 TARGET_LINK_LIBRARIES (neat-socketapi neat ${neat_socketapi_libs} "${CMAKE_THREAD_LIBS_INIT}")
 
 
@@ -62,9 +59,6 @@ FOREACH (source_file ${neat_socketapi_programs})
       ${source_file_we}
       ${source_file}
    )
-   if(THREADS_HAVE_PTHREAD_ARG)
-      TARGET_COMPILE_OPTIONS(PUBLIC ${source_file_we} "-pthread")
-   endif()
    TARGET_LINK_LIBRARIES(${source_file_we} neat-socketapi "${CMAKE_THREAD_LIBS_INIT}")
    # INSTALL(TARGETS             ${source_file_we}
    #         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

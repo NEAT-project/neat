@@ -129,6 +129,7 @@ int nsa_fsync(int fd)
 }
 
 
+#if (defined(__linux__) || defined(__FreeBSD__))
 /* ###### NEAT fdatasync() implementation ################################ */
 int nsa_fdatasync(int fd)
 {
@@ -141,6 +142,7 @@ int nsa_fdatasync(int fd)
       return(fdatasync(neatSocket->ns_socket_sd));
    }
 }
+#endif
 
 
 #ifdef __linux__

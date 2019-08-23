@@ -182,7 +182,7 @@ ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)
          if(neatSocket != nsa_get_socket_for_descriptor(sockfd)) {
             /* The socket has been closed -> return 0, since socket was good
              * before. The next call to nsa_recvmsg() will return with EBADF. */
-            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);            
+            pthread_mutex_unlock(&gSocketAPIInternals->nsi_socket_set_mutex);
             return(0);
          }
 
@@ -292,6 +292,7 @@ ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset)
 }
 
 
+#if (defined(__linux__) || defined(__FreeBSD__))
 /* ###### NEAT pwritev() implementation ################################## */
 ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt, off_t offset)
 {
@@ -310,6 +311,7 @@ ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt, off_t offset)
       return(pwritev(neatSocket->ns_socket_sd, iov, iovcnt, offset));
    }
 }
+#endif
 
 
 #ifdef _LARGEFILE64_SOURCE
@@ -463,6 +465,7 @@ ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)
 }
 
 
+#if (defined(__linux__) || defined(__FreeBSD__))
 /* ###### NEAT preadv() implementation ################################### */
 ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt, off_t offset)
 {
@@ -481,6 +484,7 @@ ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt, off_t offset)
       return(preadv(neatSocket->ns_socket_sd, iov, iovcnt, offset));
    }
 }
+#endif
 
 
 #ifdef _LARGEFILE64_SOURCE

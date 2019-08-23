@@ -1,6 +1,6 @@
-libneat (1.0.0~td0-1ubuntu1) eoan; urgency=medium
+libneat (1.0.0~td1-1ubuntu1) eoan; urgency=medium
 
   * Non-maintainer upload (NMU).
   * Initial release.
 
- -- Thomas Dreibholz <dreibh@iem.uni-due.de>  Thu, 22 Aug 2019 17:18:28 +0200
+ -- Thomas Dreibholz <dreibh@iem.uni-due.de>  Fri, 23 Aug 2019 13:02:18 +0200

@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 #
 # Debian Packaging Scripts
 # Copyright (C) 2002-2019 by Thomas Dreibholz
@@ -17,6 +17,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Contact: dreibh@iem.uni-due.de
+
+# Bash options:
+set -e
 
 
 # ---------------------------------------------------------------------------
@@ -97,7 +100,7 @@ fi
 echo -e ""
 echo -e "\x1b[34m`date +%FT%H:%M:%S`: ====== Creating upstream package ======================================\x1b[0m"
 echo -e ""
-if [ "${SKIP_PACKAGE_SIGNING}" != "" -a ${SKIP_PACKAGE_SIGNING} -eq 1 ] ; then
+if [ "${SKIP_PACKAGE_SIGNING}" != "" -a ${SKIP_PACKAGE_SIGNING} -eq 1 -o "${OVERRIDE_SKIP_PACKAGE_SIGNING}" == "1" ] ; then
    ./make-upstream-package ${PACKAGE} ${UPSTREAM_VERSION} "${MAKE_DIST}" -skip-signing
 else
    ./make-upstream-package ${PACKAGE} ${UPSTREAM_VERSION} "${MAKE_DIST}"
@@ -115,17 +118,6 @@ if [ ! -e "${UPSTREAM_PACKAGE}" ] ; then
 fi
 
 
-# ====== Sign upstream source package =======================================
-rm -f "${UPSTREAM_PACKAGE}.asc"
-if [ "${SKIP_PACKAGE_SIGNING}" != "" -a ! ${SKIP_PACKAGE_SIGNING} -eq 1 ] ; then
-   echo -e ""
-   echo -e "\x1b[34m`date +%FT%H:%M:%S`: ====== Sign upstream package ==========================================\x1b[0m"
-   echo -e ""
-   echo -e "\x1b[34mSigning upstream package ${UPSTREAM_PACKAGE} ...\x1b[0m"
-   gpg -sab "${UPSTREAM_PACKAGE}"
-fi
-
-
 # ====== Build source packages ==============================================
 echo -e ""
 echo -e "\x1b[34m`date +%FT%H:%M:%S`: ====== Building source packages =======================================\x1b[0m"
@@ -139,10 +131,14 @@ for DISTRIBUTION in ${DISTRIBUTIONS} ; do
    cp ${UPSTREAM_PACKAGE} ${PACKAGE}_${UPSTREAM_VERSION}.orig.tar.${UPSTREAM_PACKAGE_TYPE}
    cp ${UPSTREAM_PACKAGE} ${PACKAGE}_${OUTPUT_VERSION}.orig.tar.${UPSTREAM_PACKAGE_TYPE}
    cp ${UPSTREAM_PACKAGE} ${PACKAGE}_${DEBIAN_VERSION}.orig.tar.${UPSTREAM_PACKAGE_TYPE}
-   if [ "${SKIP_PACKAGE_SIGNING}" != "" -a ! ${SKIP_PACKAGE_SIGNING} -eq 1 ] ; then
+   if [ ! ${SKIP_PACKAGE_SIGNING} == "1" -a ! "${OVERRIDE_SKIP_PACKAGE_SIGNING}" == "1" ] ; then
       cp ${UPSTREAM_PACKAGE}.asc ${PACKAGE}_${UPSTREAM_VERSION}.orig.tar.${UPSTREAM_PACKAGE_TYPE}.asc
       cp ${UPSTREAM_PACKAGE}.asc ${PACKAGE}_${OUTPUT_VERSION}.orig.tar.${UPSTREAM_PACKAGE_TYPE}.asc
       cp ${UPSTREAM_PACKAGE}.asc ${PACKAGE}_${DEBIAN_VERSION}.orig.tar.${UPSTREAM_PACKAGE_TYPE}.asc
+   else
+      rm -f ${PACKAGE}_${UPSTREAM_VERSION}.orig.tar.${UPSTREAM_PACKAGE_TYPE}.asc
+      rm -f ${PACKAGE}_${OUTPUT_VERSION}.orig.tar.${UPSTREAM_PACKAGE_TYPE}.asc
+      rm -f ${PACKAGE}_${DEBIAN_VERSION}.orig.tar.${UPSTREAM_PACKAGE_TYPE}.asc
    fi
    rm -rf ${PACKAGE}-${UPSTREAM_VERSION}
    rm -rf ${PACKAGE}-${UPSTREAM_VERSION}.orig
@@ -211,7 +207,7 @@ for DISTRIBUTION in ${DISTRIBUTIONS} ; do
          echo "${DEBHELPER_LATEST_VERSION}" >debian/compat
          sed -e "s/debhelper (.* [0-9]*)/debhelper (>= ${DEBHELPER_LATEST_VERSION})/g" <debian/control >debian/control.new
          # Newer debhelper does not need "--parallel" for building:
-         sed -e "s/\(.*dh .. --buildsystem=cmake.*\)\(--parallel\)\(.*\)/\1\3/g" -e 's@[[:space:]]*$@@g' <debian/rules >debian/rules.new
+         sed -e "s/\(.*dh .. .*--buildsystem=cmake.*\)\(--parallel\)\(.*\)/\1\3/g" -e 's@[[:space:]]*$@@g' <debian/rules >debian/rules.new
          mv debian/control.new debian/control
          mv debian/rules.new debian/rules
          updatedDebhelperVersion=1
@@ -255,7 +251,7 @@ for DISTRIBUTION in ${DISTRIBUTIONS} ; do
    else
       opt="--no-check-builddeps"   # Needed for increased debhelper version!
    fi
-   if [ ${SKIP_PACKAGE_SIGNING} -eq 1 ] ; then
+   if [ ${SKIP_PACKAGE_SIGNING} -eq 1 -o "${OVERRIDE_SKIP_PACKAGE_SIGNING}" == "1" ] ; then
       # Build source package without signature:
       debuild ${opt} -us -uc -S "-k${MAINTAINER}" -i || exit 1
    else

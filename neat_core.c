@@ -5669,6 +5669,7 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             return -1; // Unavailable on other platforms
 #endif
             // Fallthrough to case NEAT_STACK_SCTP:
+            /* FALLTHRU */
         case NEAT_STACK_SCTP:
             candidate->pollable_socket->write_limit =  candidate->pollable_socket->write_size / 4;
             if (nt_prepare_sctp_socket(ctx, candidate->pollable_socket) != NEAT_ERROR_OK) {

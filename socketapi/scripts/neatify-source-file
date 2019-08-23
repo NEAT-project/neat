@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 # neatify-source-file: Replace Sockets API calls by NEAT Sockets API calls
 #
 # Copyright (C) 2017 by Thomas Dreibholz
@@ -17,6 +17,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Contact: dreibh@simula.no
+
+# Bash options:
+set -e
 
 if [ $# -ne 1 ] ; then
    echo >&2 "Usage: $0 file:line_number"

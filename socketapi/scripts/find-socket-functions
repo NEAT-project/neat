@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # find-socket-functions: Grep for socket API function calls
 #
 # Copyright (C) 2017 by Thomas Dreibholz

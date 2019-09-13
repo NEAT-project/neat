@@ -1,2 +1,2 @@
 usr/bin/run-with-neat
-usr/lib/libwithneat.so.*
+usr/lib/*/libwithneat.so.*

@@ -30,13 +30,14 @@ TARGET_LINK_LIBRARIES (withneat neat-socketapi ${withneat_libs} "${CMAKE_THREAD_
 
 SET_SOURCE_FILES_PROPERTIES(run-with-neat PROPERTIES GENERATED 1)
 
-ADD_CUSTOM_TARGET(run-with-neat
-  COMMAND sed -e "s:@libdir@:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}:g" -e "s:@libversion@:${BUILD_VERSION}:g" < ${CMAKE_CURRENT_SOURCE_DIR}/run-with-neat.in > ${CMAKE_CURRENT_SOURCE_DIR}/run-with-neat
-  COMMAND chmod +x ${CMAKE_CURRENT_SOURCE_DIR}/run-with-neat
-  # DEPENDS run-with-neat.in
-  COMMENT "Generating run-with-neat program"
+ADD_CUSTOM_COMMAND(OUTPUT run-with-neat
+                   COMMAND sed -e "s:@libdir@:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}:g" -e "s:@libversion@:${BUILD_VERSION}:g" < ${CMAKE_CURRENT_SOURCE_DIR}/run-with-neat.in > ${CMAKE_CURRENT_SOURCE_DIR}/run-with-neat
+                   COMMAND chmod +x ${CMAKE_CURRENT_SOURCE_DIR}/run-with-neat
+                   DEPENDS run-with-neat.in
+                   COMMENT "Generating run-with-neat program"
 )
-ADD_DEPENDENCIES(withneat run-with-neat)
+ADD_CUSTOM_TARGET(generate_run-with-neat DEPENDS run-with-neat)
+ADD_DEPENDENCIES(withneat generate_run-with-neat)
 
 INSTALL(FILES run-with-neat
         DESTINATION ${CMAKE_INSTALL_BINDIR})

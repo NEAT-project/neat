@@ -140,6 +140,7 @@ int nsa_fsync(int fd)
 }
 
 
+#if (defined(__linux__) || defined(__FreeBSD__))
 /* ###### NEAT fdatasync() implementation ################################ */
 int nsa_fdatasync(int fd)
 {
@@ -152,8 +153,10 @@ int nsa_fdatasync(int fd)
       return(fdatasync(neatSocket->ns_socket_sd));
    }
 }
+#endif
 
 
+#ifdef __linux__
 /* ###### NEAT syncfs() implementation ################################### */
 int nsa_syncfs(int fd)
 {
@@ -166,6 +169,7 @@ int nsa_syncfs(int fd)
       return(syncfs(neatSocket->ns_socket_sd));
    }
 }
+#endif
 
 
 /* ###### NEAT dup() implementation ###################################### */
@@ -265,6 +269,7 @@ int nsa_lockf(int fd, int cmd, off_t len)
 
 
 #ifdef _LARGEFILE64_SOURCE
+#ifdef __linux__
 /* ###### NEAT lockf64() implementation #################################### */
 int nsa_lockf64(int fd, int cmd, off64_t len)
 {
@@ -277,6 +282,7 @@ int nsa_lockf64(int fd, int cmd, off64_t len)
       return(lockf64(neatSocket->ns_socket_sd, cmd, len));
    }
 }
+#endif
 #endif
 
 
@@ -337,6 +343,7 @@ off_t nsa_lseek(int fd, off_t offset, int whence)
 
 
 #ifdef _LARGEFILE64_SOURCE
+#ifdef __linux__
 /* ###### NEAT lseek64() implementation ################################## */
 off64_t nsa_lseek64(int fd, off64_t offset, int whence)
 {
@@ -349,6 +356,7 @@ off64_t nsa_lseek64(int fd, off64_t offset, int whence)
       return(lseek64(neatSocket->ns_socket_sd, offset, whence));
    }
 }
+#endif
 #endif
 
 
@@ -367,6 +375,7 @@ int nsa_ftruncate(int fd, off_t length)
 
 
 #ifdef _LARGEFILE64_SOURCE
+#ifdef __linux__
 /* ###### NEAT ftruncate64() implementation ############################## */
 int nsa_ftruncate64(int fd, off64_t length)
 {
@@ -379,6 +388,7 @@ int nsa_ftruncate64(int fd, off64_t length)
       return(ftruncate64(neatSocket->ns_socket_sd, length));
    }
 }
+#endif
 #endif
 
 

@@ -1,4 +1,7 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+
+# Bash options:
+set -e
 
 # URL="https://www.nntb.no/Artwork/Sites/Small"
 URL="https://www.nntb.no/Artwork/Sites/Small"

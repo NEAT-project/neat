@@ -1,5 +1,6 @@
-libneat (0.0.1~td193-1ppa1) xenial; urgency=high
+libneat (1.0.0~td1-1ubuntu1) eoan; urgency=medium
 
+  * Non-maintainer upload (NMU).
   * Initial release.
 
- -- Thomas Dreibholz <dreibh@iem.uni-due.de>  Wed, 15 Nov 2018 08:08:08 +0800
+ -- Thomas Dreibholz <dreibh@iem.uni-due.de>  Fri, 23 Aug 2019 13:02:18 +0200

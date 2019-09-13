@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 #
 # Travis CI Scripts
 # Copyright (C) 2018-2019 by Thomas Dreibholz
@@ -18,14 +18,24 @@
 #
 # Contact: dreibh@iem.uni-due.de
 
+# Bash options:
+set -e
 
-CONTAINER="ubuntu-test"
+
+. `dirname $0`/get-container
 
 
-# ###### Linux ##############################################################
-if [ "${TRAVIS_OS_NAME}" == "linux" ] ; then
+# ###### Linux as-is ########################################################
+if [ "${TRAVIS_OS_NAME}" == "linux" -a "${DOCKER}" == "" -a "${QEMU}" == "" ] ; then
 
-   # ====== pbuilder environment ============================================
+   # Nothing to be done here.
+   true
+
+
+# ###### Linux via Docker ###################################################
+elif [ "${TRAVIS_OS_NAME}" == "linux" -a "${DOCKER}" != "" -a "${QEMU}" == "" ] ; then
+
+   # ====== pbuilder environment =========================================
    if [ "$TOOL" == "pbuilder" ] ; then
       CHANGELOG_HEADER="`head -n1 debian/changelog`"
       PACKAGE=`echo ${CHANGELOG_HEADER} | sed -e "s/(.*//" -e "s/ //g"`
@@ -50,22 +60,25 @@ if [ "${TRAVIS_OS_NAME}" == "linux" ] ; then
       fi
 
       echo "Installing ${packages} ..."
-      # NOTE: Older "apt-get" versions do not handle local files!
-      if ! sudo docker exec ${CONTAINER} env LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive dpkg -i ${packages} ; then
-         echo "There may be some dependencies missing. Trying to install them ..."
-         sudo docker exec ${CONTAINER} env LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive apt-get install -fy -o Dpkg::Options::="--force-confold" -o Dpkg::Options::="--force-confdef" --no-install-recommends
-         echo "Retrying to install ${packages} ..."
-         sudo docker exec ${CONTAINER} env LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive dpkg -i ${packages}
-      fi
+      sudo docker exec ${CONTAINER} env LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive eatmydata apt-get install -fy ${packages} || {
+         echo "NOTE: apt-get failed -> trying dpkg instead of apt-get for local file!"
+         # NOTE: Older "apt-get" versions do not handle local files!
+         if ! sudo docker exec ${CONTAINER} env LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive eatmydata dpkg -i ${packages} ; then
+            echo "There may be some dependencies missing. Trying to install them ..."
+            sudo docker exec ${CONTAINER} env LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive eatmydata apt-get install -fy -o Dpkg::Options::="--force-confold" -o Dpkg::Options::="--force-confdef" --no-install-recommends
+            echo "Retrying to install ${packages} ..."
+            sudo docker exec ${CONTAINER} env LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive eatmydata dpkg -i ${packages}
+         fi
+      }
       echo "Done!"
 
-   # ====== mock environment ================================================
+   # ====== mock environment =============================================
    elif [ "$TOOL" == "mock" ] ; then
       PACKAGE=`grep "^Name:" rpm/*.spec | head -n1 | sed -e "s/Name://g" -e "s/[ \t]*//g"`
       PACKAGE_VERSION=`grep "^Version:" rpm/*.spec | head -n1 | sed -e "s/Version://g" -e "s/[ \t]*//g"`
 
       release=`sudo docker exec ${CONTAINER} bash -c "LANG=C.UTF-8 ; cat /etc/fedora-release | sed -e \"s/^\(.*\) release \([0-9]*\) (\(.*\))$/\2/g\"" | sed -e "s/[^0-9]//g"`
-      arch=`sudo docker exec ${CONTAINER} env LANG=C.UTF-8 uname -m | sed -e "s/[^0-9a-zA-Z_-+]//g"`
+      arch=`sudo docker exec ${CONTAINER} env LANG=C.UTF-8 uname -m | sed -e "s/[^0-9a-zA-Z_+-]//g"`
       if ! sudo docker exec ${CONTAINER} cd /var/lib/mock/fedora-${release}-${arch}/result ; then
          if sudo docker exec ${CONTAINER} cd /var/lib/mock/fedora-rawhide-${arch}/result ; then
             release="rawhide"
@@ -92,8 +105,28 @@ if [ "${TRAVIS_OS_NAME}" == "linux" ] ; then
       fi
 
       echo "Installing ${packages} ..."
-      sudo docker exec ${CONTAINER} env LANG=C.UTF-8 dnf install -y --allowerasing ${packages}
+      sudo docker exec ${CONTAINER} env LANG=C.UTF-8 LD_PRELOAD=/usr/lib64/nosync/nosync.so dnf install -y --allowerasing ${packages}
       echo "Done!"
 
    fi
+
+
+# ###### FreeBSD via QEMU ###################################################
+elif [ "${TRAVIS_OS_NAME}" == "linux" -a "${QEMU}" == "FreeBSD" ] ; then
+
+    # FIXME: TBD!
+    true
+
+
+# ###### MacOS X ############################################################
+elif [ "${TRAVIS_OS_NAME}" == "osx" ] ; then
+
+   # Nothing to be done here.
+   true
+
+
+# ###### Error ##############################################################
+else
+   echo >&2 "ERROR: Invalid setting of TRAVIS_OS_NAME=${TRAVIS_OS_NAME}, DOCKER=${DOCKER}, QEMU=${QEMU}!"
+   exit 1
 fi

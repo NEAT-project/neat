@@ -1,9 +1,5 @@
 Name: libneat
-<<<<<<< HEAD
-Version: 0.0.1~td191
-=======
-Version: 0.0.1~td193
->>>>>>> dreibh/neat-socketapi
+Version: 1.0.0~td1
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -26,7 +22,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-build
 
 %description
 The NEAT project wants to achieve a complete redesign of the way in which
-Internet applications interact with the network. Our goal is to allow network
+Internet applications interact with the network. The goal is to allow network
 “services” offered to applications – such as reliability, low-delay
 communication or security – to be dynamically tailored based on application
 demands, current network conditions, hardware capabilities or local policies,
@@ -47,10 +43,7 @@ make %{?_smp_mflags}
 make install DESTDIR=%{buildroot}
 
 %files
-/usr/lib*/libneat.so*
-
-
-
+%{_libdir}/libneat.so*
 
 
 %package devel
@@ -61,7 +54,7 @@ Requires: libuv-devel
 
 %description devel
 The NEAT project wants to achieve a complete redesign of the way in which
-Internet applications interact with the network. Our goal is to allow network
+Internet applications interact with the network. The goal is to allow network
 “services” offered to applications – such as reliability, low-delay
 communication or security – to be dynamically tailored based on application
 demands, current network conditions, hardware capabilities or local policies,
@@ -73,9 +66,9 @@ features as they evolve.
 This package contains the built examples for the NEAT Core API.
 
 %files devel
-/usr/include/neat.h
-/usr/lib*/libneat-static.a
-/usr/lib*/libneat[^\-]*so
+%{_includedir}/neat.h
+%{_libdir}/libneat-static.a
+%{_libdir}/libneat[^\-]*so
 
 
 %package examples
@@ -85,7 +78,7 @@ Requires: %{name} = %{version}-%{release}
 
 %description examples
 The NEAT project wants to achieve a complete redesign of the way in which
-Internet applications interact with the network. Our goal is to allow network
+Internet applications interact with the network. The goal is to allow network
 “services” offered to applications – such as reliability, low-delay
 communication or security – to be dynamically tailored based on application
 demands, current network conditions, hardware capabilities or local policies,
@@ -97,23 +90,23 @@ features as they evolve.
 This package contains the built examples for the NEAT Core API.
 
 %files examples
-/usr/lib*/libneat/client
-/usr/lib*/libneat/client_data
-/usr/lib*/libneat/client_http_get
-/usr/lib*/libneat/client_http_run_once
-/usr/lib*/libneat/msbench
-/usr/lib*/libneat/peer
-/usr/lib*/libneat/server_chargen
-/usr/lib*/libneat/server_daytime
-/usr/lib*/libneat/server_discard
-/usr/lib*/libneat/server_echo
-/usr/lib*/libneat/server_http
-/usr/lib*/libneat/tneat
-/usr/lib*/libneat/minimal_client
-/usr/lib*/libneat/minimal_server
-/usr/lib*/libneat/minimal_server2
-/usr/lib*/libneat/client_dtls_echo
-/usr/lib*/libneat/server_dtls_echo
+%{_libdir}/libneat/client
+%{_libdir}/libneat/client_data
+%{_libdir}/libneat/client_http_get
+%{_libdir}/libneat/client_http_run_once
+%{_libdir}/libneat/msbench
+%{_libdir}/libneat/peer
+%{_libdir}/libneat/server_chargen
+%{_libdir}/libneat/server_daytime
+%{_libdir}/libneat/server_discard
+%{_libdir}/libneat/server_echo
+%{_libdir}/libneat/server_http
+%{_libdir}/libneat/tneat
+%{_libdir}/libneat/minimal_client
+%{_libdir}/libneat/minimal_server
+%{_libdir}/libneat/minimal_server2
+%{_libdir}/libneat/client_dtls_echo
+%{_libdir}/libneat/server_dtls_echo
 
 
 %package socketapi
@@ -123,7 +116,7 @@ Requires: %{name} = %{version}-%{release}
 
 %description socketapi
 The NEAT project wants to achieve a complete redesign of the way in which
-Internet applications interact with the network. Our goal is to allow network
+Internet applications interact with the network. The goal is to allow network
 “services” offered to applications – such as reliability, low-delay
 communication or security – to be dynamically tailored based on application
 demands, current network conditions, hardware capabilities or local policies,
@@ -135,7 +128,7 @@ features as they evolve.
 This package contains the library for the NEAT Sockets API.
 
 %files socketapi
-/usr/lib*/libneat-socketapi.so*
+%{_libdir}/libneat-socketapi.so*
 
 
 %package socketapi-devel
@@ -146,7 +139,7 @@ Requires: %{name}-socketapi = %{version}-%{release}
 
 %description socketapi-devel
 The NEAT project wants to achieve a complete redesign of the way in which
-Internet applications interact with the network. Our goal is to allow network
+Internet applications interact with the network. The goal is to allow network
 “services” offered to applications – such as reliability, low-delay
 communication or security – to be dynamically tailored based on application
 demands, current network conditions, hardware capabilities or local policies,
@@ -158,9 +151,9 @@ features as they evolve.
 This package contains the built examples for the NEAT Sockets API.
 
 %files socketapi-devel
-/usr/include/neat-socketapi.h
-/usr/lib*/libneat-socketapi-static.a
-/usr/lib*/libneat-socketapi*.so
+%{_includedir}/neat-socketapi.h
+%{_libdir}/libneat-socketapi-static.a
+%{_libdir}/libneat-socketapi*.so
 
 
 %package socketapi-examples
@@ -170,7 +163,7 @@ Requires: %{name}-socketapi = %{version}-%{release}
 
 %description socketapi-examples
 The NEAT project wants to achieve a complete redesign of the way in which
-Internet applications interact with the network. Our goal is to allow network
+Internet applications interact with the network. The goal is to allow network
 “services” offered to applications – such as reliability, low-delay
 communication or security – to be dynamically tailored based on application
 demands, current network conditions, hardware capabilities or local policies,
@@ -182,10 +175,10 @@ features as they evolve.
 This package contains the built examples for the NEAT Sockets API.
 
 %files socketapi-examples
-/usr/lib*/libneat/httpget
-/usr/lib*/libneat/httpserver1
-/usr/lib*/libneat/httpserver2-select
-/usr/lib*/libneat/httpserver2-threads
+%{_libdir}/libneat/httpget
+%{_libdir}/libneat/httpserver1
+%{_libdir}/libneat/httpserver2-select
+%{_libdir}/libneat/httpserver2-threads
 
 
 %changelog

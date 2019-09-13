@@ -2108,7 +2108,7 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     c++;
-    nt_log(ctx, NEAT_LOG_DEBUG, "Invokation count: %d - flow: %p", c, flow);
+    nt_log(ctx, NEAT_LOG_DEBUG, "Invocation count: %d - flow: %p", c, flow);
 
     assert(candidate);
     assert(candidate->pollable_socket);
@@ -2948,7 +2948,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
         transport = json_string_value(get_property(value, "transport", JSON_STRING));
         // FIXME transport must be a single value, need to handle errors
         if ((stack = string_to_stack(transport)) == 0) {
-            nt_log(ctx, NEAT_LOG_DEBUG, "Unkown transport stack %s", transport);
+            nt_log(ctx, NEAT_LOG_DEBUG, "Unknown transport stack %s", transport);
             continue;
         }
 
@@ -5669,6 +5669,7 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
             return -1; // Unavailable on other platforms
 #endif
             // Fallthrough to case NEAT_STACK_SCTP:
+            /* FALLTHRU */
         case NEAT_STACK_SCTP:
             candidate->pollable_socket->write_limit =  candidate->pollable_socket->write_size / 4;
             if (nt_prepare_sctp_socket(ctx, candidate->pollable_socket) != NEAT_ERROR_OK) {
@@ -5958,12 +5959,18 @@ static void nt_sctp_init_events(int sock)
         SCTP_SHUTDOWN_EVENT,
         SCTP_ADAPTATION_INDICATION,
         SCTP_PARTIAL_DELIVERY_EVENT,
+#ifdef SCTP_SEND_FAILED_EVENT   //TD 22.07.2019: This seems to be deprecated!
         SCTP_SEND_FAILED_EVENT,
+#else
+        SCTP_SEND_FAILED,
+#endif
         SCTP_STREAM_RESET_EVENT
     };
 
     memset(&event, 0, sizeof(event));
+#ifdef SCTP_FUTURE_ASSOC   // TD 22.07.2019: This seems to be deprecated!
     event.se_assoc_id = SCTP_FUTURE_ASSOC;
+#endif
     event.se_on = 1;
 
     for (i = 0; i < (unsigned int)(sizeof(event_types) / sizeof(uint16_t)); i++) {

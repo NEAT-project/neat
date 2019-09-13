@@ -32,7 +32,7 @@ int sender = 0;
 struct fileinfo *fi;
 uint32_t retry_limit = 10;
 
-#define explode() fprintf(stdout, "EXPLOSIVE ERRROR %s:%d\n",__func__, __LINE__);\
+#define explode() fprintf(stdout, "EXPLOSIVE ERROR %s:%d\n",__func__, __LINE__);\
         exit(0);
 
 #define ACK 1

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 retcode=1
 cmdprefix=""

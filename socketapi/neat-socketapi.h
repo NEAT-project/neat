@@ -35,7 +35,9 @@
 
 #include <inttypes.h>
 #include <poll.h>
+#ifdef __linux__
 #include <sys/epoll.h>
+#endif
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -44,6 +46,16 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+
+#ifdef __APPLE__
+#define off64_t off_t
+#ifndef SOCK_CLOEXEC
+#define SOCK_CLOEXEC O_CLOEXEC
+#endif
+#ifndef SOCK_NONBLOCK
+#define SOCK_NONBLOCK O_NONBLOCK
+#endif
+#endif
 
 #include <neat.h>
 

@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 #
 # Packaging Scripts
 # Copyright (C) 2017-2019 by Thomas Dreibholz
@@ -18,10 +18,13 @@
 #
 # Contact: dreibh@iem.uni-due.de
 
+# Bash options:
+set -e
+
 
 # ---------------------------------------------------------------------------
 # USAGE:
-# ./make-rpm
+# ./make-srpm
 # ---------------------------------------------------------------------------
 
 
@@ -55,16 +58,12 @@ if [ -e debian/changelog ] ; then
 
    if [ "${PACKAGE}-${PACKAGE_VERSION}" != "${DEBIAN_PACKAGE}-${DEBIAN_UPSTREAM_VERSION}" ] ; then
       echo >&2 "ERROR: RPM version and Debian version do not match -> ${PACKAGE}-${PACKAGE_VERSION} vs. ${DEBIAN_PACKAGE}-${DEBIAN_UPSTREAM_VERSION}!"
-      exit 1
-   fi
-   if [ ! -e ./debian.conf ] ; then
-      echo >&2 "ERROR: debian.conf does not exist -> no configuration for the new package!"
-      exit 1
+#       exit 1
    fi
 fi
 
-if [ -e rpm.conf ] ; then
-   . ./rpm.conf
+if [ -e packaging.conf ] ; then
+   . ./packaging.conf
 fi
 
 
@@ -72,35 +71,22 @@ fi
 echo -e ""
 echo -e "\x1b[34m`date +%FT%H:%M:%S`: ====== Creating upstream package ======================================\x1b[0m"
 echo -e ""
-if [ "${UPSTREAM_PACKAGE}" = "" ] ; then
-   for UPSTREAM_PACKAGE_TYPE in xz bz2 gz ; do
-      UPSTREAM_PACKAGE="`find . -maxdepth 1 -name "${PACKAGE}-*.${UPSTREAM_PACKAGE_TYPE}" -printf '%f'`"
-      if [ -e "${UPSTREAM_PACKAGE}" ] ; then
-         break
-      fi
-   done
-   if [ ! -e "${UPSTREAM_PACKAGE}" ]; then
-      rm -f ${PACKAGE}-*.gz ${PACKAGE}"_"*.gz ${PACKAGE}-*.bz2 ${PACKAGE}"_"*.bz2
-      echo -e "\x1b[34m------ Running MAKE_DIST ... ------\x1b[0m"
-      echo "\$ $MAKE_DIST"
-      eval "$MAKE_DIST"
-
-      echo -e "\x1b[34m------ Looking for upstream package ... ------\x1b[0m"
-      for UPSTREAM_PACKAGE_TYPE in xz bz2 gz ; do
-         UPSTREAM_PACKAGE="`find . -maxdepth 1 -name "${PACKAGE}-*.${UPSTREAM_PACKAGE_TYPE}" -printf '%f'`"
-         if [ -e "${UPSTREAM_PACKAGE}" ] ; then
-            break
-         fi
-      done
-   fi
+if [ "${SKIP_PACKAGE_SIGNING}" != "" -a ${SKIP_PACKAGE_SIGNING} -eq 1 -o "${OVERRIDE_SKIP_PACKAGE_SIGNING}" == "1" ] ; then
+   ./make-upstream-package ${PACKAGE} ${PACKAGE_VERSION} "${MAKE_DIST}" -skip-signing
+else
+   ./make-upstream-package ${PACKAGE} ${PACKAGE_VERSION} "${MAKE_DIST}"
 fi
+
+for UPSTREAM_PACKAGE_TYPE in xz bz2 gz ; do
+   UPSTREAM_PACKAGE="`find . -maxdepth 1 -name "${PACKAGE}-*.tar.${UPSTREAM_PACKAGE_TYPE}" -printf '%f'`"
+   if [ -e "${UPSTREAM_PACKAGE}" ] ; then
+      break
+   fi
+done
 if [ ! -e "${UPSTREAM_PACKAGE}" ] ; then
-   echo -e "\x1b[34mERROR: No upstrem package found!\x1b[0m"
+   echo -e "\x1b[34mERROR: No upstream package (${PACKAGE}-*.tar.*) found!\x1b[0m"
    exit 1
 fi
-echo -e ""
-echo -e "\x1b[34m==> Upstream package is ${UPSTREAM_PACKAGE} (type is ${UPSTREAM_PACKAGE_TYPE})\x1b[0m"
-echo -e ""
 
 
 # ====== Create source RPM ==================================================
@@ -109,23 +95,25 @@ echo -e "\x1b[34m`date +%FT%H:%M:%S`: ====== Creating source RPM ===============
 echo -e ""
 
 # ------ Initialise RPM build directories -----------------------------------
-rpmdev-setuptree
-find $HOME/rpmbuild/SRPMS -name "${PACKAGE}*.rpm" | xargs --no-run-if-empty rm -f
-find $HOME/rpmbuild/RPMS  -name "${PACKAGE}*.rpm" | xargs --no-run-if-empty rm -f
+for subdir in BUILD BUILDROOT RPMS SOURCES SPECS SRPMS ; do
+   mkdir -p ${HOME}/rpmbuild/${subdir}
+done
+find ${HOME}/rpmbuild/SRPMS -name "${PACKAGE}*.rpm" | xargs --no-run-if-empty rm -f
+find ${HOME}/rpmbuild/RPMS  -name "${PACKAGE}*.rpm" | xargs --no-run-if-empty rm -f
 # Copy upstream sources
-cp ${UPSTREAM_PACKAGE} $HOME/rpmbuild/SOURCES/
+cp ${UPSTREAM_PACKAGE} ${HOME}/rpmbuild/SOURCES/
 # Patches
 if [ -e original ] ; then
-   find original -name "*" -type f | grep -v "~$" | grep -v ".spec$" | xargs -n1 -i§ cp "§" $HOME/rpmbuild/SOURCES/
+   find original -name "*" -type f | grep -v "~$" | grep -v ".spec$" | xargs -n1 -i§ cp "§" ${HOME}/rpmbuild/SOURCES/
 fi
 # Further patches
-find rpm -name "*" -type f | grep -v "~$" | grep -v ".spec$" | xargs -n1 -i§ cp "§" $HOME/rpmbuild/SOURCES/
+find rpm -name "*" -type f | grep -v "~$" | grep -v ".spec$" | xargs -n1 -i§ cp "§" ${HOME}/rpmbuild/SOURCES/
 # The .spec file
-cp rpm/${PACKAGE}.spec $HOME/rpmbuild/SPECS/
+cp rpm/${PACKAGE}.spec ${HOME}/rpmbuild/SPECS/
 
 # ------ Create source RPM --------------------------------------------------
 rpmbuild -bs rpm/${PACKAGE}.spec
-PACKAGE_SRPM=`find $HOME/rpmbuild/SRPMS/ -name "${PACKAGE}-*${PACKAGE_VERSION}*-*.src.rpm"`
+PACKAGE_SRPM=`find ${HOME}/rpmbuild/SRPMS/ -name "${PACKAGE}-*-*.src.rpm"`
 if [ ! -e "${PACKAGE_SRPM}" ] ; then
    echo >&2 "ERROR: Cannot find SRPM ${PACKAGE_SRPM}!"
    exit 1

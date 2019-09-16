@@ -181,6 +181,29 @@ This package contains the built examples for the NEAT Sockets API.
 %{_libdir}/libneat/httpserver2-threads
 
 
+%package socketapi-withneat
+Summary: NEAT (WithNEAT Tool)
+Group: Applications/Internet
+Requires: %{name}-socketapi = %{version}-%{release}
+
+%description socketapi-withneat
+The NEAT project wants to achieve a complete redesign of the way in which
+Internet applications interact with the network. The goal is to allow network
+“services” offered to applications – such as reliability, low-delay
+communication or security – to be dynamically tailored based on application
+demands, current network conditions, hardware capabilities or local policies,
+and also to support the integration of new network functionality in an
+evolutionary fashion, without applications having to be rewritten. This
+architectural change will make the Internet truly “enhanceable”, by allowing
+applications to seamlessly and more easily take advantage of new network
+features as they evolve.
+This package contains the "run-with-neat" wrapper for the NEAT Sockets API.
+
+%files socketapi-withneat
+%{_bindir}/run-with-neat
+%{_libdir}/libwithneat.so*
+
+
 %changelog
 * Fri Dec 02 2016 Thomas Dreibholz <dreibh@simula.no> 0.0.1
 - Initial RPM release

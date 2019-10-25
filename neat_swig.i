@@ -2,6 +2,8 @@
 %module neat
 %include "stdint.i" /* Convert uintXX_t correctly */
 %include "typemaps.i"
+%include "cpointer.i"
+
 %{
 #include "neat.h"
 %}
@@ -17,6 +19,7 @@ static struct {
     PyObject *on_aborted;
     PyObject *on_timeout;
     PyObject *on_close;
+    PyObject *on_parameters;
 
     PyObject *on_send_failure;
     PyObject *on_slowdown;
@@ -56,6 +59,9 @@ static neat_error_code disp_on_timeout(struct neat_flow_operations *ops) {
 }
 static neat_error_code disp_on_close(struct neat_flow_operations *ops) {
     return dispatch_fx(ops, py_callbacks.on_close);
+}
+static neat_error_code disp_on_parameters(struct neat_flow_operations *ops) {
+    return dispatch_fx(ops, py_callbacks.on_parameters);
 }
 
 static void dispatch_send_failure(struct neat_flow_operations *ops, int context, const unsigned char *unsent) {
@@ -136,13 +142,15 @@ static void dispatch_rate_hint(struct neat_flow_operations *ops, uint32_t rate) 
     }
 }
 
-
-
-
-
 %typemap(in) const unsigned char *buffer {
     $1 = (unsigned char*) PyString_AsString($input);
 }
+
+%typemap(in) unsigned char *buffer {
+        $1 = (unsigned char*) PyString_AsString($input);
+}
+
+%pointer_functions(uint32_t, uint32_tp);
 
 %include "neat.h"
 

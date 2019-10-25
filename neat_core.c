@@ -59,6 +59,7 @@
 #include "neat_bsd_internal.h"
 #endif
 
+static void intHandler();
 static void nt_update_poll_handle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle);
 static neat_error_code nt_write_flush(struct neat_ctx *ctx, struct neat_flow *flow);
 static int nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow,
@@ -116,6 +117,10 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
 };
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
+
+static void intHandler() {
+    exit(0);
+}
 
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
@@ -198,6 +203,7 @@ neat_init_ctx()
 neat_error_code
 neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode)
 {
+    signal(SIGINT, intHandler);
     if (run_mode == NEAT_RUN_DEFAULT)
         nt_log(nc, NEAT_LOG_DEBUG, "%s", __func__);
 

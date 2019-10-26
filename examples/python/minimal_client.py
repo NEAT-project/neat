@@ -8,31 +8,42 @@
 
 from neat import *
 import sys
-import ctypes # TODO: Get rid of this
+
 
 def on_readable(ops):
-    buffer = ctypes.create_string_buffer(32)
-    bytes_read = 0
-    if (neat_read(ops.ctx, ops.flow, buffer, 31, ctypes.byref(bytes_read), None, 0) == NEAT_OK):
-        buffer[bytes_read] = 0
-        print("Read {} bytes:\n{}".format(bytes_read, buffer))
+    buffer = charArr(32)
+    bytes_read = new_uint32_tp()
+    try:
+        neat_read(ops.ctx, ops.flow, buffer, 31, bytes_read, None, 0)
+        byte_array = bytearray(uint32_tp_value(bytes_read))
+        for i in range(uint32_tp_value(bytes_read)):
+            byte_array[i] = buffer[i]
+
+        print("\n\nRead {} bytes: {}\n\n".format(uint32_tp_value(bytes_read), byte_array))
+    except:
+        print('\033[91m' + "\n\nAn error occurred in the Python callback: {}\n\n".upper() + '\033[0m').format(sys.exc_info()[0])
+        neat_abort(ops.ctx, ops.flow)
     neat_close(ops.ctx, ops.flow)
     return NEAT_OK
+
 
 def on_close(ops):
     neat_stop_event_loop(ops.ctx)
     return NEAT_OK
 
+
 def on_writable(ops):
     message = "Hi!"
-    neat_write(ops.ctx, ops.flow, message, 3, NULL, 0)
+    neat_write(ops.ctx, ops.flow, message, 3, None, 0)
     return NEAT_OK
+
 
 def on_all_written(ops):
     ops.on_readable = on_readable
     ops.on_writable = None
     neat_set_operations(ops.ctx, ops.flow, ops);
     return NEAT_OK
+
 
 def on_connected(ops):
     ops.on_writable = on_writable
@@ -41,10 +52,11 @@ def on_connected(ops):
 
     return NEAT_OK
 
+
 properties = """{
     "transport":
         {
-            "value": ["SCTP", SCTP],
+            "value": ["TCP"],
             "precedence": 1
         }
 }"""
@@ -60,9 +72,8 @@ if __name__ == "__main__":
 
     neat_set_property(ctx, flow, properties)
 
-    if (neat_open(ctx, flow, "127.0.0.1", 5000, None, 0)):
+    if neat_open(ctx, flow, "127.0.0.1", 5000, None, 0):
         sys.exit("neat_open failed")
 
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT)
-
     neat_free_ctx(ctx)

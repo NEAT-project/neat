@@ -48,13 +48,6 @@ def on_connected(ops):
 
 
 if __name__ == "__main__":
-    properties = """{
-        "transport":
-            {
-                "value": ["TCP"],
-                "precedence": 1
-            }
-    }"""
 
     ctx = neat_init_ctx()
     flow = neat_new_flow(ctx)
@@ -63,8 +56,6 @@ if __name__ == "__main__":
     ops.on_readable = on_readable
     ops.on_connected = on_connected
     neat_set_operations(ctx, flow, ops)
-
-    neat_set_property(ctx, flow, properties)
 
     if neat_accept(ctx, flow, 5000, None, 0):
         sys.exit("neat_accept failed")

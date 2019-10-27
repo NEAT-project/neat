@@ -56,7 +56,7 @@ def on_connected(ops):
 properties = """{
     "transport":
         {
-            "value": ["TCP"],
+            "value": ["SCTP", "TCP"],
             "precedence": 1
         }
 }"""

@@ -149,8 +149,11 @@ static void dispatch_rate_hint(struct neat_flow_operations *ops, uint32_t rate) 
 }
 
 %pointer_functions(uint32_t, uint32_tp);
+%pointer_functions(size_t, size_tp);
+
 
 %array_class(unsigned char, charArr);
+
 
 %include "neat.h"
 

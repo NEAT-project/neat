@@ -170,8 +170,6 @@ handle_request(uv_stream_t *client)
     uv_write_t *write_req;
     json_t *request_json;
     json_error_t json_error;
-    struct timespec start;
-    struct timespec end;
     uv_write_t wr;
 
     request_json = json_loads(client_req->buffer, 0, &json_error);
@@ -182,15 +180,14 @@ handle_request(uv_stream_t *client)
         return;
     }
 
-    clock_gettime(CLOCK_REALTIME, &start);
+    clock_t start, end;
+    start = clock();
     json_t *candidates = lookup(request_json);
-    clock_gettime(CLOCK_REALTIME, &end);
+    end = clock();
 
-    uint64_t secs = (end.tv_sec - start.tv_sec);
-    uint64_t nanos = (end.tv_nsec - start.tv_nsec);
-    uint64_t ms = secs * 1000 + nanos / 1000000;
+    double ms = (double)(end-start) / CLOCKS_PER_SEC * 1000;
 
-    write_log(__FILE__, __func__, LOG_EVENT, "Lookup finished in %ld ms", ms);
+    write_log(__FILE__, __func__, LOG_EVENT, "Lookup finished in %lf ms", ms);
 
     response_buf.base = json_dumps(candidates, 0);
     if(!response_buf.base) {

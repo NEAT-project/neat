@@ -121,12 +121,13 @@ extend_node_aux(json_t *input_prop, node_t *extension_node, json_t *uid)
     }
 }
 
-/* Extends CIB node/row */
-void
-extend_node(json_t *input_json, bool is_row)
+/* Extends CIB node */
+json_t *
+extend_node(json_t *input_json)
 {
     node_t *current_node = NULL;
     json_t *uid = json_object_get(input_json, "uid");
+    json_t *result = json_array();
 
     for(current_node = cib_nodes; current_node; current_node = current_node->next) {
         // Discard expired entries
@@ -143,26 +144,79 @@ extend_node(json_t *input_json, bool is_row)
         if(json_boolean_value(json_object_get(current_node->json, "root"))) {
             continue;
         } else {
+            write_log(__FILE__, __func__, LOG_DEBUG,"---------- EXTENDER %s ---------", current_node->filename);
             bool link = json_boolean_value(json_object_get(current_node->json, "link"));
-            if(link && !is_row) /* If node */ {
-                write_log(__FILE__, __func__, LOG_DEBUG, "Extending as node.");
+            // If node
+            if(link) {
+                write_log(__FILE__, __func__, LOG_DEBUG, "Extending node.");
                 json_t *input_prop = json_object_get(input_json, "properties");
-                extend_node_aux(input_prop, current_node, uid);
-            } else if(!link && is_row) /* If row */ {
-                write_log(__FILE__, __func__, LOG_DEBUG, "Extending as row.");
-                extend_node_aux(input_json, current_node, uid);
+                json_t *new_prop = json_deep_copy(input_prop);
+
+                extend_node_aux(new_prop, current_node, uid);
+                if (json_equal(input_prop, new_prop)) {
+                    json_decref(new_prop);
+                    continue;
+                }
+                json_array_append_new(result, new_prop); 
             }
         }
     }
+
+    return result;
+}
+
+/* Extends CIB row */
+json_t *
+extend_row(json_t *input_json)
+{
+    node_t *current_node = NULL;
+    json_t *uid = json_object_get(input_json, "uid");
+    json_t *result = json_array();
+
+    for(current_node = cib_nodes; current_node; current_node = current_node->next) {
+        // Discard expired entries
+        if(node_is_expired(current_node)) {
+            write_log(__FILE__, __func__, LOG_DEBUG, "Discarding expired entry.");
+            continue;
+        }
+        // Ignore cached nodes if caching disabled
+        if(!cib_cache_enabled && node_is_cached(current_node->json)) {
+            write_log(__FILE__, __func__, LOG_DEBUG, "Ignoring cached node.");
+            continue;
+        }
+        // Do not expand from root nodes
+        if(json_boolean_value(json_object_get(current_node->json, "root"))) {
+            continue;
+        } else {
+            write_log(__FILE__, __func__, LOG_DEBUG,"---------- EXTENDER %s ---------", current_node->filename);
+            bool link = json_boolean_value(json_object_get(current_node->json, "link"));
+            // If row  
+            if(!link) {
+                write_log(__FILE__, __func__, LOG_DEBUG, "Extending row.");
+
+                json_t *new_prop = json_deep_copy(input_json);
+                extend_node_aux(new_prop, current_node, uid);
+                if (json_equal(input_json, new_prop)) {
+                    json_decref(new_prop);
+                    continue;
+                }
+                json_array_append_new(result, new_prop);
+            }
+        }
+    }
+
+    return result;
 }
 
 json_t *
 update_rows()
 {
     node_t *current_node = NULL;
-    json_t *extended_node;
     json_t *rows = json_array();
     json_t *row;
+
+    json_t *value_a, *value_b;
+    size_t i, j;
 
     for(current_node = cib_nodes; current_node; current_node = current_node->next) {
         write_log(__FILE__, __func__, LOG_DEBUG,"---------- NODE %s ---------", current_node->filename);
@@ -177,26 +231,42 @@ update_rows()
             continue;
         }
         if(!json_boolean_value(json_object_get(current_node->json, "root"))) {
-            write_log(__FILE__, __func__, LOG_DEBUG, "Ignoring root node.");
             continue;
         }
         // Extend current node
         write_log(__FILE__, __func__, LOG_DEBUG,"---------- EXTENDING NODE ---------");
-        extended_node = json_deep_copy(current_node->json);
-        extend_node(extended_node, false);
+        json_t *prop_array = extend_node(current_node->json);
 
-        row = expand_json(json_object_get(extended_node, "properties"));
-        json_decref(extended_node);
+        // If no matching extender 
+        if (json_array_size(prop_array) == 0) {
+            json_array_append(prop_array, json_object_get(current_node->json, "properties"));
+        }
+        
+        json_array_foreach(prop_array, i, value_a) {
+            row = expand_json(value_a);
 
-        if(json_array_size(row) == 0) {
+            if(json_array_size(row) == 0) {
+                json_decref(row);
+                break;
+            }
+            json_array_append(rows, row);
+
+            write_log(__FILE__, __func__, LOG_DEBUG,"---------- EXTENDING ROW ---------");
+            // When extending a row, a new row will be inserted
+            //json_t *extended_row = extend_node(row, true);
+            json_t *extended_row = extend_row(row);
+            
+            json_array_foreach(extended_row, j, value_b) {
+
+                //json_array_append_new(rows, value_b);
+                json_array_append(rows, value_b);
+            }
+
             json_decref(row);
-            continue;
+            json_decref(extended_row);
         }
 
-        write_log(__FILE__, __func__, LOG_DEBUG,"---------- EXTENDING ROW ---------");
-        extend_node(row, true);
-
-        json_array_append_new(rows, row);
+        json_decref(prop_array);
     }
 
     return rows;

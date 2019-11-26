@@ -231,8 +231,13 @@ update_node(node_t *head, char *file_path)
         return head;
     }
 
-    const char *uid = json_string_value(json_object_get(json, "uid"));
+    json_t *uid_obj = json_object_get(json, "uid");
+    const char *uid = json_string_value(uid_obj);
 
+    if(!uid_obj) {
+        write_log(__FILE__, __func__, LOG_DEBUG, "Skipping node: %s: uid not found", file_path);
+        return head;
+    }
     /* Is there already a node with the same uid? */
     if(node = get_node_by_uid(head, uid)) {
         if(node->last_updated <= file_edit_time(file_path)) {

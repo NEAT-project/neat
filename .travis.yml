@@ -260,22 +260,22 @@ matrix:
    # ###### Other ###########################################################
 
    # ====== MacOS X =========================================================
-   - name: "MacOS 10.14 with Xcode 11"
-     os: osx
-     osx_image: xcode11.2
-     compiler: clang
-     group: travis_latest
-   - name: "MacOS 10.13 with Xcode 10"
-     os: osx
-     osx_image: xcode10.3
-     compiler: clang
-     group: travis_latest
-   - name: "MacOS 10.12 with Xcode 9"
+   #- name: "MacOS 10.14 with Xcode 11.2"
+     #os: osx
+     #osx_image: xcode11.2
+     #compiler: clang
+     #group: travis_latest
+   #- name: "MacOS 10.13 with Xcode 10.3"
+     #os: osx
+     #osx_image: xcode10.3
+     #compiler: clang
+     #group: travis_latest
+   - name: "MacOS 10.12 with Xcode 9.4"
      os: osx
      osx_image: xcode9.4
      compiler: clang
      group: travis_latest
-   - name: "MacOS 10.11 with Xcode 8"
+   - name: "MacOS 10.11 with Xcode 8.3"
      os: osx
      osx_image: xcode8.3
      compiler: clang

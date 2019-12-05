@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Travis CI Scripts
-# Copyright (C) 2018-2019 by Thomas Dreibholz
+# Copyright (C) 2018-2020 by Thomas Dreibholz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -73,7 +73,8 @@ elif [ "${TRAVIS_OS_NAME}" == "linux" -a "${QEMU}" == "FreeBSD" ] ; then
       # ====== Download fuse-ufs2 ========================================
       if [ ! -d fuse-ufs2/ ] ; then
          echo "Downloading fuse-ufs2 ..."
-         git clone https://github.com/mkatiyar/fuse-ufs2
+         git clone https://github.com/dreibh/fuse-ufs2 -b dreibh/ubuntu-disco-fix
+         # git clone https://github.com/mkatiyar/fuse-ufs2
       fi
    fi
 

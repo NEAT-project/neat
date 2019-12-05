@@ -2,7 +2,7 @@
 # $FreeBSD$
 
 PORTNAME=	libneat
-PORTVERSION=	1.0.0
+PORTVERSION=	1.0.1
 CATEGORIES=	net
 MASTER_SITES=	https://packages.nntb.no/software/libneat/
 

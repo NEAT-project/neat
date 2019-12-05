@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Travis CI Scripts
-# Copyright (C) 2018-2019 by Thomas Dreibholz
+# Copyright (C) 2018-2020 by Thomas Dreibholz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -161,7 +161,10 @@ elif system == 'freebsd':
       if output != None:
          ports = output.decode('utf-8').splitlines()
          for port in ports:
-            dependencies.append(os.path.basename(port))
+            basename = os.path.basename(port)
+            if basename == 'glib20':
+               basename = 'glib'   # May be there is a better solution here?
+            dependencies.append(basename)
 
       for dependency in sorted(set(dependencies)):
           sys.stdout.write(dependency + ' ')

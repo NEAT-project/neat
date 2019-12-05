@@ -4,7 +4,7 @@ libneat (1.0.1-1ubuntu1) focal; urgency=medium
   * Initial release.
   * debian/control: Updated standards version to 4.4.1.2.
 
- -- Thomas Dreibholz <dreibh@iem.uni-due.de>  Thu, 05 Dec 2019 17:07:38 +0100
+ -- Thomas Dreibholz <dreibh@iem.uni-due.de>  Thu, 05 Dec 2019 15:50:05 +0100
 
 libneat (1.0.0-1ubuntu1) eoan; urgency=medium
 

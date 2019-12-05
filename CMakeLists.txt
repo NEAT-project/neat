@@ -209,19 +209,21 @@ ENDIF()
 
 # REQUIREMENTS
 #################################################
-CHECK_INCLUDE_FILE(uv.h HAVE_SYS_UV_H)
+CHECK_INCLUDE_FILE(uv.h HAVE_UV_H)
 FIND_LIBRARY(UV_LIB uv)
 
-IF (NOT HAVE_SYS_UV_H OR NOT UV_LIB)
+IF (NOT HAVE_UV_H OR NOT UV_LIB)
     MESSAGE(FATAL_ERROR "uv.h not found - libuv installed?")
 ELSE()
     MESSAGE("UV found: " ${UV_LIB})
 ENDIF()
 
-CHECK_INCLUDE_FILE(ldns/ldns.h HAVE_SYS_LDNS_H)
-FIND_LIBRARY(LDNS_LIB ldns)
-IF (NOT HAVE_SYS_LDNS_H OR NOT LDNS_LIB)
-    MESSAGE(FATAL_ERROR "ldns/ldns.h not found - libdns installed?")
+CHECK_INCLUDE_FILE(ldns/ldns.h HAVE_LDNS_H)
+FIND_LIBRARY(LDNS_LIB NAMES ldns libldns)
+IF (NOT HAVE_LDNS_H)
+    MESSAGE(FATAL_ERROR "ldns.h not found - libdns installed?")
+ELIF (NOT LDNS_LIB)
+    MESSAGE(FATAL_ERROR "libldns not found - libdns installed?")
 ELSE()
     MESSAGE("LDNS found: " ${LDNS_LIB})
 ENDIF()

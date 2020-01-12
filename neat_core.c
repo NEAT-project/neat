@@ -122,6 +122,10 @@ static void intHandler() {
     exit(0);
 }
 
+int neat_get_socket_fd(struct neat_flow *nf){
+    return nf->socket->fd;
+}
+
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
 struct neat_ctx *
@@ -959,6 +963,14 @@ neat_set_operations(neat_ctx *ctx, neat_flow *flow, struct neat_flow_operations 
 
     nt_update_poll_handle(ctx, flow, flow->socket->handle);
     return NEAT_OK;
+}
+
+// TODO: added by Michael
+void set_ops_user_data(struct neat_flow_operations *ops, unsigned char* data){
+    ops->userData = (void *) data;
+}
+unsigned char* get_ops_user_data(struct neat_flow_operations *ops){
+    return (unsigned char*) ops->userData;
 }
 
 /* Return statistics about the flow in JSON format

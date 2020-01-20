@@ -1,3 +1,9 @@
+libneat (1.0.2~td1-1ubuntu1) focal; urgency=medium
+
+  * New upstream release.
+
+ -- Thomas Dreibholz <dreibh@iem.uni-due.de>  Mon, 20 Jan 2020 15:00:08 +0100
+
 libneat (1.0.1-1ubuntu1) focal; urgency=medium
 
   * Non-maintainer upload (NMU).

@@ -6,6 +6,8 @@ SET(BUILD_MINOR "0")
 SET(BUILD_PATCH "1")
 SET(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
+include(FindPythonLibs)
+
 
 #############################################################################
 # INSTALLATION_DIRECTORIES
@@ -186,8 +188,8 @@ OPTION(SWIG_PYTHON "Include SWIG Python bindings" 0)
 IF (SWIG_PYTHON)
     FIND_PACKAGE(SWIG REQUIRED)
     INCLUDE(${SWIG_USE_FILE})
-    FIND_PACKAGE(PythonLibs 2.7 REQUIRED)
-    INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
+    FIND_PACKAGE(PythonLibs 3.7 REQUIRED)
+    INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIRS})
     INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
     SET(CMAKE_SWIG_FLAGS "")
@@ -343,8 +345,8 @@ ENDIF()
 # COMPILER FLAGS
 #################################################
 # -Wno-array-bounds is unfortunate, but caused by https://bugs.llvm.org/show_bug.cgi?id=20144
-SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -std=c11   -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unreachable-code -Wno-array-bounds")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unreachable-code")
+SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -g -std=c11   -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unreachable-code -Wno-array-bounds")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unreachable-code")
 
 CHECK_C_COMPILER_FLAG(-Wfloat-equal HAS_WFLOAT_EQUAL)
 IF (HAS_WFLOAT_EQUAL)

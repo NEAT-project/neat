@@ -2946,7 +2946,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
         char dummy[sizeof(struct in6_addr)];
         struct neat_he_candidate *candidate;
 
-        const char *so_key=NULL, *so_prefix = "SO/";
+        const char *so_key=NULL, *so_prefix = "so/";
         json_t *so_value;
 
         nt_log(ctx, NEAT_LOG_DEBUG, "Now processing PM candidate %zu", i);
@@ -2984,7 +2984,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
                 if ((sockopt = calloc(1, sizeof(struct neat_he_sockopt))) == NULL)
                     goto out_of_memory;
 
-                sscanf(so_key, "SO/%u/%u", &level, &optname);
+                sscanf(so_key, "so/%u/%u", &level, &optname);
 
                 sockopt->level = level;
                 sockopt->name = optname;
@@ -5507,7 +5507,7 @@ nt_connect(struct neat_he_candidate *candidate, uv_poll_cb callback_fx)
         switch (sockopt_ptr->type) {
         case NEAT_SOCKOPT_INT:
             if (setsockopt(candidate->pollable_socket->fd, sockopt_ptr->level, sockopt_ptr->name, &(sockopt_ptr->value.i_val), sizeof(int)) < 0)
-                nt_log(ctx, NEAT_LOG_ERROR, "Socket option error: %s", strerror(errno));
+                nt_log(ctx, NEAT_LOG_ERROR, "Socket option error: %d", strerror(errno));
             break;
         case NEAT_SOCKOPT_STRING:
             if (setsockopt(candidate->pollable_socket->fd, sockopt_ptr->level, sockopt_ptr->name, sockopt_ptr->value.s_val, (socklen_t)strlen(sockopt_ptr->value.s_val)) < 0)

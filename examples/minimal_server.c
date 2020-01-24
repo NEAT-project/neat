@@ -73,6 +73,8 @@ main(int argc, char *argv[])
 
     ops.on_readable  = on_readable;
     ops.on_connected = on_connected;
+    neat_log_level(ctx, NEAT_LOG_INFO);
+
     neat_set_operations(ctx, flow, &ops);
 
     if (neat_accept(ctx, flow, 5000, NULL, 0)) {

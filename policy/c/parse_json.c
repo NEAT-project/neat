@@ -4,6 +4,7 @@
 #include "parse_json.h"
 #include "pm_helper.h"
 #include "pm_utils.h"
+#include "opts.h"
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define ARRAY_SIZE(array) (sizeof((array))/sizeof((array)[0]))
@@ -301,6 +302,42 @@ process_special_properties(json_t* req)
     }
     json_decref(root);
     return my_return;
+}
+
+
+void
+convert_socket_properties(json_t *candidate_array) 
+{
+    size_t index;
+    json_t *candidate;
+    json_t *property;
+    json_t *new_properties;
+
+    char *new_key;
+    const char *key;
+    void *tmp;
+
+    json_array_foreach(candidate_array, index, candidate) {
+        new_properties = json_object();
+        json_object_foreach_safe(candidate, tmp, key, property) {
+            char *prop = malloc(strlen(key) + 1);
+            if(prop) {
+                strnupr(prop, key, strlen(key));
+                new_key = sock_prop(prop);
+                free(prop);
+
+                if(new_key) {
+                    json_object_set_new(new_properties, new_key, json_copy(property));
+                    json_object_del(candidate, key);
+                    free(new_key); 
+                }
+            }
+        }
+        json_object_foreach(new_properties, key, property) {
+            json_object_set(candidate, key, property);
+        } 
+        json_decref(new_properties);
+    }
 }
 
 void

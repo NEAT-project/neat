@@ -19,6 +19,7 @@
 #include "parse_json.h"
 #include "version.h"
 
+
 #define PM_BACKLOG 128
 #define PM_BUFSIZE 65536
 
@@ -148,7 +149,7 @@ lookup(json_t *reqs)
 
     candidates = sort_json_array(candidates);
     candidates = limit_json_array(candidates, NUM_CANDIDATES);
-    
+
     /* Cleanup */
     json_decref(expanded_requests);
 
@@ -158,6 +159,8 @@ lookup(json_t *reqs)
         pretty_print(candidates, true);
         print_separator("═");
     }
+
+    convert_socket_properties(candidates);
 
     return candidates;
 }

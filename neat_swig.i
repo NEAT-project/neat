@@ -10,6 +10,13 @@
 #include "neat.h"
 %}
 
+%apply int *OUTPUT { int *send, int *recv};
+%inline %{
+extern void neat_get_max_buffer_sizes(struct neat_flow *flow, int *send, int *recv);
+%}
+%clear int *send;
+%clear int *recv;
+
 %{
 static struct {
     PyObject *on_connected;
@@ -152,11 +159,10 @@ static void dispatch_rate_hint(struct neat_flow_operations *ops, uint32_t rate) 
 //    $1 = (void *) $input;
 //};
 
+
 %pointer_functions(uint32_t, uint32_tp);
 
 %pointer_functions(size_t, size_tp);
-
-
 
 %array_class(unsigned char, charArr);
 

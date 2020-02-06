@@ -73,6 +73,14 @@ static char *properties = QUOTE(
 int
 main(int argc, char *argv[])
 {
+    clock_t t;
+    t = clock();
+
+
+
+
+
+
     struct neat_ctx *ctx;
     struct neat_flow *flow;
     struct neat_flow_operations ops;
@@ -111,6 +119,10 @@ main(int argc, char *argv[])
     neat_start_event_loop(ctx, NEAT_RUN_DEFAULT);
 
     neat_free_ctx(ctx);
+    t = clock() - t;
+    double time_taken = ((double)t)/CLOCKS_PER_SEC; // calculate the elapsed time
+    printf("The program took %f seconds to execute", time_taken);
+
 
     return EXIT_SUCCESS;
 }

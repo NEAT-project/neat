@@ -126,6 +126,30 @@ int neat_get_socket_fd(struct neat_flow *nf){
     return nf->socket->fd;
 }
 
+void neat_get_max_buffer_sizes(struct neat_flow *flow, int *send, int *recv) {
+    *send = flow->socket->write_size;
+    *recv = flow->socket->read_size;
+}
+
+neat_error_code neat_get_stack(struct neat_flow *flow, void *ptr, size_t *size){
+
+    switch (flow->socket->stack) {
+        case NEAT_STACK_UDP:
+            strncpy(ptr, "UDP", *size);
+            break;
+        case NEAT_STACK_TCP:
+            strncpy(ptr, "TCP", *size);
+            break;
+        case NEAT_STACK_MPTCP:
+            strncpy(ptr, "MPTCP", *size);
+            break;
+       case NEAT_STACK_SCTP:
+            strncpy(ptr, "SCTP", *size);
+    }
+    return NEAT_OK;
+}
+
+
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
 struct neat_ctx *
@@ -1829,7 +1853,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
     if (socket->stack == NEAT_STACK_TCP) {
         n = recv(flow->socket->fd, buffer, 1, MSG_PEEK);
         if (n <= 0) {
-            nt_log(ctx, NEAT_LOG_INFO, "%s - TCP connection peek: %d - connection closed", __func__, n);
+            nt_log(ctx, NEAT_LOG_INFO, "%s - TCP connection peek: %d - connection closed - FD: %d", __func__, n, flow->socket->fd);
             socket->is_closed = 1;
             return READ_WITH_ZERO;
         }
@@ -5745,6 +5769,7 @@ nt_listen_via_kernel(struct neat_ctx *ctx, struct neat_flow *flow, struct neat_p
     int protocol, size;
     socklen_t len;
     const socklen_t slen = (listen_socket->family == AF_INET) ? sizeof (struct sockaddr_in) : sizeof (struct sockaddr_in6);
+
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 

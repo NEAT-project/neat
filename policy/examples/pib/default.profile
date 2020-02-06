@@ -12,6 +12,10 @@
             "value": false,
             "precedence": 0
         },
+#         "interface": {
+#             "value": "lo0",
+#             "precedence": 1
+#         },
         "capacity_profile": {
             "value": "best_effort",
             "precedence": 0

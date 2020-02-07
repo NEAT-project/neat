@@ -10,6 +10,29 @@
 #include "neat.h"
 %}
 
+// This input typemap declares that char** requires no input parameter.
+// Instead, the address of a local char* is used to call the function.
+%typemap(in,numinputs=0) char** (char* tmp) %{
+$1 = &tmp;
+%}
+
+// After the function is called, the char** parameter contains a malloc'ed char* pointer.
+// Construct a Python Unicode object (I'm using Python 3) and append it to
+// any existing return value for the wrapper.
+%typemap(argout) char** (PyObject* obj) %{
+obj = PyUnicode_FromString(*$1);
+$result = SWIG_Python_AppendOutput($result,obj);
+%}
+
+// The malloc'ed pointer is no longer needed, so make sure it is freed.
+%typemap(freearg) char** %{
+free(*$1);
+%}
+
+
+
+
+
 %apply int *OUTPUT { int *send, int *recv};
 %inline %{
 extern void neat_get_max_buffer_sizes(struct neat_flow *flow, int *send, int *recv);

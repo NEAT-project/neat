@@ -897,13 +897,13 @@ neat_get_property(neat_ctx *ctx, neat_flow *flow, const char* name, void *ptr, s
     prop = json_object_get(flow->properties, name);
 
     if (prop == NULL) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "Flow has no property named %s");
+        nt_log(ctx, NEAT_LOG_DEBUG, "Flow has no property named %s", name);
         return NEAT_ERROR_UNABLE;
     }
 
     prop = json_object_get(prop, "value");
     if (prop == NULL) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "Flow has property %s, but it contains no \"value\" key!");
+        nt_log(ctx, NEAT_LOG_DEBUG, "Flow has property %s, but it contains no \"value\" key!", name);
         return NEAT_ERROR_UNABLE;
     }
 

@@ -238,6 +238,7 @@ nt_he_open(neat_ctx *ctx, neat_flow *flow, struct neat_he_candidates *candidate_
             LIST_INSERT_HEAD(&multistream_socket->sctp_multistream_flows, flow, multistream_next_flow);
 
             multistream_socket->sctp_streams_used++;
+            multistream_socket->multistream = 1;
             flow->multistream_id        = multistream_socket->sctp_streams_used;
             //flow->multistream_state     = NEAT_FLOW_OPEN;
             flow->everConnected         = 1;

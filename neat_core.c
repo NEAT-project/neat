@@ -1107,6 +1107,8 @@ io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
     if (flow->operations.on_connected) {
         READYCALLBACKSTRUCT;
         flow->operations.on_connected(&flow->operations);
+    } else {
+        nt_log(ctx, NEAT_LOG_INFO, "No connected event");
     }
 
 #ifdef NEAT_SCTP_DTLS
@@ -1652,7 +1654,12 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
             flow->eofSeen = 1;
         }
 
+        nt_log(ctx, NEAT_LOG_INFO, "Controllen = %d", msghdr.msg_controllen);
+        nt_log(ctx, NEAT_LOG_INFO, "Size cmsghdr: %d", sizeof(struct cmsghdr));
 
+struct cmsghdr *cmsg = (struct cmsghdr *)  msghdr.msg_control;
+int prot = cmsg->cmsg_level;
+nt_log(ctx, NEAT_LOG_INFO, "Prot: %d", prot);
 #if (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
         for (cmsg = CMSG_FIRSTHDR(&msghdr); cmsg != NULL; cmsg = CMSG_NXTHDR(&msghdr, cmsg)) {
             if (cmsg->cmsg_len == 0) {
@@ -1783,6 +1790,9 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                 multistream_flow->operations.ctx            = ctx;
                 multistream_flow->operations.flow           = multistream_flow;
                 multistream_flow->operations.userData       = listen_flow->operations.userData;
+                multistream_flow->operations.connection_id  = listen_flow->operations.connection_id;
+                multistream_flow->operations.parent_id      = listen_flow->operations.parent_id;
+                multistream_flow->operations.clone_id       = listen_flow->operations.clone_id;
                 multistream_flow->multistream_id            = stream_id;
                 multistream_flow->state                     = NEAT_FLOW_OPEN;
 
@@ -2705,6 +2715,9 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->operations.ctx            = ctx;
     newFlow->operations.flow           = flow;
     newFlow->operations.userData       = flow->operations.userData;
+    newFlow->operations.connection_id  = flow->operations.connection_id;
+    newFlow->operations.parent_id      = flow->operations.parent_id;
+    newFlow->operations.clone_id       = flow->operations.clone_id;
 
 #ifdef NEAT_SCTP_DTLS
     if (flow->security_needed && newFlow->socket->stack == NEAT_STACK_SCTP) {
@@ -7050,7 +7063,7 @@ nt_find_multistream_socket(neat_ctx *ctx, neat_flow *new_flow)
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     LIST_FOREACH(flow_itr, &ctx->flows, next_flow) {
-        //nt_log(ctx, NEAT_LOG_DEBUG, "%s - checking: %p - %s", __func__, flow, flow->name);
+        nt_log(ctx, NEAT_LOG_DEBUG, "%s - checking: %p - %s", __func__, new_flow, new_flow->name);
 
         // skipping self
         if (flow_itr == new_flow) {

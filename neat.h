@@ -38,6 +38,7 @@ NEAT_EXTERN int neat_get_socket_fd(struct neat_flow *nf);
 NEAT_EXTERN neat_error_code neat_get_stack(struct neat_flow *flow, void *ptr, size_t *size);
 
 
+
 NEAT_EXTERN struct neat_ctx *neat_init_ctx();
 NEAT_EXTERN neat_error_code neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
 NEAT_EXTERN uv_loop_t *neat_get_event_loop(struct neat_ctx *ctx);
@@ -92,7 +93,7 @@ struct neat_flow_operations {
     struct neat_ctx *ctx;
     struct neat_flow *flow;
 };
-
+NEAT_EXTERN void set_initiate_timer(struct neat_ctx *nc, struct neat_flow *flow, struct neat_flow_operations *ops, float timeout);
 NEAT_EXTERN void set_ops_user_data(struct neat_flow_operations *ops, unsigned char* data);
 NEAT_EXTERN unsigned char* get_ops_user_data(struct neat_flow_operations *ops);
 NEAT_EXTERN void neat_get_max_buffer_sizes(struct neat_flow *flow, int *send, int *recv);

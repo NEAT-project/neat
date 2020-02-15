@@ -150,6 +150,7 @@ neat_error_code neat_get_stack(struct neat_flow *flow, void *ptr, size_t *size){
 }
 
 
+
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
 struct neat_ctx *
@@ -1016,6 +1017,8 @@ neat_get_stats(neat_ctx *ctx, char **json_stats)
     flow->operations.ctx = ctx;\
     flow->operations.flow = flow;
 
+
+
 void
 nt_io_error(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 {
@@ -1033,6 +1036,37 @@ nt_io_error(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
     READYCALLBACKSTRUCT;
     flow->operations.on_error(&flow->operations);
 }
+
+static void
+on_timeout_initiate(uv_timer_t *handle)
+{
+    //neat_error_code code = NEAT_OK;
+    //const int stream_id = NEAT_INVALID_STREAM;
+    struct neat_flow_operations *opCB = handle->data;
+    //neat_flow *flow = opCB->flow;
+    struct neat_ctx *ctx = opCB->ctx;
+
+    nt_log(ctx, NEAT_LOG_INFO, "TIMEOUT INITIATE");
+    //READYCALLBACKSTRUCT;
+    opCB->on_timeout(opCB);
+}
+
+
+void set_initiate_timer(struct neat_ctx *nc, struct neat_flow *flow, struct neat_flow_operations *ops, float timeout){
+    uv_timer_t *timer;
+    if ((timer = calloc(1, sizeof(uv_timer_t ))) == NULL) {
+        // OUT OF MEMORY ERROR
+    }
+
+    nt_log(nc, NEAT_LOG_INFO, "Setting timer");
+    uv_timer_init(nc->loop, timer);
+    timer->data = ops;
+    flow->initiate_timer = timer;
+
+    nt_log(nc, NEAT_LOG_INFO, "Setting initiate timer for %f seconds", timeout);
+    uv_timer_start(timer, on_timeout_initiate, timeout*1000, 0);
+}
+
 
 static void
 io_connected(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
@@ -1924,6 +1958,7 @@ nt_update_poll_handle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     int registered_events = 0;
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "Connection nr: %d", flow->operations.connection_id);
 
     assert(handle);
     pollable_socket = handle->data;
@@ -2161,6 +2196,10 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
 
     c++;
     nt_log(ctx, NEAT_LOG_DEBUG, "Invocation count: %d - flow: %p", c, flow);
+
+    uv_timer_stop(flow->initiate_timer);
+    nt_log(ctx, NEAT_LOG_INFO, "Initiate timer stopped");
+
 
     assert(candidate);
     assert(candidate->pollable_socket);
@@ -3407,6 +3446,7 @@ on_candidate_resolved(struct neat_resolver_results *results,
         *data->status = -1;
         nt_io_error(ctx, flow, NEAT_ERROR_IO);
         nt_log(ctx, NEAT_LOG_DEBUG, "Resolver error");
+        return NEAT_OK;
     }
 
     LIST_FOREACH(result, results, next_res) {

@@ -1811,24 +1811,26 @@ nt_log(ctx, NEAT_LOG_INFO, "Prot: %d", prot);
                     nt_log(ctx, NEAT_LOG_WARNING, "Out of memory");
                     return READ_WITH_ERROR;
                 }
-                multistream_flow->port                      = listen_flow->port;
-                multistream_flow->everConnected             = 1;
-                multistream_flow->socket                    = socket;
-                multistream_flow->ctx                       = ctx;
-                multistream_flow->isServer                  = 1;
-                multistream_flow->operations.on_connected   = listen_flow->operations.on_connected;
-                multistream_flow->operations.on_readable    = listen_flow->operations.on_readable;
-                multistream_flow->operations.on_writable    = listen_flow->operations.on_writable;
-                multistream_flow->operations.on_close       = listen_flow->operations.on_close;
-                multistream_flow->operations.on_error       = listen_flow->operations.on_error;
-                multistream_flow->operations.ctx            = ctx;
-                multistream_flow->operations.flow           = multistream_flow;
-                multistream_flow->operations.userData       = listen_flow->operations.userData;
-                multistream_flow->operations.connection_id  = listen_flow->operations.connection_id;
-                multistream_flow->operations.parent_id      = listen_flow->operations.parent_id;
-                multistream_flow->operations.clone_id       = listen_flow->operations.clone_id;
-                multistream_flow->multistream_id            = stream_id;
-                multistream_flow->state                     = NEAT_FLOW_OPEN;
+                multistream_flow->port                        = listen_flow->port;
+                multistream_flow->everConnected               = 1;
+                multistream_flow->socket                      = socket;
+                multistream_flow->ctx                         = ctx;
+                multistream_flow->isServer                    = 1;
+                multistream_flow->operations.on_connected     = listen_flow->operations.on_connected;
+                multistream_flow->operations.on_readable      = listen_flow->operations.on_readable;
+                multistream_flow->operations.on_writable      = listen_flow->operations.on_writable;
+                multistream_flow->operations.on_close         = listen_flow->operations.on_close;
+                multistream_flow->operations.on_error         = listen_flow->operations.on_error;
+                multistream_flow->operations.ctx              = ctx;
+                multistream_flow->operations.flow             = multistream_flow;
+                multistream_flow->operations.userData         = listen_flow->operations.userData;
+                multistream_flow->operations.preconnection_id = listen_flow->operations.preconnection_id;
+                multistream_flow->operations.rendezvous_id    = listen_flow->operations.rendezvous_id;
+                multistream_flow->operations.connection_id    = listen_flow->operations.connection_id;
+                multistream_flow->operations.parent_id        = listen_flow->operations.parent_id;
+                multistream_flow->operations.clone_id         = listen_flow->operations.clone_id;
+                multistream_flow->multistream_id              = stream_id;
+                multistream_flow->state                       = NEAT_FLOW_OPEN;
 
                 LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, multistream_flow, multistream_next_flow);
 
@@ -2197,7 +2199,9 @@ he_connected_cb(uv_poll_t *handle, int status, int events)
     c++;
     nt_log(ctx, NEAT_LOG_DEBUG, "Invocation count: %d - flow: %p", c, flow);
 
-    uv_timer_stop(flow->initiate_timer);
+    if (flow->initiate_timer != NULL){
+        uv_timer_stop(flow->initiate_timer);
+    }
     nt_log(ctx, NEAT_LOG_INFO, "Initiate timer stopped");
 
 
@@ -2746,17 +2750,19 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
     newFlow->security_needed    = flow->security_needed;
     newFlow->eofSeen            = 0;
 
-    newFlow->operations.on_connected   = flow->operations.on_connected;
-    newFlow->operations.on_readable    = flow->operations.on_readable;
-    newFlow->operations.on_writable    = flow->operations.on_writable;
-    newFlow->operations.on_close       = flow->operations.on_close;
-    newFlow->operations.on_error       = flow->operations.on_error;
-    newFlow->operations.ctx            = ctx;
-    newFlow->operations.flow           = flow;
-    newFlow->operations.userData       = flow->operations.userData;
-    newFlow->operations.connection_id  = flow->operations.connection_id;
-    newFlow->operations.parent_id      = flow->operations.parent_id;
-    newFlow->operations.clone_id       = flow->operations.clone_id;
+    newFlow->operations.on_connected     = flow->operations.on_connected;
+    newFlow->operations.on_readable      = flow->operations.on_readable;
+    newFlow->operations.on_writable      = flow->operations.on_writable;
+    newFlow->operations.on_close         = flow->operations.on_close;
+    newFlow->operations.on_error         = flow->operations.on_error;
+    newFlow->operations.ctx              = ctx;
+    newFlow->operations.flow             = flow;
+    newFlow->operations.userData         = flow->operations.userData;
+    newFlow->operations.preconnection_id = flow->operations.preconnection_id;
+    newFlow->operations.rendezvous_id    = flow->operations.rendezvous_id;
+    newFlow->operations.connection_id    = flow->operations.connection_id;
+    newFlow->operations.parent_id        = flow->operations.parent_id;
+    newFlow->operations.clone_id         = flow->operations.clone_id;
 
 #ifdef NEAT_SCTP_DTLS
     if (flow->security_needed && newFlow->socket->stack == NEAT_STACK_SCTP) {

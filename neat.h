@@ -66,6 +66,8 @@ typedef void (*neat_cb_send_failure_t)(struct neat_flow_operations *, int, const
 
 struct neat_flow_operations {
     // Used by the Python shim
+    uint32_t preconnection_id;
+    uint32_t rendezvous_id;
     uint32_t connection_id;
     uint32_t parent_id;
     uint32_t clone_id;

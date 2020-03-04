@@ -5983,12 +5983,18 @@ static void nt_sctp_init_events(int sock)
         SCTP_SHUTDOWN_EVENT,
         SCTP_ADAPTATION_INDICATION,
         SCTP_PARTIAL_DELIVERY_EVENT,
+#ifdef SCTP_SEND_FAILED_EVENT   //TD 22.07.2019: This seems to be deprecated!
         SCTP_SEND_FAILED_EVENT,
+#else
+        SCTP_SEND_FAILED,
+#endif
         SCTP_STREAM_RESET_EVENT
     };
 
     memset(&event, 0, sizeof(event));
+#ifdef SCTP_FUTURE_ASSOC   //TD 22.07.2019: This seems to be deprecated!
     event.se_assoc_id = SCTP_FUTURE_ASSOC;
+#endif
     event.se_on = 1;
 
     for (i = 0; i < (unsigned int)(sizeof(event_types) / sizeof(uint16_t)); i++) {

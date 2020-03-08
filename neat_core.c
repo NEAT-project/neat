@@ -1157,9 +1157,11 @@ io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
 {
     const uint16_t stream_id = NEAT_INVALID_STREAM;
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
+    nt_log(ctx, NEAT_LOG_DEBUG, "Connection %d", flow->operations.connection_id);
 
     // we have buffered data, send to socket
     if (flow->isDraining) {
+    	nt_log(ctx, NEAT_LOG_DEBUG, "Draining");
         code = nt_write_flush(ctx, flow);
         if (code != NEAT_OK && code != NEAT_ERROR_WOULD_BLOCK) {
             nt_log(ctx, NEAT_LOG_ERROR, "error : %d", code);
@@ -1169,8 +1171,13 @@ io_writable(neat_ctx *ctx, neat_flow *flow, neat_error_code code)
         }
     // no buffered datat, notifiy application about writable flow
     } else if (flow->operations.on_writable) {
-        READYCALLBACKSTRUCT;
+    	nt_log(ctx, NEAT_LOG_DEBUG, "Has writable callback - calling");
+    	nt_log(ctx, NEAT_LOG_DEBUG, "Writable function - %d", flow->operations.on_writable);
+	READYCALLBACKSTRUCT;
         flow->operations.on_writable(&flow->operations);
+    } else {
+    	nt_log(ctx, NEAT_LOG_DEBUG, "On writable is set to NULL");
+    	nt_log(ctx, NEAT_LOG_DEBUG, "Connection %d", flow->operations.connection_id);
     }
 
     // flow is not draining (anymore)
@@ -1688,12 +1695,7 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
             flow->eofSeen = 1;
         }
 
-        nt_log(ctx, NEAT_LOG_INFO, "Controllen = %d", msghdr.msg_controllen);
-        nt_log(ctx, NEAT_LOG_INFO, "Size cmsghdr: %d", sizeof(struct cmsghdr));
 
-struct cmsghdr *cmsg = (struct cmsghdr *)  msghdr.msg_control;
-int prot = cmsg->cmsg_level;
-nt_log(ctx, NEAT_LOG_INFO, "Prot: %d", prot);
 #if (defined(SCTP_RCVINFO) || defined (SCTP_SNDRCV))
         for (cmsg = CMSG_FIRSTHDR(&msghdr); cmsg != NULL; cmsg = CMSG_NXTHDR(&msghdr, cmsg)) {
             if (cmsg->cmsg_len == 0) {
@@ -1811,7 +1813,7 @@ nt_log(ctx, NEAT_LOG_INFO, "Prot: %d", prot);
                     nt_log(ctx, NEAT_LOG_WARNING, "Out of memory");
                     return READ_WITH_ERROR;
                 }
-                multistream_flow->port                        = listen_flow->port;
+		multistream_flow->port                        = listen_flow->port;
                 multistream_flow->everConnected               = 1;
                 multistream_flow->socket                      = socket;
                 multistream_flow->ctx                         = ctx;
@@ -1824,15 +1826,18 @@ nt_log(ctx, NEAT_LOG_INFO, "Prot: %d", prot);
                 multistream_flow->operations.ctx              = ctx;
                 multistream_flow->operations.flow             = multistream_flow;
                 multistream_flow->operations.userData         = listen_flow->operations.userData;
+		multistream_flow->operations.transport_protocol          = NEAT_STACK_SCTP; 
                 multistream_flow->operations.preconnection_id = listen_flow->operations.preconnection_id;
                 multistream_flow->operations.rendezvous_id    = listen_flow->operations.rendezvous_id;
                 multistream_flow->operations.connection_id    = listen_flow->operations.connection_id;
                 multistream_flow->operations.parent_id        = listen_flow->operations.parent_id;
                 multistream_flow->operations.clone_id         = listen_flow->operations.clone_id;
+		multistream_flow->operations.stream_id        = stream_id;
                 multistream_flow->multistream_id              = stream_id;
                 multistream_flow->state                       = NEAT_FLOW_OPEN;
-
-                LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, multistream_flow, multistream_next_flow);
+		
+		
+		LIST_INSERT_HEAD(&flow->socket->sctp_multistream_flows, multistream_flow, multistream_next_flow);
 
                 socket->sctp_streams_used++;
                 free(multistream_buffer);
@@ -1849,7 +1854,12 @@ nt_log(ctx, NEAT_LOG_INFO, "Prot: %d", prot);
             nt_log(ctx, NEAT_LOG_DEBUG, "%s - got data for multistream flow %d", __func__, stream_id);
 
             multistream_flow = nt_sctp_get_flow_by_sid(socket, stream_id);
-            assert(multistream_flow);
+           // assert(multistream_flow);
+	    if (multistream_flow == NULL) {
+            	multistream_flow = nt_sctp_get_flow_by_sid(socket, 0);
+           // assert(multistream_flow);
+	//	multistream_flow = LIST_FIRST(&socket->sctp_multistream_flows);
+	    }
 
             // felix : SCTP EXPLICIT_EOR!
             if ((multistream_message = calloc(1, sizeof(struct neat_read_queue_message))) == NULL) {
@@ -1960,7 +1970,6 @@ nt_update_poll_handle(neat_ctx *ctx, neat_flow *flow, uv_poll_t *handle)
     int registered_events = 0;
 
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
-    nt_log(ctx, NEAT_LOG_DEBUG, "Connection nr: %d", flow->operations.connection_id);
 
     assert(handle);
     pollable_socket = handle->data;
@@ -7109,7 +7118,7 @@ nt_find_multistream_socket(neat_ctx *ctx, neat_flow *new_flow)
     nt_log(ctx, NEAT_LOG_DEBUG, "%s", __func__);
 
     LIST_FOREACH(flow_itr, &ctx->flows, next_flow) {
-        nt_log(ctx, NEAT_LOG_DEBUG, "%s - checking: %p - %s", __func__, new_flow, new_flow->name);
+       // nt_log(ctx, NEAT_LOG_DEBUG, "%s - checking: %p - %s", __func__, new_flow, new_flow->name);
 
         // skipping self
         if (flow_itr == new_flow) {

@@ -1,10 +1,10 @@
 /* NEAT declarations for SWIG */
 %module neat
+
 %include "stdint.i" /* Convert uintXX_t correctly */
 %include "typemaps.i"
 %include "cpointer.i"
 %include "carrays.i"
-
 
 %{
 #include "neat.h"
@@ -148,12 +148,17 @@ static void dispatch_rate_hint(struct neat_flow_operations *ops, uint32_t rate) 
     $1 = (unsigned char*) PyString_AsString($input);
 }
 
+//%typemap(in) (void *) {
+//    $1 = (void *) $input;
+//};
+
 %pointer_functions(uint32_t, uint32_tp);
+
 %pointer_functions(size_t, size_tp);
 
 
-%array_class(unsigned char, charArr);
 
+%array_class(unsigned char, charArr);
 
 %include "neat.h"
 

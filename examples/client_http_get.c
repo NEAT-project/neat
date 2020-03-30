@@ -411,6 +411,7 @@ cleanup:
     }
 
     if (buffer) {
+        printf("%s", buffer);
         free(buffer);
     }
     fprintf(stderr, "returning with %d\n", result);

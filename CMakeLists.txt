@@ -396,22 +396,10 @@ IF (HAS_WNO_OVERLENGTH_STRINGS)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-overlength-strings")
 ENDIF()
 
-CHECK_C_COMPILER_FLAG(-Wno-unused-command-line-argument HAS_WNO_UNUSED_COMMAND_LINE_ARGUMENT)
-IF (HAS_WNO_UNUSED_COMMAND_LINE_ARGUMENT)
-    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-unused-command-line-argument")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument")
-ENDIF()
-
 CHECK_C_COMPILER_FLAG(-Wno-unreachable-code HAS_WNO_UNREACHABLE_CODE)
 IF (HAS_WNO_UNREACHABLE_CODE)
     SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-unreachable-code")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unreachable-code")
-ENDIF()
-
-CHECK_C_COMPILER_FLAG(-Wno-parentheses-equality HAS_WNO_PARANTHESES_EQUALITY)
-IF (HAS_WNO_PARANTHESES_EQUALITY)
-    SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-parentheses-equality")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-parentheses-equality")
 ENDIF()
 
 CHECK_C_COMPILER_FLAG(-Wno-array-bounds HAS_WNO_ARRAY_BOUNDS)

@@ -184,7 +184,7 @@ OPTION(OPENSSL_SUPPORT "Include support for OpenSSL" 1)
 
 OPTION(SOCKET_API "Include the socket API" 1)
 
-OPTION(SWIG_PYTHON "Include SWIG Python bindings" 0)
+OPTION(SWIG_PYTHON "Include SWIG Python bindings" 1)
 IF (SWIG_PYTHON)
     FIND_PACKAGE(SWIG REQUIRED)
     INCLUDE(${SWIG_USE_FILE})

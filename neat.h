@@ -35,6 +35,9 @@ struct neat_flow;   // one per connection
 typedef uint64_t neat_error_code;
 
 NEAT_EXTERN int neat_get_socket_fd(struct neat_flow *nf);
+NEAT_EXTERN neat_error_code neat_get_stack(struct neat_flow *flow, void *ptr, size_t *size);
+
+
 
 NEAT_EXTERN struct neat_ctx *neat_init_ctx();
 NEAT_EXTERN neat_error_code neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
@@ -62,6 +65,13 @@ typedef void (*neat_cb_send_failure_t)(struct neat_flow_operations *, int, const
 
 
 struct neat_flow_operations {
+    // Used by the Python shim
+    uint32_t preconnection_id;
+    uint32_t rendezvous_id;
+    uint32_t connection_id;
+    uint32_t parent_id;
+    uint32_t clone_id;
+
     void *userData;
 
     neat_error_code status;
@@ -85,9 +95,10 @@ struct neat_flow_operations {
     struct neat_ctx *ctx;
     struct neat_flow *flow;
 };
-
+NEAT_EXTERN void set_initiate_timer(struct neat_ctx *nc, struct neat_flow *flow, struct neat_flow_operations *ops, float timeout);
 NEAT_EXTERN void set_ops_user_data(struct neat_flow_operations *ops, unsigned char* data);
 NEAT_EXTERN unsigned char* get_ops_user_data(struct neat_flow_operations *ops);
+NEAT_EXTERN void neat_get_max_buffer_sizes(struct neat_flow *flow, int *send, int *recv);
 
 
 enum neat_tlv_type {

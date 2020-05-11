@@ -1718,13 +1718,6 @@ io_readable(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *socket,
                     stream_id   = sndrcvinfo->sinfo_stream;
                 }
 #endif // defined (SCTP_SNDRCV)
-#if defined (SCTP_NXTINFO)
-                if (cmsg->cmsg_type == SCTP_NXTINFO) {
-                    nt_log(ctx, NEAT_LOG_DEBUG, "%s - got SCTP_NXTINFO", __func__);
-                    //sndrcvinfo = (struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
-                    //stream_id = sndrcvinfo->sinfo_stream;
-                }
-#endif // defined (SCTP_NXTINFO)
                 if (stream_id >= 0) {
                     nt_log(ctx, NEAT_LOG_DEBUG, "%s - Received %d bytes on SCTP stream %d", __func__, n, stream_id);
                 }
@@ -2834,14 +2827,6 @@ do_accept(neat_ctx *ctx, neat_flow *flow, struct neat_pollable_socket *listen_so
                 nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SCTP_RECVRCVINFO) failed");
             }
 #endif // defined(SCTP_RECVRCVINFO)
-#if defined(SCTP_RECVNXTINFO)
-            // Enable anciliarry data when receiving data from SCTP
-            optval = 1;
-            rc = setsockopt(newFlow->socket->fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &optval, sizeof(optval));
-            if (rc < 0) {
-                nt_log(ctx, NEAT_LOG_WARNING, "Call to setsockopt(SCTP_RECVNXTINFO) failed");
-            }
-#endif // defined(SCTP_RECVNXTINFO)
 #endif
             break;
         case NEAT_STACK_UDP:
@@ -6997,7 +6982,7 @@ nt_prepare_sctp_socket(struct neat_ctx* ctx, struct neat_pollable_socket* pollab
     struct sctp_assoc_value assoc_value;
 #endif
 
-#if defined(SCTP_FRAGMENT_INTERLEAVE) || defined(SCTP_NODELAY) || defined(SCTP_RECVRCVINFO) || defined(SCTP_RECVNXTINFO)
+#if defined(SCTP_FRAGMENT_INTERLEAVE) || defined(SCTP_NODELAY) || defined(SCTP_RECVRCVINFO)
     int optval;
 #endif
 
@@ -7064,15 +7049,6 @@ nt_prepare_sctp_socket(struct neat_ctx* ctx, struct neat_pollable_socket* pollab
     optval = 1;
     if (setsockopt(pollable_socket->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &optval, sizeof(optval)) < 0) {
         nt_log(ctx, NEAT_LOG_WARNING, "%s - setsockopt(SCTP_RECVRCVINFO) failed: %s", __func__, strerror(errno));
-        return(NEAT_ERROR_INTERNAL);
-    }
-#endif
-
-#ifdef SCTP_RECVNXTINFO
-    // Enable anciliarry data when receiving data from SCTP
-    optval = 1;
-    if (setsockopt(pollable_socket->fd, IPPROTO_SCTP, SCTP_RECVNXTINFO, &optval, sizeof(optval)) < 0) {
-        nt_log(ctx, NEAT_LOG_WARNING, "%s - setsockopt(SCTP_RECVNXTINFO) failed: %s", __func__, strerror(errno));
         return(NEAT_ERROR_INTERNAL);
     }
 #endif

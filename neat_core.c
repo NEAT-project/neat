@@ -4888,10 +4888,11 @@ nt_write_flush(struct neat_ctx *ctx, struct neat_flow *flow)
                 }
                 if (!flow->security_needed) {
                     if (rv < 0) {
-                        nt_log(ctx, NEAT_LOG_WARNING, "%s - sending failed - %s", __func__, strerror(errno));
                         if (errno == EWOULDBLOCK) {
+                            nt_log(ctx, NEAT_LOG_WARNING, "%s - sending failed - %s", __func__, strerror(errno));
                             return NEAT_ERROR_WOULD_BLOCK;
                         } else {
+                            nt_log(ctx, NEAT_LOG_WARNING, "%s - sending failed - %s", __func__, strerror(errno));
                             return NEAT_ERROR_IO;
                         }
                     }
@@ -5260,11 +5261,13 @@ nt_write_to_lower_layer(struct neat_ctx *ctx, struct neat_flow *flow,
         nt_log(ctx, NEAT_LOG_DEBUG, "%zd bytes sent", rv);
 #endif
         if (rv < 0 ) {
-            nt_log(ctx, NEAT_LOG_WARNING, "%s - sending failed - %s", __func__, strerror(errno));
+
             if (errno == ENOENT) {
+                nt_log(ctx, NEAT_LOG_WARNING, "%s - sending failed - %s", __func__, strerror(errno));
                 flow->isClosing = 1;
             }
             if (errno != EWOULDBLOCK) {
+                nt_log(ctx, NEAT_LOG_WARNING, "%s - sending failed - %s", __func__, strerror(errno));
                 return NEAT_ERROR_IO;
             }
         }

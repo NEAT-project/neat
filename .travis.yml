@@ -167,22 +167,22 @@ matrix:
      group: travis_latest
      env: DOCKER="fedora:31" VARIANT="fedora" TOOL="mock"
 
-   # ====== Fedora 30 =======================================================
-   - name: "Fedora 30 with GCC"
+   # ====== Fedora 32 =======================================================
+   - name: "Fedora 32 with GCC"
      os: linux
      dist: xenial
      group: travis_latest
-     env: DOCKER="fedora:30" VARIANT="fedora" TOOL="compile" COMPILER_C="gcc" COMPILER_CXX="g++"
-   - name: "Fedora 30 with Clang"
+     env: DOCKER="fedora:32" VARIANT="fedora" TOOL="compile" COMPILER_C="gcc" COMPILER_CXX="g++"
+   - name: "Fedora 32 with Clang"
      os: linux
      dist: xenial
      group: travis_latest
-     env: DOCKER="fedora:30" VARIANT="fedora" TOOL="compile" COMPILER_C="clang" COMPILER_CXX="clang++"
-   - name: "Fedora 30 packaging with mock"
+     env: DOCKER="fedora:32" VARIANT="fedora" TOOL="compile" COMPILER_C="clang" COMPILER_CXX="clang++"
+   - name: "Fedora 32 packaging with mock"
      os: linux
      dist: xenial
      group: travis_latest
-     env: DOCKER="fedora:30" VARIANT="fedora" TOOL="mock"
+     env: DOCKER="fedora:32" VARIANT="fedora" TOOL="mock"
 
    # ====== Fedora Rawhide ==================================================
    # - name: "Fedora Rawhide with GCC"

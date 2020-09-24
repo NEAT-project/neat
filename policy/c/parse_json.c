@@ -893,8 +893,8 @@ update_property(json_t *prop_a, json_t *prop_b)
 
         double score_a = score_prop_a ? json_number_value(score_prop_a) : 0;
         double score_b = score_prop_b ? json_number_value(score_prop_b) : 0;
-        
-        json_object_set_new(value_a, "score", json_pack("f", score_a + score_b));
+
+        json_object_set_new(prop_a, "score", json_pack("f", score_a + score_b));
         json_object_set(prop_a, "precedence", precedence_value_b_obj);
 
         VALUE_TYPE type_a = type(value_a);

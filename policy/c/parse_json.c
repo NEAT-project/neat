@@ -10,8 +10,8 @@
 #define ARRAY_SIZE(array) (sizeof((array))/sizeof((array)[0]))
 
 typedef struct score_struct {
-    int evaluated;
-    int non_evaluated;
+    double evaluated;
+    double non_evaluated;
 } score_t;
 
 /* returns 1 if value is "Inf" or "inf", -1 if value is "-Inf" or "-inf", else returns 0 */
@@ -157,7 +157,7 @@ score_t
 property_score_sum(json_t *candidate)
 {
     score_t sum = {0};
-    int score;
+    double score;
     const char *key;
     json_t *property;
     json_t *score_obj;
@@ -166,7 +166,7 @@ property_score_sum(json_t *candidate)
     json_object_foreach(candidate, key, property) {
         score_obj = json_object_get(property, "score");
         if (score_obj) {
-            score = json_integer_value(score_obj);
+            score = json_number_value(score_obj);
             eval_obj = json_object_get(property, "evaluated");
             if (eval_obj && json_is_true(eval_obj)) {
                 sum.evaluated += score;
@@ -185,11 +185,13 @@ cmp_score(const void *json1, const void *json2)
     score_t score1 = property_score_sum(*((json_t **) json1));
     score_t score2 = property_score_sum(*((json_t **) json2));
 
-    int evaluated_diff = score2.evaluated - score1.evaluated;
-    int non_evaluated_diff = score2.non_evaluated - score1.non_evaluated;
+    double evaluated_diff = score2.evaluated - score1.evaluated;
+    double non_evaluated_diff = score2.non_evaluated - score1.non_evaluated;
 
-    /* evaluated > non_evaluated */
-    return evaluated_diff != 0 ? evaluated_diff : non_evaluated_diff;
+    int eval = (evaluated_diff < 0 ? -1 : evaluated_diff > 0 ? 1 : 0);
+    int neval = (non_evaluated_diff < 0 ? -1 : non_evaluated_diff > 0 ? 1 : 0);
+
+    return eval != 0 ? eval : neval;
 }
 
 json_t *
@@ -889,10 +891,10 @@ update_property(json_t *prop_a, json_t *prop_b)
         json_t *score_prop_a = json_object_get(prop_a, "score");
         json_t *score_prop_b = json_object_get(prop_b, "score");
 
-        json_int_t score_a = score_prop_a ? json_integer_value(score_prop_a) : 0;
-        json_int_t score_b = score_prop_b ? json_integer_value(score_prop_b) : 0;
+        double score_a = score_prop_a ? json_number_value(score_prop_a) : 0;
+        double score_b = score_prop_b ? json_number_value(score_prop_b) : 0;
         
-        json_object_set_new(value_a, "score", json_pack("i", score_a + score_b));
+        json_object_set_new(value_a, "score", json_pack("f", score_a + score_b));
         json_object_set(prop_a, "precedence", precedence_value_b_obj);
 
         VALUE_TYPE type_a = type(value_a);
@@ -957,12 +959,12 @@ merge_do_update_property(json_t *prop_a, json_t *prop_b, bool evaluated)
     /* null = match all */
     if (value_a == NULL || json_equal(value_a, value_b)) {
         json_t *score_value_a_obj = json_object_get(prop_a, "score");
-        int score_value_a = score_value_a_obj ? json_integer_value(score_value_a_obj) : 0;
+        double score_value_a = score_value_a_obj ? json_number_value(score_value_a_obj) : 0;
 
         json_t *score_value_b_obj = json_object_get(prop_b, "score");
-        int score_value_b = score_value_b_obj ? json_integer_value(score_value_b_obj) : 0;
+        double score_value_b = score_value_b_obj ? json_number_value(score_value_b_obj) : 0;
 
-        json_object_set_new(prop_a, "score", json_pack("i", score_value_a + score_value_b));
+        json_object_set_new(prop_a, "score", json_pack("f", score_value_a + score_value_b));
 
         json_t *precedence_value_a_obj = json_object_get(prop_a, "precedence");
         int precedence_value_a = precedence_value_a_obj ? json_integer_value(precedence_value_a_obj) : 0;
@@ -1030,11 +1032,11 @@ merge_properties(json_t *prop_a, json_t *prop_b, int should_overwrite)
 }
 
 void 
-print_score(int score) {
+print_score(double score) {
     char buffer[20];
     char *translated;
 
-    snprintf(buffer, 20, "%.1f", (double) score);
+    snprintf(buffer, 20, "%.1f", score);
     size_t i, len = strlen(buffer);
     if(len == 0) {
         return;
@@ -1149,7 +1151,7 @@ do_pretty_print(json_t *candidate, bool should_print_score) {
         json_t *eval_obj = json_object_get(prop, "evaluated");
         json_t *precedence_obj = json_object_get(prop, "precedence");
             
-        int score = json_integer_value(score_obj);
+        double score = json_number_value(score_obj);
         bool evaluated = json_is_true(eval_obj);
         int precedence = json_integer_value(precedence_obj);
 
@@ -1182,7 +1184,7 @@ do_pretty_print(json_t *candidate, bool should_print_score) {
 
     if(should_print_score) {
         score_t score_s = property_score_sum(candidate);
-        write_log(__FILE__, __func__, LOG_NO_NEW_LINE, " score: %d\n", score_s.evaluated);
+        write_log(__FILE__, __func__, LOG_NO_NEW_LINE, " score: %.1f\n", score_s.evaluated);
     }
     else {
         write_log(__FILE__, __func__, LOG_NEW_LINE, "");

@@ -348,7 +348,8 @@ load_json_file(const char *file_path)
     json_error_t error;
     json_t *json = json_load_file(file_path, 0, &error);
 
-    if(!json) {
+    if(!json || !json_object_get(json, "uid")) {
+        json = NULL;
         write_log(__FILE__, __func__, LOG_ERROR, "Failed to read json file: %s",file_path);
     }
     return json;

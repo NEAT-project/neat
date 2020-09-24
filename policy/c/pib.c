@@ -9,6 +9,7 @@
 #include "pm_helper.h"
 
 #include "parse_json.h"
+#include "func.h"
 
 node_t *pib_profiles = NULL;
 node_t *pib_policies = NULL;
@@ -215,6 +216,7 @@ pib_lookup(node_t *pib_list, json_t *input_props)
             }
         }
         if(candidate_updated) {
+            evaluate_funcs(candidate_updated);
             json_array_append_new(candidate_updated_array, candidate_updated);
         }
     }

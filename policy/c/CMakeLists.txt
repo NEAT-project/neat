@@ -1,8 +1,8 @@
 cmake_minimum_required (VERSION 2.6)
 set(CMAKE_BUILD_TYPE Debug)
 project (pm C)
-add_executable(neatpmd pm_utils.c pm_helper.c parse_json.c rest.c node.c pib.c cib.c pm.c opts.c version.h)
-target_link_libraries (neatpmd "-ljansson -luv -lpthread -lulfius")
+add_executable(neatpmd pm_utils.c pm_helper.c parse_json.c rest.c node.c pib.c cib.c pm.c opts.c func.c version.h)
+target_link_libraries (neatpmd "-ljansson -luv -lpthread -lulfius -lm")
 
 set(SERVICE_OUT "neat_pm.service")
 set(SERVICE_IN "${SERVICE_OUT}.in")

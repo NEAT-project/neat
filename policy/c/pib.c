@@ -198,6 +198,7 @@ pib_lookup(node_t *pib_list, json_t *input_props)
 
                 json_array_foreach(properties_expanded, index_2, expanded_prop) {
                     write_log(__FILE__, __func__, LOG_DEBUG, "    ------ EXPANDED PROP #%ld of %s", index_2, current_policy->filename);
+                    evaluate_funcs(expanded_prop);
 
                     /* add merged copy to updated array */
                     if(merge_properties(expanded_prop, candidate_updated, replace)) {
@@ -216,7 +217,6 @@ pib_lookup(node_t *pib_list, json_t *input_props)
             }
         }
         if(candidate_updated) {
-            evaluate_funcs(candidate_updated);
             json_array_append_new(candidate_updated_array, candidate_updated);
         }
     }

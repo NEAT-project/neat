@@ -37,10 +37,10 @@ features as they evolve.
 
 %build
 %cmake -DCMAKE_INSTALL_PREFIX=/usr -DSOCKET_API=1 -DUSRSCTP_SUPPORT=0 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1 .
-make %{?_smp_mflags}
+%cmake_build
 
 %install
-make install DESTDIR=%{buildroot}
+%cmake_install
 
 %files
 %{_libdir}/libneat.so*

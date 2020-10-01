@@ -858,6 +858,88 @@ subset(json_t *prop_a, json_t *prop_b)
     return result;
 }
 
+bool is_func(json_t *json) {
+    const char *value = json_string_value(json);
+    size_t len = value ? strlen(value) : 0;
+
+    if (len < 3) {
+        return false;
+    }
+
+    return value[0] == '$' && value[1] == '(' && value[len-1] == ')' ? true : false;
+}
+
+bool
+update_score(json_t *prop_a, json_t *prop_b) {
+    json_t *score_prop_a = json_object_get(prop_a, "score");
+    json_t *score_prop_b = json_object_get(prop_b, "score");
+
+    write_log(__FILE__, __func__, LOG_DEBUG, "Updating property.");
+
+    if (is_func(score_prop_a))
+    {
+        if (is_func(score_prop_b)) {
+            const char *score_a = score_prop_a ? json_string_value(score_prop_a) : "";
+            const char *score_b = score_prop_b ? json_string_value(score_prop_b) : "";
+
+            char new_score[100] = "";
+
+            size_t len_a = strlen(score_a);
+            size_t len_b = strlen(score_b);
+
+            char *tmp_a = malloc(len_a);
+            strncpy(tmp_a, score_a, len_a-1);
+            tmp_a[len_a-1] = '\0';
+
+            char *tmp_b = malloc(len_b);
+            strncpy(tmp_b, score_b+2, len_b);
+
+            snprintf(new_score, 100, "%s+%s", tmp_a, tmp_b);
+            free(tmp_a); free(tmp_b);
+
+            json_object_set_new(prop_a, "score", json_pack("s", new_score));
+        } else {
+            const char *score_a = score_prop_a ? json_string_value(score_prop_a) : "";
+            double score_b =  score_prop_b ? json_number_value(score_prop_b) : 0;
+
+            if (score_b != 0) {
+                char new_score[100];
+
+                size_t len = strlen(score_a);
+                char *tmp = malloc(len);
+                strncpy(tmp, score_a+2, len);
+
+                snprintf(new_score, 100, "$(%f+%s", score_b, tmp);
+                free(tmp);
+
+                json_object_set_new(prop_a, "score", json_pack("s", new_score));
+            }
+        }
+    } else if (is_func(score_prop_b)) {
+        double score_a =  score_prop_a ? json_number_value(score_prop_a) : 0;
+        const char *score_b = score_prop_b ? json_string_value(score_prop_b) : "";
+
+        if (score_a != 0) {
+            char new_score[100];
+
+            size_t len = strlen(score_b);
+            char *tmp = malloc(len);
+            strncpy(tmp, score_b+2, len);
+
+            snprintf(new_score, 100, "$(%f+%s", score_a, tmp);
+            free(tmp);
+
+            json_object_set_new(prop_a, "score", json_pack("s", new_score));
+        } else {
+            json_object_set_new(prop_a, "score", json_pack("s", score_b));
+        }
+    } else {
+        double score_a = score_prop_a ? json_number_value(score_prop_a) : 0;
+        double score_b = score_prop_b ? json_number_value(score_prop_b) : 0;
+        json_object_set_new(prop_a, "score", json_pack("f", score_a + score_b));
+    }
+}
+
 bool
 update_property(json_t *prop_a, json_t *prop_b)
 {
@@ -888,13 +970,15 @@ update_property(json_t *prop_a, json_t *prop_b)
 
     if (precedence_value_b >= precedence_value_a && (is_match || precedence_value_a == PRECEDENCE_BASE)) {
         write_log(__FILE__, __func__, LOG_DEBUG, "Updating property.");
-        json_t *score_prop_a = json_object_get(prop_a, "score");
+        update_score(prop_a, prop_b); // Experimental
+        
+        /*json_t *score_prop_a = json_object_get(prop_a, "score");
         json_t *score_prop_b = json_object_get(prop_b, "score");
 
         double score_a = score_prop_a ? json_number_value(score_prop_a) : 0;
         double score_b = score_prop_b ? json_number_value(score_prop_b) : 0;
 
-        json_object_set_new(prop_a, "score", json_pack("f", score_a + score_b));
+        json_object_set_new(prop_a, "score", json_pack("f", score_a + score_b));*/
         json_object_set(prop_a, "precedence", precedence_value_b_obj);
 
         VALUE_TYPE type_a = type(value_a);
@@ -958,13 +1042,15 @@ merge_do_update_property(json_t *prop_a, json_t *prop_b, bool evaluated)
 
     /* null = match all */
     if (value_a == NULL || json_equal(value_a, value_b)) {
-        json_t *score_value_a_obj = json_object_get(prop_a, "score");
+        /*json_t *score_value_a_obj = json_object_get(prop_a, "score");
         double score_value_a = score_value_a_obj ? json_number_value(score_value_a_obj) : 0;
 
         json_t *score_value_b_obj = json_object_get(prop_b, "score");
         double score_value_b = score_value_b_obj ? json_number_value(score_value_b_obj) : 0;
 
-        json_object_set_new(prop_a, "score", json_pack("f", score_value_a + score_value_b));
+        json_object_set_new(prop_a, "score", json_pack("f", score_value_a + score_value_b));*/
+
+        update_score(prop_a, prop_b);
 
         json_t *precedence_value_a_obj = json_object_get(prop_a, "precedence");
         int precedence_value_a = precedence_value_a_obj ? json_integer_value(precedence_value_a_obj) : 0;

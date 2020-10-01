@@ -146,6 +146,26 @@ process_op(char c)
     }
 }
 
+int issymbol(int c) {
+    if (c >= 33 && c <= 35) {
+        return 1;
+    }
+
+    if (c >= 37 && c <= 39) {
+        return 1;
+    }
+
+    if (c >= 42 && c <= 47) {
+        return 1;
+    }
+
+    if (c >= 91 && c <= 96) {
+        return 1;
+    }
+
+    return 0;
+}
+
 int 
 eval(const char *expr, json_t *json) 
 {
@@ -154,7 +174,6 @@ eval(const char *expr, json_t *json)
 
     p = expr[0];
     while (p != '\0') {
-        //printf("%c\n", p);
         if (p == '(') {
             op_push(p);
         } else if (p == ')') {
@@ -179,7 +198,7 @@ eval(const char *expr, json_t *json)
         } else if (isalpha(p)) {
             int count = 0, start = i;
             /* parse the entire identifier */
-            while(isalnum(p)) {
+            while(isalnum(p) || issymbol(p)) {
                 i++;
                 p = expr[i];
             }
@@ -192,8 +211,7 @@ eval(const char *expr, json_t *json)
             /* get value from identifier */            
             json_t *id = json_object_get(json_object_get(json, v), "value");
             if (!id || !json_is_number(id)) {
-                //printf("syntax error: unknown identifier: '%s'\n", v);
-                write_log(__FILE__, __func__, LOG_ERROR, "syntax error: unknown identifier: '%s'\n", v);
+                write_log(__FILE__, __func__, LOG_DEBUG, "syntax error: unknown identifier: '%s'\n", v);
                 return -1;
             }
 
@@ -208,8 +226,7 @@ eval(const char *expr, json_t *json)
             while (p != '\0' && (isdigit(p) || p == '.')) {
                 if (p == '.') {
                     if (decimals > 0) {
-                        //printf("syntax error: unexpected character: '%c'\n", p);
-                        write_log(__FILE__, __func__, LOG_ERROR, "syntax error: unexpected character: '%c'\n", p);
+                        write_log(__FILE__, __func__, LOG_DEBUG, "syntax error: unexpected character: '%c'\n", p);
                         return -1;
                     }
                     decimals = 1;
@@ -229,8 +246,7 @@ eval(const char *expr, json_t *json)
             var_push(num);
         } else if (!isspace(p)) {
             /* Invalid character */
-            //printf("syntax error: unexpected character: '%c'\n", p);
-            write_log(__FILE__, __func__, LOG_ERROR, "syntax error: unexpected character: '%c'\n", p);
+            write_log(__FILE__, __func__, LOG_DEBUG, "syntax error: unexpected character: '%c'\n", p);
             return -1;
         }
 
@@ -285,8 +301,6 @@ evaluate_property(json_t *properties, json_t *prop, char *type)
                 
                 if(parse(str+1, properties, &res) > 0) {
                     json_object_set_new(prop, type, json_real(res));
-                } else {
-                    json_object_set_new(prop, type, json_null());
                 }
             }
         }

@@ -480,6 +480,11 @@ cib_lookup(json_t *input_props)
         json_array_foreach(row, j, prop) {
             write_log(__FILE__, __func__, LOG_DEBUG,"---------- PROCESSING ROW (%d,%d) ---------", i, j);
 
+            /* Optimize: Filter out rows early */
+            if (cib_subset(prop, input_props) == 2) {
+                continue;
+            }
+
             candidate = json_deep_copy(input_props);
             
             if(merge_properties(prop, candidate, 0))

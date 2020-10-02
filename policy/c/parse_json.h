@@ -39,6 +39,7 @@ json_t* expand_element_value(json_t* element);
 json_t* expand_values(json_t* req);
 
 int subset(json_t *prop_a, json_t *prop_b);
+int cib_subset(json_t *prop_a, json_t *prop_b);
 bool merge_properties(json_t *prop_a, json_t *prop_b, int should_overwrite);
 
 void pretty_print(json_t *candidates, bool print_scores);

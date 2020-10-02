@@ -858,6 +858,62 @@ subset(json_t *prop_a, json_t *prop_b)
     return result;
 }
 
+int
+cib_subset(json_t *prop_a, json_t *prop_b)
+{
+    /*char *s;
+
+    s = json_dumps(prop_a, JSON_INDENT(1));
+    printf("%s\n", s);
+    free(s);
+
+    s = json_dumps(prop_b, JSON_INDENT(1));
+    printf("%s\n\n", s);
+    free(s);*/
+
+    const char *key_a;
+    json_t *value_prop_a;
+    json_t *value_prop_b;
+    json_t *value_a;
+    json_t *value_b;
+    int result = 0;
+
+    int precedence_a;
+    int precedence_b;
+    bool precedence_ok = true;
+
+    if(!prop_a) {
+        write_log(__FILE__, __func__, LOG_DEBUG, "prop_a == NULL.");
+        return 0;
+    }
+
+    json_object_foreach(prop_a, key_a, value_prop_a) {
+        value_prop_b = json_object_get(prop_b, key_a);
+
+        if (value_prop_b == NULL) {
+            write_log(__FILE__, __func__, LOG_DEBUG, "Subset does not contain key \"%s\".", key_a);
+            result = 1;
+            continue;
+        }
+        value_b = json_object_get(value_prop_b, "value");
+        value_a = json_object_get(value_prop_a, "value");
+
+        precedence_a = json_integer_value(json_object_get(value_prop_a, "precedence"));
+        precedence_b = json_integer_value(json_object_get(value_prop_b, "precedence"));
+
+        if (precedence_a == 2 && precedence_a == 2) {
+            precedence_ok = false;
+        }
+
+        if (!match(value_a, value_b) && !precedence_ok) {
+            write_log(__FILE__, __func__, LOG_DEBUG, "Subset check returns false for key \"%s\".", key_a);
+            return 2;
+        }
+    }
+    write_log(__FILE__, __func__, LOG_DEBUG, "Subset check returns true: this is a subset.");
+    return result;
+}
+
 bool is_func(json_t *json) {
     const char *value = json_string_value(json);
     size_t len = value ? strlen(value) : 0;

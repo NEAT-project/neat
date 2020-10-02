@@ -199,6 +199,21 @@ extend_row(json_t *input_json)
     }
 }
 
+void
+optimize_rows(json_t *rows)
+{
+    json_t *value_a, *value_b;
+    size_t i, j;
+
+    json_array_foreach(rows, i, value_a) {
+        json_array_foreach(rows, j, value_b) {
+            if (i != j && json_equal(value_a, value_b)) {
+                json_array_remove(rows, i);
+            }
+        }
+    }
+}
+
 json_t *
 update_rows()
 {
@@ -207,7 +222,7 @@ update_rows()
     json_t *row;
 
     json_t *value_a, *value_b;
-    size_t i, j;
+    size_t i;
 
     for(current_node = cib_nodes; current_node; current_node = current_node->next) {
         write_log(__FILE__, __func__, LOG_DEBUG,"---------- NODE %s ---------", current_node->filename);
@@ -250,6 +265,8 @@ update_rows()
 
         json_decref(prop_array);
     }
+
+    optimize_rows(rows);
 
     return rows;
 }
@@ -458,12 +475,11 @@ cib_lookup(json_t *input_props)
 
     size_t i, j;
     bool match = false;
-
-    //json_array_append(candidate_array, input_props);
-
+    
     json_array_foreach(cib_rows, i, row) {
         json_array_foreach(row, j, prop) {
             write_log(__FILE__, __func__, LOG_DEBUG,"---------- PROCESSING ROW (%d,%d) ---------", i, j);
+
             candidate = json_deep_copy(input_props);
             
             if(merge_properties(prop, candidate, 0))

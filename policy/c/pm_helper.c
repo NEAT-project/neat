@@ -7,6 +7,8 @@
 #include <pwd.h>
 #include <limits.h>
 
+#include <time.h>
+
 #include "pm_helper.h"
 
 #define LOG_FILENAME "Log.txt"
@@ -396,4 +398,13 @@ get_hash()
     *hash = '\0';
     hash -= hash_length;
     return hash;
+}
+
+double
+get_time_monotonic()
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    return (double)ts.tv_sec + (double)ts.tv_nsec * 1E-9;
 }

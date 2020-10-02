@@ -83,7 +83,6 @@ lookup(json_t *reqs)
             write_log(__FILE__, __func__, LOG_EVENT, "\nProfile lookup...");
         }
 
-        /* Profile lookup */
         updated_requests = profile_lookup(request);
         new_candidates = json_array_size(updated_requests);
 
@@ -183,12 +182,11 @@ handle_request(uv_stream_t *client)
         return;
     }
 
-    clock_t start, end;
-    start = clock();
+    double start = get_time_monotonic();
     json_t *candidates = lookup(request_json);
-    end = clock();
+    double end = get_time_monotonic();
 
-    double ms = (double)(end-start) / CLOCKS_PER_SEC * 1000;
+    double ms = (end-start) * 1000; 
 
     write_log(__FILE__, __func__, LOG_EVENT, "Lookup finished in %lf ms", ms);
 

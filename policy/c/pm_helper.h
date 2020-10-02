@@ -76,5 +76,6 @@ json_t* load_json_file(const char *file_path);
 void write_json_file(const char* file_path, json_t *json);
 bool array_contains_value(json_t *array, json_t *value);
 char *get_hash();
+double get_time_monotonic();
 
 #endif

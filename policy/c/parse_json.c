@@ -972,13 +972,6 @@ update_property(json_t *prop_a, json_t *prop_b)
         write_log(__FILE__, __func__, LOG_DEBUG, "Updating property.");
         update_score(prop_a, prop_b); // Experimental
         
-        /*json_t *score_prop_a = json_object_get(prop_a, "score");
-        json_t *score_prop_b = json_object_get(prop_b, "score");
-
-        double score_a = score_prop_a ? json_number_value(score_prop_a) : 0;
-        double score_b = score_prop_b ? json_number_value(score_prop_b) : 0;
-
-        json_object_set_new(prop_a, "score", json_pack("f", score_a + score_b));*/
         json_object_set(prop_a, "precedence", precedence_value_b_obj);
 
         VALUE_TYPE type_a = type(value_a);
@@ -1042,14 +1035,6 @@ merge_do_update_property(json_t *prop_a, json_t *prop_b, bool evaluated)
 
     /* null = match all */
     if (value_a == NULL || json_equal(value_a, value_b)) {
-        /*json_t *score_value_a_obj = json_object_get(prop_a, "score");
-        double score_value_a = score_value_a_obj ? json_number_value(score_value_a_obj) : 0;
-
-        json_t *score_value_b_obj = json_object_get(prop_b, "score");
-        double score_value_b = score_value_b_obj ? json_number_value(score_value_b_obj) : 0;
-
-        json_object_set_new(prop_a, "score", json_pack("f", score_value_a + score_value_b));*/
-
         update_score(prop_a, prop_b);
 
         json_t *precedence_value_a_obj = json_object_get(prop_a, "precedence");

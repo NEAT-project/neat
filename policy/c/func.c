@@ -155,11 +155,23 @@ int issymbol(int c) {
         return 1;
     }
 
-    if (c >= 42 && c <= 47) {
+    if (c == 44) {
+        return 1;
+    }
+
+    if (c == 46) {
+        return 1;
+    }
+
+    if (c >= 58 && c <= 64) {
         return 1;
     }
 
     if (c >= 91 && c <= 96) {
+        return 1;
+    }
+
+    if (c >= 123 && c <= 126) {
         return 1;
     }
 

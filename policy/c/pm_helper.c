@@ -34,6 +34,8 @@ bool log_file_enabled = false;
 bool cib_cache_enabled = false;
 bool verbose = false;
 
+FILE *log_file = NULL;
+
 char*
 get_home_dir()
 {
@@ -150,6 +152,12 @@ create_socket_paths() {
     return true;
 }
 
+void
+init_pm_helper()
+{
+    log_file = stdout;
+}
+
 bool 
 start_pm_helper() 
 {
@@ -193,6 +201,7 @@ enable_log_file(bool enable)
         write_log(__FILE__, __func__, LOG_EVENT, "Log messages: %s/%s", current_dir, LOG_FILENAME);
         free(current_dir);
     }
+    log_file = fopen(LOG_FILENAME, "a");
     log_file_enabled = enable;
 }
 
@@ -239,64 +248,48 @@ is_cache_enabled()
 }
 
 void
-write_log(const char* module, const char* func, LOG_LEVEL log_level, const char* format, ...)
+write_log(const char *module, const char *func, LOG_LEVEL log_level, const char *format, ...)
 {
-    char* log_type;
+    /*FILE *fp;
+    if (log_file_enabled) {
+        fp = fopen(LOG_FILENAME, "a");
+    } else {
+        fp = stdout;
+    }*/
+
+    FILE *fp = log_file;
+
     switch(log_level) {
-        case LOG_EVENT:
-            log_type = "EVENT";
-            break;
         case LOG_ERROR:
-            log_type = "ERROR";
-            printf("[ERROR] ");
+            fprintf(fp, "[ERROR] ");
             break;
         case LOG_DEBUG:
-            log_type = "DEBUG";
             if(debug_enabled) {
-                printf("[DEBUG] ");
+                fprintf(fp, "[DEBUG] ");
             }
             break;
         case LOG_NEW_LINE:
-            printf("\n");
+            fprintf(fp, "\n");
             return;
         default:
             break;
     }
 
-    //write to console
     if(log_level != LOG_DEBUG || debug_enabled) {
         va_list argptr;
         va_start(argptr, format);
 
-        vprintf(format, argptr);
-        if(log_level != LOG_NO_NEW_LINE) { printf("\n"); }
+        vfprintf(fp, format, argptr);
+        if(log_level != LOG_NO_NEW_LINE) { fprintf(fp, "\n"); }
         //if(log_level == LOG_ERROR) { printf("\n"); }
 
         va_end(argptr);
     }
 
-    //write to log file
-    if(log_file_enabled) {
-        FILE *fp = fopen(LOG_FILENAME, "a");
-        if(fp != NULL) {
-            va_list argptr;
-            va_start(argptr, format);
 
-            char time_buffer[100];
-            time_t now = time (0);
-            strftime (time_buffer, 100, "%Y-%m-%d %H:%M:%S.000", localtime (&now));
-
-            fprintf(fp, "Log Type: %s\nTime: %s  \nModule: %s\nFunction: %s\nDescription: ", log_type, time_buffer, module, func);
-            vfprintf(fp, format, argptr);
-            fprintf(fp, "\n\n");
-
-            fclose(fp);
-            va_end(argptr);
-        }
-        else {
-            write_log(__FILE__ , __func__, LOG_ERROR, "Cannot access log file");
-        }
-    }
+    /*if (log_file_enabled) {
+        fclose(fp);
+    }*/
 }
 
 void
@@ -341,7 +334,6 @@ file_is_modified(const char *path, time_t old_time)
     return file_stat.st_mtime > old_time;
 }
 
-
 json_t*
 load_json_file(const char *file_path)
 {
@@ -351,8 +343,9 @@ load_json_file(const char *file_path)
     json_t *json = json_load_file(file_path, 0, &error);
 
     if(!json_object_get(json, "uid")) {
-        json_decref(json);
-        json = NULL;
+        char *uid = get_hash();
+        json_object_set_new(json, "uid", json_string(uid));
+        free(uid);
     } 
     if(!json) {
         write_log(__FILE__, __func__, LOG_ERROR, "Failed to read json file: %s",file_path);

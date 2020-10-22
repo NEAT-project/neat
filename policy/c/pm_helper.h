@@ -64,6 +64,7 @@ void print_separator(const char *sep);
 
 void pm_helper_close();
 bool create_folder(const char* path);
+void init_pm_helper();
 bool start_pm_helper();
 char* new_string(char *string, ...);
 int file_exist(const char * file_path);

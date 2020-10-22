@@ -178,7 +178,7 @@ pib_lookup(node_t *pib_list, json_t *input_props)
 
     json_array_foreach(candidate_array, index, candidate) {
         candidate_updated = json_deep_copy(candidate);
-
+        
         for (current_policy = pib_list; current_policy; current_policy = current_policy->next) {
             write_log(__FILE__, __func__, LOG_DEBUG,"---------- POLICY %s ---------", current_policy->filename);
             policy_match = json_object_get(current_policy->json, "match");

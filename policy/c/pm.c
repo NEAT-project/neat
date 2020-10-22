@@ -19,6 +19,8 @@
 #include "parse_json.h"
 #include "version.h"
 
+#include <sys/resource.h>
+
 
 #define PM_BACKLOG 128
 #define PM_BUFSIZE 65536
@@ -42,41 +44,35 @@ lookup(json_t *reqs)
     json_t *candidates;
     json_t *policy_candidates;
     json_t *cib_candidates;
-    json_t *cib_lookup_result; //TODO RENAME
+    json_t *cib_lookup_result;
     size_t i, j, k;
 
     int new_candidates;
 
-    json_t* req_expand = expand_properties(reqs);
+    bool pre_res = pre_resolve(reqs);
 
+    json_t* req_expand = expand_properties(reqs);
     if(verbose) {
         print_separator("═");
         pretty_print(req_expand, false);
         print_separator("═");
     }
 
-    json_t* requests = process_special_properties(req_expand);
+    json_t* requests = process_special_properties(req_expand); // A bit inefficient
 
-    json_array_foreach(requests, i, request) {
-        add_default_values(request);
-    }
-
-    if (pre_resolve(requests)) {
+    if (pre_res) {
         write_log(__FILE__, __func__, LOG_DEBUG, "__request_type is pre-resolve, skipping lookup.");
         return requests;
     }
-    else  {
+    else if(verbose) {
 	    write_log(__FILE__, __func__, LOG_EVENT, "Starting lookup...");
-        if(verbose)
-            print_separator("─");
+        print_separator("─");
     }
 
-    json_t *expanded_requests = expand_values(requests);
-    size_t len = json_array_size(expanded_requests);
-
+    size_t len = json_array_size(requests);
     candidates = json_array();
 
-    json_array_foreach(expanded_requests, i, request) {
+    json_array_foreach(requests, i, request) {
         if(verbose) {
             write_log(__FILE__, __func__, LOG_EVENT, "Processing request %d/%d:", i + 1, len);
             pretty_print(request, false);
@@ -142,15 +138,11 @@ lookup(json_t *reqs)
         }
     }
 
-    json_array_foreach(candidates, i, request) {
-        add_default_values(request);
-    }
-
     candidates = sort_json_array(candidates);
     candidates = limit_json_array(candidates, NUM_CANDIDATES);
 
     /* Cleanup */
-    json_decref(expanded_requests);
+    json_decref(requests);
 
     if(verbose) {
         write_log(__FILE__, __func__, LOG_EVENT, "PM Top %d: ", NUM_CANDIDATES);
@@ -175,7 +167,8 @@ handle_request(uv_stream_t *client)
     uv_write_t wr;
 
     request_json = json_loads(client_req->buffer, 0, &json_error);
-    write_log(__FILE__, __func__, LOG_EVENT, "Request(s) received");
+    if (verbose)
+        write_log(__FILE__, __func__, LOG_EVENT, "Request(s) received");
 
     if (!request_json) {
         write_log(__FILE__, __func__, LOG_ERROR, "Error with request, json-error-text: %s", json_error.text);
@@ -200,7 +193,8 @@ handle_request(uv_stream_t *client)
 
     response_buf.len = strlen(response_buf.base);
 
-    write_log(__FILE__, __func__, LOG_EVENT, "Request handled, sending candidates\n");
+    if (verbose)
+        write_log(__FILE__, __func__, LOG_EVENT, "Request handled, sending candidates\n");
     /* Make sure all is written before returning */
     while(uv_try_write(client, &response_buf, 1) == UV_EAGAIN) {} // TODO: do this in a better way
 
@@ -270,7 +264,8 @@ on_new_pm_connection(uv_stream_t *pm_server, int status)
     uv_pipe_init(loop, client, 0);
 
     if (uv_accept(pm_server, (uv_stream_t *) client) == 0) {
-        write_log(__FILE__, __func__, LOG_EVENT, "Accepted client request");
+        if (verbose)
+            write_log(__FILE__, __func__, LOG_EVENT, "Accepted client request");
         uv_read_start((uv_stream_t *) client, alloc_buffer, on_client_read);
     }
     else {
@@ -352,7 +347,8 @@ on_new_pib_connection(uv_stream_t *pib_server, int status)
     uv_pipe_init(loop, client, 0);
 
     if (uv_accept(pib_server, (uv_stream_t *) client) == 0) {
-        write_log(__FILE__, __func__, LOG_EVENT, "Accepted PIB request");
+        if (verbose)
+            write_log(__FILE__, __func__, LOG_EVENT, "Accepted PIB request");
         uv_read_start((uv_stream_t *) client, alloc_buffer, on_pib_socket_read);
     }
     else {
@@ -433,7 +429,8 @@ on_new_cib_connection(uv_stream_t *cib_server, int status)
     uv_pipe_init(loop, client, 0);
 
     if (uv_accept(cib_server, (uv_stream_t *) client) == 0) {
-        write_log(__FILE__, __func__, LOG_EVENT, "Accepted CIB request");
+        if (verbose)
+            write_log(__FILE__, __func__, LOG_EVENT, "Accepted CIB request");
         uv_read_start((uv_stream_t *) client, alloc_buffer, on_cib_socket_read);
     }
     else {
@@ -638,9 +635,19 @@ parse_arguments(int argc, char *argv[])
     return true;
 }
 
+void set_priority() {
+    struct sched_param param;
+    param.sched_priority = 0;
+    sched_setscheduler(0, SCHED_FIFO, &param);
+}
+
 int
 main(int argc, char *argv[])
 {
+    // Use "real-time" scheduler
+    set_priority();
+    init_pm_helper();
+
     if(!parse_arguments(argc, argv)) {
         exit(EXIT_FAILURE);
     }

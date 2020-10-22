@@ -99,8 +99,10 @@ type(json_t *value)
         : is_range(value) ? VALUE_TYPE_RANGE : is_single(value) ? VALUE_TYPE_SINGLE : VALUE_TYPE_ERR;
 }
 
+//bool
+//pre_resolve(const json_t *requests)
 bool
-pre_resolve(const json_t *requests)
+pre_resolve(json_t *requests)
 {
     bool pre_resolve = false;
     json_t *request;
@@ -115,42 +117,9 @@ pre_resolve(const json_t *requests)
                 pre_resolve = true;
             }
         }
-
     }
+
     return pre_resolve;
-}
-
-void
-add_default_values(json_t *request)
-{
-    json_t *property, *attr;
-    const char *key;
-    size_t n;
-    unsigned int i;
-
-    /* json values for default props */
-    char *default_props[] = { "value", "score", "evaluated", "precedence"};
-    char *default_types[] = { "n", "i", "b", "i"};
-    int  default_values[] = { 0, 0, 0, PRECEDENCE_OPTIONAL };
-
-    json_object_foreach(request, key, property) {
-        for (i = 0; i < ARRAY_SIZE(default_props); i++) {
-
-            /* handle array of values */
-            if (json_is_array(property)) {
-                json_array_foreach(property, n, attr) {
-                    json_t *tmp_prop = json_pack("{sO}", key, attr);
-                    add_default_values(tmp_prop);
-                    json_decref(tmp_prop);
-                }
-                break;
-            }
-            /* add default property if not found */
-            if (json_object_get(property, default_props[i]) == NULL) {
-                json_object_set_new(property, default_props[i], json_pack(default_types[i], default_values[i]));
-            }
-        }
-    }
 }
 
 score_t
@@ -253,17 +222,23 @@ parse_local_endpoint(json_t *local_endpoint, json_t *element)
 {
     json_t* value = json_object_get(local_endpoint, "value");
 
-    if(!json_is_null(value)) {
+    if(json_is_string(value)) {
         char *le_value = strdup(json_string_value(value));
         if(strchr(le_value, '@')) {
             char * ip_value = strtok(le_value, "@");
             char * interface_value = strtok(NULL, "@");
 
-            json_t *local_ip = json_deep_copy(local_endpoint);
+            json_t *local_ip = json_object();
             json_object_set_new(local_ip, "value", json_string(ip_value));
+            json_object_set_new(local_ip, "precedence", json_integer(2));
+            json_object_set_new(local_ip, "score", json_integer(0));
+            json_object_set_new(local_ip, "evaluated", json_boolean(0));
 
-            json_t *interface = json_deep_copy(local_endpoint);
+            json_t *interface = json_object();
             json_object_set_new(interface, "value", json_string(interface_value));
+            json_object_set_new(interface, "precedence", json_integer(2));
+            json_object_set_new(interface, "score", json_integer(0));
+            json_object_set_new(interface, "evaluated", json_boolean(0));
 
             json_object_set_new(element, "interface", interface);
             json_object_set_new(element, "local_ip", local_ip);
@@ -295,7 +270,7 @@ process_special_properties(json_t* req)
     json_array_foreach(root, index, value) {
         json_t * local_endpoint = json_object_get(value, "local_endpoint");
 
-        if(local_endpoint && json_is_object(local_endpoint)) {
+        if(json_is_object(local_endpoint)) {
             append_json_arrays(my_return, parse_local_endpoint(local_endpoint, value));
         }
         else {
@@ -305,7 +280,6 @@ process_special_properties(json_t* req)
     json_decref(root);
     return my_return;
 }
-
 
 void
 convert_socket_properties(json_t *candidate_array) 
@@ -426,9 +400,28 @@ expand_json(json_t *in_properties)
     return result;
 }
 
-/* NEEDS REFACTORING: Variant of expand_element_property which dereferences element */
-json_t*
-expand_element_property_decref(json_t *element)
+void
+check_defaults(json_t *property) {
+    json_t *attr;
+    const char *key;
+    size_t n;
+    unsigned int i;
+
+    /* json values for default props */
+    char *default_props[] = { "value", "score", "evaluated", "precedence"};
+    char *default_types[] = { "n", "i", "b", "i"};
+    int  default_values[] = { 0, 0, 0, PRECEDENCE_OPTIONAL };
+
+    for (i = 0; i < ARRAY_SIZE(default_props); i++) {
+        /* add default property if not found */
+        if (json_object_get(property, default_props[i]) == NULL) {
+            json_object_set_new(property, default_props[i], json_pack(default_types[i], default_values[i]));
+        }
+    }
+}
+
+json_t *
+expand_element(json_t *element)
 {
     const char *key;
     json_t *property;
@@ -438,8 +431,18 @@ expand_element_property_decref(json_t *element)
         if(json_is_array(property)) {
             append_json_arrays(my_return, expand_property(element, property, key));
             break;   //break here due to loop call in expand_property
+        } else {
+            check_defaults(property);
         }
     }
+
+    return my_return;
+}
+
+json_t*
+expand_element_property_decref(json_t *element)
+{
+    json_t *my_return = expand_element(element);
 
     if(json_array_size(my_return) == 0) {
         json_array_append(my_return, element);
@@ -452,14 +455,21 @@ expand_element_property_decref(json_t *element)
 json_t*
 expand_property(json_t *element, json_t *property_input, const char *key)
 {
-    size_t index1;
-    json_t *value;
+    size_t index;
+    json_t *value1, *value2;
     json_t *my_return = json_array();
 
-    json_array_foreach(property_input, index1, value) {
-        json_t *temp = json_deep_copy(element);
-        json_object_set(temp, key, value);
-        append_json_arrays(my_return, expand_element_property_decref(temp));    //loop call
+    json_array_foreach(property_input, index, value1) {
+        json_t *tmp = json_object();
+        const char * k;
+        json_object_foreach(element, k, value2) {
+            if (strcmp(key, k) != 0) {
+                json_object_set(tmp, k, value2);
+            }
+        }
+
+        json_object_set(tmp, key, value1);
+        append_json_arrays(my_return, expand_element_property_decref(tmp));
     }
 
     return my_return;
@@ -468,16 +478,7 @@ expand_property(json_t *element, json_t *property_input, const char *key)
 json_t*
 expand_element_property(json_t *element)
 {
-    const char *key;
-    json_t *property;
-    json_t *my_return = json_array();
-
-    json_object_foreach(element, key, property) {
-        if(json_is_array(property)) {
-            append_json_arrays(my_return, expand_property(element, property, key));
-            break;   //break here due to loop call in expand_property
-        }
-    }
+    json_t *my_return = expand_element(element);
 
     if(json_array_size(my_return) == 0) {
         json_array_append(my_return, element);
@@ -494,75 +495,8 @@ expand_properties(json_t *req)
     json_t *my_return = json_array();
 
     json_array_foreach(root, index, element) {
-        if(json_is_object(element)) {
-            json_t *temp = json_deep_copy(element);
-            append_json_arrays(my_return, expand_element_property(temp));
-            json_decref(temp);
-        }
-        else {
-            write_log(__FILE__, __func__, LOG_ERROR, "Invalid json format, parsing failed.");
-        }
-    }
-    json_decref(root);
-    return my_return;
-}
-
-json_t*
-expand_value(json_t *element, json_t *property, json_t *value_input, const char *key)
-{
-    size_t index1;
-    json_t* v;
-    json_t* my_return = json_array();
-    json_t* value = json_deep_copy(value_input);
-
-    //create a new element for every element in the value
-    json_array_foreach(value, index1, v) {
-        json_t* temp_ele = json_deep_copy(element);
-        json_t* temp_prop = json_object_get(temp_ele, key);
-        json_object_set(temp_prop, "value", v);
-        json_object_set(temp_ele, key, temp_prop);
-        append_json_arrays(my_return, temp_ele);    //loop call
-    }
-    json_decref(value);
-
-    return my_return;
-}
-
-json_t*
-expand_element_value(json_t *element)
-{
-    const char *key;
-    json_t *property;
-    json_t *my_return = json_array();
-
-    json_object_foreach(element, key, property) {
-        if(json_is_object(property)) {
-            json_t* value = json_object_get(property, "value");
-            if(value != 0 && json_is_array(value)) {
-                append_json_arrays(my_return, expand_value(element, property, value, key));
-                break;   //break here due to loop call in expand_value
-            }
-        }
-    }
-
-    if(json_array_size(my_return) == 0) {
-        json_array_append(my_return, element);
-    }
-    return my_return;
-}
-
-
-json_t*
-expand_values(json_t *req)
-{
-    size_t index;
-    json_t *element;
-    json_t *root = create_json_array(req);
-    json_t *my_return = json_array();
-
-    json_array_foreach(root, index, element) {
-        if(json_is_object(element)) {
-            append_json_arrays(my_return, expand_element_value(element));
+        if (json_is_object(element)) {
+            append_json_arrays(my_return, expand_element_property(element));
         }
         else {
             write_log(__FILE__, __func__, LOG_ERROR, "Invalid json format, parsing failed.");
@@ -848,7 +782,6 @@ subset(json_t *prop_a, json_t *prop_b)
         value_b = json_object_get(value_prop_b, "value");
         value_a = json_object_get(value_prop_a, "value");
 
-        //if (!json_equal(value_a, value_b)) {
         if (!match(value_a, value_b)) {
             write_log(__FILE__, __func__, LOG_DEBUG, "Subset check returns false: wrong value for key \"%s\".", key_a);
             return 2;
@@ -861,16 +794,6 @@ subset(json_t *prop_a, json_t *prop_b)
 int
 cib_subset(json_t *prop_a, json_t *prop_b)
 {
-    /*char *s;
-
-    s = json_dumps(prop_a, JSON_INDENT(1));
-    printf("%s\n", s);
-    free(s);
-
-    s = json_dumps(prop_b, JSON_INDENT(1));
-    printf("%s\n\n", s);
-    free(s);*/
-
     const char *key_a;
     json_t *value_prop_a;
     json_t *value_prop_b;
@@ -1121,7 +1044,8 @@ merge_update_property(json_t *prop_a, json_t *prop_b)
     int precedence_prop_b = json_integer_value(precedence_prop_b_json);
 
     if (precedence_prop_b == PRECEDENCE_BASE) {
-        json_t *prop_b_copy = json_deep_copy(prop_b);
+        //json_t *prop_b_copy = json_deep_copy(prop_b);
+        json_t *prop_b_copy = json_copy(prop_b);
         if(!merge_do_update_property(prop_b_copy, prop_a, false))
             return false;
         json_object_update(prop_a, prop_b_copy);

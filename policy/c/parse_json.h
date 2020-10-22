@@ -27,8 +27,8 @@ json_t* parse_local_endpoint(json_t* local_endpoint, json_t* element);
 json_t* create_json_array(json_t* json);
 void append_json_arrays(json_t* root_array, json_t* array);
 
-bool pre_resolve(const json_t *requests);
-void add_default_values(json_t *request);
+bool pre_resolve(json_t *requests);
+//void add_default_values(json_t *request);
 
 json_t* expand_property(json_t* element, json_t* property_input, const char* key);
 json_t* expand_element_property(json_t* element);

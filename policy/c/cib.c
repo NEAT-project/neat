@@ -480,12 +480,14 @@ cib_lookup(json_t *input_props)
         json_array_foreach(row, j, prop) {
             write_log(__FILE__, __func__, LOG_DEBUG,"---------- PROCESSING ROW (%d,%d) ---------", i, j);
 
-            /* Optimize: Filter out rows early */
+            /* Filter out non-matching rows early */
             if (cib_subset(prop, input_props) == 2) {
+                write_log(__FILE__, __func__, LOG_DEBUG,"Discarding candidate (subset).");
                 continue;
             }
 
             candidate = json_deep_copy(input_props);
+            //candidate = json_copy(input_props);
             
             if(merge_properties(prop, candidate, 0))
             {

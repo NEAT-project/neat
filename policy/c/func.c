@@ -128,7 +128,7 @@ priority (char c)
     return -1;
 }
 
-void 
+int
 process_op(char c) 
 {
     if (var && var->next) {
@@ -140,10 +140,19 @@ process_op(char c)
         case '+': var_push(l + r); break;
         case '-': var_push(l - r); break;
         case '*': var_push(l * r); break;
-        case '/': var_push(l / r); break;
+        case '/':
+            if (r == 0) {
+                write_log(__FILE__, __func__, LOG_DEBUG, "error: division by zero\n");
+                return -1;
+            }
+
+            var_push(l / r); 
+            break;
         default: break;
         }
     }
+
+    return 0;
 }
 
 int issymbol(int c) {
@@ -192,7 +201,9 @@ eval(const char *expr, json_t *json)
             /* Eval all the way up here */
             while (op && op->value != '(') {
                 c = op_pop();
-                process_op(c); 
+                if (process_op(c) < 0) {
+                    return -1;
+                } 
             }
             if (op) {
                 op_pop();
@@ -203,7 +214,9 @@ eval(const char *expr, json_t *json)
                 /* evaluate whatever we have so far */
                 while (op && priority(op->value) >= priority(p)) { 
                     c = op_pop();
-                    process_op(c);
+                    if (process_op(c) < 0) {
+                        return -1;
+                    } 
                 }
             }
             op_push(p);
@@ -268,7 +281,9 @@ eval(const char *expr, json_t *json)
 
     while(op) {
         char c = op_pop();
-        process_op(c);
+        if (process_op(c) < 0) {
+            return -1;
+        } 
     }
 
     return 1;

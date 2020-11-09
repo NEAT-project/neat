@@ -988,6 +988,23 @@ int get_optname(char *str) {
     case H_TCP_MD5SIG_EXT:
         return TCP_MD5SIG_EXT;
 
+#ifdef MPTCP_ENABLED
+    case H_MPTCP_ENABLED:
+        return MPTCP_ENABLED;
+#endif
+#ifdef MPTCP_SCHEDULER
+    case H_MPTCP_SCHEDULER:
+        return MPTCP_SCHEDULER;
+#endif
+#ifdef MPTCP_PATH_MANAGER
+    case H_MPTCP_PATH_MANAGER:
+        return MPTCP_PATH_MANAGER;
+#endif
+#ifdef MPTCP_INFO
+    case H_MPTCP_INFO:
+        return MPTCP_INFO;
+#endif
+
     case H_UDP_CORK:
         return UDP_CORK;
 

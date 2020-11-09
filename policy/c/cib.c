@@ -12,10 +12,14 @@
 #include <netdb.h>
 #include <jansson.h>
 
+#include <pthread.h>
+
 #include "cib.h"
 #include "pm_helper.h"
 #include "node.h"
 #include "parse_json.h"
+
+pthread_mutex_t cib_lock;
 
 node_t *cib_nodes = NULL;
 json_t *cib_rows = NULL;
@@ -23,6 +27,8 @@ json_t *cib_rows = NULL;
 void
 remove_cib_node(const char *uid) 
 {
+    pthread_mutex_lock(&cib_lock);
+
     char *path = new_string("%s%s.cib", cib_dir, uid);
     remove_node(&cib_nodes, path);
 
@@ -30,7 +36,7 @@ remove_cib_node(const char *uid)
     cib_rows = update_rows();
 
     free(path);
-    return;
+    pthread_mutex_unlock(&cib_lock);
 }
 
 bool
@@ -342,6 +348,8 @@ add_cib_node(json_t *json_for_node)
         json_object_set_new(json_for_node, "expire", json_real(expiry));
     }
 
+    pthread_mutex_lock(&cib_lock);
+
     char *path = new_string("%s%s", cib_dir, filename);
     write_json_file(path, json_for_node);
     
@@ -350,6 +358,8 @@ add_cib_node(json_t *json_for_node)
 
     json_decref(cib_rows);
     cib_rows = update_rows();
+
+    pthread_mutex_unlock(&cib_lock);
 
     free(path);
     free(filename);
@@ -475,6 +485,8 @@ cib_lookup(json_t *input_props)
 
     size_t i, j;
     bool match = false;
+
+    pthread_mutex_lock(&cib_lock);
     
     json_array_foreach(cib_rows, i, row) {
         json_array_foreach(row, j, prop) {
@@ -505,12 +517,15 @@ cib_lookup(json_t *input_props)
         json_array_append(candidate_array, input_props);
     }
 
+    pthread_mutex_unlock(&cib_lock);
+
     return candidate_array;
 }
 
 void
 cib_start()
 {
+    pthread_mutex_init(&cib_lock, NULL);
     cib_nodes = read_modified_files(cib_nodes, cib_dir);
     cib_rows = update_rows();
 }

@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "pib.h"
 #include "node.h"
@@ -13,6 +14,8 @@
 
 node_t *pib_profiles = NULL;
 node_t *pib_policies = NULL;
+
+pthread_mutex_t pib_lock;
 
 void
 get_pib_list_aux (json_t *pib_array, node_t *head)
@@ -93,7 +96,9 @@ add_pib_node(json_t *json_for_node)
     if(!json_for_node) {
         return;
     }
-    //Check uid, filename, time
+
+    pthread_mutex_lock(&pib_lock);
+
     char *path;
     const char *uid = json_string_value(json_object_get(json_for_node, "uid"));
     const char *type = json_string_value(json_object_get(json_for_node, "policy_type"));
@@ -104,7 +109,6 @@ add_pib_node(json_t *json_for_node)
         free(new_uid);
     }
 
-    // Make sure there is inly ony policy/profile with the same UID
     if(type && !strncmp(type, "profile", 7)) {
         write_log(__FILE__, __func__, LOG_EVENT, "Inserting %s as profile", uid);
         if(get_policy_by_uid(uid)) {
@@ -128,11 +132,15 @@ add_pib_node(json_t *json_for_node)
         pib_policies = put_pib_node(pib_policies, json_for_node, path, uid);
         free(path);
     }
+
+    pthread_mutex_unlock(&pib_lock);
 }
 
 void
 remove_pib_node(const char *uid) 
 {
+    pthread_mutex_lock(&pib_lock);
+
     if(get_policy_by_uid(uid)) {
         char *path = new_string("%s%s.policy", policy_dir, uid);
         remove_node(&pib_policies, path);
@@ -142,7 +150,8 @@ remove_pib_node(const char *uid)
         remove_node(&pib_profiles, path);
         free(path);
     }
-    return;
+
+    pthread_mutex_unlock(&pib_lock);
 }
 
 int
@@ -175,6 +184,8 @@ pib_lookup(node_t *pib_list, json_t *input_props)
     json_t *candidate;
 
     json_array_append(candidate_array, input_props);
+
+    pthread_mutex_lock(&pib_lock);
 
     json_array_foreach(candidate_array, index, candidate) {
         candidate_updated = json_deep_copy(candidate);
@@ -223,6 +234,8 @@ pib_lookup(node_t *pib_list, json_t *input_props)
     }
     json_decref(candidate_array);
 
+    pthread_mutex_unlock(&pib_lock);
+
     return candidate_updated_array;
 }
 
@@ -241,6 +254,7 @@ profile_lookup(json_t *input_props)
 void
 pib_start()
 {
+    pthread_mutex_init(&pib_lock, NULL);
     pib_profiles = read_modified_files(pib_profiles, profile_dir);
     pib_policies = read_modified_files(pib_policies, policy_dir);
 }

@@ -14,9 +14,11 @@ BuildRequires: gcc-c++
 BuildRequires: jansson-devel
 BuildRequires: ldns-devel
 BuildRequires: libmnl-devel
+BuildRequires: libuv-devel
 BuildRequires: lksctp-tools-devel
 BuildRequires: openssl-devel
-BuildRequires: libuv-devel
+BuildRequires: python3-devel
+BuildRequires: swig
 # BuildRequires: libusrsctp-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 

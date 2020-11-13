@@ -1,10 +1,17 @@
 usr/lib/*/libneat/client
+usr/lib/*/libneat/client_data
 usr/lib/*/libneat/client_dtls_echo
 usr/lib/*/libneat/client_http_get
+usr/lib/*/libneat/client_http_run_once
+usr/lib/*/libneat/minimal_client
+usr/lib/*/libneat/minimal_server
+usr/lib/*/libneat/minimal_server2
+usr/lib/*/libneat/msbench
 usr/lib/*/libneat/peer
 usr/lib/*/libneat/server_chargen
 usr/lib/*/libneat/server_daytime
 usr/lib/*/libneat/server_discard
 usr/lib/*/libneat/server_dtls_echo
 usr/lib/*/libneat/server_echo
+usr/lib/*/libneat/server_http
 usr/lib/*/libneat/tneat

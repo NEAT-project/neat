@@ -11,12 +11,13 @@ Build-Depends: cmake (>= 3.0.2) | cmake3,
                libsctp-dev,
                libssl-dev,
                libuv1-dev (>= 1.0.2)
-Standards-Version: 4.4.1.2
+Standards-Version: 4.5.0.3
+Rules-Requires-Root: no
 Vcs-Browser: https://github.com/NEAT-project/neat
 Vcs-Git: https://github.com/NEAT-project/neat.git
 Homepage: https://github.com/NEAT-project/neat
 
-Package: libneat0
+Package: libneat1
 Section: libs
 Architecture: any
 Depends: ${misc:Depends},
@@ -38,7 +39,7 @@ Description: NEAT Core API
 Package: libneat-dev
 Section: libdevel
 Architecture: any
-Depends: libneat0 (= ${binary:Version}),
+Depends: libneat1 (= ${binary:Version}),
          libuv1-dev (>= 1.0.2),
          ${misc:Depends},
          ${shlibs:Depends}
@@ -77,7 +78,7 @@ Description: NEAT Core API Documentation
 
 Package: libneat-examples
 Architecture: any
-Depends: libneat0 (= ${binary:Version}),
+Depends: libneat1 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
 Description: NEAT Core API Examples
@@ -94,10 +95,10 @@ Description: NEAT Core API Examples
  .
  This package contains the built examples for the NEAT Core API.
 
-Package: libneat-socketapi0
+Package: libneat-socketapi1
 Section: libs
 Architecture: any
-Depends: libneat0 (= ${binary:Version}),
+Depends: libneat1 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
 Description: NEAT Sockets API
@@ -118,7 +119,7 @@ Package: libneat-socketapi-dev
 Section: libdevel
 Architecture: any
 Depends: libneat-dev (= ${binary:Version}),
-         libneat-socketapi0 (= ${binary:Version}),
+         libneat-socketapi1 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
 Description: NEAT Sockets API Development Files
@@ -137,7 +138,7 @@ Description: NEAT Sockets API Development Files
 
 Package: libneat-socketapi-examples
 Architecture: any
-Depends: libneat0 (= ${binary:Version}),
+Depends: libneat1 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
 Description: NEAT Sockets API Examples

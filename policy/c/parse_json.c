@@ -310,6 +310,13 @@ convert_socket_properties(json_t *candidate_array)
             }
         }
         json_object_foreach(new_properties, key, property) {
+            // Convert floats to int
+            json_t *value = json_object_get(property, "value");
+            if(json_is_real(value)) {
+                double real = json_real_value(value);
+                json_object_set_new(property, "value", json_integer((int)real));
+            }
+
             json_object_set(candidate, key, property);
         } 
         json_decref(new_properties);

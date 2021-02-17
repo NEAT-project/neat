@@ -1,7 +1,7 @@
 /*
  * thread.h: PThread class
  *
- * Copyright (C) 2003-2020 by Thomas Dreibholz
+ * Copyright (C) 2003-2021 by Thomas Dreibholz
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

@@ -1,6 +1,6 @@
 /*
  * Socket API implementation for NEAT
- * Copyright (C) 2016-2020 by Thomas Dreibholz <dreibh@simula.no>
+ * Copyright (C) 2016-2021 by Thomas Dreibholz <dreibh@simula.no>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

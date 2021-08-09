@@ -10,12 +10,12 @@ references:
 
 
 $(txtfiles):	%.txt: %.xml
-	xml2rfc $< $@ --text
+	xml2rfc $< --text --v3
 	sed -i -e "s/&#263;/c/g" $@
-	idnits $@
+	# idnits $@
 
 $(htmlfiles):	%.html: %.xml
-	xml2rfc $< $@ --html
+	xml2rfc $< --html --v3
 
 
 clean:

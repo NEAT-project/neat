@@ -7,7 +7,7 @@
 <?rfc strict="no" ?>
 <?rfc symrefs="no" ?>
 
-<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-08">
+<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-09">
 
 <?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
 
@@ -1122,27 +1122,27 @@ int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
 <back>
 
 <references title='Normative References'>
- <?rfc include="reference.RFC.2119" ?>
- <?rfc include="reference.RFC.6458" ?>
- <?rfc include="reference.I-D.gjessing-taps-minset" ?>
- <?rfc include="reference.I-D.fairhurst-taps-neat" ?>
- <?rfc include="reference.I-D.ietf-taps-transports-usage" ?>
+ <?rfc include="reference.RFC.2119.xml" ?>
+ <?rfc include="reference.RFC.6458.xml" ?>
+ <?rfc include="reference.I-D.gjessing-taps-minset.xml" ?>
+ <?rfc include="reference.I-D.fairhurst-taps-neat.xml" ?>
+ <?rfc include="reference.I-D.ietf-taps-transports-usage.xml" ?>
 </references>
 
 <references title='Informative References'>
- <?rfc include="LinuxCon2016" ?>
- <?rfc include="ComNets2013-Core" ?>
+ <?rfc include="LinuxCon2016.xml" ?>
+ <?rfc include="ComNets2013-Core.xml" ?>
 
- <?rfc include="NEAT-Website" ?>
- <?rfc include="NorNet-Website" ?>
- <?rfc include="Haikou2017-2-NEAT-Tutorial" ?>
- <?rfc include="Haikou2017-NEAT" ?>
- <?rfc include="ANRW2017" ?>
+ <?rfc include="NEAT-Website.xml" ?>
+ <?rfc include="NorNet-Website.xml" ?>
+ <?rfc include="Haikou2017-2-NEAT-Tutorial.xml" ?>
+ <?rfc include="Haikou2017-NEAT.xml" ?>
+ <?rfc include="ANRW2017.xml" ?>
 
- <?rfc include="NEAT-D1.1" ?>
- <?rfc include="NEAT-D1.3" ?>
- <?rfc include="NEAT-D2.2" ?>
- <?rfc include="NEAT-D2.3" ?>
+ <?rfc include="NEAT-D1.1.xml" ?>
+ <?rfc include="NEAT-D1.3.xml" ?>
+ <?rfc include="NEAT-D2.2.xml" ?>
+ <?rfc include="NEAT-D2.3.xml" ?>
 
 </references>
 

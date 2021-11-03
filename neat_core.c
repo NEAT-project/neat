@@ -117,6 +117,28 @@ const char *neat_tag_name[NEAT_TAG_LAST] = {
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
+int neat_get_socket_fd(struct neat_flow *nf){
+    return nf->socket->fd;
+}
+
+neat_error_code neat_get_stack(struct neat_flow *flow, void *ptr, size_t *size){
+
+    switch (flow->socket->stack) {
+        case NEAT_STACK_UDP:
+            strncpy(ptr, "UDP", *size);
+            break;
+        case NEAT_STACK_TCP:
+            strncpy(ptr, "TCP", *size);
+            break;
+        case NEAT_STACK_MPTCP:
+            strncpy(ptr, "MPTCP", *size);
+            break;
+       case NEAT_STACK_SCTP:
+            strncpy(ptr, "SCTP", *size);
+    }
+    return NEAT_OK;
+}
+
 //Intiailize the OS-independent part of the context, and call the OS-dependent
 //init function
 struct neat_ctx *

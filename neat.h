@@ -34,6 +34,11 @@ struct neat_flow;   // one per connection
 
 typedef uint64_t neat_error_code;
 
+NEAT_EXTERN int neat_get_socket_fd(struct neat_flow *nf);
+NEAT_EXTERN neat_error_code neat_get_stack(struct neat_flow *flow, void *ptr, size_t *size);
+
+
+
 NEAT_EXTERN struct neat_ctx *neat_init_ctx();
 NEAT_EXTERN neat_error_code neat_start_event_loop(struct neat_ctx *nc, neat_run_mode run_mode);
 NEAT_EXTERN uv_loop_t *neat_get_event_loop(struct neat_ctx *ctx);

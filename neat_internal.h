@@ -299,6 +299,7 @@ struct neat_flow
     const struct sockaddr *sockAddr; // raw unowned pointer into resolver_results
     struct neat_ctx *ctx; // raw convenience pointer
     struct neat_iofilter *iofilters;
+    uv_timer_t *initiate_timer;
 
     uint32_t group;
     float priority;

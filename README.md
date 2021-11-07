@@ -53,10 +53,6 @@ $ cmake --build .
 ```
 This will generate makefiles and compile the library and the samples.
 You will find the shared and the static library in the `build` directory and the samples in `build/examples` directory.
-Note, that Python bindings are currently considered experimental and, therefore, have to be activated deliberately.
-To do so, change the first cmake call above to:
-```shell
-$ cmake .. -DSWIG_PYTHON=1
 ```
 
 For an easy introduction to NEAT, have a look at our [tutorial](http://neat.readthedocs.io/en/latest/tutorial.html).

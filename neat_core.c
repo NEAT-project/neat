@@ -2970,6 +2970,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
 
     json_array_foreach(json, i, value) {
         neat_protocol_stack_type stack;
+        int port;
         const char *interface = NULL, *local_ip  = NULL, *remote_ip = NULL, *transport = NULL;
         char dummy[sizeof(struct in6_addr)];
         struct neat_he_candidate *candidate;
@@ -2989,6 +2990,10 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
 
         local_ip = json_string_value(get_property(value, "local_ip", JSON_STRING));
         if (!local_ip)
+            continue;
+
+        port = json_integer_value(get_property(value, "port", JSON_INTEGER));
+        if (port == 0)
             continue;
 
         transport = json_string_value(get_property(value, "transport", JSON_STRING));
@@ -3068,7 +3073,7 @@ build_he_candidates(neat_ctx *ctx, neat_flow *flow, json_t *json, struct neat_he
             goto out_of_memory;
 
         candidate->prio_timer                   = NULL;
-        candidate->pollable_socket->port        = flow->port;
+        candidate->pollable_socket->port        = port; //flow->port;
         candidate->pollable_socket->stack       = stack;
         candidate->if_idx                       = if_idx;
         candidate->priority                     = i; // TODO: Get priority from PM
@@ -4063,7 +4068,7 @@ send_properties_to_pm(neat_ctx *ctx, neat_flow *flow)
 
     json_object_set(properties, "local_endpoint", endpoints);
 
-    port = json_pack("{sisi}", "value", flow->port, "precedence", 2);
+    port = json_pack("{sisi}", "value", flow->port, "precedence", 1);
     if (port == NULL)
         goto end;
 

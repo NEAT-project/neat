@@ -299,7 +299,7 @@ print_separator(const char *sep)
     int i;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
 
-    for(i = 0; i < MIN(size.ws_col, 284); i++) {
+    for(i = 0; i < min(size.ws_col, 284); i++) {
         write_log(__FILE__, __func__, LOG_NO_NEW_LINE, sep);
     }
     write_log(__FILE__, __func__, LOG_NEW_LINE, "");

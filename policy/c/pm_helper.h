@@ -26,7 +26,7 @@
 #define DEFAULT_REST_IP "0.0.0.0"
 #define DEFAULT_REST_PORT 45888
 
-#define MIN(a, b) (a < b ? a : b)
+#define min(a, b) (a < b ? a : b)
 
 /* For stopping the REST-API */
 pthread_mutex_t stop_mutex;

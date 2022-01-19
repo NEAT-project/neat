@@ -954,7 +954,7 @@ update_property(json_t *prop_a, json_t *prop_b)
         }
     }
 
-    if (precedence_value_b >= precedence_value_a && (is_match || precedence_value_a == PRECEDENCE_BASE)) {
+    if (precedence_value_b >= precedence_value_a /*&& (is_match || precedence_value_a == PRECEDENCE_BASE)*/) {
         write_log(__FILE__, __func__, LOG_DEBUG, "Updating property.");
         update_score(prop_a, prop_b); // Experimental
         

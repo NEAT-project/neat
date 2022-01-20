@@ -309,6 +309,42 @@ parse(const char *expr, json_t *json, double *res)
     return ret; 
 }
 
+int
+parse_string(const char *expr, json_t *json, char **res)
+{
+    char *s;
+    json_t *prop, *value;
+
+    /* 
+     * Don't do anything fancy for now, 
+     * just allow one string property to be copied to another
+     */
+
+    // Get the name of the property
+    size_t len = strlen(expr);
+    s = calloc(1, len);
+    strncpy(s, expr, len-1);
+    prop = json_object_get(json, s);
+    free(s);
+
+    if (!json_is_object(prop))
+        return -1;
+
+    value = json_object_get(prop, "value");
+
+    if (!json_is_string(value))
+        return -1;
+
+    // Copy value
+    const char *val = json_string_value(value); 
+    len = strlen(val);
+
+    *res = calloc(1, len + 1);
+    strncpy(*res, val, len);
+
+    return 1;
+}
+
 int 
 evaluate_property(json_t *properties, json_t *prop, char *type) 
 {
@@ -322,14 +358,39 @@ evaluate_property(json_t *properties, json_t *prop, char *type)
                 return 1;
             }
 
-            if (str[0] == '$' && str[1] == '(' && str[len - 1] == ')') {
-                /* This is a function */
+            /* 
+             * Integer functions have format i(...)
+             * Float functions have format f(...)
+             * String functions have format s(...)
+             */ 
+            if (str[0] == 'i' && str[1] == '(' && str[len - 1] == ')') {
+                /* This is an integer function */
+                double res = 0;
+                
+                if(parse(str+1, properties, &res) > 0) {
+                    json_object_set_new(prop, type, json_integer(res));
+                }
+            }
+
+            if (str[0] == 'f' && str[1] == '(' && str[len - 1] == ')') {
+                /* This is a numerical function */
                 double res = 0;
                 
                 if(parse(str+1, properties, &res) > 0) {
                     json_object_set_new(prop, type, json_real(res));
                 }
             }
+
+            if (str[0] == 's' && str[1] == '(' && str[len - 1] == ')') {
+                /* This is a string function */
+                char *res = NULL;
+                
+                if(parse_string(str+2, properties, &res) > 0) {
+                    json_object_set_new(prop, type, json_string(res));
+                    free(res);
+                }
+            }
+
         }
     }
 

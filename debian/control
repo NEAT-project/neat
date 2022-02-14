@@ -11,6 +11,7 @@ Build-Depends: cmake (>= 3.0.2) | cmake3,
                libsctp-dev,
                libssl-dev,
                libuv1-dev (>= 1.0.2),
+               python3-dev,
                swig
 Standards-Version: 4.6.0.1
 Rules-Requires-Root: no

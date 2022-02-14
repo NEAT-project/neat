@@ -1,10 +1,10 @@
-libneat (1.0.2~td4-1ubuntu1) focal; urgency=medium
+libneat (1.0.2~td5-1ubuntu1) focal; urgency=medium
 
   * New upstream release.
   * debian/control: Updated standards version to 4.5.0.3.
   * debian/control: Updated standards version to 4.6.0.1.
 
- -- Thomas Dreibholz <dreibh@iem.uni-due.de>  Mon, 14 Feb 2022 17:22:38 +0100
+ -- Thomas Dreibholz <dreibh@iem.uni-due.de>  Mon, 14 Feb 2022 17:54:41 +0100
 
 libneat (1.0.1-1ubuntu1) focal; urgency=medium
 

@@ -1,11 +1,11 @@
 Name: libneat
-Version: 1.0.2~td5
+Version: 1.0.2~rc5.1
 Release: 1
 Summary: NEAT Project
 License: BSD
 Group: Applications/Internet
 URL: https://github.com/NEAT-project/neat
-Source: %{name}-%{version}.tar.gz
+Source: %{name}-%{version}.tar.xz
 
 AutoReqProv: on
 BuildRequires: cmake

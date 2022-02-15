@@ -2,7 +2,7 @@ Source: libneat
 Maintainer: NEAT Project <neat@neat-project.org>
 Section: net
 Priority: optional
-Build-Depends: cmake (>= 3.0.2) | cmake3,
+Build-Depends: cmake,
                debhelper (>= 9),
                libfile-fcntllock-perl,
                libjansson-dev,
@@ -11,7 +11,7 @@ Build-Depends: cmake (>= 3.0.2) | cmake3,
                libsctp-dev,
                libssl-dev,
                libuv1-dev (>= 1.0.2),
-               python3-dev,
+               python3-dev (>= 3.7) | python3.7-dev,
                swig
 Standards-Version: 4.6.0.1
 Rules-Requires-Root: no

@@ -1,5 +1,5 @@
 Source: libneat
-Maintainer: NEAT Project <neat@neat-project.org>
+Maintainer: Thomas Dreibholz <dreibh@simula.no>
 Section: net
 Priority: optional
 Build-Depends: cmake,

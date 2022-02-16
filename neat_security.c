@@ -843,7 +843,8 @@ nt_security_init(neat_ctx *ctx)
 void
 nt_security_close(neat_ctx *ctx)
 {
-    FIPS_mode_set(0);
+    // Commented out, not supported by OpenSSL on Ubuntu 22.04:
+    // FIPS_mode_set(0);
     CRYPTO_set_locking_callback(NULL);
     CRYPTO_set_id_callback(NULL);
     ENGINE_cleanup();

@@ -15,6 +15,7 @@ LICENSE=	BSD
 LIB_DEPENDS=    libjansson.so:devel/jansson \
 		libldns.so:dns/ldns \
 		libuv.so:devel/libuv
+BUILD_DEPENDS=  swig:devel/swig
 
 USES=		cmake ssl
 USE_LDCONFIG=	yes

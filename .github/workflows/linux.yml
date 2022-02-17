@@ -45,10 +45,6 @@ jobs:
             image: ubuntu:18.04
             cc: gcc
             cxx: g++
-          - label: "Ubuntu 16.04 (Xenial Xerus) with GCC"
-            image: ubuntu:16.04
-            cc: gcc
-            cxx: g++
 
           # ====== Debian Linux =============================================
           - label: "Debian 12 (Bookworm) with GCC"

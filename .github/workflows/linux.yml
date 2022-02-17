@@ -23,6 +23,7 @@ on:
     branches:
       - master
       - dreibh/github-actions
+      - dreibh/neat-socketapi
 
 jobs:
   build_job:

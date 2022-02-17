@@ -65,8 +65,8 @@ void es_add_parent(struct event_signal* es, struct event_signal* parent);
 void es_remove_parent(struct event_signal* es, struct event_signal* parent);
 
 void es_fire(struct event_signal* es, const bool broadcast);
-inline void es_signal(struct event_signal* es) { es_fire(es, false); }
-inline void es_broadcast(struct event_signal* es) { es_fire(es, true); }
+void es_signal(struct event_signal* es);
+void es_broadcast(struct event_signal* es);
 
 bool es_has_fired(struct event_signal* es);
 bool es_peek_fired(struct event_signal* es);

@@ -127,6 +127,20 @@ void es_fire(struct event_signal* es, const bool broadcast)
 }
 
 
+/* ###### Fire signal #################################################### */
+void es_signal(struct event_signal* es)
+{
+   es_fire(es, false);
+}
+
+
+/* ###### Fire signal as broadcast ####################################### */
+void es_broadcast(struct event_signal* es)
+{
+   es_fire(es, true);
+}
+
+
 /* ###### Check whether condition has fired and reset its status ######### */
 bool es_has_fired(struct event_signal* es)
 {

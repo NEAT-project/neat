@@ -4,7 +4,8 @@ Source: https://github.com/NEAT-project/neat
 
 Files: *
 Copyright:
- (C) 2015-2016 Simula Research Laboratory
+ (C) 2018-2022 Simula Metropolitan Centre for Digital Engineering
+ (C) 2015-2022 Simula Research Laboratory
  (C) 2015-2016 Celerway Communication AS
  (C) 2015-2016 EMC Information Systems International
  (C) 2015-2016 MZ Denmark APS
@@ -16,7 +17,9 @@ Copyright:
 License: BSD-3-clause
 
 Files: debian/*
-Copyright: (C) 2016 Iain R. Learmonth <irl@debian.org>
+Copyright:
+ (C) 2017-2022 Thomas Dreibholz <dreibh@simula.no>
+ (C) 2016 Iain R. Learmonth <irl@debian.org>
 License: CC0
 
 License: BSD-3-clause

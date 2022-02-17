@@ -22,3 +22,9 @@ FOREACH (source_file ${neat_socketapi_example_programs})
             RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/libneat
             BUNDLE DESTINATION  ${CMAKE_INSTALL_LIBDIR}/libneat)
 ENDFOREACH ()
+
+
+# FIXME! Work-around for stdc++ compile issue in Fedora 36+Rawhide:
+IF(CMAKE_COMPILER_IS_GNUCXX)
+   SET_TARGET_PROPERTIES(httpget PROPERTIES LINK_FLAGS "-Wno-maybe-uninitialized")
+ENDIF()

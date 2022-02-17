@@ -1,5 +1,5 @@
 Name: libneat
-Version: 1.0.3~td1
+Version: 1.0.3
 Release: 1
 Summary: NEAT Project
 License: BSD
@@ -184,6 +184,8 @@ This package contains the built examples for the NEAT Sockets API.
 
 
 %changelog
+* Thu Feb 17 2022 Thomas Dreibholz <dreibh@simula.no> - 1.0.3
+- New upstream release.
 * Wed Feb 16 2022 Thomas Dreibholz <dreibh@simula.no> - 1.0.2
 - New upstream release.
 * Thu Dec 05 2019 Thomas Dreibholz <dreibh@iem.uni-due.de> - 1.0.1

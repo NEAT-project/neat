@@ -42,10 +42,10 @@ jobs:
             image: ubuntu:20.04
             cc: gcc
             cxx: g++
-          - label: "Ubuntu 18.04 (Bionic Beaver) with GCC"
-            image: ubuntu:18.04
-            cc: gcc
-            cxx: g++
+          #- label: "Ubuntu 18.04 (Bionic Beaver) with GCC"
+            #image: ubuntu:18.04
+            #cc: gcc
+            #cxx: g++
 
           # ====== Debian Linux =============================================
           - label: "Debian 12 (Bookworm) with GCC"

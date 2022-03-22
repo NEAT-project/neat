@@ -1,384 +1,389 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
-
-<?rfc toc="yes"?>
-<?rfc compact="yes" ?>
-<?rfc subcompact="no" ?>
-<?rfc strict="no" ?>
-<?rfc symrefs="no" ?>
-
-<rfc category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-10">
-
-<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
-
-
-<front>
-
-<title abbrev="NEAT Sockets API">
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE rfc [
+<!ENTITY nbsp "&#160;">
+<!ENTITY zwsp "&#8203;">
+<!ENTITY nbhy "&#8209;">
+<!ENTITY wj "&#8288;">
+]>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" category="exp" ipr="trust200902" docName="draft-dreibholz-taps-neat-socketapi-10" obsoletes="" updates="" submissionType="IETF" xml:lang="en" tocInclude="true" symRefs="false" version="3">
+  <!-- xml2rfc v2v3 conversion 3.9.1 -->
+  <?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+  <front>
+    <title abbrev="NEAT Sockets API">
 NEAT Sockets API
 </title>
-
-<!-- ************** THOMAS DREIBHOLZ *************** -->
-<author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz">
-<organization abbrev="SimulaMet">Simula Metropolitan Centre for Digital Engineering</organization>
-<address>
-<postal>
-   <street>Pilestredet 52</street>
-   <city>0167 Oslo</city>
-   <region>Oslo</region>
-   <country>Norway</country>
-</postal>
-<phone>+47-6782-8200</phone>
-<facsimile>+47-6782-8201</facsimile>
-<email>dreibh@simula.no</email>
-<uri>https://www.simula.no/people/dreibh</uri>
-</address>
-</author>
-
-<date />
-<keyword>Internet-Draft</keyword>
-
-<abstract>
-<t>This document describes a BSD Sockets-like API on top of the callback-based NEAT User API. This facilitates porting existing applications to use a subset of NEAT's functionality.</t>
-</abstract>
-
-
-</front>
-
-<middle>
-
-
-<section title="Introduction">
-   <t>The NEAT project <xref target="ANRW2017" />, <xref target="NEAT-D1.1" />, <xref target="I-D.ietf-taps-transports-usage" />, <xref target="I-D.gjessing-taps-minset" />, <xref target="NEAT-Website" /> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network “services” offered to applications – such as reliability, low-delay communication or security – to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion.</t>
-   <t>This document describes the NEAT Sockets API on top of the callback-based NEAT User API <xref target="I-D.fairhurst-taps-neat" />. It provides a BSD Sockets-like API that facilitates porting existing applications to use a subset of NEAT's functionality. For further information on NEAT, see also <xref target="ANRW2017" />, <xref target="NEAT-D1.1" />,  <xref  target="NEAT-D1.3" />,  <xref target="NEAT-D2.2" />,  <xref target="NEAT-D2.3" />.</t>
-
-<section title="Conventions">
-<t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in <xref target="RFC2119"/>.</t>
-</section>
-</section>
-
-
-<section title="Initialisation and Clean-Up">
-
-<section title="nsa_init()">
-<t>nsa_init() is used to explicitly initialise the NEAT Sockets API. In the usual case, however, the NEAT Sockets API is automatically initialized when creating a NEAT socket. Explicit initialisation may only be necessary in a multi-threaded program, in order to avoid parallel initialisation calls.</t>
-<t>Function Prototype:</t>
-<figure><artwork>
+    <seriesInfo name="Internet-Draft" value="draft-dreibholz-taps-neat-socketapi-10"/>
+    <!-- ************** THOMAS DREIBHOLZ *************** -->
+    <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz">
+      <organization abbrev="SimulaMet">Simula Metropolitan Centre for Digital Engineering</organization>
+      <address>
+        <postal>
+          <street>Pilestredet 52</street>
+          <city>0167 Oslo</city>
+          <country>Norway</country>
+        </postal>
+        <email>dreibh@simula.no</email>
+        <uri>https://www.simula.no/people/dreibh</uri>
+      </address>
+    </author>
+    <date/>
+    <keyword>Internet-Draft</keyword>
+    <abstract>
+      <t>This document describes a BSD Sockets-like API on top of the callback-based NEAT User API. This facilitates porting existing applications to use a subset of NEAT's functionality.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section numbered="true" toc="default">
+      <name>Introduction</name>
+      <t>The NEAT project <xref target="ANRW2017" format="default"/>, <xref target="NEAT-D1.1" format="default"/>, <xref target="I-D.ietf-taps-transports-usage" format="default"/>, <xref target="I-D.gjessing-taps-minset" format="default"/>, <xref target="NEAT-Website" format="default"/> wants to achieve a complete redesign of the way in which Internet applications interact with the network. Our goal is to allow network "services" offered to applications - such as reliability, low-delay communication or security - to be dynamically tailored based on application demands, current network conditions, hardware capabilities or local policies, and also to support the integration of new network functionality in an evolutionary fashion.</t>
+      <t>This document describes the NEAT Sockets API on top of the callback-based NEAT User API <xref target="I-D.fairhurst-taps-neat" format="default"/>. It provides a BSD Sockets-like API that facilitates porting existing applications to use a subset of NEAT's functionality. For further information on NEAT, see also <xref target="ANRW2017" format="default"/>, <xref target="NEAT-D1.1" format="default"/>,  <xref target="NEAT-D1.3" format="default"/>,  <xref target="NEAT-D2.2" format="default"/>,  <xref target="NEAT-D2.3" format="default"/>.</t>
+      <section numbered="true" toc="default">
+        <name>Conventions</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in <xref target="RFC2119" format="default"/>.</t>
+      </section>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Initialisation and Clean-Up</name>
+      <section numbered="true" toc="default">
+        <name>nsa_init()</name>
+        <t>nsa_init() is used to explicitly initialise the NEAT Sockets API. In the usual case, however, the NEAT Sockets API is automatically initialized when creating a NEAT socket. Explicit initialisation may only be necessary in a multi-threaded program, in order to avoid parallel initialisation calls.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_init()
-</artwork></figure>
-<t>Return Value:</t>
-<t>nsa_init() returns the new NEAT socket descriptor, or -1 in case of error. The error code will be set in the errno variable.</t>
-</section>
-
-<section title="nsa_cleanup()">
-<t>nsa_cleanup() is used to free all resources allocated by NEAT. Note, that the NEAT Sockets API is automatically initialized when creating a NEAT socket.</t>
-<t>Function Prototype:</t>
-<figure><artwork>
+]]></artwork>
+        <t>Return Value:</t>
+        <t>nsa_init() returns the new NEAT socket descriptor, or -1 in case of error. The error code will be set in the errno variable.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_cleanup()</name>
+        <t>nsa_cleanup() is used to free all resources allocated by NEAT. Note, that the NEAT Sockets API is automatically initialized when creating a NEAT socket.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 void nsa_cleanup()
-</artwork></figure>
-</section>
-
-
-<section title="nsa_map_socket()">
-<t>nsa_map_socket() is used to map a system socket descriptor into the NEAT socket descriptor space. This is useful for using NEAT API functions as wrapper to calls on non-NEAT sockets. Mapped socket descriptors can be unmapped by using nsa_unmap_socket().</t>
-<t>Function Prototype:</t>
-<figure><artwork>
+]]></artwork>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_map_socket()</name>
+        <t>nsa_map_socket() is used to map a system socket descriptor into the NEAT socket descriptor space. This is useful for using NEAT API functions as wrapper to calls on non-NEAT sockets. Mapped socket descriptors can be unmapped by using nsa_unmap_socket().</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_map_socket(int systemSD, int neatSD)
-</artwork></figure>
-<t>Arguments:</t>
-   <t>
-   <list style="hanging">
-      <t hangText="systemSD:">System socket descriptor.</t>
-      <t hangText="neatSD:">Desired NEAT socket descriptor; -1 for automatic allocation.</t>
-   </list>
-   </t>
-<t>Return Value:</t>
-<t>nsa_map_socket() returns the new NEAT socket descriptor, or -1 in case of error. The error code will be set in the errno variable.</t>
-</section>
-
-<section title="nsa_unmap_socket()">
-<t>nsa_unmap_socket() is used to unmap a system socket descriptor from the NEAT socket descriptor space.</t>
-<t>Function Prototype:</t>
- <figure><artwork>
-int nsa_unmap_socket(int neatSD)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="neatSD:">NEAT socket descriptor.</t>
-   </list>
- </t>
-</section>
-
-</section>
-
-
-<section title="Connection Establishment and Teardown">
-
-<section title="nsa_socket()">
- <t>nsa_socket() creates a new NEAT socket. The NEAT socket can either be a wrapper around the NEAT User API (if properties are specified) or be a wrapper around a system socket (if no properties are specified).</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>systemSD:</dt>
+          <dd>System socket descriptor.</dd>
+          <dt>neatSD:</dt>
+          <dd>Desired NEAT socket descriptor; -1 for automatic allocation.</dd>
+        </dl>
+        <t>Return Value:</t>
+        <t>nsa_map_socket() returns the new NEAT socket descriptor, or -1 in case of error. The error code will be set in the errno variable.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_unmap_socket()</name>
+        <t>nsa_unmap_socket() is used to unmap a system socket descriptor from the NEAT socket descriptor space.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_unmap_socket(int neatSD)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>neatSD:</dt>
+          <dd>NEAT socket descriptor.</dd>
+        </dl>
+      </section>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Connection Establishment and Teardown</name>
+      <section numbered="true" toc="default">
+        <name>nsa_socket()</name>
+        <t>nsa_socket() creates a new NEAT socket. The NEAT socket can either be a wrapper around the NEAT User API (if properties are specified) or be a wrapper around a system socket (if no properties are specified).</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_socket(int domain, int type, int protocol,
-               const char* properties)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="domain:">Domain for system socket (e.g. AF_INET).</t>
-      <t hangText="type:">Type for system socket (SOCK_SEQPACKET).</t>
-      <t hangText="protocol:">Protocol for system socket (IPPROTO_SCTP).</t>
-      <t hangText="properties:">Properties for NEAT Core socket.</t>
-   </list>
- </t>
- <t>Return Value:</t>
- <t>nsa_socket() returns the NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the socket() documentation for details.</t>
-</section>
-
-<section title="nsa_socketpair()">
- <t>nsa_socketpair() is a wrapper around the socketpair() call, returning NEAT socket descriptors instead. Note, that socketpair() only supports AF_UNIX sockets, i.e. this function is just a wrapper for the system function.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+               const char* properties)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>domain:</dt>
+          <dd>Domain for system socket (e.g. AF_INET).</dd>
+          <dt>type:</dt>
+          <dd>Type for system socket (SOCK_SEQPACKET).</dd>
+          <dt>protocol:</dt>
+          <dd>Protocol for system socket (IPPROTO_SCTP).</dd>
+          <dt>properties:</dt>
+          <dd>Properties for NEAT Core socket.</dd>
+        </dl>
+        <t>Return Value:</t>
+        <t>nsa_socket() returns the NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the socket() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_socketpair()</name>
+        <t>nsa_socketpair() is a wrapper around the socketpair() call, returning NEAT socket descriptors instead. Note, that socketpair() only supports AF_UNIX sockets, i.e. this function is just a wrapper for the system function.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_socketpair(int domain, int type, int protocol,
-                   const char* properties)</artwork></figure>
- <t>See the socketpair() documentation for details.</t>
-</section>
-
-<section title="nsa_close()">
- <t>nsa_close() closes a given NEAT socket.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_close(int sockfd)</artwork></figure>
- <t>Arguments:</t>
-   <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-   </list>
- </t>
- <t>nsa_close() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the close() documentation for details.</t>
-</section>
-
-<section title="nsa_fcntl()">
- <t>nsa_fcntl() manipulates a given NEAT socket.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_fcntl(int sockfd, int cmd, ...)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="cmd:">Command.</t>
-      <t hangText="...:">Command-specific arguments.</t>
-   </list>
- </t>
- <t>nsa_fcntl() returns a command-specific value.</t>
- <t>For NEAT sockets, the following commands are specified:</t>
- <t>
- <list style="hanging">
-    <t hangText="F_GETFL:">Obtain value of the socket descriptor status flags. For NEAT sockets, the flag O_NONBLOCK specifies whether the socket is non-blocking. By default, it is blocking (i.e. O_NONBLOCK is not set).</t>
-    <t hangText="F_SETFL:">Set value of the socket descriptor status flags. For NEAT sockets, the flag O_NONBLOCK specifies whether the socket is non-blocking. By default, it is blocking (i.e. O_NONBLOCK is not set). F_SETFL can then be used to change the blocking mode.</t>
- </list>
- </t>
- <t>See the fcntl() documentation for details.</t>
-</section>
-
-<section title="nsa_bind()">
-<t>nsa_bind() binds a given NEAT socket to a given address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_bindn() instead. Note further, that nsa_bind() also supports a single address only (i.e. no multi-homing). nsa_bindx() SHOULD be used instead to support multi-homing.</t>
-<t>Function Prototype:</t>
- <figure><artwork>
+                   const char* properties)]]></artwork>
+        <t>See the socketpair() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_close()</name>
+        <t>nsa_close() closes a given NEAT socket.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_close(int sockfd)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+        </dl>
+        <t>nsa_close() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the close() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_fcntl()</name>
+        <t>nsa_fcntl() manipulates a given NEAT socket.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_fcntl(int sockfd, int cmd, ...)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>cmd:</dt>
+          <dd>Command.</dd>
+          <dt>...:</dt>
+          <dd>Command-specific arguments.</dd>
+        </dl>
+        <t>nsa_fcntl() returns a command-specific value.</t>
+        <t>For NEAT sockets, the following commands are specified:</t>
+        <dl newline="false" spacing="normal">
+          <dt>F_GETFL:</dt>
+          <dd>Obtain value of the socket descriptor status flags. For NEAT sockets, the flag O_NONBLOCK specifies whether the socket is non-blocking. By default, it is blocking (i.e. O_NONBLOCK is not set).</dd>
+          <dt>F_SETFL:</dt>
+          <dd>Set value of the socket descriptor status flags. For NEAT sockets, the flag O_NONBLOCK specifies whether the socket is non-blocking. By default, it is blocking (i.e. O_NONBLOCK is not set). F_SETFL can then be used to change the blocking mode.</dd>
+        </dl>
+        <t>See the fcntl() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_bind()</name>
+        <t>nsa_bind() binds a given NEAT socket to a given address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_bindn() instead. Note further, that nsa_bind() also supports a single address only (i.e. no multi-homing). nsa_bindx() SHOULD be used instead to support multi-homing.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_bind(int sockfd,
              const struct sockaddr* addr, socklen_t addrlen,
-             struct neat_tlv* opt, const int optcnt)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="addr:">Address to bind to.</t>
-      <t hangText="addrlen:">Length of the address structure "addr".</t>
-      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
-      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
-   </list>
- </t>
- <t>nsa_bind() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the bind() documentation for details.</t>
-</section>
-
-<section title="nsa_bindx()">
- <t>nsa_bindx() binds a given NEAT socket to a given set of addresses. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_bindn() instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+             struct neat_tlv* opt, const int optcnt)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>addr:</dt>
+          <dd>Address to bind to.</dd>
+          <dt>addrlen:</dt>
+          <dd>Length of the address structure "addr".</dd>
+          <dt>opt:</dt>
+          <dd>NEAT options (NULL, if there are none).</dd>
+          <dt>optcnt:</dt>
+          <dd>Number of NEAT options provided by "opt".</dd>
+        </dl>
+        <t>nsa_bind() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the bind() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_bindx()</name>
+        <t>nsa_bindx() binds a given NEAT socket to a given set of addresses. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_bindn() instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_bindx(int sockfd, const struct sockaddr* addrs, int addrcnt,
               int flags,
-              struct neat_tlv* opt, const int optcnt)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="addrs:">Addresses to bind to.</t>
-      <t hangText="addrcnt:">Number of addresses in "addr".</t>
-      <t hangText="flags:">Optional flags (0, if there are none).</t>
-      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
-      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
-   </list>
- </t>
- <t>nsa_bindx() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the sctp_bindx() documentation for details.</t>
-</section>
-
-<section title="nsa_bindn()">
- <t>nsa_bindn() binds a given NEAT socket to a given port. NEAT takes care of handling local addresses.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+              struct neat_tlv* opt, const int optcnt)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>addrs:</dt>
+          <dd>Addresses to bind to.</dd>
+          <dt>addrcnt:</dt>
+          <dd>Number of addresses in "addr".</dd>
+          <dt>flags:</dt>
+          <dd>Optional flags (0, if there are none).</dd>
+          <dt>opt:</dt>
+          <dd>NEAT options (NULL, if there are none).</dd>
+          <dt>optcnt:</dt>
+          <dd>Number of NEAT options provided by "opt".</dd>
+        </dl>
+        <t>nsa_bindx() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the sctp_bindx() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_bindn()</name>
+        <t>nsa_bindn() binds a given NEAT socket to a given port. NEAT takes care of handling local addresses.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_bindn(int sockfd, uint16_t port, int flags,
-              struct neat_tlv* opt, const int optcnt)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="port:">Port number to bind to.</t>
-      <t hangText="flags:">Optional flags (0, if there are none).</t>
-      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
-      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
-   </list>
- </t>
- <t>nsa_bindn() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
-</section>
-
-<section title="nsa_connect()">
-<t>nsa_connect() connects a given NEAT socket to a given remote address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_connectn() instead. Note further, that nsa_connect() also supports a single address only (i.e. no multi-homing). nsa_connectx() SHOULD be used instead to support multi-homing.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+              struct neat_tlv* opt, const int optcnt)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>port:</dt>
+          <dd>Port number to bind to.</dd>
+          <dt>flags:</dt>
+          <dd>Optional flags (0, if there are none).</dd>
+          <dt>opt:</dt>
+          <dd>NEAT options (NULL, if there are none).</dd>
+          <dt>optcnt:</dt>
+          <dd>Number of NEAT options provided by "opt".</dd>
+        </dl>
+        <t>nsa_bindn() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_connect()</name>
+        <t>nsa_connect() connects a given NEAT socket to a given remote address. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_connectn() instead. Note further, that nsa_connect() also supports a single address only (i.e. no multi-homing). nsa_connectx() SHOULD be used instead to support multi-homing.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_connect(int sockfd,
                 const struct sockaddr* addr, socklen_t addrlen,
-                struct neat_tlv* opt, const int optcnt)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="addr:">Address to connect to.</t>
-      <t hangText="addrlen:">Length of the address structure "addr".</t>
-      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
-      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
-   </list>
- </t>
- <t>nsa_connect() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the connect() documentation for details.</t>
-</section>
-
-<section title="nsa_connectx()">
- <t>nsa_connectx() connects a given NEAT socket to a given set of remote addresses. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_connectn() instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                struct neat_tlv* opt, const int optcnt)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>addr:</dt>
+          <dd>Address to connect to.</dd>
+          <dt>addrlen:</dt>
+          <dd>Length of the address structure "addr".</dd>
+          <dt>opt:</dt>
+          <dd>NEAT options (NULL, if there are none).</dd>
+          <dt>optcnt:</dt>
+          <dd>Number of NEAT options provided by "opt".</dd>
+        </dl>
+        <t>nsa_connect() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the connect() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_connectx()</name>
+        <t>nsa_connectx() connects a given NEAT socket to a given set of remote addresses. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_connectn() instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_connectx(int sockfd,
                  const struct sockaddr* addrs, int addrcnt,
                  neat_assoc_t* id,
-                 struct neat_tlv* opt, const int optcnt)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="addrs:">Addresses to connect to.</t>
-      <t hangText="addrcnt:">Number of addresses in "addr".</t>
-      <t hangText="id">Pointer to store association ID to (not used yet, use NULL!).</t>
-      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
-      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
-   </list>
- </t>
- <t>nsa_connectx() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the sctp_connectx() documentation for details.</t>
-</section>
-
-<section title="nsa_connectn()">
- <t>nsa_connectn() connects a given NEAT socket to a given remote name and port. The remote name is resolved by NEAT to corresponding remote addresses.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                 struct neat_tlv* opt, const int optcnt)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>addrs:</dt>
+          <dd>Addresses to connect to.</dd>
+          <dt>addrcnt:</dt>
+          <dd>Number of addresses in "addr".</dd>
+          <dt>id</dt>
+          <dd>Pointer to store association ID to (not used yet, use NULL!).</dd>
+          <dt>opt:</dt>
+          <dd>NEAT options (NULL, if there are none).</dd>
+          <dt>optcnt:</dt>
+          <dd>Number of NEAT options provided by "opt".</dd>
+        </dl>
+        <t>nsa_connectx() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the sctp_connectx() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_connectn()</name>
+        <t>nsa_connectn() connects a given NEAT socket to a given remote name and port. The remote name is resolved by NEAT to corresponding remote addresses.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_connectn(int sockfd, const char* name, const uint16_t port,
                  neat_assoc_t* id,
-                 struct neat_tlv* opt, const int optcnt)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="name:">Remote name to connect to.</t>
-      <t hangText="port:">Remote port number to connect to.</t>
-      <t hangText="id">Pointer to store association ID to (not used yet, use NULL!).</t>
-      <t hangText="opt:">NEAT options (NULL, if there are none).</t>
-      <t hangText="optcnt:">Number of NEAT options provided by "opt".</t>
-   </list>
- </t>
- <t>nsa_connectn() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
-</section>
-
-<section title="nsa_listen()">
- <t>nsa_listen() marks a given NEAT socket as listening socket, i.e. accepting incoming connections.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_listen(int sockfd, int backlog)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="backlog:">Defines the maximum length to which the queue of pending connections for "sockfd" may grow.</t>
-   </list>
- </t>
- <t>nsa_listen() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the listen() documentation for details.</t>
-</section>
-
-<section title="nsa_accept()">
- <t>nsa_accept() extracts the first connection request in the queue of pending connections for a listening NEAT socket, creates a new connected socket, and returns a new NEAT socket descriptor referring to that socket. </t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="addr:">Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</t>
-      <t hangText="addrlen:">Pointer to variable with size of the storage in "addr" (or NULL, if address is not needed).</t>
-   </list>
- </t>
- <t>nsa_accept() returns the new NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable. In case of success, the peer's primary address is stored in "addr", if there is sufficient space. The variable pointer to by "addrlen" will then contain the actual address size.</t>
- <t>See the accept() documentation for details.</t>
-</section>
-
-<section title="nsa_accept4()">
- <t>nsa_accept4() extracts the first connection request in the queue of pending connections for a listening NEAT socket, creates a new connected socket, and returns a new NEAT socket descriptor referring to that socket. If successful, and flags!=0, nsa_accept4() furthermore makes the new socket non-blocking (SOCK_NONBLOCK flag) and/or close-on-exec (SOCK_CLOEXEC flag). For flags==0, the behaviour is identical to nsa_accept().
-  </t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                 struct neat_tlv* opt, const int optcnt)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>name:</dt>
+          <dd>Remote name to connect to.</dd>
+          <dt>port:</dt>
+          <dd>Remote port number to connect to.</dd>
+          <dt>id</dt>
+          <dd>Pointer to store association ID to (not used yet, use NULL!).</dd>
+          <dt>opt:</dt>
+          <dd>NEAT options (NULL, if there are none).</dd>
+          <dt>optcnt:</dt>
+          <dd>Number of NEAT options provided by "opt".</dd>
+        </dl>
+        <t>nsa_connectn() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_listen()</name>
+        <t>nsa_listen() marks a given NEAT socket as listening socket, i.e. accepting incoming connections.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_listen(int sockfd, int backlog)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>backlog:</dt>
+          <dd>Defines the maximum length to which the queue of pending connections for "sockfd" may grow.</dd>
+        </dl>
+        <t>nsa_listen() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the listen() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_accept()</name>
+        <t>nsa_accept() extracts the first connection request in the queue of pending connections for a listening NEAT socket, creates a new connected socket, and returns a new NEAT socket descriptor referring to that socket. </t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>addr:</dt>
+          <dd>Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</dd>
+          <dt>addrlen:</dt>
+          <dd>Pointer to variable with size of the storage in "addr" (or NULL, if address is not needed).</dd>
+        </dl>
+        <t>nsa_accept() returns the new NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable. In case of success, the peer's primary address is stored in "addr", if there is sufficient space. The variable pointer to by "addrlen" will then contain the actual address size.</t>
+        <t>See the accept() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_accept4()</name>
+        <t>nsa_accept4() extracts the first connection request in the queue of pending connections for a listening NEAT socket, creates a new connected socket, and returns a new NEAT socket descriptor referring to that socket. If successful, and flags!=0, nsa_accept4() furthermore makes the new socket non-blocking (SOCK_NONBLOCK flag) and/or close-on-exec (SOCK_CLOEXEC flag). For flags==0, the behaviour is identical to nsa_accept().
+        </t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_accept4(int sockfd,
                 struct sockaddr* addr, socklen_t* addrlen,
-                int flags)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="addr:">Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</t>
-      <t hangText="addrlen:">Pointer to variable with size of the storage in "addr" (or NULL, if address is not needed).</t>
-   </list>
- </t>
- <t>nsa_accept4() returns the new NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable. In case of success, the peer's primary address is stored in "addr", if there is sufficient space. The variable pointer to by "addrlen" will then contain the actual address size.</t>
- <t>See the accept() documentation for details.</t>
-</section>
-
-<section title="nsa_shutdown()">
- <t>nsa_shutdown() shuts down the connection of a given NEAT socket.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_shutdown(int sockfd, int how)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="how:">Not used for NEAT sockets (set to SHUT_RDWR).</t>
-   </list>
- </t>
- <t>nsa_shutdown() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the shutdown() documentation for details.</t>
-</section>
-
-<!--
+                int flags)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>addr:</dt>
+          <dd>Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</dd>
+          <dt>addrlen:</dt>
+          <dd>Pointer to variable with size of the storage in "addr" (or NULL, if address is not needed).</dd>
+        </dl>
+        <t>nsa_accept4() returns the new NEAT socket descriptor in case of success, or -1 in case of error. The error code will be set in the errno variable. In case of success, the peer's primary address is stored in "addr", if there is sufficient space. The variable pointer to by "addrlen" will then contain the actual address size.</t>
+        <t>See the accept() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_shutdown()</name>
+        <t>nsa_shutdown() shuts down the connection of a given NEAT socket.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_shutdown(int sockfd, int how)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>how:</dt>
+          <dd>Not used for NEAT sockets (set to SHUT_RDWR).</dd>
+        </dl>
+        <t>nsa_shutdown() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the shutdown() documentation for details.</t>
+      </section>
+      <!--
 <section title="nsa_peeloff()">
  <t>...</t>
  <t>Function Prototype:</t>
@@ -386,767 +391,1013 @@ int nsa_shutdown(int sockfd, int how)</artwork></figure>
 int nsa_peeloff(int sockfd, neat_assoc_t id)</artwork></figure>
 </section>
 -->
-
-</section>
-
-
-<section title="Options Handling">
-
-<section title="nsa_getsockopt()">
- <t>nsa_getsockopt() gets a socket option of a given NEAT socket.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Options Handling</name>
+      <section numbered="true" toc="default">
+        <name>nsa_getsockopt()</name>
+        <t>nsa_getsockopt() gets a socket option of a given NEAT socket.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_getsockopt(int sockfd, int level, int optname,
-                   void* optval, socklen_t* optlen)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="level:">Option level.</t>
-      <t hangText="optname:">Option number.</t>
-      <t hangText="optval:">Buffer to store option value to.</t>
-      <t hangText="optlen:">Pointer to variable with length of the buffer in "optval".</t>
-   </list>
- </t>
- <t>nsa_getsockopt() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the getsockopt() documentation for details.</t>
-</section>
-
-<section title="nsa_setsockopt()">
- <t>nsa_getsockopt() sets a socket option of a given NEAT socket.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                   void* optval, socklen_t* optlen)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>level:</dt>
+          <dd>Option level.</dd>
+          <dt>optname:</dt>
+          <dd>Option number.</dd>
+          <dt>optval:</dt>
+          <dd>Buffer to store option value to.</dd>
+          <dt>optlen:</dt>
+          <dd>Pointer to variable with length of the buffer in "optval".</dd>
+        </dl>
+        <t>nsa_getsockopt() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the getsockopt() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_setsockopt()</name>
+        <t>nsa_getsockopt() sets a socket option of a given NEAT socket.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_setsockopt(int sockfd, int level, int optname,
-                   const void* optval, socklen_t optlen)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="level:">Option level.</t>
-      <t hangText="optname:">Option number.</t>
-      <t hangText="optval:">Buffer with option value to set.</t>
-      <t hangText="optlen:">Length of buffer with option value.</t>
-   </list>
- </t>
- <t>nsa_setsockopt() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the setsockopt() documentation for details.</t>
-</section>
-
-<section title="nsa_opt_info()">
- <t>nsa_opt_info() gets a socket option of a given NEAT socket.</t>
- <t>Function Prototype:</t>
-  <figure><artwork>
+                   const void* optval, socklen_t optlen)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>level:</dt>
+          <dd>Option level.</dd>
+          <dt>optname:</dt>
+          <dd>Option number.</dd>
+          <dt>optval:</dt>
+          <dd>Buffer with option value to set.</dd>
+          <dt>optlen:</dt>
+          <dd>Length of buffer with option value.</dd>
+        </dl>
+        <t>nsa_setsockopt() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the setsockopt() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_opt_info()</name>
+        <t>nsa_opt_info() gets a socket option of a given NEAT socket.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_opt_info(int sockfd, neat_assoc_t id,
-                 int opt, void* arg, socklen_t* size)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="id:">Association identifier (0 in case of 1:1-style sockets).</t>
-      <t hangText="opt:">Option number.</t>
-      <t hangText="arg:">Buffer to store option value to.</t>
-      <t hangText="size:">Pointer to variable with length of the buffer in "arg".</t>
-   </list>
- </t>
- <t>nsa_opt_info() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the sctp_opt_info() documentation for details.</t>
-</section>
-
-</section>
-
-
-<section title="Security">
-
-<section title="nsa_set_secure_identity()">
-<t>TBD.</t>
-</section>
-
-<section title="...">
-<t>TBD.</t>
-</section>
-
-</section>
-
-
-<section title="Input/Output Handling">
-
-<section title="nsa_write()">
- <t>nsa_write() sends data over a given connected NEAT socket. For NEAT sockets, nsa_write() is equal to nsa_send() with "flags" set to 0.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_write(int fd, const void* buf, size_t len)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="fd:">NEAT socket descriptor.</t>
-      <t hangText="buf:">Data to send.</t>
-      <t hangText="len:">Length of data to send.</t>
-   </list>
- </t>
- <t>nsa_write() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the write() documentation for details.</t>
-</section>
-
-<section title="nsa_writev()">
- <t>nsa_writev() sends data over a given connected NEAT socket. The data is provided by an iovec structure.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_writev(int fd, const struct iovec* iov, int iovcnt)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="iov:">Data to send provided as iovec structures.</t>
-      <t hangText="iovcnt:">Number of provided iovec structures.</t>
-   </list>
- </t>
- <t>nsa_writev() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the writev() documentation for details.</t>
-</section>
-
-<section title="nsa_pwrite()">
- <t>nsa_pwrite() is a wrapper around the pwrite() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset)</artwork></figure>
- <t>See the pwrite() documentation for details.</t>
-</section>
-
-<section title="nsa_pwrite64()">
- <t>nsa_pwrite64() is a wrapper around the pwrite64() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                 int opt, void* arg, socklen_t* size)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>id:</dt>
+          <dd>Association identifier (0 in case of 1:1-style sockets).</dd>
+          <dt>opt:</dt>
+          <dd>Option number.</dd>
+          <dt>arg:</dt>
+          <dd>Buffer to store option value to.</dd>
+          <dt>size:</dt>
+          <dd>Pointer to variable with length of the buffer in "arg".</dd>
+        </dl>
+        <t>nsa_opt_info() returns 0 in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the sctp_opt_info() documentation for details.</t>
+      </section>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Security</name>
+      <section numbered="true" toc="default">
+        <name>nsa_set_secure_identity()</name>
+        <t>TBD.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>...</name>
+        <t>TBD.</t>
+      </section>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Input/Output Handling</name>
+      <section numbered="true" toc="default">
+        <name>nsa_write()</name>
+        <t>nsa_write() sends data over a given connected NEAT socket. For NEAT sockets, nsa_write() is equal to nsa_send() with "flags" set to 0.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+ssize_t nsa_write(int fd, const void* buf, size_t len)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>fd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>buf:</dt>
+          <dd>Data to send.</dd>
+          <dt>len:</dt>
+          <dd>Length of data to send.</dd>
+        </dl>
+        <t>nsa_write() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the write() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_writev()</name>
+        <t>nsa_writev() sends data over a given connected NEAT socket. The data is provided by an iovec structure.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+ssize_t nsa_writev(int fd, const struct iovec* iov, int iovcnt)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>iov:</dt>
+          <dd>Data to send provided as iovec structures.</dd>
+          <dt>iovcnt:</dt>
+          <dd>Number of provided iovec structures.</dd>
+        </dl>
+        <t>nsa_writev() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the writev() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_pwrite()</name>
+        <t>nsa_pwrite() is a wrapper around the pwrite() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset)]]></artwork>
+        <t>See the pwrite() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_pwrite64()</name>
+        <t>nsa_pwrite64() is a wrapper around the pwrite64() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 ssize_t nsa_pwrite(int fd, const void* buf, size_t len,
-                   off64_t offset)</artwork></figure>
- <t>See the pwrite64() documentation for details.</t>
-</section>
-
-<section title="nsa_pwritev()">
- <t>nsa_pwritev() is a wrapper around the pwritev() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                   off64_t offset)]]></artwork>
+        <t>See the pwrite64() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_pwritev()</name>
+        <t>nsa_pwritev() is a wrapper around the pwritev() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
-                    off_t offset)</artwork></figure>
- <t>See the pwritev() documentation for details.</t>
-</section>
-
-<section title="nsa_pwritev64()">
- <t>nsa_pwritev64() is a wrapper around the pwritev64() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                    off_t offset)]]></artwork>
+        <t>See the pwritev() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_pwritev64()</name>
+        <t>nsa_pwritev64() is a wrapper around the pwritev64() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
-                    off64_t offset)</artwork></figure>
- <t>See the pwritev64() documentation for details.</t>
-</section>
-
-<section title="nsa_send()">
- <t>nsa_send() sends data over a given connected NEAT socket.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="buf:">Data to send.</t>
-      <t hangText="len:">Length of data to send.</t>
-      <t hangText="flags:">Optional flags (0, if there are none).</t>
-   </list>
- </t>
- <t>nsa_send() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the send() documentation for details.</t>
-</section>
-
-<section title="nsa_sendto()">
- <t>nsa_sendto() is a wrapper around the sendto() call, using NEAT socket descriptors instead. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_send() instead. On NEAT sockets, a provided destination address is ignored.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                    off64_t offset)]]></artwork>
+        <t>See the pwritev64() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_send()</name>
+        <t>nsa_send() sends data over a given connected NEAT socket.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>buf:</dt>
+          <dd>Data to send.</dd>
+          <dt>len:</dt>
+          <dd>Length of data to send.</dd>
+          <dt>flags:</dt>
+          <dd>Optional flags (0, if there are none).</dd>
+        </dl>
+        <t>nsa_send() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the send() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_sendto()</name>
+        <t>nsa_sendto() is a wrapper around the sendto() call, using NEAT socket descriptors instead. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_send() instead. On NEAT sockets, a provided destination address is ignored.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 ssize_t nsa_sendto(int sockfd, const void* buf, size_t len,
                    int flags,
-                   const struct sockaddr* to, socklen_t tolen)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="buf:">Data to send.</t>
-      <t hangText="len:">Length of data to send.</t>
-      <t hangText="flags:">Optional flags (0, if there are none).</t>
-      <t hangText="to:">Address to send data to (ignored for NEAT sockets).</t>
-      <t hangText="tolen:">Length of address to send data to (ignored for NEAT sockets).</t>
-   </list>
- </t>
- <t>nsa_sendto() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the send() documentation for details.</t>
-</section>
-
-<section title="nsa_sendmsg()">
- <t>nsa_sendmsg() sends data over a given connected NEAT socket. The data and control information is provided by a msghdr structure. On NEAT sockets, a provided destination address is ignored.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="msg:">Data to send and corresponding control information as msghdr structure.</t>
-      <t hangText="flags:">Optional flags (0, if there are none).</t>
-   </list>
- </t>
- <t>nsa_sendmsg() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the sendmsg() documentation for details.</t>
-</section>
-
-<section title="nsa_sendv()">
- <t>nsa_sendv() sends data over a given connected NEAT socket. The data and control information is provided by iovec and info structures. On NEAT sockets, a provided destination address is ignored.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                   const struct sockaddr* to, socklen_t tolen)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>buf:</dt>
+          <dd>Data to send.</dd>
+          <dt>len:</dt>
+          <dd>Length of data to send.</dd>
+          <dt>flags:</dt>
+          <dd>Optional flags (0, if there are none).</dd>
+          <dt>to:</dt>
+          <dd>Address to send data to (ignored for NEAT sockets).</dd>
+          <dt>tolen:</dt>
+          <dd>Length of address to send data to (ignored for NEAT sockets).</dd>
+        </dl>
+        <t>nsa_sendto() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the send() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_sendmsg()</name>
+        <t>nsa_sendmsg() sends data over a given connected NEAT socket. The data and control information is provided by a msghdr structure. On NEAT sockets, a provided destination address is ignored.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+ssize_t nsa_sendmsg(int sockfd, const struct msghdr* msg, int flags)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>msg:</dt>
+          <dd>Data to send and corresponding control information as msghdr structure.</dd>
+          <dt>flags:</dt>
+          <dd>Optional flags (0, if there are none).</dd>
+        </dl>
+        <t>nsa_sendmsg() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the sendmsg() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_sendv()</name>
+        <t>nsa_sendv() sends data over a given connected NEAT socket. The data and control information is provided by iovec and info structures. On NEAT sockets, a provided destination address is ignored.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 ssize_t nsa_sendv(int sockfd, struct iovec* iov, int iovcnt,
                   struct sockaddr* to, int tocnt,
                   void* info, socklen_t infolen,
-                  unsigned int infotype, int flags)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="iov:">Data to send provided as iovec structures.</t>
-      <t hangText="iovcnt:">Number of provided iovec structures.</t>
-      <t hangText="to:">Address(es) to send data to (ignored for NEAT sockets).</t>
-      <t hangText="tocnt:">Number of of addresses to send data to (ignored for NEAT sockets).</t>
-      <t hangText="info:">Control information.</t>
-      <t hangText="infolen:">Length of control information.</t>
-      <t hangText="infotype:">Type of control information.</t>
-      <t hangText="flags:">Optional flags (0, if there are none).</t>
-   </list>
- </t>
- <t>nsa_sendv() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the sctp_sendv() documentation for details.</t>
-</section>
-
-<section title="nsa_read()">
- <t>nsa_read() reads data from a given connected NEAT socket. For NEAT sockets, nsa_read() is equal to nsa_recv() with "flags" set to 0.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_read(int fd, void* buf, size_t len)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="fd:">NEAT socket descriptor.</t>
-      <t hangText="buf:">Buffer to store read data to.</t>
-      <t hangText="len:">Length of the storage buffer.</t>
-   </list>
- </t>
- <t>nsa_read() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the read() documentation for details.</t>
-</section>
-
-<section title="nsa_readv()">
- <t>nsa_readv() reads data from a given connected NEAT socket.  The data information buffers are provided by an iovec structure.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_readv(int fd, const struct iovec* iov, int iovcnt)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="fd:">NEAT socket descriptor.</t>
-      <t hangText="iov:">Data to send provided as iovec structures.</t>
-      <t hangText="iovcnt:">Number of provided iovec structures.</t>
-   </list>
- </t>
- <t>nsa_readv() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the readv() documentation for details.</t>
-</section>
-
-<section title="nsa_pread()">
- <t>nsa_pread() is a wrapper around the pread() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)</artwork></figure>
- <t>See the pread() documentation for details.</t>
-</section>
-
-<section title="nsa_pread64()">
- <t>nsa_pread64() is a wrapper around the pread64() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)</artwork></figure>
- <t>See the pread64() documentation for details.</t>
-</section>
-
-<section title="nsa_preadv()">
- <t>nsa_preadv() is a wrapper around the preadv() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                  unsigned int infotype, int flags)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>iov:</dt>
+          <dd>Data to send provided as iovec structures.</dd>
+          <dt>iovcnt:</dt>
+          <dd>Number of provided iovec structures.</dd>
+          <dt>to:</dt>
+          <dd>Address(es) to send data to (ignored for NEAT sockets).</dd>
+          <dt>tocnt:</dt>
+          <dd>Number of of addresses to send data to (ignored for NEAT sockets).</dd>
+          <dt>info:</dt>
+          <dd>Control information.</dd>
+          <dt>infolen:</dt>
+          <dd>Length of control information.</dd>
+          <dt>infotype:</dt>
+          <dd>Type of control information.</dd>
+          <dt>flags:</dt>
+          <dd>Optional flags (0, if there are none).</dd>
+        </dl>
+        <t>nsa_sendv() returns the number of sent bytes in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the sctp_sendv() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_read()</name>
+        <t>nsa_read() reads data from a given connected NEAT socket. For NEAT sockets, nsa_read() is equal to nsa_recv() with "flags" set to 0.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+ssize_t nsa_read(int fd, void* buf, size_t len)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>fd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>buf:</dt>
+          <dd>Buffer to store read data to.</dd>
+          <dt>len:</dt>
+          <dd>Length of the storage buffer.</dd>
+        </dl>
+        <t>nsa_read() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the read() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_readv()</name>
+        <t>nsa_readv() reads data from a given connected NEAT socket.  The data information buffers are provided by an iovec structure.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+ssize_t nsa_readv(int fd, const struct iovec* iov, int iovcnt)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>fd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>iov:</dt>
+          <dd>Data to send provided as iovec structures.</dd>
+          <dt>iovcnt:</dt>
+          <dd>Number of provided iovec structures.</dd>
+        </dl>
+        <t>nsa_readv() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the readv() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_pread()</name>
+        <t>nsa_pread() is a wrapper around the pread() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)]]></artwork>
+        <t>See the pread() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_pread64()</name>
+        <t>nsa_pread64() is a wrapper around the pread64() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)]]></artwork>
+        <t>See the pread64() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_preadv()</name>
+        <t>nsa_preadv() is a wrapper around the preadv() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
-                   off64_t offset)</artwork></figure>
- <t>See the preadv() documentation for details.</t>
-</section>
-
-<section title="nsa_preadv64()">
- <t>nsa_preadv64() is a wrapper around the preadv64() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                   off64_t offset)]]></artwork>
+        <t>See the preadv() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_preadv64()</name>
+        <t>nsa_preadv64() is a wrapper around the preadv64() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
-                   off64_t offset)</artwork></figure>
- <t>See the preadv64() documentation for details.</t>
-</section>
-
-<section title="nsa_recv()">
- <t>nsa_recv() reads data from a given connected NEAT socket.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="buf:">Buffer to store read data to.</t>
-      <t hangText="len:">Length of the storage buffer.</t>
-      <t hangText="flags:">Optional flags (0, if there are none).</t>
-  </list>
- </t>
- <t>nsa_recv() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the recv() documentation for details.</t>
-</section>
-
-<section title="nsa_recvfrom()">
- <t>nsa_recvfrom() reads data from a given connected NEAT socket. The peer's sending address of the data (if possible and useful for underlying transport protocol) is obtained as well. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_recv() instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                   off64_t offset)]]></artwork>
+        <t>See the preadv64() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_recv()</name>
+        <t>nsa_recv() reads data from a given connected NEAT socket.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>buf:</dt>
+          <dd>Buffer to store read data to.</dd>
+          <dt>len:</dt>
+          <dd>Length of the storage buffer.</dd>
+          <dt>flags:</dt>
+          <dd>Optional flags (0, if there are none).</dd>
+        </dl>
+        <t>nsa_recv() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the recv() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_recvfrom()</name>
+        <t>nsa_recvfrom() reads data from a given connected NEAT socket. The peer's sending address of the data (if possible and useful for underlying transport protocol) is obtained as well. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_recv() instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 ssize_t nsa_recvfrom(int sockfd, void* buf, size_t len, int flags,
-                     struct sockaddr* from, socklen_t* fromlen)</artwork></figure>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="buf:">Buffer to store read data to.</t>
-      <t hangText="len:">Length of the storage buffer.</t>
-      <t hangText="flags:">Optional flags (0, if there are none).</t>
-      <t hangText="from:">Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</t>
-      <t hangText="fromlen:">Pointer to variable with size of the storage in "from" (or NULL, if address is not needed).</t>
-  </list>
- </t>
- <t>nsa_recvfrom() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable. In case of success, the peer's sending address (if possible and useful for underlying transport protocol) may be stored in "from", if there is sufficient space. The variable pointer to by "fromlen" will then contain the actual address size.</t>
- <t>See the recvfrom() documentation for details.</t>
-</section>
-
-<section title="nsa_recvmsg()">
- <t>nsa_recvmsg() reads data from a given connected NEAT socket. The data and control information buffers are provided by a msghdr structure.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="msg:">Data to send and corresponding control information as msghdr structure.</t>
-      <t hangText="flags:">Optional flags (0, if there are none).</t>
-   </list>
- </t>
- <t>nsa_recvmsg() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the recvmsg() documentation for details.</t>
-</section>
-
-<section title="nsa_recvv()">
- <t>nsa_recvv() reads data from a given connected NEAT socket. The data and control information buffers are provided by iovec and info structures.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                     struct sockaddr* from, socklen_t* fromlen)]]></artwork>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>buf:</dt>
+          <dd>Buffer to store read data to.</dd>
+          <dt>len:</dt>
+          <dd>Length of the storage buffer.</dd>
+          <dt>flags:</dt>
+          <dd>Optional flags (0, if there are none).</dd>
+          <dt>from:</dt>
+          <dd>Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</dd>
+          <dt>fromlen:</dt>
+          <dd>Pointer to variable with size of the storage in "from" (or NULL, if address is not needed).</dd>
+        </dl>
+        <t>nsa_recvfrom() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable. In case of success, the peer's sending address (if possible and useful for underlying transport protocol) may be stored in "from", if there is sufficient space. The variable pointer to by "fromlen" will then contain the actual address size.</t>
+        <t>See the recvfrom() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_recvmsg()</name>
+        <t>nsa_recvmsg() reads data from a given connected NEAT socket. The data and control information buffers are provided by a msghdr structure.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+ssize_t nsa_recvmsg(int sockfd, struct msghdr* msg, int flags)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>msg:</dt>
+          <dd>Data to send and corresponding control information as msghdr structure.</dd>
+          <dt>flags:</dt>
+          <dd>Optional flags (0, if there are none).</dd>
+        </dl>
+        <t>nsa_recvmsg() returns the number of read bytes in case of success, 0 in case of connection shutdown, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the recvmsg() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_recvv()</name>
+        <t>nsa_recvv() reads data from a given connected NEAT socket. The data and control information buffers are provided by iovec and info structures.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 ssize_t nsa_recvv(int sockfd, struct iovec* iov, int iovcnt,
                   struct sockaddr* from, socklen_t* fromlen,
                   void* info, socklen_t* infolen,
-                  unsigned int* infotype, int* msg_flags)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="iov:">Data to send provided as iovec structures.</t>
-      <t hangText="iovcnt:">Number of provided iovec structures.</t>
-      <t hangText="from:">Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</t>
-      <t hangText="fromlen:">Pointer to variable with size of the storage in "from" (or NULL, if address is not needed).</t>
-      <t hangText="info:">Pointer to storage space for control information.</t>
-      <t hangText="infolen:">Pointer to variable with length of control information.</t>
-      <t hangText="infotype:">Pointer to variable for storing the control information type to.</t>
-      <t hangText="flags:">Pointer to variable with optional flags.</t>
-   </list>
- </t>
- <t>nsa_recvv() returns the number of sent received in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the sctp_recvv() documentation for details.</t>
-</section>
-
-</section>
-
-
-<section title="Poll and Select">
-
-<section title="nsa_poll()">
- <t>nsa_poll() waits for activity (input/output/error/...) on a set of given NEAT sockets.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)</artwork></figure>
- <t>Arguments:</t>
- <t>
-   <list style="hanging">
-      <t hangText="ufds:">NEAT socket descriptor and requested activity for each NEAT socket.</t>
-      <t hangText="nfds:">Number of sockets given by "ufds".</t>
-      <t hangText="timeout:">Timeout in milliseconds.</t>
-   </list>
- </t>
- <t>nsa_poll() returns the number of NEAT sockets with activity in case of success, 0 in case of timeout, or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the poll() documentation for details.</t>
-</section>
-
-<section title="nsa_select()">
- <t>nsa_select() is a wrapper around the select() call, using NEAT socket descriptors instead. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_poll() instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                  unsigned int* infotype, int* msg_flags)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>iov:</dt>
+          <dd>Data to send provided as iovec structures.</dd>
+          <dt>iovcnt:</dt>
+          <dd>Number of provided iovec structures.</dd>
+          <dt>from:</dt>
+          <dd>Pointer to storage space to store the peer's primary address to (or NULL, if address is not needed).</dd>
+          <dt>fromlen:</dt>
+          <dd>Pointer to variable with size of the storage in "from" (or NULL, if address is not needed).</dd>
+          <dt>info:</dt>
+          <dd>Pointer to storage space for control information.</dd>
+          <dt>infolen:</dt>
+          <dd>Pointer to variable with length of control information.</dd>
+          <dt>infotype:</dt>
+          <dd>Pointer to variable for storing the control information type to.</dd>
+          <dt>flags:</dt>
+          <dd>Pointer to variable with optional flags.</dd>
+        </dl>
+        <t>nsa_recvv() returns the number of sent received in case of success, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the sctp_recvv() documentation for details.</t>
+      </section>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Poll and Select</name>
+      <section numbered="true" toc="default">
+        <name>nsa_poll()</name>
+        <t>nsa_poll() waits for activity (input/output/error/...) on a set of given NEAT sockets.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>ufds:</dt>
+          <dd>NEAT socket descriptor and requested activity for each NEAT socket.</dd>
+          <dt>nfds:</dt>
+          <dd>Number of sockets given by "ufds".</dd>
+          <dt>timeout:</dt>
+          <dd>Timeout in milliseconds.</dd>
+        </dl>
+        <t>nsa_poll() returns the number of NEAT sockets with activity in case of success, 0 in case of timeout, or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the poll() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_select()</name>
+        <t>nsa_select() is a wrapper around the select() call, using NEAT socket descriptors instead. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_poll() instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_select(int n,
                fd_set* readfds, fd_set* writefds, fd_set* exceptfds,
-               struct timeval* timeout)</artwork></figure>
- <t>See the select() documentation for details.</t>
-</section>
-
-</section>
-
-
-<section title="Address Handling">
-
-<section title="nsa_getsockname()">
- <t>nsa_getsockname() obtains the first local address of a socket. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_getladdrs() instead to support multi-homed transport protocols!</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+               struct timeval* timeout)]]></artwork>
+        <t>See the select() documentation for details.</t>
+      </section>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Address Handling</name>
+      <section numbered="true" toc="default">
+        <name>nsa_getsockname()</name>
+        <t>nsa_getsockname() obtains the first local address of a socket. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_getladdrs() instead to support multi-homed transport protocols!</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_getsockname(int sockfd,
-                    struct sockaddr* name, socklen_t* namelen)</artwork></figure>
- <t>Arguments:</t>
-   <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="name:">Storage space for the address.</t>
-      <t hangText="namelen:">Pointer to variable with the storage space's size.</t>
-   </list>
- </t>
- <t>Return Value:</t>
- <t>nsa_getsockname() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the getsockname() documentation for details.</t>
-</section>
-
-<section title="nsa_getpeername()">
- <t>nsa_getpeername() obtains the first remote address of a connected socket. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_getpaddrs() instead to support multi-homed transport protocols!</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                    struct sockaddr* name, socklen_t* namelen)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>name:</dt>
+          <dd>Storage space for the address.</dd>
+          <dt>namelen:</dt>
+          <dd>Pointer to variable with the storage space's size.</dd>
+        </dl>
+        <t>Return Value:</t>
+        <t>nsa_getsockname() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the getsockname() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_getpeername()</name>
+        <t>nsa_getpeername() obtains the first remote address of a connected socket. Note: this function is provided as legacy wrapper, and it is RECOMMENDED to use nsa_getpaddrs() instead to support multi-homed transport protocols!</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_getpeername(int sockfd,
-                    struct sockaddr* name, socklen_t* namelen)</artwork></figure>
- <t>Arguments:</t>
-   <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="name:">Storage space for the address.</t>
-      <t hangText="namelen:">Pointer to variable with the storage space's size.</t>
-   </list>
- </t>
- <t>Return Value:</t>
- <t>nsa_getpeername() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
- <t>See the getpeername() documentation for details.</t>
-</section>
-
-<section title="nsa_getladdrs()">
- <t>nsa_getladdrs() obtains the local addresses of a socket. The storage space for the addresses will be automatically allocated and needs to be freed by nsa_freeladdrs().</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                    struct sockaddr* name, socklen_t* namelen)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>name:</dt>
+          <dd>Storage space for the address.</dd>
+          <dt>namelen:</dt>
+          <dd>Pointer to variable with the storage space's size.</dd>
+        </dl>
+        <t>Return Value:</t>
+        <t>nsa_getpeername() returns 0 in case of success (with the actual address size stored into the "namelen" variable), or -1 in case of error. The error code will be set in the errno variable.</t>
+        <t>See the getpeername() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_getladdrs()</name>
+        <t>nsa_getladdrs() obtains the local addresses of a socket. The storage space for the addresses will be automatically allocated and needs to be freed by nsa_freeladdrs().</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_getladdrs(int sockfd, neat_assoc_t id,
-                  struct sockaddr** addrs)</artwork></figure>
- <t>Arguments:</t>
-   <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="id:">Association identifier (0 in case of 1:1-style sockets).</t>
-      <t hangText="addrs:">Pointer to variable to store pointer to addresses to.</t>
-   </list>
- </t>
- <t>nsa_getladdrs() returns the number of addresses stored into a newly allocated space. The pointer to this space is stored into the variable provided by "addrs". In case of error, -1 is returned, and the error code will be set in the errno variable.</t>
-</section>
-
-<section title="nsa_freeladdrs()">
- <t>nsa_freeladdrs() frees addresses obtained by nsa_getladdrs().</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-void nsa_freeladdrs(struct sockaddr* addrs)</artwork></figure>
- <t>Arguments:</t>
-   <t>
-   <list style="hanging">
-      <t hangText="addrs:">Pointer to addresses to be freed.</t>
-   </list>
- </t>
-</section>
-
-<section title="nsa_getpaddrs()">
- <t>nsa_getpaddrs() obtains the remote addresses of a connected socket. The storage space for the addresses will be automatically allocated and needs to be freed by nsa_freepaddrs().</t>
- <t>Function Prototype:</t>
- <figure><artwork>
+                  struct sockaddr** addrs)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>id:</dt>
+          <dd>Association identifier (0 in case of 1:1-style sockets).</dd>
+          <dt>addrs:</dt>
+          <dd>Pointer to variable to store pointer to addresses to.</dd>
+        </dl>
+        <t>nsa_getladdrs() returns the number of addresses stored into a newly allocated space. The pointer to this space is stored into the variable provided by "addrs". In case of error, -1 is returned, and the error code will be set in the errno variable.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_freeladdrs()</name>
+        <t>nsa_freeladdrs() frees addresses obtained by nsa_getladdrs().</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+void nsa_freeladdrs(struct sockaddr* addrs)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>addrs:</dt>
+          <dd>Pointer to addresses to be freed.</dd>
+        </dl>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_getpaddrs()</name>
+        <t>nsa_getpaddrs() obtains the remote addresses of a connected socket. The storage space for the addresses will be automatically allocated and needs to be freed by nsa_freepaddrs().</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_getpaddrs(int sockfd, neat_assoc_t id,
-                  struct sockaddr** addrs)</artwork></figure>
- <t>Arguments:</t>
-   <t>
-   <list style="hanging">
-      <t hangText="sockfd:">NEAT socket descriptor.</t>
-      <t hangText="id:">Association identifier (0 in case of 1:1-style sockets).</t>
-      <t hangText="addrs:">Pointer to variable to store pointer to addresses to.</t>
-   </list>
- </t>
- <t>nsa_getpaddrs() returns the number of addresses stored into a newly allocated space. The pointer to this space is stored into the variable provided by "addrs". In case of error, -1 is returned, and the error code will be set in the errno variable.</t>
-</section>
-
-
-<section title="nsa_freepaddrs()">
- <t>nsa_freepaddrs() frees addresses obtained by nsa_getpaddrs().</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-void nsa_freepaddrs(struct sockaddr* addrs)</artwork></figure>
- <t>Arguments:</t>
-   <t>
-   <list style="hanging">
-      <t hangText="addrs:">Pointer to addresses to be freed.</t>
-   </list>
- </t>
-</section>
-
-</section>
-
-
-<section title="Miscellaneous">
-
-<t>This section contains miscellaneous wrapper functions, mostly around file I/O. Since Unix file descriptors are used together with socket descriptors in functions like poll(), select(), etc., it is necessary to wrap functions handling file descriptors as well.</t>
-
-<section title="nsa_open()">
- <t>nsa_open() is a wrapper around the open() call, returning a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_open(const char* pathname, int flags, mode_t mode)</artwork></figure>
- <t>See the open() documentation for details.</t>
-</section>
-
-<section title="nsa_creat()">
- <t>nsa_creat() is a wrapper around the creat() call, returning a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_creat(const char* pathname, mode_t mode)</artwork></figure>
- <t>See the creat() documentation for details.</t>
-</section>
-
-<section title="nsa_lockf()">
- <t>nsa_lockf() is a wrapper around the lockf() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_lockf(int fd, int cmd, off_t len)</artwork></figure>
- <t>See the lockf() documentation for details.</t>
-</section>
-
-<section title="nsa_lockf64()">
- <t>nsa_lockf64() is a wrapper around the lockf64() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_lockf(int fd, int cmd, off64_t len)</artwork></figure>
- <t>See the lockf64() documentation for details.</t>
-</section>
-
-<section title="nsa_flock()">
- <t>nsa_flock() is a wrapper around the flock() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_flock(int fd, int operation)</artwork></figure>
- <t>See the flock() documentation for details.</t>
-</section>
-
-<section title="nsa_fstat()">
- <t>nsa_fstat() is a wrapper around the fstat() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_fstat(int fd, struct stat* buf)</artwork></figure>
- <t>See the fstat() documentation for details.</t>
-</section>
-
-<section title="nsa_fpathconf()">
- <t>nsa_fpathconf() is a wrapper around the fpathconf() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-long nsa_fpathconf(int fd, int name)</artwork></figure>
- <t>See the fpathconf() documentation for details.</t>
-</section>
-
-<section title="nsa_fchown()">
- <t>nsa_fchown() is a wrapper around the fchown() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_fchown(int fd, uid_t owner, gid_t group)</artwork></figure>
- <t>See the fchown() documentation for details.</t>
-</section>
-
-<section title="nsa_fsync()">
- <t>nsa_fsync() is a wrapper around the fsync() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_fsync(int fd)</artwork></figure>
- <t>See the fsync() documentation for details.</t>
-</section>
-
-<section title="nsa_fdatasync()">
- <t>nsa_fdatasync() is a wrapper around the fdatasync() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_fdatasync(int fd)</artwork></figure>
- <t>See the fdatasync() documentation for details.</t>
-</section>
-
-<section title="nsa_syncfs()">
- <t>nsa_syncfs() is a wrapper around the syncfs() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_syncfs(int fd)</artwork></figure>
- <t>See the syncfs() documentation for details.</t>
-</section>
-
-<section title="nsa_dup2()">
- <t>nsa_dup2() is a wrapper around the dup2() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_dup2(int oldfd, int newfd)</artwork></figure>
- <t>See the dup2() documentation for details.</t>
-</section>
-
-<section title="nsa_dup3()">
- <t>nsa_dup3() is a wrapper around the dup3() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_dup3(int oldfd, int newfd, int flags)</artwork></figure>
- <t>See the dup3() documentation for details.</t>
-</section>
-
-<section title="nsa_dup()">
- <t>nsa_dup() is a wrapper around the dup() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_dup(int oldfd)</artwork></figure>
- <t>See the dup() documentation for details.</t>
-</section>
-
-<section title="nsa_lseek()">
- <t>nsa_lseek() is a wrapper around the lseek() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-off_t nsa_lseek(int fd, off_t offset, int whence)</artwork></figure>
- <t>See the lseek() documentation for details.</t>
-</section>
-
-<section title="nsa_lseek64()">
- <t>nsa_lseek64() is a wrapper around the lseek64() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-off_t nsa_lseek(int fd, off64_t offset, int whence)</artwork></figure>
- <t>See the lseek64() documentation for details.</t>
-</section>
-
-<section title="nsa_truncate()">
- <t>nsa_truncate() is a wrapper around the truncate() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_ftruncate(int fd, off_t length)</artwork></figure>
- <t>See the truncate() documentation for details.</t>
-</section>
-
-<section title="nsa_truncate64()">
- <t>nsa_truncate64() is a wrapper around the truncate64() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_ftruncate(int fd, off64_t length)</artwork></figure>
- <t>See the truncate64() documentation for details.</t>
-</section>
-
-<section title="nsa_pipe()">
- <t>nsa_pipe() is a wrapper around the pipe() call, returning NEAT socket descriptors instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_pipe(int fds[2])</artwork></figure>
- <t>See the pipe() documentation for details.</t>
-</section>
-
-<section title="nsa_ioctl()">
- <t>nsa_ioctl() is a wrapper around the ioctl() call, using a NEAT socket descriptor instead.</t>
- <t>Function Prototype:</t>
- <figure><artwork>
-int nsa_ioctl(int fd, int request, const void* argp)</artwork></figure>
- <t>See the ioctl() documentation for details.</t>
-</section>
-
-</section>
-
-
-<section title="Code Examples">
- <t>
-    Running code examples can be found in the NEAT Git repository, with some tutorial material in <xref target="Haikou2017-2-NEAT-Tutorial" />, <xref target="Haikou2017-NEAT" />:
- <list style="hanging">
-    <t>URL: <eref target="https://github.com/NEAT-project/neat">https://github.com/NEAT-project/neat</eref></t>
-    <t>Branch: <eref target="https://github.com/NEAT-project/neat/tree/dreibh/neat-socketapi">dreibh/neat-socketapi</eref></t>
-    <t>Directory: <eref target="https://github.com/NEAT-project/neat/tree/dreibh/neat-socketapi/socketapi/examples">socketapi/examples/</eref></t>
- </list>
- </t>
- </section>
-
-
-<section title="Testbed Platform">
-<t>A large-scale and realistic Internet testbed platform with support for the multi-homing feature of the underlying SCTP and MPTCP protocols is NorNet. A description of NorNet is provided in <xref target="LinuxCon2016" />, <xref target="ComNets2013-Core" />, some further information can be found on the project website <xref target="NorNet-Website" />.</t>
-</section>
-
-
-<section title="Security Considerations">
-<t>Security considerations for the SCTP sockets API are described in <xref target="RFC6458" />.</t>
-</section>
-
-
-<section title="IANA Considerations">
-<t>This document does not require IANA actions.</t>
-</section>
-
-<section title="Acknowledgments">
-<t>This work was partially funded by the European Union's Horizon 2020 research and innovation programme under grant agreement No. 644334 (NEAT). The views expressed are solely those of the author(s).</t>
-
-<t>
+                  struct sockaddr** addrs)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>sockfd:</dt>
+          <dd>NEAT socket descriptor.</dd>
+          <dt>id:</dt>
+          <dd>Association identifier (0 in case of 1:1-style sockets).</dd>
+          <dt>addrs:</dt>
+          <dd>Pointer to variable to store pointer to addresses to.</dd>
+        </dl>
+        <t>nsa_getpaddrs() returns the number of addresses stored into a newly allocated space. The pointer to this space is stored into the variable provided by "addrs". In case of error, -1 is returned, and the error code will be set in the errno variable.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_freepaddrs()</name>
+        <t>nsa_freepaddrs() frees addresses obtained by nsa_getpaddrs().</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+void nsa_freepaddrs(struct sockaddr* addrs)]]></artwork>
+        <t>Arguments:</t>
+        <dl newline="false" spacing="normal">
+          <dt>addrs:</dt>
+          <dd>Pointer to addresses to be freed.</dd>
+        </dl>
+      </section>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Miscellaneous</name>
+      <t>This section contains miscellaneous wrapper functions, mostly around file I/O. Since Unix file descriptors are used together with socket descriptors in functions like poll(), select(), etc., it is necessary to wrap functions handling file descriptors as well.</t>
+      <section numbered="true" toc="default">
+        <name>nsa_open()</name>
+        <t>nsa_open() is a wrapper around the open() call, returning a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_open(const char* pathname, int flags, mode_t mode)]]></artwork>
+        <t>See the open() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_creat()</name>
+        <t>nsa_creat() is a wrapper around the creat() call, returning a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_creat(const char* pathname, mode_t mode)]]></artwork>
+        <t>See the creat() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_lockf()</name>
+        <t>nsa_lockf() is a wrapper around the lockf() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_lockf(int fd, int cmd, off_t len)]]></artwork>
+        <t>See the lockf() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_lockf64()</name>
+        <t>nsa_lockf64() is a wrapper around the lockf64() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_lockf(int fd, int cmd, off64_t len)]]></artwork>
+        <t>See the lockf64() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_flock()</name>
+        <t>nsa_flock() is a wrapper around the flock() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_flock(int fd, int operation)]]></artwork>
+        <t>See the flock() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_fstat()</name>
+        <t>nsa_fstat() is a wrapper around the fstat() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_fstat(int fd, struct stat* buf)]]></artwork>
+        <t>See the fstat() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_fpathconf()</name>
+        <t>nsa_fpathconf() is a wrapper around the fpathconf() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+long nsa_fpathconf(int fd, int name)]]></artwork>
+        <t>See the fpathconf() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_fchown()</name>
+        <t>nsa_fchown() is a wrapper around the fchown() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_fchown(int fd, uid_t owner, gid_t group)]]></artwork>
+        <t>See the fchown() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_fsync()</name>
+        <t>nsa_fsync() is a wrapper around the fsync() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_fsync(int fd)]]></artwork>
+        <t>See the fsync() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_fdatasync()</name>
+        <t>nsa_fdatasync() is a wrapper around the fdatasync() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_fdatasync(int fd)]]></artwork>
+        <t>See the fdatasync() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_syncfs()</name>
+        <t>nsa_syncfs() is a wrapper around the syncfs() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_syncfs(int fd)]]></artwork>
+        <t>See the syncfs() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_dup2()</name>
+        <t>nsa_dup2() is a wrapper around the dup2() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_dup2(int oldfd, int newfd)]]></artwork>
+        <t>See the dup2() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_dup3()</name>
+        <t>nsa_dup3() is a wrapper around the dup3() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_dup3(int oldfd, int newfd, int flags)]]></artwork>
+        <t>See the dup3() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_dup()</name>
+        <t>nsa_dup() is a wrapper around the dup() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_dup(int oldfd)]]></artwork>
+        <t>See the dup() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_lseek()</name>
+        <t>nsa_lseek() is a wrapper around the lseek() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+off_t nsa_lseek(int fd, off_t offset, int whence)]]></artwork>
+        <t>See the lseek() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_lseek64()</name>
+        <t>nsa_lseek64() is a wrapper around the lseek64() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+off_t nsa_lseek(int fd, off64_t offset, int whence)]]></artwork>
+        <t>See the lseek64() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_truncate()</name>
+        <t>nsa_truncate() is a wrapper around the truncate() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_ftruncate(int fd, off_t length)]]></artwork>
+        <t>See the truncate() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_truncate64()</name>
+        <t>nsa_truncate64() is a wrapper around the truncate64() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_ftruncate(int fd, off64_t length)]]></artwork>
+        <t>See the truncate64() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_pipe()</name>
+        <t>nsa_pipe() is a wrapper around the pipe() call, returning NEAT socket descriptors instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_pipe(int fds[2])]]></artwork>
+        <t>See the pipe() documentation for details.</t>
+      </section>
+      <section numbered="true" toc="default">
+        <name>nsa_ioctl()</name>
+        <t>nsa_ioctl() is a wrapper around the ioctl() call, using a NEAT socket descriptor instead.</t>
+        <t>Function Prototype:</t>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+int nsa_ioctl(int fd, int request, const void* argp)]]></artwork>
+        <t>See the ioctl() documentation for details.</t>
+      </section>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Code Examples</name>
+      <t>
+    Running code examples can be found in the NEAT Git repository, with some tutorial material in <xref target="Haikou2017-2-NEAT-Tutorial" format="default"/>, <xref target="Haikou2017-NEAT" format="default"/>:
+      </t>
+      <dl newline="false" spacing="normal">
+        <dt/>
+        <dd>URL: <eref target="https://github.com/NEAT-project/neat">https://github.com/NEAT-project/neat</eref></dd>
+        <dt/>
+        <dd>Branch: <eref target="https://github.com/NEAT-project/neat/tree/dreibh/neat-socketapi">dreibh/neat-socketapi</eref></dd>
+        <dt/>
+        <dd>Directory: <eref target="https://github.com/NEAT-project/neat/tree/dreibh/neat-socketapi/socketapi/examples">socketapi/examples/</eref></dd>
+      </dl>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Testbed Platform</name>
+      <t>A large-scale and realistic Internet testbed platform with support for the multi-homing feature of the underlying SCTP and MPTCP protocols is NorNet. A description of NorNet is provided in <xref target="LinuxCon2016" format="default"/>, <xref target="ComNets2013-Core" format="default"/>, some further information can be found on the project website <xref target="NorNet-Website" format="default"/>.</t>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Security Considerations</name>
+      <t>Security considerations for the SCTP sockets API are described in <xref target="RFC6458" format="default"/>.</t>
+    </section>
+    <section numbered="true" toc="default">
+      <name>IANA Considerations</name>
+      <t>This document does not require IANA actions.</t>
+    </section>
+    <section numbered="true" toc="default">
+      <name>Acknowledgments</name>
+      <t>This work was partially funded by the European Union's Horizon 2020 research and innovation programme under grant agreement No. 644334 (NEAT). The views expressed are solely those of the author(s).</t>
+      <t>
    The author would like to thank
    David Ros,
    Michael Welzl, and
    Xing Zhou
    for their support.
 </t>
-</section>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" xml:base="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t>In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC6458" target="https://www.rfc-editor.org/info/rfc6458" xml:base="https://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.6458.xml">
+          <front>
+            <title>Sockets API Extensions for the Stream Control Transmission Protocol (SCTP)</title>
+            <author initials="R." surname="Stewart" fullname="R. Stewart">
+              <organization/>
+            </author>
+            <author initials="M." surname="Tuexen" fullname="M. Tuexen">
+              <organization/>
+            </author>
+            <author initials="K." surname="Poon" fullname="K. Poon">
+              <organization/>
+            </author>
+            <author initials="P." surname="Lei" fullname="P. Lei">
+              <organization/>
+            </author>
+            <author initials="V." surname="Yasevich" fullname="V. Yasevich">
+              <organization/>
+            </author>
+            <date year="2011" month="December"/>
+            <abstract>
+              <t>This document describes a mapping of the Stream Control Transmission Protocol (SCTP) into a sockets API.  The benefits of this mapping include compatibility for TCP applications, access to new SCTP features, and a consolidated error and event notification scheme. This document is not an Internet Standards Track specification; it is published for informational purposes.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6458"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6458"/>
+        </reference>
+        <reference anchor="I-D.gjessing-taps-minset" xml:base="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.gjessing-taps-minset.xml" target="https://www.ietf.org/archive/id/draft-gjessing-taps-minset-05.txt">
+          <front>
+            <title>A Minimal Set of Transport Services for TAPS Systems</title>
+            <author fullname="Stein Gjessing">
+              <organization>University of Oslo</organization>
+            </author>
+            <author fullname="Michael Welzl">
+              <organization>University of Oslo</organization>
+            </author>
+            <date month="June" day="20" year="2017"/>
+            <abstract>
+              <t>   This draft recommends a minimal set of IETF Transport Services
+   offered by end systems supporting TAPS, and gives guidance on
+   choosing among the available mechanisms and protocols.  It is based
+   on the set of transport features given in the TAPS document
+   draft-ietf-taps-transports-usage-05.
 
-
-</middle>
-
-
-<back>
-
-<references title='Normative References'>
- <?rfc include="reference.RFC.2119.xml" ?>
- <?rfc include="reference.RFC.6458.xml" ?>
- <?rfc include="reference.I-D.gjessing-taps-minset.xml" ?>
- <?rfc include="reference.I-D.fairhurst-taps-neat.xml" ?>
- <?rfc include="reference.I-D.ietf-taps-transports-usage.xml" ?>
-</references>
-
-<references title='Informative References'>
- <?rfc include="LinuxCon2016.xml" ?>
- <?rfc include="ComNets2013-Core.xml" ?>
-
- <?rfc include="NEAT-Website.xml" ?>
- <?rfc include="NorNet-Website.xml" ?>
- <?rfc include="Haikou2017-2-NEAT-Tutorial.xml" ?>
- <?rfc include="Haikou2017-NEAT.xml" ?>
- <?rfc include="ANRW2017.xml" ?>
-
- <?rfc include="NEAT-D1.1.xml" ?>
- <?rfc include="NEAT-D1.3.xml" ?>
- <?rfc include="NEAT-D2.2.xml" ?>
- <?rfc include="NEAT-D2.3.xml" ?>
-
-</references>
-
-</back>
-
-
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-gjessing-taps-minset-05"/>
+        </reference>
+        <reference anchor="I-D.fairhurst-taps-neat" target="http://www.ietf.org/internet-drafts/draft-fairhurst-taps-neat-00.txt">
+          <front>
+            <title>The NEAT Interface to Transport Services</title>
+            <author initials="G" surname="Fairhurst" fullname="Gorry Fairhurst">
+              <organization/>
+            </author>
+            <date month="October" day="30" year="2017"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-fairhurst-taps-neat-00"/>
+        </reference>
+        <reference anchor="I-D.ietf-taps-transports-usage" xml:base="https://xml2rfc.tools.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-taps-transports-usage.xml" target="https://www.ietf.org/archive/id/draft-ietf-taps-transports-usage-09.txt">
+          <front>
+            <title>On the Usage of Transport Features Provided by IETF Transport Protocols</title>
+            <author fullname="Michael Welzl">
+              <organization>University of Oslo</organization>
+            </author>
+            <author fullname="Michael Tuexen">
+              <organization>Muenster University of Applied Sciences</organization>
+            </author>
+            <author fullname="Naeem Khademi">
+              <organization>University of Oslo</organization>
+            </author>
+            <date month="October" day="26" year="2017"/>
+            <abstract>
+              <t>This document describes how the transport protocols Transmission Control Protocol (TCP), MultiPath TCP (MPTCP), Stream Control Transmission Protocol (SCTP), User Datagram Protocol (UDP), and Lightweight User Datagram Protocol (UDP-Lite) expose services to applications and how an application can configure and use the features that make up these services.  It also discusses the service provided by the Low Extra Delay Background Transport (LEDBAT) congestion control mechanism.  The description results in a set of transport abstractions that can be exported in a transport services (TAPS) API.
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-taps-transports-usage-09"/>
+        </reference>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <reference anchor="LinuxCon2016" target="https://simula.no/file/linuxcon2016-presentationpdf/download">
+          <front>
+            <title>NorNet – Building an Inter-Continental Internet Testbed based on Open Source Software</title>
+            <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz"/>
+            <date day="5" month="October" year="2016"/>
+          </front>
+          <seriesInfo name="" value="Proceedings of the LinuxCon Europe"/>
+        </reference>
+        <reference anchor="ComNets2013-Core" target="https://www.simula.no/file/simulasimula2236pdf/download">
+          <front>
+            <title>NorNet Core – A Multi-Homed Research Testbed</title>
+            <author initials="E.&nbsp;G." surname="Gran" fullname="Ernst Gunnar&nbsp;Gran"/>
+            <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz"/>
+            <author initials="A." surname="Kvalbein" fullname="Amund&nbsp;Kvalbein"/>
+            <date day="14" month="March" year="2014"/>
+          </front>
+          <seriesInfo name="Computer Networks, Special Issue on Future Internet Testbeds" value="Volume 61, Pages 75-87, ISSN&nbsp;1389-1286, DOI&nbsp;10.1016/j.bjp.2013.12.035"/>
+        </reference>
+        <reference anchor="NEAT-Website" target="https://www.neat-project.org/">
+          <front>
+            <title>NEAT – A New, Evolutive API and Transport-Layer Architecture for the Internet</title>
+            <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz"/>
+            <date year="2022"/>
+          </front>
+        </reference>
+        <reference anchor="NorNet-Website" target="https://www.nntb.no/">
+          <front>
+            <title>NorNet – A Real-World, Large-Scale Multi-Homing Testbed</title>
+            <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz"/>
+            <date year="2022"/>
+          </front>
+        </reference>
+        <reference anchor="Haikou2017-2-NEAT-Tutorial" target="https://www.simula.no/file/haikou2017-neat-tutorialpdf/download">
+          <front>
+            <title>NEAT Tutorial at Hainan University: Getting Started with NEAT</title>
+            <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz"/>
+            <date day="18" month="December" year="2017"/>
+          </front>
+          <seriesInfo name="" value="Invited Talk at Hainan University, College of Information Science and Technology&nbsp;(CIST)"/>
+        </reference>
+        <reference anchor="Haikou2017-NEAT" target="https://www.simula.no/file/haikou2017-neat-introductionpdf/download">
+          <front>
+            <title>A Practical Introduction to NEAT at Hainan University</title>
+            <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz"/>
+            <date day="17" month="April" year="2017"/>
+          </front>
+          <seriesInfo name="" value="Invited Talk at Hainan University, College of Information Science and Technology&nbsp;(CIST)"/>
+        </reference>
+        <reference anchor="ANRW2017" target="https://www.simula.no/file/anrw17-final13pdf/download">
+          <front>
+            <title>A NEAT Way to Browse the Web</title>
+            <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank"/>
+            <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo"/>
+            <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov"/>
+            <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström"/>
+            <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz"/>
+            <author initials="P." surname="Hurtig" fullname="Per&nbsp;Hurtig"/>
+            <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi"/>
+            <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen"/>
+            <date day="15" month="July" year="2017"/>
+          </front>
+          <seriesInfo name="Proceedings of the ACM, IRTF and ISOC Applied Networking Research Workshop&nbsp;(ANRW)" value="Pages 33-34, ISBN&nbsp;978-1-4503-5108-9, DOI&nbsp;10.1145/3106328.3106335"/>
+        </reference>
+        <reference anchor="NEAT-D1.1" target="https://www.neat-project.org/wp-content/uploads/2016/02/D1.1.pdf">
+          <front>
+            <title>NEAT Architecture</title>
+            <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst"/>
+            <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones"/>
+            <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov"/>
+            <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström"/>
+            <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović"/>
+            <author initials="K.&nbsp;R.&nbsp;E.&nbsp;T." surname="Eckert" fullname="Kristian Riktor Evensen Toerless&nbsp;Eckert"/>
+            <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo"/>
+            <author initials="A.&nbsp;F." surname="Hansen" fullname="Audun Fosselie&nbsp;Hansen"/>
+            <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi"/>
+            <author initials="S." surname="Mangiante" fullname="Simone&nbsp;Mangiante"/>
+            <author initials="P." surname="McManus" fullname="Patrick&nbsp;McManus"/>
+            <author initials="G." surname="Papastergiou" fullname="Giorgos&nbsp;Papastergiou"/>
+            <author initials="D." surname="Ros" fullname="David&nbsp;Ros"/>
+            <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen"/>
+            <author initials="E." surname="Vyncke" fullname="Eric&nbsp;Vyncke"/>
+            <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl"/>
+            <date day="1" month="December" year="2015"/>
+          </front>
+          <seriesInfo name="" value="Number D1.1"/>
+        </reference>
+        <reference anchor="NEAT-D1.3" target="https://www.neat-project.org/wp-content/uploads/2015/05/D1.3.pdf">
+          <front>
+            <title>Final Version of Services and APIs</title>
+            <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl"/>
+            <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović"/>
+            <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst"/>
+            <author initials="D." surname="Hayes" fullname="David&nbsp;Hayes"/>
+            <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones"/>
+            <author initials="D." surname="Ros" fullname="David&nbsp;Ros"/>
+            <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen"/>
+            <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank"/>
+            <date day="30" month="October" year="2017"/>
+          </front>
+          <seriesInfo name="Deliverable" value="D1.3"/>
+        </reference>
+        <reference anchor="NEAT-D2.2" target="https://www.neat-project.org/wp-content/uploads/2017/03/D2.2-public.pdf">
+          <front>
+            <title>NEAT – Core Transport System, with both Low-level and High-level Components</title>
+            <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi"/>
+            <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov"/>
+            <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström"/>
+            <author initials="Ø." surname="Dale" fullname="Øystein&nbsp;Dale"/>
+            <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović"/>
+            <author initials="K.&nbsp;R." surname="Evensen" fullname="Kristian Riktor&nbsp;Evensen"/>
+            <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst"/>
+            <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo"/>
+            <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones"/>
+            <author initials="S." surname="Mangiante" fullname="Simone&nbsp;Mangiante"/>
+            <author initials="A." surname="Petlund" fullname="Andreas&nbsp;Petlund"/>
+            <author initials="D." surname="Ros" fullname="David&nbsp;Ros"/>
+            <author initials="D." surname="Stenberg" fullname="Daniel&nbsp;Stenberg"/>
+            <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen"/>
+            <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank"/>
+            <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl"/>
+            <date day="14" month="March" year="2017"/>
+          </front>
+          <seriesInfo name="" value="Number D2.2"/>
+        </reference>
+        <reference anchor="NEAT-D2.3" target="https://www.neat-project.org/wp-content/uploads/2017/10/D2.3.pdf">
+          <front>
+            <title>Final Version of Core Transport System</title>
+            <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi"/>
+            <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov"/>
+            <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström"/>
+            <author initials="Ø." surname="Dale" fullname="Øystein&nbsp;Dale"/>
+            <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović"/>
+            <author initials="K.&nbsp;R." surname="Evensen" fullname="Kristian Riktor&nbsp;Evensen"/>
+            <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst"/>
+            <author initials="A." surname="Fischer" fullname="Andreas&nbsp;Fischer"/>
+            <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo"/>
+            <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones"/>
+            <author initials="S." surname="Mangiante" fullname="Simone&nbsp;Mangiante"/>
+            <author initials="A." surname="Petlund" fullname="Andreas&nbsp;Petlund"/>
+            <author initials="D." surname="Ros" fullname="David&nbsp;Ros"/>
+            <author initials="I." surname="Rüngeler" fullname="Irene&nbsp;Rüngeler"/>
+            <author initials="D." surname="Stenberg" fullname="Daniel&nbsp;Stenberg"/>
+            <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen"/>
+            <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank"/>
+            <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl"/>
+            <date day="31" month="August" year="2017"/>
+          </front>
+          <seriesInfo name="Deliverable" value="D2.3"/>
+        </reference>
+      </references>
+    </references>
+  </back>
 </rfc>

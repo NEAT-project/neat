@@ -15,8 +15,6 @@ Build-Depends: cmake,
                swig
 Standards-Version: 4.6.0.1
 Rules-Requires-Root: no
-Vcs-Browser: https://github.com/NEAT-project/neat
-Vcs-Git: https://github.com/NEAT-project/neat.git
 Homepage: https://github.com/NEAT-project/neat
 
 Package: libneat1

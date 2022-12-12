@@ -1,5 +1,5 @@
 # PROGRAMS LIST
-#################################################
+#############################################################################
 LIST(APPEND neat_socketapi_example_programs
    httpget.cc
    httpserver1.cc
@@ -8,8 +8,8 @@ LIST(APPEND neat_socketapi_example_programs
 )
 
 
-# BUILD EACH PROGRAM
-#################################################
+#### BUILD EACH PROGRAM                                                  ####
+#############################################################################
 FOREACH (source_file ${neat_socketapi_example_programs})
     GET_FILENAME_COMPONENT(source_file_we ${source_file} NAME_WE)
     ADD_EXECUTABLE (

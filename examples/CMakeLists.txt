@@ -1,5 +1,5 @@
 # PROGRAMS LIST
-#################################################
+#############################################################################
 LIST(APPEND neat_programs
     client_dtls_echo.c
     server_dtls_echo.c
@@ -47,8 +47,8 @@ IF (WEBRTC_SUPPORT)
     )
 ENDIF()
 
-# BUILD EACH PROGRAM
-#################################################
+#### BUILD EACH PROGRAM                                                  ####
+#############################################################################
 FOREACH (source_file ${neat_programs})
     GET_FILENAME_COMPONENT(source_file_we ${source_file} NAME_WE)
     ADD_EXECUTABLE (
@@ -70,7 +70,7 @@ ENDFOREACH ()
 
 
 # COPY EXAMPLE PROPERTY FILES
-#################################################
+#############################################################################
 FOREACH (property_example ${neat_property_examples})
     MESSAGE(STATUS "copy file ${property_example}")
     CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/${property_example} ${CMAKE_CURRENT_BINARY_DIR}/${property_example} COPYONLY)

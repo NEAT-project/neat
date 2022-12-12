@@ -1,5 +1,5 @@
 # SOURCES + HEADERS
-#################################################
+#############################################################################
 LIST(APPEND neat_socketapi_headers
    neat-socketapi.h
 )
@@ -16,19 +16,19 @@ LIST(APPEND neat_socketapi_sources
    redblacktree.c
 )
 
-# Define *64() functions
+#### Define *64() functions                                              ####
 ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
 
 
-# PROGRAMS LIST
-################################################
+#### PROGRAMS LIST                                                       ####
+#############################################################################
 LIST(APPEND neat_socketapi_programs
   t2.cc
 )
 
 
 # LIBRARIES
-#################################################
+#############################################################################
 include_directories(.)
 
 ADD_LIBRARY(neat-socketapi SHARED ${neat_socketapi_sources})
@@ -43,8 +43,8 @@ ADD_LIBRARY(neat-socketapi-static STATIC ${neat_socketapi_sources})
 TARGET_LINK_LIBRARIES (neat-socketapi neat ${neat_socketapi_libs} "${CMAKE_THREAD_LIBS_INIT}")
 
 
-# INSTALL
-#################################################
+#### INSTALL                                                             ####
+#############################################################################
 MESSAGE(STATUS "Install directory: ${CMAKE_INSTALL_PREFIX}")
 
 INSTALL(TARGETS neat-socketapi neat-socketapi-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -52,7 +52,7 @@ INSTALL(FILES ${neat_socketapi_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
 # BUILD EACH PROGRAM
-#################################################
+#############################################################################
 FOREACH (source_file ${neat_socketapi_programs})
    GET_FILENAME_COMPONENT(source_file_we ${source_file} NAME_WE)
    ADD_EXECUTABLE (
@@ -66,6 +66,6 @@ FOREACH (source_file ${neat_socketapi_programs})
 ENDFOREACH ()
 
 
-# INCLUDE EXAMPLES AND TESTS FOLDER
-#################################################
+#### INCLUDE EXAMPLES AND TESTS FOLDER                                   ####
+#############################################################################
 ADD_SUBDIRECTORY(examples)

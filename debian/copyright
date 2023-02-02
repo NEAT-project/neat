@@ -18,7 +18,7 @@ License: BSD-3-clause
 
 Files: debian/*
 Copyright:
- (C) 2017-2022 Thomas Dreibholz <dreibh@simula.no>
+ (C) 2017-2023 Thomas Dreibholz <dreibh@simula.no>
  (C) 2016 Iain R. Learmonth <irl@debian.org>
 License: CC0
 

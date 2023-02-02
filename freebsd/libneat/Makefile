@@ -1,4 +1,4 @@
-# Created by: Thomas Dreibholz <dreibh@iem.uni-due.de>
+# Created by: Thomas Dreibholz <thomas.dreibholz@gmail.com>
 # $FreeBSD$
 
 PORTNAME=	libneat
@@ -6,7 +6,7 @@ PORTVERSION=	1.0.3
 CATEGORIES=	net
 MASTER_SITES=	https://packages.nntb.no/software/libneat/
 
-MAINTAINER=	dreibh@iem.uni-due.de
+MAINTAINER=	thomas.dreibholz@gmail.com
 COMMENT=	NEAT Project
 
 LICENSE=	BSD

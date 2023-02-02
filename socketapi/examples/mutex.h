@@ -1,7 +1,7 @@
 /*
  * mutex.h: PThread mutex class
  *
- * Copyright (C) 2003-2021 by Thomas Dreibholz
+ * Copyright (C) 2003-2023 by Thomas Dreibholz
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Contact: dreibh@iem.uni-due.de
+ * Contact: thomas.dreibholz@gmail.com
  */
 
 #ifndef MUTEX_H

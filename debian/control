@@ -13,7 +13,7 @@ Build-Depends: cmake,
                libuv1-dev (>= 1.0.2),
                python3-dev (>= 3.7) | python3.7-dev,
                swig
-Standards-Version: 4.6.0.1
+Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Homepage: https://github.com/NEAT-project/neat
 

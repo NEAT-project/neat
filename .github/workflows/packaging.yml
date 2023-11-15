@@ -1,5 +1,5 @@
 # GitHub Actions Scripts
-# Copyright (C) 2021-2023 by Thomas Dreibholz
+# Copyright (C) 2021-2024 by Thomas Dreibholz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ on:
     branches:
       - master
       - dreibh/github-actions
-      - dreibh/neat-socketapi
 
 jobs:
   # ====== Ubuntu Linux =====================================================
@@ -31,7 +30,7 @@ jobs:
     name: Ubuntu Packaging
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Packaging
       shell: bash
       run: |
@@ -48,7 +47,7 @@ jobs:
       image: debian:unstable
       options: "--privileged"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Packaging
         shell: bash
         # NOTE: The Debian container has no "sudo". It is necessary to install
@@ -69,7 +68,7 @@ jobs:
       image: fedora:latest
       options: "--privileged"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Packaging
         shell: bash
         run: |

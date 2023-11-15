@@ -1,5 +1,5 @@
 # GitHub Actions Scripts
-# Copyright (C) 2021-2023 by Thomas Dreibholz
+# Copyright (C) 2021-2024 by Thomas Dreibholz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ on:
     branches:
       - master
       - dreibh/github-actions
-      - dreibh/neat-socketapi
 
 jobs:
   build_job:
@@ -42,10 +41,10 @@ jobs:
             image: ubuntu:20.04
             cc: gcc
             cxx: g++
-          #- label: "Ubuntu 18.04 (Bionic Beaver) with GCC"
-            #image: ubuntu:18.04
-            #cc: gcc
-            #cxx: g++
+          - label: "Ubuntu 18.04 (Bionic Beaver) with GCC"
+            image: ubuntu:18.04
+            cc: gcc
+            cxx: g++
 
           # ====== Debian Linux =============================================
           - label: "Debian 12 (Bookworm) with GCC"
@@ -62,11 +61,11 @@ jobs:
             cxx: g++
 
           # ====== Fedora Linux =============================================
-          - label: "Fedora 35 with Clang"
+          - label: "Fedora 39 with Clang"
             image: fedora:35
             cc: clang
             cxx: clang++
-          - label: "Fedora 34 with Clang"
+          - label: "Fedora 38 with Clang"
             image: fedora:34
             cc: clang
             cxx: clang++
@@ -78,7 +77,8 @@ jobs:
     container:
       image: ${{ matrix.image }}
     steps:
-      - uses: actions/checkout@v2
+      # NOTE: actions/checkout@v4 does not work for old Ubuntu 18.04!
+      - uses: actions/checkout@v3
       - name: Build
         shell: bash
         run: |

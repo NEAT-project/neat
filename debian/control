@@ -4,7 +4,6 @@ Section: net
 Priority: optional
 Build-Depends: cmake,
                debhelper (>= 12),
-               libfile-fcntllock-perl,
                libjansson-dev,
                libldns-dev,
                libmnl-dev,
@@ -41,8 +40,7 @@ Section: libdevel
 Architecture: any
 Depends: libneat1 (= ${binary:Version}),
          libuv1-dev (>= 1.0.2),
-         ${misc:Depends},
-         ${shlibs:Depends}
+         ${misc:Depends}
 Description: NEAT Core API Development Files
  The NEAT project wants to achieve a complete redesign of the way in which
  Internet applications interact with the network. The goal is to allow network
@@ -120,8 +118,7 @@ Section: libdevel
 Architecture: any
 Depends: libneat-dev (= ${binary:Version}),
          libneat-socketapi1 (= ${binary:Version}),
-         ${misc:Depends},
-         ${shlibs:Depends}
+         ${misc:Depends}
 Description: NEAT Sockets API Development Files
  The NEAT project wants to achieve a complete redesign of the way in which
  Internet applications interact with the network. The goal is to allow network

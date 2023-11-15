@@ -3,7 +3,7 @@ Maintainer: Thomas Dreibholz <dreibh@simula.no>
 Section: net
 Priority: optional
 Build-Depends: cmake,
-               debhelper (>= 9),
+               debhelper (>= 12),
                libfile-fcntllock-perl,
                libjansson-dev,
                libldns-dev,

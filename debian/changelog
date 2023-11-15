@@ -1,7 +1,13 @@
-libneat (1.0.4-1ubuntu1) jammy; urgency=medium
+libneat (1.0.5~rc1-1ubuntu1) jammy; urgency=medium
 
   * New upstream release.
   * Closes: #1005918 (ITP).
+
+ -- Thomas Dreibholz <dreibh@simula.no>  Wed, 15 Nov 2023 10:52:55 +0100
+
+libneat (1.0.4-1ubuntu1) jammy; urgency=medium
+
+  * New upstream release.
   * debian/control: Updated standards version to 4.6.2.
 
  -- Thomas Dreibholz <dreibh@simula.no>  Wed, 08 Feb 2023 11:46:38 +0100

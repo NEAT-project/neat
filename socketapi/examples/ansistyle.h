@@ -1,6 +1,5 @@
 /*
  * ansistyle.h: ANSI escape sequence settings
- * $Id: ansistyle.h 2069 2016-11-28 16:41:11Z dreibh $
  *
  * Copyright (C) 2003-2024 by Thomas Dreibholz
  *

@@ -1,7 +1,7 @@
 Begin4
 Title:          libneat
-Version:        1.0.4
-Entered-date:   2023-02-08
+Version:        1.0.5
+Entered-date:   2023-12-06
 Description:    The NEAT project wants to achieve a complete redesign of the
                 way in which Internet applications interact with the network.
                 The goal is to allow network “services” offered to
@@ -21,7 +21,7 @@ Keywords:       NEAT Project
 Author:         dreibh@simula.no (Thomas Dreibholz)
 Maintained-by:  dreibh@simula.no (Thomas Dreibholz)
 Primary-site:   https://packages.nntb.no/software/libneat
-                489 kB libneat-1.0.4.tar.xz
+                489 kB libneat-1.0.5.tar.xz
 Original-site:  https://www.neat-project.org
 Platforms:      Linux
 Copying-policy: GPL-3+

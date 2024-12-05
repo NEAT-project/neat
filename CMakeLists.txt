@@ -27,12 +27,34 @@ INCLUDE(GNUInstallDirs)
 
 SET(CPACK_SOURCE_GENERATOR "TXZ")
 SET(CPACK_SOURCE_PACKAGE_FILE_NAME
-   "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
-SET(CPACK_SOURCE_IGNORE_FILES
-   "${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}-*;${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}_*;/build/;/.git/;/CMakeFiles/;CMakeCache.txt$;.cmake$;.tar.gz$;/_CPack_Packages;/Makefile$;~$;/build-deb;/clean-deb;/filter-empty-entries;/make-symbols;/make-ppa;/make-deb;/debian.conf;/make-rpm;/rpm.conf;${CPACK_SOURCE_IGNORE_FILES}")
+    "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
+SET(CPACK_SOURCE_IGNORE_FILES "\\\\.git;\\\\.swp$;~$;\\\\.\\\\#;/\\\\#")
+LIST(APPEND CPACK_SOURCE_IGNORE_FILES "^${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}[_-]")
+LIST(APPEND CPACK_SOURCE_IGNORE_FILES "\\\\.cmake$|\\\\.make$|\\\\.log$")
+LIST(APPEND CPACK_SOURCE_IGNORE_FILES "/CMakeCache\\\\.txt$")
+LIST(APPEND CPACK_SOURCE_IGNORE_FILES "/(CMakeFiles|CMakeScripts|_CPack_Packages)/")
+LIST(APPEND CPACK_SOURCE_IGNORE_FILES "/package-version\\\\.h$")
+LIST(APPEND CPACK_SOURCE_IGNORE_FILES "/packaging\\\\.conf$")
+LIST(APPEND CPACK_SOURCE_IGNORE_FILES "^${PROJECT_SOURCE_DIR}/(po.*/|src.*/|)Makefile$")
 INCLUDE(CPack)
 
 ADD_CUSTOM_TARGET(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
+
+
+#############################################################################
+#### UNINSTALL                                                           ####
+#############################################################################
+
+IF(NOT TARGET uninstall)
+   CONFIGURE_FILE(
+      "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
+      "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+      IMMEDIATE @ONLY)
+
+   ADD_CUSTOM_TARGET(uninstall
+      COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+ENDIF()
+
 
 INCLUDE(CheckIncludeFile)
 INCLUDE(CheckStructHasMember)
@@ -40,8 +62,11 @@ INCLUDE(CheckTypeSize)
 INCLUDE(CheckCCompilerFlag)
 SET(CMAKE_MACOSX_RPATH 1)
 
+
+#############################################################################
 # SOURCES + HEADERS
 #############################################################################
+
 LIST(APPEND neat_headers
     neat.h
     neat_queue.h
@@ -111,6 +136,7 @@ FIND_PACKAGE(Threads REQUIRED)
 #############################################################################
 # CHECK STRUCT MEMBERS
 #############################################################################
+
 CHECK_STRUCT_HAS_MEMBER("struct sockaddr" "sa_len" "sys/types.h;sys/socket.h" HAVE_SA_LEN)
 IF (HAVE_SA_LEN)
     MESSAGE(STATUS "HAVE_SA_LEN")
@@ -138,7 +164,8 @@ ENDIF()
 #############################################################################
 # CHECK OPTIONS
 #############################################################################
-#### Debug build type as default                                         ####
+
+# Debug build type as default
 IF (NOT CMAKE_BUILD_TYPE)
     MESSAGE("No build type selected, using DEBUG")
     SET(CMAKE_BUILD_TYPE "DEBUG")
@@ -213,8 +240,10 @@ IF (SANITIZER_ADDRESS AND SANITIZER_MEMORY)
 ENDIF()
 
 
-#### REQUIREMENTS                                                        ####
 #############################################################################
+# REQUIREMENTS
+#############################################################################
+
 CHECK_INCLUDE_FILE(uv.h HAVE_UV_H)
 FIND_LIBRARY(UV_LIB uv)
 
@@ -346,9 +375,12 @@ IF (HAVE_RTIMULIB_H)
     ADD_DEFINITIONS(-DHAVE_RTIMULIB_H)
 ENDIF()
 
+
+#############################################################################
 # COMPILER FLAGS
 #############################################################################
-#### -Wno-array-bounds is unfortunate, but caused by https://bugs.llvm.org/show_bug.cgi?id=20144 ####
+
+# -Wno-array-bounds is unfortunate, but caused by https://bugs.llvm.org/show_bug.cgi?id=20144
 SET(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -g -std=c11   -pedantic -Wall -Wextra -Wfloat-equal -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unreachable-code -Wno-array-bounds")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11 -pedantic -Wall -Wextra -Werror -Wfloat-equal -Wshadow -Wpointer-arith -Wunreachable-code -Winit-self -Wno-unused-function -Wno-unused-parameter -Wno-overlength-strings -Wno-unreachable-code")
 
@@ -430,8 +462,11 @@ IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O")
 ENDIF()
 
-#### LIBRARIES                                                           ####
+
 #############################################################################
+# LIBRARIES
+#############################################################################
+
 INCLUDE_DIRECTORIES(.)
 
 LIST(APPEND neat_libs
@@ -474,15 +509,19 @@ IF (SWIG_PYTHON)
     SWIG_LINK_LIBRARIES(neat ${neat_libs} ${PYTHON_LIBRARIES})
 ENDIF()
 
+
+#############################################################################
 # INSTALL
 #############################################################################
+
 MESSAGE("Install directory: ${CMAKE_INSTALL_PREFIX}")
 
 INSTALL(TARGETS neat neat-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
 INSTALL(FILES "neat.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
-#### INCLUDE EXAMPLES AND TESTS FOLDER                                   ####
+#############################################################################
+# INCLUDE EXAMPLES AND TESTS FOLDER
 #############################################################################
 IF (SOCKET_API)
     ADD_SUBDIRECTORY(socketapi)

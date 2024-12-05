@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Build Scripts
-# Copyright (C) 2002-2024 by Thomas Dreibholz
+# Copyright (C) 2002-2025 by Thomas Dreibholz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 # Contact: thomas.dreibholz@gmail.com
 
 # Bash options:
-set -e
+set -eu
 
 
 CMAKE_OPTIONS=""
@@ -44,24 +44,24 @@ while [ $# -gt 0 ] ; do
       export CC=gcc
    elif [[ "$1" =~ ^(-|--)use-gcc-analyzer$ ]] ; then
       # Use these settings for GCC:
-      export CXX=g++-10
-      export CC=gcc-10
+      export CXX=g++
+      export CC=gcc
       export CFLAGS=-fanalyzer
       export CXXFLAGS=-fanalyzer
-      CMAKE_OPTIONS="$CMAKE_OPTIONS -DCMAKE_VERBOSE_MAKEFILE=ON"
+      CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_VERBOSE_MAKEFILE=ON"
       CORES=1   # The analyzer takes a *huge* amount of memory!
    elif [[ "$1" =~ ^(-|--)debug$ ]] ; then
       # Enable debugging build:
-      CMAKE_OPTIONS="$CMAKE_OPTIONS -DCMAKE_BUILD_TYPE=Debug"
+      CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_BUILD_TYPE=Debug"
    elif [[ "$1" =~ ^(-|--)release$ ]] ; then
       # Enable debugging build:
-      CMAKE_OPTIONS="$CMAKE_OPTIONS -DCMAKE_BUILD_TYPE=Release"
+      CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_BUILD_TYPE=Release"
    elif [[ "$1" =~ ^(-|--)release-with-debinfo$ ]] ; then
       # Enable debugging build:
-      CMAKE_OPTIONS="$CMAKE_OPTIONS -DCMAKE_BUILD_TYPE=RelWithDebInfo"
+      CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_BUILD_TYPE=RelWithDebInfo"
    elif [[ "$1" =~ ^(-|--)verbose$ ]] ; then
       # Enable verbose Makefile:
-      CMAKE_OPTIONS="$CMAKE_OPTIONS -DCMAKE_VERBOSE_MAKEFILE=ON"
+      CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_VERBOSE_MAKEFILE=ON"
    elif [[ "$1" =~ ^(-|--)cores ]] ; then
       if [[ ! "$2" =~ ^[0-9]*$ ]] ; then
          echo >&2 "ERROR: Number of cores must be an integer number!"
@@ -70,27 +70,50 @@ while [ $# -gt 0 ] ; do
       CORES="$2"
       shift
    elif [ "$1" == "--" ] ; then
+      shift
       break
    else
-      echo >&2 "Usage: autogen.sh [--use-clang|--use-clang-scan-build|--use-gcc|--use-gcc-analyzer] [--debug|--release|--release-with-debinfo] [--cores N] [--verbose]"
+      echo >&2 "Usage: autogen.sh [--use-clang|--use-clang-scan-build|--use-gcc|--use-gcc-analyzer] [--debug|--release|--release-with-debinfo] [--cores N] [--verbose] -- (further CMake/Configure options)"
       exit 1
    fi
    shift
 done
 
+if [ "$(uname)" != "FreeBSD" ] ; then
+   installPrefix="/usr"
+else
+   installPrefix="/usr/local"
+fi
+
 
 # ====== Configure with CMake ===============================================
-rm -f CMakeCache.txt
-echo "CMake options:${CMAKE_OPTIONS} -DCMAKE_INSTALL_PREFIX=/usr $@ ."
-${COMMAND} cmake ${CMAKE_OPTIONS} -DCMAKE_INSTALL_PREFIX=/usr $@ .
+if [ -e CMakeLists.txt ] ; then
+   rm -f CMakeCache.txt
+   if [ "$*" != "" ] ; then
+      CMAKE_OPTIONS="${CMAKE_OPTIONS} $*"
+   fi
+   echo "CMake options:${CMAKE_OPTIONS} . -DCMAKE_INSTALL_PREFIX=\"${installPrefix}\""
+   # shellcheck disable=SC2048,SC2086
+   ${COMMAND} cmake ${CMAKE_OPTIONS} . -DCMAKE_INSTALL_PREFIX="${installPrefix}"
 
-# ------ Obtain number of cores ---------------------------------------------
+# ====== Configure with AutoConf/AutoMake ===================================
+elif [ -e bootstrap ] ; then
+   ./bootstrap
+   ./configure $*
+
+else
+   echo >&2 "ERROR: Failed to configure with CMake or AutoMake/AutoConf!"
+   exit 1
+fi
+
+
+# ====== Obtain number of cores =============================================
 # Try Linux
 if [ "${CORES}" == "" ] ; then
-   CORES=`getconf _NPROCESSORS_ONLN 2>/dev/null || true`
+   CORES=$(getconf _NPROCESSORS_ONLN 2>/dev/null || true)
    if [ "${CORES}" == "" ] ; then
       # Try FreeBSD
-      CORES=`sysctl -a | grep 'hw.ncpu' | cut -d ':' -f2 | tr -d ' ' || true`
+      CORES=$(sysctl -a | grep 'hw.ncpu' | cut -d ':' -f2 | tr -d ' ' || true)
    fi
    if [ "${CORES}" == "" ] ; then
       CORES="1"
@@ -98,5 +121,6 @@ if [ "${CORES}" == "" ] ; then
    echo "This system has ${CORES} cores!"
 fi
 
+
 # ====== Build ==============================================================
-${COMMAND} make -j${CORES}
+${COMMAND} make -j"${CORES}"

@@ -1,7 +1,13 @@
-libneat (1.0.6-1ubuntu1) oracular; urgency=medium
+libneat (1.0.7-1ubuntu1) oracular; urgency=medium
 
   * New upstream release.
   * Closes: #1005918 (ITP).
+
+ -- Thomas Dreibholz <dreibh@simula.no>  Sat, 14 Dec 2024 16:25:10 +0100
+
+libneat (1.0.6-1ubuntu1) oracular; urgency=medium
+
+  * New upstream release.
 
  -- Thomas Dreibholz <dreibh@simula.no>  Sat, 14 Dec 2024 15:51:55 +0100
 

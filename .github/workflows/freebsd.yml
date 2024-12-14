@@ -24,6 +24,7 @@ on:
       - master
       - dreibh/github-actions
       - dreibh/github-actions-freebsd
+      - dreibh/neat-socketapi
 
 jobs:
   build_job:

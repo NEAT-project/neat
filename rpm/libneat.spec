@@ -2,7 +2,7 @@ Name: libneat
 Version: 1.0.5
 Release: 1
 Summary: NEAT Project
-License: BSD
+License: BSD-3-clause
 Group: Applications/Internet
 URL: https://github.com/NEAT-project/neat
 Source: %{name}-%{version}.tar.xz
@@ -17,6 +17,7 @@ BuildRequires: libmnl-devel
 BuildRequires: libuv-devel
 BuildRequires: lksctp-tools-devel
 BuildRequires: openssl-devel
+BuildRequires: openssl-devel-engine
 BuildRequires: python3-devel
 BuildRequires: swig
 # BuildRequires: libusrsctp-devel

@@ -23,7 +23,6 @@ on:
     branches:
       - master
       - dreibh/github-actions
-      - dreibh/neat-socketapi
 
 jobs:
   build_job:
@@ -51,21 +50,21 @@ jobs:
             cxx: g++
 
           # ====== Debian Linux =============================================
-          - label: "Debian 12 (Bookworm): GCC/i386"
+          - label: "Debian 13 (Trixie): GCC/i386"
             arch: i386
-            distro: bookworm
+            distro: trixie
             cc: gcc
             cxx: g++
-          - label: "Debian 12 (Bookworm): Clang/ARMv7"
+          - label: "Debian 13 (Trixie): Clang/ARMv7"
             arch: arm32v7
-            distro: bookworm
+            distro: trixie
             cc: clang
             cxx: clang++
 
           # ====== Fedora Linux =============================================
-          - label: "Fedora 41: GCC/PPC64"
+          - label: "Fedora 42: GCC/PPC64"
             arch: ppc64le
-            distro: fedora41
+            distro: fedora42
             cc: gcc
             cxx: g++
 

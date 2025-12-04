@@ -3,7 +3,7 @@ Maintainer: Thomas Dreibholz <dreibh@simula.no>
 Section: net
 Priority: optional
 Build-Depends: cmake,
-               debhelper (>= 12),
+               debhelper-compat (= 13),
                libjansson-dev,
                libldns-dev,
                libmnl-dev,

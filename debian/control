@@ -2,6 +2,9 @@ Source: libneat
 Maintainer: Thomas Dreibholz <dreibh@simula.no>
 Section: net
 Priority: optional
+Homepage: https://github.com/NEAT-project/neat
+Vcs-Git: https://github.com/NEAT-project/neat.git
+Vcs-Browser: https://github.com/NEAT-project/neat
 Build-Depends: cmake,
                debhelper-compat (= 13),
                libjansson-dev,
@@ -14,7 +17,6 @@ Build-Depends: cmake,
                swig
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
-Homepage: https://github.com/NEAT-project/neat
 
 Package: libneat1
 Section: libs

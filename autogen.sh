@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Build Scripts
-# Copyright (C) 2002-2025 by Thomas Dreibholz
+# Copyright (C) 2002-2026 by Thomas Dreibholz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -89,7 +89,7 @@ fi
 # ====== Configure with CMake ===============================================
 if [ -e CMakeLists.txt ] ; then
    rm -f CMakeCache.txt
-   if [ "$*" != "" ] ; then
+   if [ $# -gt 0 ] ; then
       CMAKE_OPTIONS="${CMAKE_OPTIONS} $*"
    fi
    echo "CMake options:${CMAKE_OPTIONS} . -DCMAKE_INSTALL_PREFIX=\"${installPrefix}\""
@@ -99,7 +99,8 @@ if [ -e CMakeLists.txt ] ; then
 # ====== Configure with AutoConf/AutoMake ===================================
 elif [ -e bootstrap ] ; then
    ./bootstrap
-   ./configure $*
+   # shellcheck disable=SC2068
+   ./configure $@
 
 else
    echo >&2 "ERROR: Failed to configure with CMake or AutoMake/AutoConf!"

@@ -2,7 +2,7 @@ Name: libneat
 Version: 1.0.9
 Release: 1
 Summary: NEAT Project
-License: BSD-3-clause
+License: BSD-3-Clause
 Group: Applications/Internet
 URL: https://github.com/NEAT-project/neat
 Source: %{name}-%{version}.tar.xz
@@ -11,17 +11,13 @@ AutoReqProv: on
 BuildRequires: cmake
 BuildRequires: gcc
 BuildRequires: gcc-c++
-BuildRequires: jansson-devel
+BuildRequires: (jansson-devel or libjansson-devel)
 BuildRequires: ldns-devel
 BuildRequires: libmnl-devel
 BuildRequires: libuv-devel
 BuildRequires: lksctp-tools-devel
-BuildRequires: openssl-devel
-BuildRequires: openssl-devel-engine
-BuildRequires: python3-devel
-BuildRequires: swig
+BuildRequires: ((openssl-devel and openssl-devel-engine) or libopenssl-devel)
 # BuildRequires: libusrsctp-devel
-BuildRoot: %{_tmppath}/%{name}-%{version}-build
 
 %description
 The NEAT project wants to achieve a complete redesign of the way in which
@@ -39,6 +35,9 @@ features as they evolve.
 %setup -q
 
 %build
+export CFLAGS="%{optflags} -ffat-lto-objects"
+export CXXFLAGS="%{optflags} -ffat-lto-objects"
+export LDFLAGS="%{build_ldflags}"
 %cmake -DCMAKE_INSTALL_PREFIX=/usr -DSOCKET_API=1 -DUSRSCTP_SUPPORT=0 -DSCTP_MULTISTREAMING=1 -DFLOW_GROUPS=1 .
 %cmake_build
 
@@ -93,6 +92,7 @@ features as they evolve.
 This package contains the built examples for the NEAT Core API.
 
 %files examples
+%dir %attr(0755, root, root) %{_libdir}/libneat
 %{_libdir}/libneat/client
 %{_libdir}/libneat/client_data
 %{_libdir}/libneat/client_http_get
@@ -178,6 +178,7 @@ features as they evolve.
 This package contains the built examples for the NEAT Sockets API.
 
 %files socketapi-examples
+%dir %attr(0755, root, root) %{_libdir}/libneat
 %{_libdir}/libneat/httpget
 %{_libdir}/libneat/httpserver1
 %{_libdir}/libneat/httpserver2-select

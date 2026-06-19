@@ -19,13 +19,12 @@
 # Contact: thomas.dreibholz@gmail.com
 
 # Bash options:
-set -eu
+set -euo pipefail
 
 
 CMAKE_OPTIONS=""
 COMMAND=""
-CORES=
-
+CORES=0
 while [ $# -gt 0 ] ; do
    if [[ "$1" =~ ^(-|--)use-clang$ ]] ; then
       # Use these settings for CLang:
@@ -49,7 +48,6 @@ while [ $# -gt 0 ] ; do
       export CFLAGS=-fanalyzer
       export CXXFLAGS=-fanalyzer
       CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_VERBOSE_MAKEFILE=ON"
-      CORES=1   # The analyzer takes a *huge* amount of memory!
    elif [[ "$1" =~ ^(-|--)debug$ ]] ; then
       # Enable debugging build:
       CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_BUILD_TYPE=Debug"
@@ -63,7 +61,7 @@ while [ $# -gt 0 ] ; do
       # Enable verbose Makefile:
       CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_VERBOSE_MAKEFILE=ON"
    elif [[ "$1" =~ ^(-|--)cores ]] ; then
-      if [[ ! "$2" =~ ^[0-9]*$ ]] ; then
+      if [[ ! "$2" =~ ^[0-9]+$ ]] ; then
          echo >&2 "ERROR: Number of cores must be an integer number!"
          exit 1
       fi
@@ -79,11 +77,18 @@ while [ $# -gt 0 ] ; do
    shift
 done
 
-if [ "$(uname)" != "FreeBSD" ] ; then
-   installPrefix="/usr"
-else
-   installPrefix="/usr/local"
-fi
+UNAME="$(uname)"
+case "${UNAME}" in
+   Linux)
+      installPrefix="/usr"
+      ;;
+   NetBSD)
+      installPrefix="/usr/pkg"
+      ;;
+   *)
+      installPrefix="/usr/local"
+      ;;
+esac
 
 
 # ====== Configure with CMake ===============================================
@@ -109,19 +114,22 @@ fi
 
 
 # ====== Obtain number of cores =============================================
-# Try Linux
-if [ "${CORES}" == "" ] ; then
-   CORES=$(getconf _NPROCESSORS_ONLN 2>/dev/null || true)
-   if [ "${CORES}" == "" ] ; then
-      # Try FreeBSD
-      CORES=$(sysctl -a | grep 'hw.ncpu' | cut -d ':' -f2 | tr -d ' ' || true)
-   fi
-   if [ "${CORES}" == "" ] ; then
-      CORES="1"
+if [ "${CORES}" -lt 1 ] ; then
+   if [ "${UNAME}" == "Linux" ] ; then
+      CORES="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo "1")"
+   elif [ "${UNAME}" == "FreeBSD" ] ; then
+      CORES="$(sysctl -n hw.ncpu || echo "1")"
+   elif [ "${UNAME}" == "NetBSD" ] || [ "${UNAME}" == "OpenBSD" ] ; then
+      CORES="$(sysctl -n hw.ncpuonline || echo "1")"
+   elif [ "${UNAME}" == "Darwin" ] ; then
+      CORES="$(sysctl -n machdep.cpu.core_count)"
+   else
+      CORES=1
    fi
    echo "This system has ${CORES} cores!"
 fi
 
 
 # ====== Build ==============================================================
+echo "Starting build using up to ${CORES} cores ..."
 ${COMMAND} make -j"${CORES}"

@@ -151,7 +151,6 @@ This package contains the built examples for the NEAT Core API.
 %package -n libneat-socketapi1
 Summary: NEAT (Socket API Library)
 Group: Development/Libraries
-Requires: libneat1 = %{version}-%{release}
 
 %description -n libneat-socketapi1
 The NEAT project wants to achieve a complete redesign of the way in which

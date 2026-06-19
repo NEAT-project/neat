@@ -10,10 +10,15 @@ FIND_PACKAGE(Python3 COMPONENTS Interpreter Development REQUIRED)
 
 
 #############################################################################
-#### INSTALLATION_DIRECTORIES                                            ####
+#### CMAKE INCLUDES                                                      ####
 #############################################################################
 
-# See: https://cmake.org/cmake/help/v3.0/module/GNUInstallDirs.html
+INCLUDE(CheckCCompilerFlag)
+INCLUDE(CheckCSourceCompiles)
+INCLUDE(CheckCSourceRuns)
+INCLUDE(CheckIncludeFile)
+INCLUDE(CheckStructHasMember)
+INCLUDE(CheckTypeSize)
 INCLUDE(GNUInstallDirs)
 
 
@@ -26,12 +31,13 @@ SET(CPACK_SOURCE_PACKAGE_FILE_NAME
     "${CMAKE_PROJECT_NAME}-${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH}")
 SET(CPACK_SOURCE_IGNORE_FILES "\\\\.git;\\\\.swp$;~$;\\\\.\\\\#;/\\\\#")
 LIST(APPEND CPACK_SOURCE_IGNORE_FILES "^${PROJECT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}[_-]")
-LIST(APPEND CPACK_SOURCE_IGNORE_FILES "\\\\.cmake$|\\\\.make$|\\\\.log$")
+LIST(APPEND CPACK_SOURCE_IGNORE_FILES "\\\\.make$|\\\\.log$")
 LIST(APPEND CPACK_SOURCE_IGNORE_FILES "/CMakeCache\\\\.txt$")
 LIST(APPEND CPACK_SOURCE_IGNORE_FILES "/(CMakeFiles|CMakeScripts|_CPack_Packages)/")
 LIST(APPEND CPACK_SOURCE_IGNORE_FILES "/package-version\\\\.h$")
 LIST(APPEND CPACK_SOURCE_IGNORE_FILES "/packaging\\\\.conf$")
 LIST(APPEND CPACK_SOURCE_IGNORE_FILES "^${PROJECT_SOURCE_DIR}/(po.*/|src.*/|)Makefile$")
+LIST(APPEND CPACK_SOURCE_IGNORE_FILES "^${PROJECT_SOURCE_DIR}/(po.*|src.*|[^/]*)\\\\.cmake$")
 INCLUDE(CPack)
 
 ADD_CUSTOM_TARGET(dist COMMAND ${CMAKE_MAKE_PROGRAM} clean package_source)
@@ -51,11 +57,6 @@ IF(NOT TARGET uninstall)
       COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 ENDIF()
 
-
-INCLUDE(CheckIncludeFile)
-INCLUDE(CheckStructHasMember)
-INCLUDE(CheckTypeSize)
-INCLUDE(CheckCCompilerFlag)
 SET(CMAKE_MACOSX_RPATH 1)
 
 

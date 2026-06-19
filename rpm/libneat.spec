@@ -17,6 +17,7 @@ BuildRequires: libmnl-devel
 BuildRequires: libuv-devel
 BuildRequires: lksctp-tools-devel
 BuildRequires: ((openssl-devel and openssl-devel-engine) or libopenssl-devel)
+BuildRequires: python3-devel
 # BuildRequires: libusrsctp-devel
 
 %description

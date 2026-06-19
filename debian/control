@@ -13,6 +13,7 @@ Build-Depends: cmake,
                libsctp-dev,
                libssl-dev,
                libuv1-dev (>= 1.0.2),
+               pkgconf,
                python3-dev (>= 3.7) | python3.7-dev,
                swig
 Standards-Version: 4.7.2

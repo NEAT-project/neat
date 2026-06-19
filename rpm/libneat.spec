@@ -54,6 +54,7 @@ export LDFLAGS="%{build_ldflags}"
 %cmake_install
 
 %files
+%doc README.md
 
 
 %package -n libneat1

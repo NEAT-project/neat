@@ -17,8 +17,16 @@ BuildRequires: libmnl-devel
 BuildRequires: libuv-devel
 BuildRequires: lksctp-tools-devel
 BuildRequires: ((openssl-devel and openssl-devel-engine) or libopenssl-devel)
+BuildRequires: pkgconf
 BuildRequires: python3-devel
 # BuildRequires: libusrsctp-devel
+
+Requires: libneat1 = %{version}-%{release}
+Requires: libneat-devel = %{version}-%{release}
+Requires: libneat-examples = %{version}-%{release}
+Requires: libneat-socketapi1 = %{version}-%{release}
+Requires: libneat-socketapi-devel = %{version}-%{release}
+Requires: libneat-socketapi-examples = %{version}-%{release}
 
 %description
 The NEAT project wants to achieve a complete redesign of the way in which
@@ -46,16 +54,42 @@ export LDFLAGS="%{build_ldflags}"
 %cmake_install
 
 %files
-%{_libdir}/libneat.so*
 
 
-%package devel
+%package -n libneat1
+Summary: Shared library for the NEAT Core API
+Group:   System/Libraries
+
+%description -n libneat1
+The NEAT project wants to achieve a complete redesign of the way in which
+Internet applications interact with the network. The goal is to allow network
+“services” offered to applications – such as reliability, low-delay
+communication or security – to be dynamically tailored based on application
+demands, current network conditions, hardware capabilities or local policies,
+and also to support the integration of new network functionality in an
+evolutionary fashion, without applications having to be rewritten. This
+architectural change will make the Internet truly “enhanceable”, by allowing
+applications to seamlessly and more easily take advantage of new network
+features as they evolve.
+This package contains the shared library for the NEAT Core API.
+
+%files -n libneat1
+%{_libdir}/libneat.so.*
+
+%post -n libneat1
+ldconfig
+
+%postun -n libneat1
+ldconfig
+
+
+%package -n libneat-devel
 Summary: NEAT (Core API Development Files)
 Group: Development/Libraries
-Requires: %{name} = %{version}-%{release}
+Requires: libneat1 = %{version}-%{release}
 Requires: libuv-devel
 
-%description devel
+%description -n libneat-devel
 The NEAT project wants to achieve a complete redesign of the way in which
 Internet applications interact with the network. The goal is to allow network
 “services” offered to applications – such as reliability, low-delay
@@ -66,20 +100,20 @@ evolutionary fashion, without applications having to be rewritten. This
 architectural change will make the Internet truly “enhanceable”, by allowing
 applications to seamlessly and more easily take advantage of new network
 features as they evolve.
-This package contains the built examples for the NEAT Core API.
+This package contains the development files for the NEAT Core API.
 
-%files devel
+%files -n libneat-devel
 %{_includedir}/neat.h
 %{_libdir}/libneat-static.a
-%{_libdir}/libneat[^\-]*so
+%{_libdir}/libneat.so
 
 
-%package examples
+%package -n libneat-examples
 Summary: NEAT (Core API Examples)
 Group: Applications/Internet
-Requires: %{name} = %{version}-%{release}
+Requires: libneat1 = %{version}-%{release}
 
-%description examples
+%description -n libneat-examples
 The NEAT project wants to achieve a complete redesign of the way in which
 Internet applications interact with the network. The goal is to allow network
 “services” offered to applications – such as reliability, low-delay
@@ -92,7 +126,7 @@ applications to seamlessly and more easily take advantage of new network
 features as they evolve.
 This package contains the built examples for the NEAT Core API.
 
-%files examples
+%files -n libneat-examples
 %dir %attr(0755, root, root) %{_libdir}/libneat
 %{_libdir}/libneat/client
 %{_libdir}/libneat/client_data
@@ -113,12 +147,12 @@ This package contains the built examples for the NEAT Core API.
 %{_libdir}/libneat/server_dtls_echo
 
 
-%package socketapi
+%package -n libneat-socketapi1
 Summary: NEAT (Socket API Library)
 Group: Development/Libraries
-Requires: %{name} = %{version}-%{release}
+Requires: libneat1 = %{version}-%{release}
 
-%description socketapi
+%description -n libneat-socketapi1
 The NEAT project wants to achieve a complete redesign of the way in which
 Internet applications interact with the network. The goal is to allow network
 “services” offered to applications – such as reliability, low-delay
@@ -131,17 +165,23 @@ applications to seamlessly and more easily take advantage of new network
 features as they evolve.
 This package contains the library for the NEAT Sockets API.
 
-%files socketapi
-%{_libdir}/libneat-socketapi.so*
+%files -n libneat-socketapi1
+%{_libdir}/libneat-socketapi.so.*
+
+%post -n libneat-socketapi1
+ldconfig
+
+%postun -n libneat-socketapi1
+ldconfig
 
 
-%package socketapi-devel
+%package -n libneat-socketapi-devel
 Summary: NEAT (Socket API Development Files)
 Group: Development/Libraries
-Requires: %{name}-devel = %{version}-%{release}
-Requires: %{name}-socketapi = %{version}-%{release}
+Requires: libneat-devel = %{version}-%{release}
+Requires: libneat-socketapi1 = %{version}-%{release}
 
-%description socketapi-devel
+%description -n libneat-socketapi-devel
 The NEAT project wants to achieve a complete redesign of the way in which
 Internet applications interact with the network. The goal is to allow network
 “services” offered to applications – such as reliability, low-delay
@@ -152,20 +192,20 @@ evolutionary fashion, without applications having to be rewritten. This
 architectural change will make the Internet truly “enhanceable”, by allowing
 applications to seamlessly and more easily take advantage of new network
 features as they evolve.
-This package contains the built examples for the NEAT Sockets API.
+This package contains the development files for the NEAT Sockets API.
 
-%files socketapi-devel
+%files -n libneat-socketapi-devel
 %{_includedir}/neat-socketapi.h
 %{_libdir}/libneat-socketapi-static.a
-%{_libdir}/libneat-socketapi*.so
+%{_libdir}/libneat-socketapi.so
 
 
-%package socketapi-examples
+%package -n libneat-socketapi-examples
 Summary: NEAT (Socket API Examples)
 Group: Applications/Internet
-Requires: %{name}-socketapi = %{version}-%{release}
+Requires: libneat-socketapi1 = %{version}-%{release}
 
-%description socketapi-examples
+%description -n libneat-socketapi-examples
 The NEAT project wants to achieve a complete redesign of the way in which
 Internet applications interact with the network. The goal is to allow network
 “services” offered to applications – such as reliability, low-delay
@@ -178,7 +218,7 @@ applications to seamlessly and more easily take advantage of new network
 features as they evolve.
 This package contains the built examples for the NEAT Sockets API.
 
-%files socketapi-examples
+%files  -n libneat-socketapi-examples
 %dir %attr(0755, root, root) %{_libdir}/libneat
 %{_libdir}/libneat/httpget
 %{_libdir}/libneat/httpserver1

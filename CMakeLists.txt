@@ -6,11 +6,7 @@ SET(BUILD_MINOR "0")
 SET(BUILD_PATCH "9")
 SET(BUILD_VERSION ${BUILD_MAJOR}.${BUILD_MINOR}.${BUILD_PATCH})
 
-# Needed by SWIG:
-CMAKE_POLICY(SET CMP0078 OLD)
-CMAKE_POLICY(SET CMP0086 NEW)
-
-include(FindPythonLibs)
+FIND_PACKAGE(Python3 COMPONENTS Interpreter Development REQUIRED)
 
 
 #############################################################################
@@ -291,14 +287,16 @@ IF (OPENSSL_SUPPORT)
 ENDIF()
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    FIND_PACKAGE(PkgConfig REQUIRED)
+    PKG_CHECK_MODULES(MNL REQUIRED libmnl)
     FIND_LIBRARY(MNL_LIB mnl)
-    CHECK_INCLUDE_FILE(libmnl/libmnl.h HAVE_SYS_LIBMNL_H)
-    IF(NOT HAVE_SYS_LIBMNL_H OR NOT MNL_LIB)
-        MESSAGE(FATAL_ERROR "libmnl/libmnl.h not found - libmnl installed?")
-    ELSE()
-        MESSAGE("LIBMNL found: " ${MNL_LIB})
-    ENDIF()
+    INCLUDE_DIRECTORIES(${MNL_INCLUDE_DIRS})
+    LINK_LIBRARIES(${MNL_LIBRARIES})
+    MESSAGE("LIBMNL include directory: " ${MNL_INCLUDE_DIRS})
+    MESSAGE("LIBMNL libraries: " ${MNL_LIBRARIES})
+
     FIND_LIBRARY(SCTP_LIB sctp)
+
     IF (NOT MPTCP_SUPPORT)
         IF(EXISTS "/proc/sys/net/mptcp/mptcp_enabled")
             MESSAGE(STATUS "MPTCP found")

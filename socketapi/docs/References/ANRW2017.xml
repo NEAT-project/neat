@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
-<reference anchor="ANRW2017" target="https://www.simula.no/file/anrw17-final13pdf/download">
+<reference anchor="ANRW2017" target="https://web-backend.simula.no/sites/default/files/publications/files/anrw17-final13.pdf">
 	<front>
 		<title>A NEAT Way to Browse the Web</title>
 		<author initials="F." surname="Weinrank" fullname="Felix&#160;Weinrank" />
@@ -14,6 +14,6 @@
 		<date day="15" month="July" year="2017" />
 	</front>
 	<seriesInfo name="Proceedings of the ACM, IRTF and ISOC Applied Networking Research Workshop&#160;(ANRW)" value="Pages 33–34, ISBN&#160;978-1-4503-5108-9, DOI&#160;10.1145/3106328.3106335" />
-	<format type="PDF" octets="426773" target="https://www.simula.no/file/anrw17-final13pdf/download" />
+	<format type="PDF" octets="426773" target="https://web-backend.simula.no/sites/default/files/publications/files/anrw17-final13.pdf" />
 </reference>
 

@@ -25,7 +25,7 @@ NEAT Sockets API
     <uri>https://www.simula.no/people/dreibh</uri>
    </address>
   </author>
-  <date />
+  <date day="16" month="September" year="2026" />
   <keyword>Internet-Draft</keyword>
   <abstract>
    <t>
@@ -39,36 +39,37 @@ NEAT Sockets API
   <section numbered="true" toc="default">
    <name>Introduction</name>
    <t>
-    The NEAT project <xref target="ANRW2017" format="default" />,
-    <xref target="NEAT-D1.1" format="default" />,
-    <xref target="I-D.ietf-taps-transports-usage" format="default" />,
-    <xref target="I-D.gjessing-taps-minset" format="default" />,
-    <xref target="NEAT-Website" format="default" /> wants to achieve a
-    complete redesign of the way in which Internet applications interact with
-    the network. Our goal is to allow network "services" offered to
-    applications - such as reliability, low-delay communication or security -
-    to be dynamically tailored based on application demands, current network
-    conditions, hardware capabilities or local policies, and also to support
-    the integration of new network functionality in an evolutionary fashion.
+    The NEAT project <xref target="ANRW2017" />, <xref target="NEAT-D1.1" />,
+    <xref target="I-D.ietf-taps-transports-usage" />,
+    <xref target="I-D.gjessing-taps-minset" />, <xref target="NEAT-Website" />
+    wants to achieve a complete redesign of the way in which Internet
+    applications interact with the network. Our goal is to allow network
+    "services" offered to applications - such as reliability, low-delay
+    communication or security - to be dynamically tailored based on
+    application demands, current network conditions, hardware capabilities or
+    local policies, and also to support the integration of new network
+    functionality in an evolutionary fashion.
    </t>
    <t>
     This document describes the NEAT Sockets API on top of the callback-based
-    NEAT User API <xref target="I-D.fairhurst-taps-neat" format="default" />.
-    It provides a BSD Sockets-like API that facilitates porting existing
-    applications to use a subset of NEAT's functionality. For further
-    information on NEAT, see also <xref target="ANRW2017" format="default" />,
-    <xref target="NEAT-D1.1" format="default" />,
-    <xref target="NEAT-D1.3" format="default" />,
-    <xref target="NEAT-D2.2" format="default" />,
-    <xref target="NEAT-D2.3" format="default" />.
+    NEAT User API <xref target="I-D.fairhurst-taps-neat" />. It provides a BSD
+    Sockets-like API that facilitates porting existing applications to use a
+    subset of NEAT's functionality. For further information on NEAT, see also
+    <xref target="ANRW2017" />, <xref target="NEAT-D1.1" />,
+    <xref target="NEAT-D1.3" />, <xref target="NEAT-D2.2" />,
+    <xref target="NEAT-D2.3" />.
    </t>
    <section numbered="true" toc="default">
     <name>Conventions</name>
     <t>
-     The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
-     "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
-     document are to be interpreted as described in
-     <xref target="RFC2119" format="default" />.
+     The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>",
+     "<bcp14>REQUIRED</bcp14>", "<bcp14>SHALL</bcp14>", "<bcp14>SHALL
+     NOT</bcp14>", "<bcp14>SHOULD</bcp14>", "<bcp14>SHOULD NOT</bcp14>",
+     "<bcp14>RECOMMENDED</bcp14>", "<bcp14>NOT RECOMMENDED</bcp14>",
+     "<bcp14>MAY</bcp14>", and "<bcp14>OPTIONAL</bcp14>" in this document are
+     to be interpreted as described in BCP 14 <xref target="RFC2119" />
+     <xref target="RFC8174" /> when, and only when, they appear in all
+     capitals, as shown here.
     </t>
    </section>
   </section>
@@ -246,10 +247,11 @@ int nsa_fcntl(int sockfd, int cmd, ...)]]></artwork>
     <name>nsa_bind()</name>
     <t>
      nsa_bind() binds a given NEAT socket to a given address. Note: this
-     function is provided as legacy wrapper, and it is RECOMMENDED to use
-     nsa_bindn() instead. Note further, that nsa_bind() also supports a single
-     address only (i.e. no multi-homing). nsa_bindx() SHOULD be used instead
-     to support multi-homing.
+     function is provided as legacy wrapper, and it is
+     <bcp14>RECOMMENDED</bcp14> to use nsa_bindn() instead. Note further, that
+     nsa_bind() also supports a single address only (i.e. no multi-homing).
+     nsa_bindx() <bcp14>SHOULD</bcp14> be used instead to support
+     multi-homing.
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -279,8 +281,8 @@ int nsa_bind(int sockfd,
     <name>nsa_bindx()</name>
     <t>
      nsa_bindx() binds a given NEAT socket to a given set of addresses. Note:
-     this function is provided as legacy wrapper, and it is RECOMMENDED to use
-     nsa_bindn() instead.
+     this function is provided as legacy wrapper, and it is
+     <bcp14>RECOMMENDED</bcp14> to use nsa_bindn() instead.
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -340,10 +342,11 @@ int nsa_bindn(int sockfd, uint16_t port, int flags,
     <name>nsa_connect()</name>
     <t>
      nsa_connect() connects a given NEAT socket to a given remote address.
-     Note: this function is provided as legacy wrapper, and it is RECOMMENDED
-     to use nsa_connectn() instead. Note further, that nsa_connect() also
-     supports a single address only (i.e. no multi-homing). nsa_connectx()
-     SHOULD be used instead to support multi-homing.
+     Note: this function is provided as legacy wrapper, and it is
+     <bcp14>RECOMMENDED</bcp14> to use nsa_connectn() instead. Note further,
+     that nsa_connect() also supports a single address only (i.e. no
+     multi-homing). nsa_connectx() <bcp14>SHOULD</bcp14> be used instead to
+     support multi-homing.
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -374,7 +377,7 @@ int nsa_connect(int sockfd,
     <t>
      nsa_connectx() connects a given NEAT socket to a given set of remote
      addresses. Note: this function is provided as legacy wrapper, and it is
-     RECOMMENDED to use nsa_connectn() instead.
+     <bcp14>RECOMMENDED</bcp14> to use nsa_connectn() instead.
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -781,8 +784,8 @@ ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags)]]></artwork
     <t>
      nsa_sendto() is a wrapper around the sendto() call, using NEAT socket
      descriptors instead. Note: this function is provided as legacy wrapper,
-     and it is RECOMMENDED to use nsa_send() instead. On NEAT sockets, a
-     provided destination address is ignored.
+     and it is <bcp14>RECOMMENDED</bcp14> to use nsa_send() instead. On NEAT
+     sockets, a provided destination address is ignored.
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -1005,7 +1008,8 @@ ssize_t nsa_recv(int sockfd, void* buf, size_t len, int flags)]]></artwork>
      nsa_recvfrom() reads data from a given connected NEAT socket. The peer's
      sending address of the data (if possible and useful for underlying
      transport protocol) is obtained as well. Note: this function is provided
-     as legacy wrapper, and it is RECOMMENDED to use nsa_recv() instead.
+     as legacy wrapper, and it is <bcp14>RECOMMENDED</bcp14> to use nsa_recv()
+     instead.
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -1148,7 +1152,7 @@ int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)]]></artwork>
     <t>
      nsa_select() is a wrapper around the select() call, using NEAT socket
      descriptors instead. Note: this function is provided as legacy wrapper,
-     and it is RECOMMENDED to use nsa_poll() instead.
+     and it is <bcp14>RECOMMENDED</bcp14> to use nsa_poll() instead.
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -1164,8 +1168,9 @@ int nsa_select(int n,
     <name>nsa_getsockname()</name>
     <t>
      nsa_getsockname() obtains the first local address of a socket. Note: this
-     function is provided as legacy wrapper, and it is RECOMMENDED to use
-     nsa_getladdrs() instead to support multi-homed transport protocols!
+     function is provided as legacy wrapper, and it is
+     <bcp14>RECOMMENDED</bcp14> to use nsa_getladdrs() instead to support
+     multi-homed transport protocols!
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -1192,9 +1197,9 @@ int nsa_getsockname(int sockfd,
     <name>nsa_getpeername()</name>
     <t>
      nsa_getpeername() obtains the first remote address of a connected socket.
-     Note: this function is provided as legacy wrapper, and it is RECOMMENDED
-     to use nsa_getpaddrs() instead to support multi-homed transport
-     protocols!
+     Note: this function is provided as legacy wrapper, and it is
+     <bcp14>RECOMMENDED</bcp14> to use nsa_getpaddrs() instead to support
+     multi-homed transport protocols!
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -1529,9 +1534,8 @@ int nsa_ioctl(int fd, int request, const void* argp)]]></artwork>
    <name>Code Examples</name>
    <t>
     Running code examples can be found in the NEAT Git repository, with some
-    tutorial material in
-    <xref target="Haikou2017-2-NEAT-Tutorial" format="default" />,
-    <xref target="Haikou2017-NEAT" format="default" />:
+    tutorial material in <xref target="Haikou2017-2-NEAT-Tutorial" />,
+    <xref target="Haikou2017-NEAT" />:
    </t>
    <dl newline="false" spacing="normal">
     <dt />
@@ -1556,18 +1560,16 @@ int nsa_ioctl(int fd, int request, const void* argp)]]></artwork>
    <t>
     A large-scale and realistic Internet testbed platform with support for the
     multi-homing feature of the underlying SCTP and MPTCP protocols is NorNet.
-    A description of NorNet is provided in
-    <xref target="LinuxCon2016" format="default" />,
-    <xref target="ComNets2013-Core" format="default" />, some further
-    information can be found on the project website
-    <xref target="NorNet-Website" format="default" />.
+    A description of NorNet is provided in <xref target="LinuxCon2016" />,
+    <xref target="ComNets2013-Core" />, some further information can be found
+    on the project website <xref target="NorNet-Website" />.
    </t>
   </section>
   <section numbered="true" toc="default">
    <name>Security Considerations</name>
    <t>
     Security considerations for the SCTP sockets API are described in
-    <xref target="RFC6458" format="default" />.
+    <xref target="RFC6458" />.
    </t>
   </section>
   <section numbered="true" toc="default">
@@ -1589,167 +1591,165 @@ int nsa_ioctl(int fd, int request, const void* argp)]]></artwork>
  </middle>
  <back>
   <references>
-   <name>References</name>
-   <references>
-    <name>Normative References</name>
-    <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml" />
-    <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6458.xml" />
-    <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.gjessing-taps-minset.xml" />
-    <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.fairhurst-taps-neat.xml" />
-    <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-taps-transports-usage.xml" />
-   </references>
-   <references>
-    <name>Informative References</name>
-    <reference anchor="LinuxCon2016" target="https://simula.no/file/linuxcon2016-presentationpdf/download">
-     <front>
-      <title>NorNet – Building an Inter-Continental Internet Testbed based on Open Source Software</title>
-      <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz" />
-      <date day="5" month="October" year="2016" />
-     </front>
-     <seriesInfo name="" value="Proceedings of the LinuxCon Europe" />
-    </reference>
-    <reference anchor="ComNets2013-Core" target="https://www.simula.no/file/simulasimula2236pdf/download">
-     <front>
-      <title>NorNet Core – A Multi-Homed Research Testbed</title>
-      <author initials="E.&nbsp;G." surname="Gran" fullname="Ernst Gunnar&nbsp;Gran" />
-      <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz" />
-      <author initials="A." surname="Kvalbein" fullname="Amund&nbsp;Kvalbein" />
-      <date day="14" month="March" year="2014" />
-     </front>
-     <seriesInfo name="Computer Networks, Special Issue on Future Internet Testbeds" value="Volume 61, Pages 75–87, ISSN&nbsp;1389-1286, DOI&nbsp;10.1016/j.bjp.2013.12.035" />
-    </reference>
-    <reference anchor="NEAT-Website" target="https://neat.nntb.no/">
-     <front>
-      <title>NEAT – A New, Evolutive API and Transport-Layer Architecture for the Internet</title>
-      <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz" />
-      <date year="2026" month="September" day="16" />
-     </front>
-    </reference>
-    <reference anchor="NorNet-Website" target="https://www.nntb.no/">
-     <front>
-      <title>NorNet – A Real-World, Large-Scale Multi-Homing Testbed</title>
-      <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz" />
-      <date year="2026" month="September" day="16" />
-     </front>
-    </reference>
-    <reference anchor="Haikou2017-2-NEAT-Tutorial" target="https://www.simula.no/file/haikou2017-neat-tutorialpdf/download">
-     <front>
-      <title>NEAT Tutorial at Hainan University: Getting Started with NEAT</title>
-      <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz" />
-      <date day="18" month="December" year="2017" />
-     </front>
-     <seriesInfo name="" value="Invited Talk at Hainan University, College of Information Science and Technology&nbsp;(CIST)" />
-    </reference>
-    <reference anchor="Haikou2017-NEAT" target="https://www.simula.no/file/haikou2017-neat-introductionpdf/download">
-     <front>
-      <title>A Practical Introduction to NEAT at Hainan University</title>
-      <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz" />
-      <date day="17" month="April" year="2017" />
-     </front>
-     <seriesInfo name="" value="Invited Talk at Hainan University, College of Information Science and Technology&nbsp;(CIST)" />
-    </reference>
-    <reference anchor="ANRW2017" target="https://www.simula.no/file/anrw17-final13pdf/download">
-     <front>
-      <title>A NEAT Way to Browse the Web</title>
-      <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank" />
-      <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo" />
-      <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov" />
-      <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström" />
-      <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz" />
-      <author initials="P." surname="Hurtig" fullname="Per&nbsp;Hurtig" />
-      <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi" />
-      <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen" />
-      <date day="15" month="July" year="2017" />
-     </front>
-     <seriesInfo name="Proceedings of the ACM, IRTF and ISOC Applied Networking Research Workshop&nbsp;(ANRW)" value="Pages 33–34, ISBN&nbsp;978-1-4503-5108-9, DOI&nbsp;10.1145/3106328.3106335" />
-    </reference>
-    <reference anchor="NEAT-D1.1" target="https://neat.nntb.no/wp-content/uploads/2016/02/D1.1.pdf">
-     <front>
-      <title>NEAT Architecture</title>
-      <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst" />
-      <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones" />
-      <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov" />
-      <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström" />
-      <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović" />
-      <author initials="K.&nbsp;R.&nbsp;E.&nbsp;T." surname="Eckert" fullname="Kristian Riktor Evensen Toerless&nbsp;Eckert" />
-      <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo" />
-      <author initials="A.&nbsp;F." surname="Hansen" fullname="Audun Fosselie&nbsp;Hansen" />
-      <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi" />
-      <author initials="S." surname="Mangiante" fullname="Simone&nbsp;Mangiante" />
-      <author initials="P." surname="McManus" fullname="Patrick&nbsp;McManus" />
-      <author initials="G." surname="Papastergiou" fullname="Giorgos&nbsp;Papastergiou" />
-      <author initials="D." surname="Ros" fullname="David&nbsp;Ros" />
-      <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen" />
-      <author initials="E." surname="Vyncke" fullname="Eric&nbsp;Vyncke" />
-      <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl" />
-      <date day="1" month="December" year="2015" />
-     </front>
-     <seriesInfo name="" value="Number D1.1" />
-    </reference>
-    <reference anchor="NEAT-D1.3" target="https://neat.nntb.no/wp-content/uploads/2015/05/D1.3.pdf">
-     <front>
-      <title>Final Version of Services and APIs</title>
-      <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl" />
-      <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović" />
-      <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst" />
-      <author initials="D." surname="Hayes" fullname="David&nbsp;Hayes" />
-      <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones" />
-      <author initials="D." surname="Ros" fullname="David&nbsp;Ros" />
-      <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen" />
-      <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank" />
-      <date day="30" month="October" year="2017" />
-     </front>
-     <seriesInfo name="Deliverable" value="D1.3" />
-    </reference>
-    <reference anchor="NEAT-D2.2" target="https://neat.nntb.no/wp-content/uploads/2017/03/D2.2-public.pdf">
-     <front>
-      <title>NEAT – Core Transport System, with both Low-level and High-level Components</title>
-      <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi" />
-      <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov" />
-      <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström" />
-      <author initials="Ø." surname="Dale" fullname="Øystein&nbsp;Dale" />
-      <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović" />
-      <author initials="K.&nbsp;R." surname="Evensen" fullname="Kristian Riktor&nbsp;Evensen" />
-      <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst" />
-      <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo" />
-      <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones" />
-      <author initials="S." surname="Mangiante" fullname="Simone&nbsp;Mangiante" />
-      <author initials="A." surname="Petlund" fullname="Andreas&nbsp;Petlund" />
-      <author initials="D." surname="Ros" fullname="David&nbsp;Ros" />
-      <author initials="D." surname="Stenberg" fullname="Daniel&nbsp;Stenberg" />
-      <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen" />
-      <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank" />
-      <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl" />
-      <date day="14" month="March" year="2017" />
-     </front>
-     <seriesInfo name="" value="Number D2.2" />
-    </reference>
-    <reference anchor="NEAT-D2.3" target="https://neat.nntb.no/wp-content/uploads/2017/10/D2.3.pdf">
-     <front>
-      <title>Final Version of Core Transport System</title>
-      <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi" />
-      <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov" />
-      <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström" />
-      <author initials="Ø." surname="Dale" fullname="Øystein&nbsp;Dale" />
-      <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović" />
-      <author initials="K.&nbsp;R." surname="Evensen" fullname="Kristian Riktor&nbsp;Evensen" />
-      <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst" />
-      <author initials="A." surname="Fischer" fullname="Andreas&nbsp;Fischer" />
-      <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo" />
-      <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones" />
-      <author initials="S." surname="Mangiante" fullname="Simone&nbsp;Mangiante" />
-      <author initials="A." surname="Petlund" fullname="Andreas&nbsp;Petlund" />
-      <author initials="D." surname="Ros" fullname="David&nbsp;Ros" />
-      <author initials="I." surname="Rüngeler" fullname="Irene&nbsp;Rüngeler" />
-      <author initials="D." surname="Stenberg" fullname="Daniel&nbsp;Stenberg" />
-      <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen" />
-      <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank" />
-      <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl" />
-      <date day="31" month="August" year="2017" />
-     </front>
-     <seriesInfo name="Deliverable" value="D2.3" />
-    </reference>
-   </references>
+   <name>Normative References</name>
+   <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml" />
+   <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml" />
+   <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6458.xml" />
+   <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.gjessing-taps-minset.xml" />
+   <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.fairhurst-taps-neat.xml" />
+   <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-taps-transports-usage.xml" />
+  </references>
+  <references>
+   <name>Informative References</name>
+   <reference anchor="LinuxCon2016" target="https://web-backend.simula.no/sites/default/files/publications/files/linuxcon2016-presentation.pdf">
+    <front>
+     <title>NorNet – Building an Inter-Continental Internet Testbed based on Open Source Software</title>
+     <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz" />
+     <date day="5" month="October" year="2016" />
+    </front>
+    <seriesInfo name="" value="Proceedings of the LinuxCon Europe" />
+   </reference>
+   <reference anchor="ComNets2013-Core" target="https://web-backend.simula.no/sites/default/files/publications/Simula.simula.2236.pdf">
+    <front>
+     <title>NorNet Core – A Multi-Homed Research Testbed</title>
+     <author initials="E.&nbsp;G." surname="Gran" fullname="Ernst Gunnar&nbsp;Gran" />
+     <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz" />
+     <author initials="A." surname="Kvalbein" fullname="Amund&nbsp;Kvalbein" />
+     <date day="14" month="March" year="2014" />
+    </front>
+    <seriesInfo name="Computer Networks, Special Issue on Future Internet Testbeds" value="Volume 61, Pages 75–87, ISSN&nbsp;1389-1286, DOI&nbsp;10.1016/j.bjp.2013.12.035" />
+   </reference>
+   <reference anchor="NEAT-Website" target="https://neat.nntb.no/">
+    <front>
+     <title>NEAT – A New, Evolutive API and Transport-Layer Architecture for the Internet</title>
+     <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz" />
+     <date year="2026" month="September" day="16" />
+    </front>
+   </reference>
+   <reference anchor="NorNet-Website" target="https://www.nntb.no/">
+    <front>
+     <title>NorNet – A Real-World, Large-Scale Multi-Homing Testbed</title>
+     <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz" />
+     <date year="2026" month="September" day="16" />
+    </front>
+   </reference>
+   <reference anchor="Haikou2017-2-NEAT-Tutorial" target="https://web-backend.simula.no/sites/default/files/publications/files/haikou2017-neat-tutorial.pdf">
+    <front>
+     <title>NEAT Tutorial at Hainan University: Getting Started with NEAT</title>
+     <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz" />
+     <date day="18" month="December" year="2017" />
+    </front>
+    <seriesInfo name="" value="Invited Talk at Hainan University, College of Information Science and Technology&nbsp;(CIST)" />
+   </reference>
+   <reference anchor="Haikou2017-NEAT" target="https://web-backend.simula.no/sites/default/files/publications/files/haikou2017-neat-introduction.pdf">
+    <front>
+     <title>A Practical Introduction to NEAT at Hainan University</title>
+     <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz" />
+     <date day="17" month="April" year="2017" />
+    </front>
+    <seriesInfo name="" value="Invited Talk at Hainan University, College of Information Science and Technology&nbsp;(CIST)" />
+   </reference>
+   <reference anchor="ANRW2017" target="https://web-backend.simula.no/sites/default/files/publications/files/anrw17-final13.pdf">
+    <front>
+     <title>A NEAT Way to Browse the Web</title>
+     <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank" />
+     <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo" />
+     <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov" />
+     <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström" />
+     <author initials="T." surname="Dreibholz" fullname="Thomas&nbsp;Dreibholz" />
+     <author initials="P." surname="Hurtig" fullname="Per&nbsp;Hurtig" />
+     <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi" />
+     <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen" />
+     <date day="15" month="July" year="2017" />
+    </front>
+    <seriesInfo name="Proceedings of the ACM, IRTF and ISOC Applied Networking Research Workshop&nbsp;(ANRW)" value="Pages 33–34, ISBN&nbsp;978-1-4503-5108-9, DOI&nbsp;10.1145/3106328.3106335" />
+   </reference>
+   <reference anchor="NEAT-D1.1" target="https://neat.nntb.no/wp-content/uploads/2016/02/D1.1.pdf">
+    <front>
+     <title>NEAT Architecture</title>
+     <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst" />
+     <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones" />
+     <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov" />
+     <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström" />
+     <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović" />
+     <author initials="K.&nbsp;R.&nbsp;E.&nbsp;T." surname="Eckert" fullname="Kristian Riktor Evensen Toerless&nbsp;Eckert" />
+     <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo" />
+     <author initials="A.&nbsp;F." surname="Hansen" fullname="Audun Fosselie&nbsp;Hansen" />
+     <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi" />
+     <author initials="S." surname="Mangiante" fullname="Simone&nbsp;Mangiante" />
+     <author initials="P." surname="McManus" fullname="Patrick&nbsp;McManus" />
+     <author initials="G." surname="Papastergiou" fullname="Giorgos&nbsp;Papastergiou" />
+     <author initials="D." surname="Ros" fullname="David&nbsp;Ros" />
+     <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen" />
+     <author initials="E." surname="Vyncke" fullname="Eric&nbsp;Vyncke" />
+     <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl" />
+     <date day="1" month="December" year="2015" />
+    </front>
+    <seriesInfo name="" value="Number D1.1" />
+   </reference>
+   <reference anchor="NEAT-D1.3" target="https://neat.nntb.no/wp-content/uploads/2015/05/D1.3.pdf">
+    <front>
+     <title>Final Version of Services and APIs</title>
+     <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl" />
+     <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović" />
+     <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst" />
+     <author initials="D." surname="Hayes" fullname="David&nbsp;Hayes" />
+     <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones" />
+     <author initials="D." surname="Ros" fullname="David&nbsp;Ros" />
+     <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen" />
+     <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank" />
+     <date day="30" month="October" year="2017" />
+    </front>
+    <seriesInfo name="Deliverable" value="D1.3" />
+   </reference>
+   <reference anchor="NEAT-D2.2" target="https://neat.nntb.no/wp-content/uploads/2017/03/D2.2-public.pdf">
+    <front>
+     <title>NEAT – Core Transport System, with both Low-level and High-level Components</title>
+     <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi" />
+     <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov" />
+     <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström" />
+     <author initials="Ø." surname="Dale" fullname="Øystein&nbsp;Dale" />
+     <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović" />
+     <author initials="K.&nbsp;R." surname="Evensen" fullname="Kristian Riktor&nbsp;Evensen" />
+     <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst" />
+     <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo" />
+     <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones" />
+     <author initials="S." surname="Mangiante" fullname="Simone&nbsp;Mangiante" />
+     <author initials="A." surname="Petlund" fullname="Andreas&nbsp;Petlund" />
+     <author initials="D." surname="Ros" fullname="David&nbsp;Ros" />
+     <author initials="D." surname="Stenberg" fullname="Daniel&nbsp;Stenberg" />
+     <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen" />
+     <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank" />
+     <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl" />
+     <date day="14" month="March" year="2017" />
+    </front>
+    <seriesInfo name="" value="Number D2.2" />
+   </reference>
+   <reference anchor="NEAT-D2.3" target="https://neat.nntb.no/wp-content/uploads/2017/10/D2.3.pdf">
+    <front>
+     <title>Final Version of Core Transport System</title>
+     <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi" />
+     <author initials="Z." surname="Bozakov" fullname="Zdravko&nbsp;Bozakov" />
+     <author initials="A." surname="Brunström" fullname="Anna&nbsp;Brunström" />
+     <author initials="Ø." surname="Dale" fullname="Øystein&nbsp;Dale" />
+     <author initials="D." surname="Damjanović" fullname="Dragana&nbsp;Damjanović" />
+     <author initials="K.&nbsp;R." surname="Evensen" fullname="Kristian Riktor&nbsp;Evensen" />
+     <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst" />
+     <author initials="A." surname="Fischer" fullname="Andreas&nbsp;Fischer" />
+     <author initials="K." surname="Grinnemo" fullname="Karl-Johan&nbsp;Grinnemo" />
+     <author initials="T." surname="Jones" fullname="Tom&nbsp;Jones" />
+     <author initials="S." surname="Mangiante" fullname="Simone&nbsp;Mangiante" />
+     <author initials="A." surname="Petlund" fullname="Andreas&nbsp;Petlund" />
+     <author initials="D." surname="Ros" fullname="David&nbsp;Ros" />
+     <author initials="I." surname="Rüngeler" fullname="Irene&nbsp;Rüngeler" />
+     <author initials="D." surname="Stenberg" fullname="Daniel&nbsp;Stenberg" />
+     <author initials="M." surname="Tüxen" fullname="Michael&nbsp;Tüxen" />
+     <author initials="F." surname="Weinrank" fullname="Felix&nbsp;Weinrank" />
+     <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl" />
+     <date day="31" month="August" year="2017" />
+    </front>
+    <seriesInfo name="Deliverable" value="D2.3" />
+   </reference>
   </references>
  </back>
 </rfc>

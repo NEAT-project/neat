@@ -1617,13 +1617,13 @@ int nsa_ioctl(int fd, int request, const void* argp)]]></artwork>
      </front>
      <seriesInfo name="Computer Networks, Special Issue on Future Internet Testbeds" value="Volume 61, Pages 75–87, ISSN&nbsp;1389-1286, DOI&nbsp;10.1016/j.bjp.2013.12.035" />
     </reference>
-    <reference anchor="NEAT-Website" target="https://www.neat-project.org/">
+    <reference anchor="NEAT-Website" target="https://neat.nntb.no/">
      <front>
       <title>NEAT – A New, Evolutive API and Transport-Layer Architecture for the Internet</title>
       <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz" />
       <date year="2022" />
      </front>
-     <seriesInfo name="Online:" value="https://www.neat-project.org/" />
+     <seriesInfo name="Online:" value="https://neat.nntb.no/" />
     </reference>
     <reference anchor="NorNet-Website" target="https://www.nntb.no/">
      <front>
@@ -1664,7 +1664,7 @@ int nsa_ioctl(int fd, int request, const void* argp)]]></artwork>
      </front>
      <seriesInfo name="Proceedings of the ACM, IRTF and ISOC Applied Networking Research Workshop&nbsp;(ANRW)" value="Pages 33–34, ISBN&nbsp;978-1-4503-5108-9, DOI&nbsp;10.1145/3106328.3106335" />
     </reference>
-    <reference anchor="NEAT-D1.1" target="https://www.neat-project.org/wp-content/uploads/2016/02/D1.1.pdf">
+    <reference anchor="NEAT-D1.1" target="https://neat.nntb.no/wp-content/uploads/2016/02/D1.1.pdf">
      <front>
       <title>NEAT Architecture</title>
       <author initials="G." surname="Fairhurst" fullname="Gorry&nbsp;Fairhurst" />
@@ -1687,7 +1687,7 @@ int nsa_ioctl(int fd, int request, const void* argp)]]></artwork>
      </front>
      <seriesInfo name="" value="Number D1.1" />
     </reference>
-    <reference anchor="NEAT-D1.3" target="https://www.neat-project.org/wp-content/uploads/2015/05/D1.3.pdf">
+    <reference anchor="NEAT-D1.3" target="https://neat.nntb.no/wp-content/uploads/2015/05/D1.3.pdf">
      <front>
       <title>Final Version of Services and APIs</title>
       <author initials="M." surname="Welzl" fullname="Michael&nbsp;Welzl" />
@@ -1702,7 +1702,7 @@ int nsa_ioctl(int fd, int request, const void* argp)]]></artwork>
      </front>
      <seriesInfo name="Deliverable" value="D1.3" />
     </reference>
-    <reference anchor="NEAT-D2.2" target="https://www.neat-project.org/wp-content/uploads/2017/03/D2.2-public.pdf">
+    <reference anchor="NEAT-D2.2" target="https://neat.nntb.no/wp-content/uploads/2017/03/D2.2-public.pdf">
      <front>
       <title>NEAT – Core Transport System, with both Low-level and High-level Components</title>
       <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi" />
@@ -1725,7 +1725,7 @@ int nsa_ioctl(int fd, int request, const void* argp)]]></artwork>
      </front>
      <seriesInfo name="" value="Number D2.2" />
     </reference>
-    <reference anchor="NEAT-D2.3" target="https://www.neat-project.org/wp-content/uploads/2017/10/D2.3.pdf">
+    <reference anchor="NEAT-D2.3" target="https://neat.nntb.no/wp-content/uploads/2017/10/D2.3.pdf">
      <front>
       <title>Final Version of Core Transport System</title>
       <author initials="N." surname="Khademi" fullname="Naeem&nbsp;Khademi" />

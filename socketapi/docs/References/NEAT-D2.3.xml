@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
-<reference anchor="NEAT-D2.3" target="https://www.neat-project.org/wp-content/uploads/2017/10/D2.3.pdf">
+<reference anchor="NEAT-D2.3" target="https://neat.nntb.no/wp-content/uploads/2017/10/D2.3.pdf">
 	<front>
 		<title>Final Version of Core Transport System</title>
 		<author initials="N." surname="Khademi" fullname="Naeem&#160;Khademi" />
@@ -24,6 +24,6 @@
 		<date day="31" month="August" year="2017" />
 	</front>
 	<seriesInfo name="Deliverable" value="D2.3" />
-	<format type="PDF" octets="2560297" target="https://www.neat-project.org/wp-content/uploads/2017/10/D2.3.pdf" />
+	<format type="PDF" octets="2560297" target="https://neat.nntb.no/wp-content/uploads/2017/10/D2.3.pdf" />
 </reference>
 

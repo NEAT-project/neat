@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
-<reference anchor="NEAT-D2.1" target="https://www.neat-project.org/wp-content/uploads/2015/05/D2.1.pdf">
+<reference anchor="NEAT-D2.1" target="https://neat.nntb.no/wp-content/uploads/2015/05/D2.1.pdf">
 	<front>
 		<title>NEAT – First Version of Low-Level Core Transport System</title>
 		<author initials="N." surname="Khademi" fullname="Naeem&#160;Khademi" />
@@ -19,6 +19,6 @@
 		<date day="1" month="March" year="2016" />
 	</front>
 	<seriesInfo name="" value="Number D2.1" />
-	<format type="PDF" octets="293441" target="https://www.neat-project.org/wp-content/uploads/2015/05/D2.1.pdf" />
+	<format type="PDF" octets="293441" target="https://neat.nntb.no/wp-content/uploads/2015/05/D2.1.pdf" />
 </reference>
 

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
-<reference anchor="NEAT-D1.1" target="https://www.neat-project.org/wp-content/uploads/2016/02/D1.1.pdf">
+<reference anchor="NEAT-D1.1" target="https://neat.nntb.no/wp-content/uploads/2016/02/D1.1.pdf">
 	<front>
 		<title>NEAT Architecture</title>
 		<author initials="G." surname="Fairhurst" fullname="Gorry&#160;Fairhurst" />
@@ -22,6 +22,6 @@
 		<date day="1" month="December" year="2015" />
 	</front>
 	<seriesInfo name="" value="Number D1.1" />
-	<format type="PDF" octets="580813" target="https://www.neat-project.org/wp-content/uploads/2016/02/D1.1.pdf" />
+	<format type="PDF" octets="580813" target="https://neat.nntb.no/wp-content/uploads/2016/02/D1.1.pdf" />
 </reference>
 

@@ -555,11 +555,12 @@ int nsa_shutdown(int sockfd, int how)]]></artwork>
     <t>See the shutdown() documentation for details.</t>
    </section>
    <!--
-<section title="nsa_peeloff()">
- <t>...</t>
- <t>Function Prototype:</t>
- <figure><artwork><![CDATA[<![CDATA[<![CDATA[<![CDATA[<![CDATA[<![CDATA[<![CDATA[<![CDATA[
-int nsa_peeloff(int sockfd, neat_assoc_t id)]]>]]>]]>]]>]]>]]>]]>]]></artwork></figure>
+   <section title="nsa_peeloff()">
+    <t>...</t>
+    <t>Function Prototype:</t>
+    <figure><artwork><![CDATA[
+int nsa_peeloff(int sockfd, neat_assoc_t id)]]></artwork>
+</figure>
 </section>
 -->
   </section>
@@ -1621,17 +1622,15 @@ int nsa_ioctl(int fd, int request, const void* argp)]]></artwork>
      <front>
       <title>NEAT – A New, Evolutive API and Transport-Layer Architecture for the Internet</title>
       <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz" />
-      <date year="2022" />
+      <date year="2026" month="September" day="16" />
      </front>
-     <seriesInfo name="Online:" value="https://neat.nntb.no/" />
     </reference>
     <reference anchor="NorNet-Website" target="https://www.nntb.no/">
      <front>
       <title>NorNet – A Real-World, Large-Scale Multi-Homing Testbed</title>
       <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz" />
-      <date year="2022" />
+      <date year="2026" month="September" day="16" />
      </front>
-     <seriesInfo name="Online:" value="https://www.nntb.no/" />
     </reference>
     <reference anchor="Haikou2017-2-NEAT-Tutorial" target="https://www.simula.no/file/haikou2017-neat-tutorialpdf/download">
      <front>

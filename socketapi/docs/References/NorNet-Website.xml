@@ -1,10 +1,9 @@
 <?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE rfc PUBLIC '-//IETF//DTD RFC 2629//EN' 'http://xml.resource.org/authoring/rfc2629.dtd'>
 <reference anchor="NorNet-Website" target="https://www.nntb.no/">
  <front>
   <title>NorNet – A Real-World, Large-Scale Multi-Homing Testbed</title>
   <author initials="T." surname="Dreibholz" fullname="Thomas Dreibholz" />
-  <date year="2022" />
+  <date year="2026" month="September" day="16" />
  </front>
- <seriesInfo name="Online:" value="https://www.nntb.no/" />
- <format type="HTML" octets="1024" target="https://www.nntb.no/" />
 </reference>

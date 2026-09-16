@@ -1,21 +1,26 @@
-txtfiles := $(patsubst %.xml,%.txt,$(wildcard draft-*.xml))
-htmlfiles := $(patsubst %.xml,%.html,$(wildcard draft-*.xml))
+OUTDIR    := Output
+xmlfiles  := $(wildcard draft-*.xml)
+txtfiles  := $(patsubst %.xml,$(OUTDIR)/%.txt,$(xmlfiles))
+htmlfiles := $(patsubst %.xml,$(OUTDIR)/%.html,$(xmlfiles))
+
+.PHONY: all references format clean
 
 
-all:   $(htmlfiles) $(txtfiles)
+all: $(txtfiles) $(htmlfiles)
 
 
 references:
-	bibtexconv ~/src/papers/Referenzarchiv.bib -non-interactive -export-to-separate-xmls=reference.
+	bibtexconv ~/src/papers/Referenzarchiv.bib --non-interactive --export-to-separate-xmls=Output/reference.
 
+format:
+	./format-id -R ~/public_html/bibxml/ $(xmlfiles)
 
-$(txtfiles):	%.txt: %.xml
-	xml2rfc $< --text --v3
-	# idnits $@
+$(OUTDIR):
+	mkdir -p $(OUTDIR)
 
-$(htmlfiles):	%.html: %.xml
-	xml2rfc $< --html --v3
-
+$(OUTDIR)/%.txt $(OUTDIR)/%.html: %.xml | $(OUTDIR)
+	@echo "Processing $<"
+	@xml2rfc $< --v3 --text --html -p $(OUTDIR) >$(OUTDIR)/$*.log
 
 clean:
-	rm -f *.txt *.html
+	rm -rf $(OUTDIR)

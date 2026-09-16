@@ -74,15 +74,15 @@ NEAT Sockets API
    </section>
   </section>
   <section numbered="true" toc="default">
-   <name>Initialisation and Clean-Up</name>
+   <name>Initialization and Clean-Up</name>
    <section numbered="true" toc="default">
     <name>nsa_init()</name>
     <t>
-     nsa_init() is used to explicitly initialise the NEAT Sockets API. In the
+     nsa_init() is used to explicitly initialize the NEAT Sockets API. In the
      usual case, however, the NEAT Sockets API is automatically initialized
-     when creating a NEAT socket. Explicit initialisation may only be
+     when creating a NEAT socket. Explicit initialization may only be
      necessary in a multi-threaded program, in order to avoid parallel
-     initialisation calls.
+     initialization calls.
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -97,7 +97,7 @@ int nsa_init()
    <section numbered="true" toc="default">
     <name>nsa_cleanup()</name>
     <t>
-     nsa_cleanup() is used to free all resources allocated by NEAT. Note, that
+     nsa_cleanup() is used to free all resources allocated by NEAT. Note that
      the NEAT Sockets API is automatically initialized when creating a NEAT
      socket.
     </t>
@@ -163,7 +163,7 @@ int nsa_socket(int domain, int type, int protocol,
     <t>Arguments:</t>
     <dl newline="false" spacing="normal">
      <dt>domain:</dt>
-     <dd>Domain for system socket (e.g. AF_INET).</dd>
+     <dd>Domain for system socket (e.g., AF_INET).</dd>
      <dt>type:</dt>
      <dd>Type for system socket (SOCK_SEQPACKET).</dd>
      <dt>protocol:</dt>
@@ -182,8 +182,8 @@ int nsa_socket(int domain, int type, int protocol,
     <name>nsa_socketpair()</name>
     <t>
      nsa_socketpair() is a wrapper around the socketpair() call, returning
-     NEAT socket descriptors instead. Note, that socketpair() only supports
-     AF_UNIX sockets, i.e. this function is just a wrapper for the system
+     NEAT socket descriptors instead. Note that socketpair() only supports
+     AF_UNIX sockets, i.e., this function is just a wrapper for the system
      function.
     </t>
     <t>Function Prototype:</t>
@@ -231,13 +231,13 @@ int nsa_fcntl(int sockfd, int cmd, ...)]]></artwork>
      <dd>
       Obtain value of the socket descriptor status flags. For NEAT sockets,
       the flag O_NONBLOCK specifies whether the socket is non-blocking. By
-      default, it is blocking (i.e. O_NONBLOCK is not set).
+      default, it is blocking (i.e., O_NONBLOCK is not set).
      </dd>
      <dt>F_SETFL:</dt>
      <dd>
       Set value of the socket descriptor status flags. For NEAT sockets, the
       flag O_NONBLOCK specifies whether the socket is non-blocking. By
-      default, it is blocking (i.e. O_NONBLOCK is not set). F_SETFL can then
+      default, it is blocking (i.e., O_NONBLOCK is not set). F_SETFL can then
       be used to change the blocking mode.
      </dd>
     </dl>
@@ -247,9 +247,9 @@ int nsa_fcntl(int sockfd, int cmd, ...)]]></artwork>
     <name>nsa_bind()</name>
     <t>
      nsa_bind() binds a given NEAT socket to a given address. Note: this
-     function is provided as legacy wrapper, and it is
+     function is provided as a legacy wrapper, and it is
      <bcp14>RECOMMENDED</bcp14> to use nsa_bindn() instead. Note further, that
-     nsa_bind() also supports a single address only (i.e. no multi-homing).
+     nsa_bind() also supports only a single address (i.e., no multi-homing).
      nsa_bindx() <bcp14>SHOULD</bcp14> be used instead to support
      multi-homing.
     </t>
@@ -281,7 +281,7 @@ int nsa_bind(int sockfd,
     <name>nsa_bindx()</name>
     <t>
      nsa_bindx() binds a given NEAT socket to a given set of addresses. Note:
-     this function is provided as legacy wrapper, and it is
+     this function is provided as a legacy wrapper, and it is
      <bcp14>RECOMMENDED</bcp14> to use nsa_bindn() instead.
     </t>
     <t>Function Prototype:</t>
@@ -342,9 +342,9 @@ int nsa_bindn(int sockfd, uint16_t port, int flags,
     <name>nsa_connect()</name>
     <t>
      nsa_connect() connects a given NEAT socket to a given remote address.
-     Note: this function is provided as legacy wrapper, and it is
+     Note: this function is provided as a legacy wrapper, and it is
      <bcp14>RECOMMENDED</bcp14> to use nsa_connectn() instead. Note further,
-     that nsa_connect() also supports a single address only (i.e. no
+     that nsa_connect() also supports only a single address (i.e., no
      multi-homing). nsa_connectx() <bcp14>SHOULD</bcp14> be used instead to
      support multi-homing.
     </t>
@@ -376,7 +376,7 @@ int nsa_connect(int sockfd,
     <name>nsa_connectx()</name>
     <t>
      nsa_connectx() connects a given NEAT socket to a given set of remote
-     addresses. Note: this function is provided as legacy wrapper, and it is
+     addresses. Note: this function is provided as a legacy wrapper, and it is
      <bcp14>RECOMMENDED</bcp14> to use nsa_connectn() instead.
     </t>
     <t>Function Prototype:</t>
@@ -493,7 +493,7 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)]]></artwor
      nsa_accept() returns the new NEAT socket descriptor in case of success,
      or -1 in case of error. The error code will be set in the errno variable.
      In case of success, the peer's primary address is stored in "addr", if
-     there is sufficient space. The variable pointer to by "addrlen" will then
+     there is sufficient space. The variable pointed to by "addrlen" will then
      contain the actual address size.
     </t>
     <t>See the accept() documentation for details.</t>
@@ -504,9 +504,9 @@ int nsa_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)]]></artwor
      nsa_accept4() extracts the first connection request in the queue of
      pending connections for a listening NEAT socket, creates a new connected
      socket, and returns a new NEAT socket descriptor referring to that
-     socket. If successful, and flags!=0, nsa_accept4() furthermore makes the
+     socket. If successful, and flags !=0, nsa_accept4() furthermore makes the
      new socket non-blocking (SOCK_NONBLOCK flag) and/or close-on-exec
-     (SOCK_CLOEXEC flag). For flags==0, the behaviour is identical to
+     (SOCK_CLOEXEC flag). For flags == 0, the behaviour is identical to
      nsa_accept().
     </t>
     <t>Function Prototype:</t>
@@ -533,7 +533,7 @@ int nsa_accept4(int sockfd,
      nsa_accept4() returns the new NEAT socket descriptor in case of success,
      or -1 in case of error. The error code will be set in the errno variable.
      In case of success, the peer's primary address is stored in "addr", if
-     there is sufficient space. The variable pointer to by "addrlen" will then
+     there is sufficient space. The variable pointed to by "addrlen" will then
      contain the actual address size.
     </t>
     <t>See the accept() documentation for details.</t>
@@ -597,7 +597,7 @@ int nsa_getsockopt(int sockfd, int level, int optname,
    </section>
    <section numbered="true" toc="default">
     <name>nsa_setsockopt()</name>
-    <t>nsa_getsockopt() sets a socket option of a given NEAT socket.</t>
+    <t>nsa_setsockopt() sets a socket option of a given NEAT socket.</t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
 int nsa_setsockopt(int sockfd, int level, int optname,
@@ -728,8 +728,8 @@ ssize_t nsa_pwrite(int fd, const void* buf, size_t len, off_t offset)]]></artwor
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
-ssize_t nsa_pwrite(int fd, const void* buf, size_t len,
-                   off64_t offset)]]></artwork>
+ssize_t nsa_pwrite64(int fd, const void* buf, size_t len,
+                     off64_t offset)]]></artwork>
     <t>See the pwrite64() documentation for details.</t>
    </section>
    <section numbered="true" toc="default">
@@ -752,8 +752,8 @@ ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
-ssize_t nsa_pwritev(int fd, const struct iovec* iov, int iovcnt,
-                    off64_t offset)]]></artwork>
+ssize_t nsa_pwritev64(int fd, const struct iovec* iov, int iovcnt,
+                      off64_t offset)]]></artwork>
     <t>See the pwritev64() documentation for details.</t>
    </section>
    <section numbered="true" toc="default">
@@ -783,7 +783,7 @@ ssize_t nsa_send(int sockfd, const void* buf, size_t len, int flags)]]></artwork
     <name>nsa_sendto()</name>
     <t>
      nsa_sendto() is a wrapper around the sendto() call, using NEAT socket
-     descriptors instead. Note: this function is provided as legacy wrapper,
+     descriptors instead. Note: this function is provided as a legacy wrapper,
      and it is <bcp14>RECOMMENDED</bcp14> to use nsa_send() instead. On NEAT
      sockets, a provided destination address is ignored.
     </t>
@@ -864,9 +864,7 @@ ssize_t nsa_sendv(int sockfd, struct iovec* iov, int iovcnt,
      <dt>to:</dt>
      <dd>Address(es) to send data to (ignored for NEAT sockets).</dd>
      <dt>tocnt:</dt>
-     <dd>
-      Number of of addresses to send data to (ignored for NEAT sockets).
-     </dd>
+     <dd>Number of addresses to send data to (ignored for NEAT sockets).</dd>
      <dt>info:</dt>
      <dd>Control information.</dd>
      <dt>infolen:</dt>
@@ -951,7 +949,7 @@ ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)]]></artwork>
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
-ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)]]></artwork>
+ssize_t nsa_pread64(int fd, void* buf, size_t len, off64_t offset)]]></artwork>
     <t>See the pread64() documentation for details.</t>
    </section>
    <section numbered="true" toc="default">
@@ -963,7 +961,7 @@ ssize_t nsa_pread(int fd, void* buf, size_t len, off_t offset)]]></artwork>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
 ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
-                   off64_t offset)]]></artwork>
+                   off_t offset)]]></artwork>
     <t>See the preadv() documentation for details.</t>
    </section>
    <section numbered="true" toc="default">
@@ -974,8 +972,8 @@ ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
-ssize_t nsa_preadv(int fd, const struct iovec* iov, int iovcnt,
-                   off64_t offset)]]></artwork>
+ssize_t nsa_preadv64(int fd, const struct iovec* iov, int iovcnt,
+                     off64_t offset)]]></artwork>
     <t>See the preadv64() documentation for details.</t>
    </section>
    <section numbered="true" toc="default">
@@ -1112,8 +1110,8 @@ ssize_t nsa_recvv(int sockfd, struct iovec* iov, int iovcnt,
      <dd>Pointer to variable with optional flags.</dd>
     </dl>
     <t>
-     nsa_recvv() returns the number of sent received in case of success, or -1
-     in case of error. The error code will be set in the errno variable.
+     nsa_recvv() returns the number of bytes received in case of success, or
+     -1 in case of error. The error code will be set in the errno variable.
     </t>
     <t>See the sctp_recvv() documentation for details.</t>
    </section>
@@ -1151,7 +1149,7 @@ int nsa_poll(struct pollfd* ufds, const nfds_t nfds, int timeout)]]></artwork>
     <name>nsa_select()</name>
     <t>
      nsa_select() is a wrapper around the select() call, using NEAT socket
-     descriptors instead. Note: this function is provided as legacy wrapper,
+     descriptors instead. Note: this function is provided as a legacy wrapper,
      and it is <bcp14>RECOMMENDED</bcp14> to use nsa_poll() instead.
     </t>
     <t>Function Prototype:</t>
@@ -1168,9 +1166,9 @@ int nsa_select(int n,
     <name>nsa_getsockname()</name>
     <t>
      nsa_getsockname() obtains the first local address of a socket. Note: this
-     function is provided as legacy wrapper, and it is
+     function is provided as a legacy wrapper, and it is
      <bcp14>RECOMMENDED</bcp14> to use nsa_getladdrs() instead to support
-     multi-homed transport protocols!
+     multi-homed transport protocols.
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -1197,9 +1195,9 @@ int nsa_getsockname(int sockfd,
     <name>nsa_getpeername()</name>
     <t>
      nsa_getpeername() obtains the first remote address of a connected socket.
-     Note: this function is provided as legacy wrapper, and it is
+     Note: this function is provided as a legacy wrapper, and it is
      <bcp14>RECOMMENDED</bcp14> to use nsa_getpaddrs() instead to support
-     multi-homed transport protocols!
+     multi-homed transport protocols.
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
@@ -1486,9 +1484,9 @@ off_t nsa_lseek(int fd, off64_t offset, int whence)]]></artwork>
     <t>See the lseek64() documentation for details.</t>
    </section>
    <section numbered="true" toc="default">
-    <name>nsa_truncate()</name>
+    <name>nsa_ftruncate()</name>
     <t>
-     nsa_truncate() is a wrapper around the truncate() call, using a NEAT
+     nsa_ftruncate() is a wrapper around the truncate() call, using a NEAT
      socket descriptor instead.
     </t>
     <t>Function Prototype:</t>
@@ -1497,15 +1495,15 @@ int nsa_ftruncate(int fd, off_t length)]]></artwork>
     <t>See the truncate() documentation for details.</t>
    </section>
    <section numbered="true" toc="default">
-    <name>nsa_truncate64()</name>
+    <name>nsa_ftruncate64()</name>
     <t>
-     nsa_truncate64() is a wrapper around the truncate64() call, using a NEAT
-     socket descriptor instead.
+     nsa_ftruncate64() is a wrapper around the ftruncate64() call, using a
+     NEAT socket descriptor instead.
     </t>
     <t>Function Prototype:</t>
     <artwork name="" type="" align="left" alt=""><![CDATA[
-int nsa_ftruncate(int fd, off64_t length)]]></artwork>
-    <t>See the truncate64() documentation for details.</t>
+int nsa_ftruncate64(int fd, off64_t length)]]></artwork>
+    <t>See the ftruncate64() documentation for details.</t>
    </section>
    <section numbered="true" toc="default">
     <name>nsa_pipe()</name>
